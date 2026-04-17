@@ -12,6 +12,7 @@ namespace MathCursor
         private VstoEditorSurface _surface;
         private VstoUserFeedback _feedback;
         private MathCursorOrchestrator _orchestrator;
+        private KeyboardInterceptor _keyboard;
 
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
@@ -24,7 +25,14 @@ namespace MathCursor
 
                 _orchestrator = new MathCursorOrchestrator(_host, _store, _surface, _feedback);
 
-                _surface.Notify("MathCursor prêt. Tapez une expression puis Alt+M.", HostContract.NotificationLevel.Info);
+                // Hook clavier Tab
+                _keyboard = new KeyboardInterceptor
+                {
+                    OnTabPressed = HandleTabPressed,
+                };
+                _keyboard.Install();
+
+                _surface.Notify("MathCursor prêt. Tapez une expression puis Tab (ou Alt+M).", HostContract.NotificationLevel.Info);
             }
             catch (Exception ex)
             {
@@ -38,21 +46,33 @@ namespace MathCursor
 
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
         {
+            try { _keyboard?.Dispose(); } catch { }
         }
 
         /// <summary>
-        /// Appelé par le bouton ribbon "Convertir". Si l'add-in n'est pas encore
-        /// prêt (startup pas terminé), ça ne fait rien.
+        /// Sur Tab pressé : retourne true si on a effectivement converti (→ consommer le Tab),
+        /// false sinon (→ laisser Word insérer un tab normal / tabuler / outdent).
         /// </summary>
+        private bool HandleTabPressed()
+        {
+            if (_orchestrator == null) return false;
+            try
+            {
+                return _orchestrator.TryConvertAtCaret();
+            }
+            catch (Exception ex)
+            {
+                _feedback?.LogParsingError("(tab_hook)", ex.Message);
+                return false; // en cas d'erreur, ne pas consommer le Tab
+            }
+        }
+
+        /// <summary>Appelé par le bouton ribbon "Convertir".</summary>
         public void TriggerConversion()
         {
-            _host?.TriggerConversion();
+            _orchestrator?.TryConvertAtCaret();
         }
 
-        /// <summary>
-        /// Fournit le callback ribbon à Word. VSTO l'appelle AVANT Startup,
-        /// donc on ne peut pas dépendre de this.Application ici.
-        /// </summary>
         protected override IRibbonExtensibility CreateRibbonExtensibilityObject()
         {
             return new RibbonCallback();
@@ -60,10 +80,6 @@ namespace MathCursor
 
         #region Code généré par VSTO
 
-        /// <summary>
-        /// Méthode requise pour la prise en charge du concepteur - ne modifiez pas
-        /// le contenu de cette méthode avec l'éditeur de code.
-        /// </summary>
         private void InternalStartup()
         {
             this.Startup += new System.EventHandler(ThisAddIn_Startup);

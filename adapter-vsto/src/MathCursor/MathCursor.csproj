@@ -233,6 +233,7 @@
     <Compile Include="Host\VstoEquationStore.cs" />
     <Compile Include="Host\VstoEditorSurface.cs" />
     <Compile Include="Host\VstoUserFeedback.cs" />
+    <Compile Include="Host\KeyboardInterceptor.cs" />
     <Compile Include="RibbonCallback.cs" />
     <EmbeddedResource Include="Ribbon.xml" />
     <AppDesigner Include="Properties\" />

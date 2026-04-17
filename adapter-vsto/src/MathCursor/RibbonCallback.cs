@@ -18,20 +18,46 @@ namespace MathCursor
 
         public string GetCustomUI(string ribbonID)
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            var resourceName = "MathCursor.Ribbon.xml";
-            using (var stream = assembly.GetManifestResourceStream(resourceName))
+            try
             {
-                if (stream == null)
+                var assembly = Assembly.GetExecutingAssembly();
+                var resourceName = "MathCursor.Ribbon.xml";
+                using (var stream = assembly.GetManifestResourceStream(resourceName))
                 {
-                    throw new InvalidOperationException(
-                        "Ressource ribbon introuvable : " + resourceName);
-                }
-                using (var reader = new StreamReader(stream))
-                {
-                    return reader.ReadToEnd();
+                    if (stream == null)
+                    {
+                        // Log les ressources disponibles pour diagnostic
+                        var names = string.Join(", ", assembly.GetManifestResourceNames());
+                        LogDebug($"Ressource '{resourceName}' introuvable. Disponibles: [{names}]");
+                        return "";
+                    }
+                    using (var reader = new StreamReader(stream))
+                    {
+                        var xml = reader.ReadToEnd();
+                        LogDebug($"Ribbon XML chargé ({xml.Length} caractères) pour ribbonID={ribbonID}");
+                        return xml;
+                    }
                 }
             }
+            catch (Exception ex)
+            {
+                LogDebug($"GetCustomUI exception: {ex.GetType().Name} {ex.Message}");
+                return "";
+            }
+        }
+
+        private static void LogDebug(string message)
+        {
+            try
+            {
+                var dir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "MathCursor", "logs");
+                Directory.CreateDirectory(dir);
+                File.AppendAllText(Path.Combine(dir, "mathcursor.log"),
+                    $"{DateTime.UtcNow:o} ribbon {message}{Environment.NewLine}");
+            }
+            catch { /* jamais d'exception depuis le logging */ }
         }
 
         public void OnRibbonLoad(IRibbonUI ribbon)

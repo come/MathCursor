@@ -38,22 +38,31 @@ public sealed class MathCursorOrchestrator
 
     private async Task OnConversionRequestedAsync()
     {
-        var ctx = await _host.ReadContextAroundCaretAsync(charsBefore: 200, charsAfter: 20);
+        await TryConvertAtCaretAsync();
+    }
+
+    /// <summary>
+    /// Tente la conversion de l'expression sous le curseur de façon synchrone.
+    /// Retourne true si une conversion a été effectuée, false sinon.
+    /// Utilisé par le hook clavier pour décider si on consomme la touche Tab.
+    /// </summary>
+    public bool TryConvertAtCaret()
+    {
+        return TryConvertAtCaretAsync().GetAwaiter().GetResult();
+    }
+
+    private async Task<bool> TryConvertAtCaretAsync()
+    {
+        var ctx = await _host.ReadContextAroundCaretAsync(charsBefore: 200, charsAfter: 0);
         var textBefore = ctx.TextBefore;
 
-        // Pipeline pur
         var result = ConversionPipeline.Convert(textBefore, ctx.LanguageHint);
         if (!result.Success || result.Zone == null || result.Equation == null)
         {
             _feedback.LogParsingError(textBefore, result.Reason ?? "unknown");
-            _surface.Notify("Aucune expression math détectée près du curseur.", NotificationLevel.Info);
-            return;
+            return false;
         }
 
-        // Anti-boucle : si c'est le même texte qu'à la dernière conversion, ne rien faire
-        if (_lastConvertedSource == result.Equation.Source) return;
-
-        // La zone math est relative au début du contexte lu ; on la convertit en TextZone absolu
         var zone = new TextZone
         {
             StartOffset = ctx.CaretOffset - result.Equation.Source.Length,
@@ -64,6 +73,8 @@ public sealed class MathCursorOrchestrator
         var handle = await _host.InsertEquationAsync(zone, result.Equation);
         await _store.StoreAsync(handle, result.Equation.Source, result.Equation.Metadata);
         _lastConvertedSource = result.Equation.Source;
+        _feedback.LogSuggestionSelected(0);
+        return true;
     }
 
     private async Task OnEquationEnteredAsync(EquationHandle handle)
