@@ -10,7 +10,7 @@ import { findExpression, findExpressionV2, buildMathOoxml, type Delimiter } from
 import { findSymbol } from "./symbols/patterns";
 import { hasOMathChars, normalizeOMath, fixOMathParens } from "./decomposition/normalize";
 import { getSource } from "./storage";
-import { readPara, doReplace, insertOMathWithTag, wordEscape } from "./wordApi";
+import { readPara, doReplace, wordEscape } from "./wordApi";
 
 // --- État réactif ---
 export const isActive = ref(true);
@@ -44,6 +44,9 @@ let isBusySlow = false;
 let isReplacing = false;
 let lastSlowText = "";
 let hasDecomposed = false;
+// Anti-boucle undo : textes récemment convertis
+// Vidé dès que le texte change sans tab (= l'utilisateur tape du neuf)
+const convertedTexts = new Set<string>();
 
 // ============================================================
 // FAST TICK (50ms)
@@ -90,27 +93,37 @@ async function fastTick(): Promise<void> {
           debugInfo.value = `\u21A9 source: "${sourceText ?? "?"}" | offset: ${cursorOffset}`;
 
           if (sourceText) {
-            data.para.clear();
-            await ctx.sync();
-            data.para.insertText(sourceText, Word.InsertLocation.start);
+            // Atomique : clear + insert en un seul replace sur le range entier
+            const wholeRange = data.para.getRange("Whole");
+            wholeRange.insertText(sourceText + "\n", Word.InsertLocation.replace);
             await ctx.sync();
 
             // Repositionner le curseur
-            const clampedOffset = Math.min(cursorOffset, sourceText.length);
-            if (clampedOffset > 0 && clampedOffset < sourceText.length) {
-              const prefix = sourceText.substring(0, clampedOffset);
-              const results = data.para.search(wordEscape(prefix), { matchCase: true, matchWholeWord: false });
-              results.load("items");
-              await ctx.sync();
-              if (results.items.length > 0) {
-                results.items[0].getRange("End").select("Start");
+            // Recharger le paragraphe (le range a changé après replace)
+            const freshParas = ctx.document.getSelection().paragraphs;
+            freshParas.load("items");
+            await ctx.sync();
+            const freshPara = freshParas.items[0];
+
+            if (freshPara) {
+              const clampedOffset = Math.min(cursorOffset, sourceText.length);
+              if (clampedOffset > 0 && clampedOffset < sourceText.length) {
+                const prefix = sourceText.substring(0, clampedOffset);
+                const results = freshPara.search(wordEscape(prefix), { matchCase: true, matchWholeWord: false });
+                results.load("items");
+                await ctx.sync();
+                if (results.items.length > 0) {
+                  results.items[0].getRange("End").select("Start");
+                  await ctx.sync();
+                }
+              } else {
+                freshPara.getRange("End").select("Start");
                 await ctx.sync();
               }
-            } else {
-              ctx.document.getSelection().getRange("End").select("End");
-              await ctx.sync();
             }
 
+            // Protéger contre re-conversion si undo restaure l'OMath puis re-décompose
+            convertedTexts.add(sourceText);
             lastSlowText = "";
             lastAction.value = `\u21A9 ${sourceText}`;
           }
@@ -125,6 +138,12 @@ async function fastTick(): Promise<void> {
       if (!/\t/.test(data.text)) return;
 
       const textBeforeTab = data.text.replace(/\t[\s\S]*$/, "");
+
+      // Anti-boucle undo : si on a déjà converti ce texte, skip
+      if (convertedTexts.has(textBeforeTab)) {
+        debugInfo.value = `undo guard: "${textBeforeTab.slice(-30)}"`;
+        return;
+      }
 
       // Heuristique rapide (JS pur)
       const hasSugg = suggestions.value.length > 0;
@@ -164,6 +183,8 @@ async function fastTick(): Promise<void> {
       if (symMatch) {
         const chosen = symMatch.choices[selectedIdx.value] ?? symMatch.choices[0];
         await doReplace(ctx, freshPara, freshSel, symMatch.raw, chosen);
+        hasDecomposed = true;
+        convertedTexts.add(textBeforeTab);
         lastAction.value = `${symMatch.raw} \u2192 ${chosen.display}`;
         replaceCount.value++;
         lastSlowText = "";
@@ -187,6 +208,8 @@ async function fastTick(): Promise<void> {
           };
 
           if (await doReplace(ctx, freshPara, freshSel, zoneMatch.raw, choice)) {
+            hasDecomposed = true;
+            convertedTexts.add(textBeforeTab);
             lastAction.value = `${zoneMatch.normalized} \u2192 expr`;
             replaceCount.value++;
           }

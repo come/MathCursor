@@ -139,7 +139,7 @@ function toggle(name: string) {
     <!-- Footer -->
     <div class="footer">
       <code>Vx(R</code> = <code>V x c R</code> = <code>pt x dans R</code>
-      <div class="version">v2.0.0</div>
+      <div class="version">v2.1.0</div>
     </div>
   </div>
 </template>

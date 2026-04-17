@@ -21,37 +21,7 @@ export async function readPara(ctx: Word.RequestContext) {
   return { sel, para, text: para.text ?? "" };
 }
 
-// Insérer un OMath + stocker le texte source (clé = paragraph ID)
-export async function insertOMathWithTag(
-  ctx: Word.RequestContext,
-  range: Word.Range,
-  ooxml: string,
-  sourceText: string,
-  location: Word.InsertLocation,
-): Promise<void> {
-  range.insertOoxml(ooxml, location);
-  await ctx.sync();
-  // Stocker le texte source
-  const paras = ctx.document.getSelection().paragraphs;
-  paras.load("items");
-  await ctx.sync();
-  if (paras.items.length > 0) {
-    const para = paras.items[0];
-    para.load("uniqueLocalId");
-    await ctx.sync();
-    storeSource(`math_${para.uniqueLocalId}`, sourceText);
-  }
-  // Curseur après
-  const fp = ctx.document.getSelection().paragraphs;
-  fp.load("items");
-  await ctx.sync();
-  if (fp.items.length > 0) {
-    fp.items[0].insertText(" ", Word.InsertLocation.end).select("End");
-  }
-  await ctx.sync();
-}
-
-// Remplacement : chercher le texte + expandTo curseur + insérer OMath ou texte
+// Remplacement atomique : 1 seul appel → 1 seul undo
 export async function doReplace(
   ctx: Word.RequestContext,
   para: Word.Paragraph,
@@ -66,16 +36,31 @@ export async function doReplace(
   if (results.items.length === 0) return false;
 
   const found = results.items[results.items.length - 1];
-  const fullRange = found.expandTo(sel.getRange("End"));
+  const fullRange = found.expandTo(sel.getRange("End")); // inclut le \t
 
   if (chosen.ooxml) {
-    fullRange.delete();
+    // ATOMIQUE : un seul insertOoxml(replace) au lieu de delete + insert
+    fullRange.insertOoxml(chosen.ooxml, Word.InsertLocation.replace);
     await ctx.sync();
-    await insertOMathWithTag(ctx, ctx.document.getSelection(), chosen.ooxml, searchStr, Word.InsertLocation.replace);
+
+    // Stocker le texte source (hors undo stack — document.settings)
+    para.load("uniqueLocalId");
+    await ctx.sync();
+    storeSource(`math_${para.uniqueLocalId}`, searchStr);
+
+    // Curseur après l'OMath
+    const fp = ctx.document.getSelection().paragraphs;
+    fp.load("items");
+    await ctx.sync();
+    if (fp.items.length > 0) {
+      fp.items[0].insertText(" ", Word.InsertLocation.end).select("End");
+    }
+    await ctx.sync();
   } else {
     fullRange.insertText(chosen.replacement + " ", Word.InsertLocation.replace)
       .getRange("End").select("End");
+    await ctx.sync();
   }
-  await ctx.sync();
+
   return true;
 }
