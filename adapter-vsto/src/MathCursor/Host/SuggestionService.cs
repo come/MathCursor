@@ -89,12 +89,15 @@ namespace MathCursor.Host
             try
             {
                 var sel = _app.Selection;
-                var win = _app.ActiveWindow;
                 // Position du caret en points (1/72") relativement à la page
                 double hPos = (double)sel.get_Information(Word.WdInformation.wdHorizontalPositionRelativeToPage);
                 double vPos = (double)sel.get_Information(Word.WdInformation.wdVerticalPositionRelativeToPage);
-                double x = win.PointsToScreenPixelsX(hPos);
-                double y = win.PointsToScreenPixelsY(vPos);
+                // dynamic pour bypasser le type-checking : avec EmbedInteropTypes=true,
+                // PointsToScreenPixelsX/Y n'apparaît pas dans les types embarqués alors
+                // qu'elle existe au runtime sur Word.Window.
+                dynamic win = _app.ActiveWindow;
+                double x = (double)win.PointsToScreenPixelsX(hPos);
+                double y = (double)win.PointsToScreenPixelsY(vPos);
                 return (x, y + 22); // 22px sous la ligne du caret
             }
             catch
