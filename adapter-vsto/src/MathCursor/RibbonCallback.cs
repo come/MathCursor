@@ -3,27 +3,21 @@ using System.IO;
 using System.Reflection;
 using System.Windows;
 using Microsoft.Office.Core;
-using MathCursor.Host;
 
 namespace MathCursor
 {
     /// <summary>
     /// Implémente IRibbonExtensibility pour relier le Ribbon.xml aux actions.
+    /// Utilise Globals.ThisAddIn pour accéder au host (qui peut ne pas encore
+    /// être initialisé au moment où Word crée cette instance).
     /// </summary>
     [System.Runtime.InteropServices.ComVisible(true)]
     public sealed class RibbonCallback : IRibbonExtensibility
     {
         private IRibbonUI _ribbon;
-        private readonly VstoDocumentHost _host;
-
-        public RibbonCallback(VstoDocumentHost host)
-        {
-            _host = host;
-        }
 
         public string GetCustomUI(string ribbonID)
         {
-            // Lit Ribbon.xml depuis les ressources embarquées
             var assembly = Assembly.GetExecutingAssembly();
             var resourceName = "MathCursor.Ribbon.xml";
             using (var stream = assembly.GetManifestResourceStream(resourceName))
@@ -31,7 +25,7 @@ namespace MathCursor
                 if (stream == null)
                 {
                     throw new InvalidOperationException(
-                        $"Ressource ribbon introuvable : {resourceName}");
+                        "Ressource ribbon introuvable : " + resourceName);
                 }
                 using (var reader = new StreamReader(stream))
                 {
@@ -47,7 +41,7 @@ namespace MathCursor
 
         public void OnConvertClicked(IRibbonControl control)
         {
-            _host.TriggerConversion();
+            Globals.ThisAddIn?.TriggerConversion();
         }
 
         public void OnAboutClicked(IRibbonControl control)

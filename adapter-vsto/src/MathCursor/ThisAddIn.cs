@@ -12,7 +12,6 @@ namespace MathCursor
         private VstoEditorSurface _surface;
         private VstoUserFeedback _feedback;
         private MathCursorOrchestrator _orchestrator;
-        private RibbonCallback _ribbonCallback;
 
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
@@ -42,23 +41,21 @@ namespace MathCursor
         }
 
         /// <summary>
-        /// Expose le Ribbon callback à Word. Appelé par VSTO au démarrage
-        /// APRÈS ThisAddIn_Startup — mais comme _host peut ne pas être
-        /// encore initialisé, on crée le callback à la demande.
+        /// Appelé par le bouton ribbon "Convertir". Si l'add-in n'est pas encore
+        /// prêt (startup pas terminé), ça ne fait rien.
+        /// </summary>
+        public void TriggerConversion()
+        {
+            _host?.TriggerConversion();
+        }
+
+        /// <summary>
+        /// Fournit le callback ribbon à Word. VSTO l'appelle AVANT Startup,
+        /// donc on ne peut pas dépendre de this.Application ici.
         /// </summary>
         protected override IRibbonExtensibility CreateRibbonExtensibilityObject()
         {
-            // Si Startup n'a pas encore initialisé _host, forcer l'initialisation maintenant
-            if (_host == null)
-            {
-                _host = new VstoDocumentHost(this.Application);
-                _store = new VstoEquationStore(this.Application);
-                _surface = new VstoEditorSurface(this.Application);
-                _feedback = new VstoUserFeedback();
-                _orchestrator = new MathCursorOrchestrator(_host, _store, _surface, _feedback);
-            }
-            _ribbonCallback = new RibbonCallback(_host);
-            return _ribbonCallback;
+            return new RibbonCallback();
         }
 
         #region Code généré par VSTO
