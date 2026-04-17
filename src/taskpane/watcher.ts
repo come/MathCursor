@@ -6,7 +6,7 @@
 
 import { ref, computed } from "vue";
 import type { DocChoice } from "./conversion/types";
-import { findExpression, type Delimiter } from "./conversion/index";
+import { findExpression, findExpressionV2, buildMathOoxml, type Delimiter } from "./conversion/index";
 import { findSymbol } from "./symbols/patterns";
 import { hasOMathChars, normalizeOMath, fixOMathParens } from "./decomposition/normalize";
 import { getSource } from "./storage";
@@ -172,41 +172,26 @@ async function fastTick(): Promise<void> {
         return;
       }
 
-      // 2) Expression math ?
-      const exprMatch = findExpression(cleanText, mathDelimiters.value, debugInfo);
-      if (exprMatch) {
-        let searchStr = exprMatch.raw;
-        let delimReplace = "";
-        for (const { delim, replace } of mathDelimiters.value) {
-          if (cleanText.includes(delim)) {
-            searchStr = delim + exprMatch.raw;
-            delimReplace = replace;
-            break;
-          }
-        }
+      // 2) Expression math ? (zone detector v2)
+      const zoneMatch = findExpressionV2(cleanText, debugInfo);
+      if (zoneMatch) {
+        try {
+          const steps: string[] = [];
+          const ooxml = buildMathOoxml(zoneMatch.normalized, steps);
+          debugSteps.value = steps;
+          const choice: DocChoice = {
+            label: "expression",
+            display: zoneMatch.normalized,
+            replacement: zoneMatch.normalized,
+            ooxml,
+          };
 
-        if (delimReplace) {
-          const results = freshPara.search(wordEscape(searchStr), { matchCase: false, matchWholeWord: false });
-          results.load("items");
-          await ctx.sync();
-          if (results.items.length > 0) {
-            const found = results.items[results.items.length - 1];
-            if (exprMatch.choice.ooxml) {
-              const replaced = found.insertText(delimReplace, Word.InsertLocation.replace);
-              await insertOMathWithTag(ctx, replaced.getRange("End"), exprMatch.choice.ooxml, exprMatch.choice.display, Word.InsertLocation.after);
-            } else {
-              found.insertText(delimReplace + exprMatch.choice.replacement + " ", Word.InsertLocation.replace)
-                .getRange("End").select("End");
-              await ctx.sync();
-            }
-            lastAction.value = `${exprMatch.choice.display} \u2192 expr`;
+          if (await doReplace(ctx, freshPara, freshSel, zoneMatch.raw, choice)) {
+            lastAction.value = `${zoneMatch.normalized} \u2192 expr`;
             replaceCount.value++;
           }
-        } else {
-          if (await doReplace(ctx, freshPara, freshSel, exprMatch.raw, exprMatch.choice)) {
-            lastAction.value = `${exprMatch.raw} \u2192 expr`;
-            replaceCount.value++;
-          }
+        } catch (e) {
+          debugInfo.value = `Parse err: ${(e as Error).message}`;
         }
 
         suggestions.value = []; selectedIdx.value = 0; lastSlowText = "";
@@ -251,10 +236,20 @@ async function slowTick(): Promise<void> {
         return;
       }
 
-      const expr = findExpression(trimmed, mathDelimiters.value);
-      if (expr) {
-        suggestions.value = [expr.choice];
-        matchedRaw.value = expr.raw;
+      const zone = findExpressionV2(trimmed, debugInfo);
+      if (zone) {
+        try {
+          const ooxml = buildMathOoxml(zone.normalized);
+          suggestions.value = [{
+            label: "expression",
+            display: zone.normalized,
+            replacement: zone.normalized,
+            ooxml,
+          }];
+          matchedRaw.value = zone.raw;
+        } catch {
+          // parse error silencieux pour les suggestions
+        }
         return;
       }
 
