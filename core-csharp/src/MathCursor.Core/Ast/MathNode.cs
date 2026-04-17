@@ -55,5 +55,17 @@ public sealed class ParenNode : MathNode
 public sealed class JuxtapositionNode : MathNode
 {
     public override string Kind => "juxt";
-    public IReadOnlyList<MathNode> Parts { get; init; } = new List<MathNode>();
+    public IList<MathNode> Parts { get; init; } = new List<MathNode>();
+}
+
+public sealed class UnaryNode : MathNode
+{
+    public override string Kind => "unary";
+    public string Op { get; init; } = "";
+    public MathNode Child { get; init; } = null!;
+}
+
+public sealed class EmptyNode : MathNode
+{
+    public override string Kind => "empty";
 }
