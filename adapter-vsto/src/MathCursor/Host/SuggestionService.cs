@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Windows.Threading;
 using MathCursor.Core.Symbols;
 using MathCursor.UI;
@@ -154,19 +155,36 @@ namespace MathCursor.Host
         {
             try
             {
-                var sel = _app.Selection;
-                double hPos = (double)sel.get_Information(Word.WdInformation.wdHorizontalPositionRelativeToPage);
-                double vPos = (double)sel.get_Information(Word.WdInformation.wdVerticalPositionRelativeToPage);
-                // dynamic : EmbedInteropTypes masque PointsToScreenPixelsX/Y
+                // dynamic partout : avec EmbedInteropTypes=true certaines méthodes
+                // COM ne sont pas exposées au compilateur. Le runtime résout via COM.
+                dynamic sel = _app.Selection;
                 dynamic win = _app.ActiveWindow;
-                double x = (double)win.PointsToScreenPixelsX(hPos);
-                double y = (double)win.PointsToScreenPixelsY(vPos);
+                double hPos = Convert.ToDouble(sel.Information[Word.WdInformation.wdHorizontalPositionRelativeToPage]);
+                double vPos = Convert.ToDouble(sel.Information[Word.WdInformation.wdVerticalPositionRelativeToPage]);
+                double x = Convert.ToDouble(win.PointsToScreenPixelsX(hPos));
+                double y = Convert.ToDouble(win.PointsToScreenPixelsY(vPos));
+                LogPos($"hPos={hPos:F1} vPos={vPos:F1} → screen=({x:F0},{y:F0})");
                 return (x, y + 22);
             }
-            catch
+            catch (Exception ex)
             {
+                LogPos("ERR " + ex.GetType().Name + " " + ex.Message);
                 return (200, 200);
             }
+        }
+
+        private static void LogPos(string message)
+        {
+            try
+            {
+                var dir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "MathCursor", "logs");
+                Directory.CreateDirectory(dir);
+                File.AppendAllText(Path.Combine(dir, "mathcursor.log"),
+                    $"{DateTime.UtcNow:o} pos {message}{Environment.NewLine}");
+            }
+            catch { }
         }
     }
 }
