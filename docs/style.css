@@ -313,18 +313,22 @@ body {
 
 /* Hero demo animation (typewriter → KaTeX, inline dans le lead) */
 .demo-display {
-  display: inline-block;
-  vertical-align: baseline;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  vertical-align: middle;
   font-family: var(--font-mono);
   font-size: 0.95em;
   background: var(--code-bg);
   color: var(--text);
-  padding: 2px 10px;
+  padding: 0 14px;
   border-radius: 5px;
-  min-width: 240px;
+  width: 340px;
+  height: 2em;
+  overflow: hidden;
+  white-space: nowrap;
   transition: opacity 0.25s ease, background 0.25s ease;
   opacity: 1;
-  white-space: nowrap;
 }
 
 .demo-display.demo-typing::after {
