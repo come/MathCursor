@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows.Threading;
 using MathCursor.Core.Symbols;
 using MathCursor.UI;
@@ -155,16 +156,21 @@ namespace MathCursor.Host
         {
             try
             {
-                // dynamic partout : avec EmbedInteropTypes=true certaines méthodes
-                // COM ne sont pas exposées au compilateur. Le runtime résout via COM.
-                dynamic sel = _app.Selection;
-                dynamic win = _app.ActiveWindow;
-                double hPos = Convert.ToDouble(sel.Information[Word.WdInformation.wdHorizontalPositionRelativeToPage]);
-                double vPos = Convert.ToDouble(sel.Information[Word.WdInformation.wdVerticalPositionRelativeToPage]);
-                double x = Convert.ToDouble(win.PointsToScreenPixelsX(hPos));
-                double y = Convert.ToDouble(win.PointsToScreenPixelsY(vPos));
-                LogPos($"hPos={hPos:F1} vPos={vPos:F1} → screen=({x:F0},{y:F0})");
-                return (x, y + 22);
+                // Word maintient un caret système (pour accessibilité / IME).
+                // GetCaretPos retourne sa position dans les coords client de la
+                // fenêtre qui le possède. ClientToScreen convertit en absolu.
+                if (!GetCaretPos(out POINT pt))
+                {
+                    LogPos("ERR GetCaretPos returned false");
+                    return (200, 200);
+                }
+                IntPtr hwnd = GetFocus();
+                if (hwnd != IntPtr.Zero)
+                {
+                    ClientToScreen(hwnd, ref pt);
+                }
+                LogPos($"caret screen=({pt.X},{pt.Y}) hwnd=0x{hwnd.ToInt64():X}");
+                return (pt.X, pt.Y + 22); // 22px sous la ligne
             }
             catch (Exception ex)
             {
@@ -186,5 +192,20 @@ namespace MathCursor.Host
             }
             catch { }
         }
+
+        // --- Win32 ---
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT { public int X; public int Y; }
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetCaretPos(out POINT lpPoint);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetFocus();
     }
 }
