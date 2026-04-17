@@ -34,11 +34,10 @@
     <section class="hero">
       <div class="container">
         <h1>Saisissez des maths en langage naturel, dans Word.</h1>
-        <p class="lead">
-          MathCursor transforme vos formules tapées au clavier en équations Word propres,
-          à la demande. Tapez <code>1/2</code>, <code>x^2</code>, <code>sqrt(3)</code> —
-          un raccourci convertit la zone.
-        </p>
+        <div class="demo" aria-label="Démonstration de conversion de notation clavier en équation rendue">
+          <span class="demo-prefix">Tapez :</span>
+          <span class="demo-display" aria-live="polite"></span>
+        </div>
         <div class="cta-row">
           <a href="#installation" class="button button--primary">Installer la bêta</a>
           <a href="#fonctionnement" class="button button--secondary">Voir comment ça marche</a>
@@ -343,6 +342,68 @@
       </div>
     </section>
   </main>
+
+  <script>
+    (function () {
+      const EXAMPLES = [
+        { input: '1/(2+x)',   tex: '\\frac{1}{2+x}' },
+        { input: '1/x^2',     tex: '\\frac{1}{x^2}' },
+        { input: 'sqrt(3)',   tex: '\\sqrt{3}' },
+        { input: 'x^2 + 1/2', tex: 'x^2 + \\frac{1}{2}' }
+      ];
+
+      const TYPE_SPEED_MS    = 70;
+      const PAUSE_AFTER_TYPE = 500;
+      const SHOW_RENDERED_MS = 1800;
+      const FADE_MS          = 350;
+
+      function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+      async function runDemo() {
+        const display = document.querySelector('.demo-display');
+        if (!display) return;
+
+        // prefers-reduced-motion : pas d'animation, juste un rendu statique
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          display.className = 'demo-display demo-rendered';
+          if (typeof katex !== 'undefined') {
+            katex.render(EXAMPLES[0].tex, display, { throwOnError: false });
+          }
+          return;
+        }
+
+        let i = 0;
+        while (true) {
+          const ex = EXAMPLES[i % EXAMPLES.length];
+
+          display.className = 'demo-display demo-typing';
+          display.textContent = '';
+          await sleep(FADE_MS);
+
+          for (const ch of ex.input) {
+            display.textContent += ch;
+            await sleep(TYPE_SPEED_MS);
+          }
+          await sleep(PAUSE_AFTER_TYPE);
+
+          display.className = 'demo-display demo-rendered';
+          if (typeof katex !== 'undefined') {
+            try { katex.render(ex.tex, display, { throwOnError: false }); }
+            catch (e) { /* ignore */ }
+          }
+          await sleep(SHOW_RENDERED_MS);
+
+          display.className = 'demo-display demo-fading';
+          await sleep(FADE_MS);
+
+          i++;
+        }
+      }
+
+      if (document.readyState === 'complete') runDemo();
+      else window.addEventListener('load', runDemo);
+    })();
+  </script>
 
   <footer class="site-footer">
     <div class="container">
