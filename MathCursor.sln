@@ -8,6 +8,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MathCursor.Core", "core-csh
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MathCursor.Core.Tests", "core-csharp\tests\MathCursor.Core.Tests\MathCursor.Core.Tests.csproj", "{B1000003-0000-0000-0000-000000000003}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MathCursor", "adapter-vsto\src\MathCursor\MathCursor.csproj", "{3B0AE2C4-0B49-47B3-934D-ADE9104C6254}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,6 +28,10 @@ Global
 		{B1000003-0000-0000-0000-000000000003}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B1000003-0000-0000-0000-000000000003}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B1000003-0000-0000-0000-000000000003}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3B0AE2C4-0B49-47B3-934D-ADE9104C6254}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B0AE2C4-0B49-47B3-934D-ADE9104C6254}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B0AE2C4-0B49-47B3-934D-ADE9104C6254}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B0AE2C4-0B49-47B3-934D-ADE9104C6254}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

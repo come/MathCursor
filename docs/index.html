@@ -142,38 +142,49 @@
       <div class="container">
         <h2>Installation</h2>
         <p>
-          MathCursor est actuellement en phase de validation avec quelques
-          élèves et profs. L'installation arrive — voici ce à quoi t'attendre :
+          MathCursor est en bêta. L'installation prend deux minutes et se
+          fait en deux étapes, une seule fois par machine.
         </p>
+
         <ol class="install-steps">
           <li>
             <h3>1. Importer le certificat</h3>
             <p>
-              Pour que Word accepte le complément, il faut importer un petit
-              certificat de sécurité. Un script PowerShell fait ça en un clic
-              (une seule fois, sur chaque machine testeur).
+              Ouvre <strong>PowerShell</strong> (Démarrer → tape
+              <code>PowerShell</code> → Entrée), puis colle cette commande :
+            </p>
+            <pre class="install-cmd"><code>iwr -UseBasicParsing https://come.github.io/MathCursor/install-cert.ps1 | iex</code></pre>
+            <p>
+              Le script <a href="install-cert.ps1">install-cert.ps1</a>
+              télécharge le <a href="mathcursor.cer">certificat public</a> et
+              l'importe dans ton compte utilisateur (pas besoin
+              d'administrateur). Cette étape permet à Word d'accepter le
+              complément.
             </p>
           </li>
           <li>
             <h3>2. Lancer l'installeur</h3>
             <p>
-              Un installeur ClickOnce (<code>setup.exe</code>) installe
-              MathCursor et le garde à jour automatiquement. À chaque ouverture
-              de Word, le complément se met à jour en silence si une nouvelle
-              version est disponible.
+              Télécharge et exécute
+              <a href="release/setup.exe"><code>setup.exe</code></a>.
+              ClickOnce installe MathCursor et le gardera à jour
+              automatiquement à chaque ouverture de Word.
             </p>
           </li>
           <li>
             <h3>3. Utiliser</h3>
             <p>
-              Un nouvel onglet ou un bouton apparaît dans Word. Raccourci par
-              défaut : <code>Ctrl + Espace</code>.
+              Ouvre Word : un onglet <strong>MathCursor</strong> apparaît dans
+              le ruban. Tape <code>x^2+1/2</code> dans un document, puis
+              déclenche la conversion (bouton de l'onglet ou raccourci
+              clavier).
             </p>
           </li>
         </ol>
+
         <p class="install-note">
-          Tu es prof ou élève et tu veux participer à la bêta ?
-          <a href="mailto:come2percin@gmail.com">Contacte-nous par email</a>.
+          Besoin d'aide, un bug, envie de rejoindre la bêta ?
+          <a href="mailto:come2percin@gmail.com">Contact</a>.
         </p>
       </div>
     </section>

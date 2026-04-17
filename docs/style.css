@@ -284,6 +284,25 @@ body {
   color: var(--text-muted);
 }
 
+.install-cmd {
+  background: #1f2328;
+  color: #f0f3f6;
+  padding: 14px 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 12px 0;
+}
+
+.install-cmd code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+}
+
 .install-note {
   margin-top: 24px;
   padding: 16px 20px;

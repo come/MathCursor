@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="OnRibbonLoad">
+  <ribbon>
+    <tabs>
+      <tab idMso="TabHome">
+        <group id="MathCursorGroup" label="MathCursor">
+          <button id="ConvertButton"
+                  label="Convertir"
+                  screentip="Convertir l'expression math au curseur"
+                  supertip="Analyse le texte avant le curseur, détecte une expression math, et l'insère comme équation Word (Cambria Math). Raccourci : Alt+M."
+                  size="large"
+                  imageMso="EquationInsertNew"
+                  keytip="M"
+                  onAction="OnConvertClicked" />
+          <button id="AboutButton"
+                  label="À propos"
+                  screentip="À propos de MathCursor"
+                  size="normal"
+                  imageMso="HelpAbout"
+                  onAction="OnAboutClicked" />
+        </group>
+      </tab>
+    </tabs>
+  </ribbon>
+</customUI>
