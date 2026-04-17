@@ -132,6 +132,19 @@
     <Reference Include="Microsoft.Office.Tools.Common.v4.0.Utilities, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <Private>True</Private>
     </Reference>
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\host-contract-csharp\src\MathCursor.HostContract\MathCursor.HostContract.csproj">
+      <Project>{B1000001-0000-0000-0000-000000000001}</Project>
+      <Name>MathCursor.HostContract</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\core-csharp\src\MathCursor.Core\MathCursor.Core.csproj">
+      <Project>{B1000002-0000-0000-0000-000000000002}</Project>
+      <Name>MathCursor.Core</Name>
+    </ProjectReference>
   </ItemGroup>
   <Choose>
     <When Condition="$([System.String]::Copy(&quot;;$(DefineConstants);&quot;).ToLower().Contains(';useofficeinterop;')) or $([System.String]::Copy(&quot;,$(DefineConstants),&quot;).ToLower().Contains(',useofficeinterop,'))">
@@ -214,6 +227,12 @@
     <Compile Include="ThisAddIn.Designer.cs">
       <DependentUpon>ThisAddIn.Designer.xml</DependentUpon>
     </Compile>
+    <Compile Include="Host\VstoDocumentHost.cs" />
+    <Compile Include="Host\VstoEquationStore.cs" />
+    <Compile Include="Host\VstoEditorSurface.cs" />
+    <Compile Include="Host\VstoUserFeedback.cs" />
+    <Compile Include="RibbonCallback.cs" />
+    <EmbeddedResource Include="Ribbon.xml" />
     <AppDesigner Include="Properties\" />
   </ItemGroup>
   <PropertyGroup>
