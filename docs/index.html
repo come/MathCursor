@@ -34,10 +34,12 @@
     <section class="hero">
       <div class="container">
         <h1>Saisissez des maths en langage naturel, dans Word.</h1>
-        <div class="demo" aria-label="Démonstration de conversion de notation clavier en équation rendue">
-          <span class="demo-prefix">Tapez :</span>
+        <p class="lead">
+          MathCursor transforme vos formules tapées au clavier en équations Word propres,
+          à la demande. Tapez
           <span class="demo-display" aria-live="polite"></span>
-        </div>
+          — un raccourci convertit la zone.
+        </p>
         <div class="cta-row">
           <a href="#installation" class="button button--primary">Installer la bêta</a>
           <a href="#fonctionnement" class="button button--secondary">Voir comment ça marche</a>
@@ -346,10 +348,11 @@
   <script>
     (function () {
       const EXAMPLES = [
-        { input: '1/(2+x)',   tex: '\\frac{1}{2+x}' },
-        { input: '1/x^2',     tex: '\\frac{1}{x^2}' },
-        { input: 'sqrt(3)',   tex: '\\sqrt{3}' },
-        { input: 'x^2 + 1/2', tex: 'x^2 + \\frac{1}{2}' }
+        { input: '1/(2+x)',       tex: '\\frac{1}{2+x}' },
+        { input: '1/x^2',         tex: '\\frac{1}{x^2}' },
+        { input: 'sqrt(3)',       tex: '\\sqrt{3}' },
+        { input: 'x^2 + 1/2',     tex: 'x^2 + \\frac{1}{2}' },
+        { input: 'lim x inf = 3', tex: '\\lim_{x \\to \\infty} = 3' }
       ];
 
       const TYPE_SPEED_MS    = 70;
