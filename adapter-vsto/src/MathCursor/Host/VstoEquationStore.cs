@@ -124,10 +124,7 @@ namespace MathCursor.Host
 
         private static void ReplaceXml(Office.CustomXMLPart part, XElement newRoot)
         {
-            // CustomXMLPart n'expose pas directement "replace XML" ; on supprime
-            // la partie et on en crée une nouvelle (simple et robuste).
-            var doc = part.OwnerPart; // récupère Document parent
-            // Plus simple : utiliser LoadXML pour remplacer tout le contenu
+            // LoadXML remplace tout le contenu de la CustomXMLPart en un coup.
             part.LoadXML(newRoot.ToString());
         }
     }

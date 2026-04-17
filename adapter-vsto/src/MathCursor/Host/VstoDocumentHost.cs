@@ -23,9 +23,10 @@ namespace MathCursor.Host
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
             _app.WindowSelectionChange += OnSelectionChange;
-            // ContentControlOnEnter : déclenché quand le curseur entre dans un CC
-            try { _app.ContentControlOnEnter += OnContentControlEnter; } catch { /* build Word ancien */ }
-            try { _app.ContentControlOnExit += OnContentControlExit; } catch { /* idem */ }
+            // NOTE phase C2 : ContentControlOnEnter / ContentControlOnExit existent
+            // sur Application mais ne sont pas exposés directement via l'interop embarqué.
+            // Il faut passer par ((Word.ApplicationEvents4_Event)_app).ContentControlOnEnter
+            // ou gérer via un wrapper. Reporté tant qu'on n'utilise pas les CC.
         }
 
         public Task<ContextText> ReadContextAroundCaretAsync(int charsBefore, int charsAfter)
@@ -145,22 +146,6 @@ namespace MathCursor.Host
         private void OnSelectionChange(Word.Selection sel)
         {
             _caretMoved?.Invoke(new CaretPosition { Offset = sel.Start });
-        }
-
-        private void OnContentControlEnter(Word.ContentControl cc)
-        {
-            if (cc.Tag?.StartsWith("MathCursor:") == true)
-            {
-                _equationEntered?.Invoke(new EquationHandle(cc.Tag.Substring("MathCursor:".Length)));
-            }
-        }
-
-        private void OnContentControlExit(Word.ContentControl cc, ref bool Cancel)
-        {
-            if (cc.Tag?.StartsWith("MathCursor:") == true)
-            {
-                _equationExited?.Invoke(new EquationHandle(cc.Tag.Substring("MathCursor:".Length)));
-            }
         }
     }
 }
