@@ -84,19 +84,29 @@ namespace MathCursor.Host
             replaceRange.Text = linearText;
 
             // 2. Re-cibler la plage sur le nouveau texte, wrapper dans OMath,
-            //    puis BuildUp : Word parse le format linéaire et convertit en
-            //    équation formatée (fractions, exposants, √, etc.). C'est la
-            //    méthode native VSTO, plus robuste que l'insertion OOXML.
+            //    puis BuildUp sur la collection : Word parse le format linéaire
+            //    et convertit en équation formatée (fractions, exposants, √, etc.).
+            //    Méthode native VSTO, plus robuste que l'insertion OOXML.
             var mathRange = doc.Range(zoneStart, zoneStart + linearText.Length);
             var handleId = Guid.NewGuid().ToString("N");
 
             try
             {
-                var oMath = mathRange.OMaths.Add(mathRange);
-                oMath.BuildUp();
+                mathRange.OMaths.Add(mathRange);
+                mathRange.OMaths.BuildUp();
 
-                // Curseur juste après l'équation
-                var endPos = oMath.Range.End;
+                // Après BuildUp, on retrouve l'OMath qui vient d'être créé
+                // via la collection OMaths du document (le dernier ajouté).
+                int endPos;
+                if (doc.OMaths.Count > 0)
+                {
+                    var lastMath = doc.OMaths[doc.OMaths.Count];
+                    endPos = lastMath.Range.End;
+                }
+                else
+                {
+                    endPos = mathRange.End;
+                }
                 _app.Selection.SetRange(endPos, endPos);
             }
             catch
