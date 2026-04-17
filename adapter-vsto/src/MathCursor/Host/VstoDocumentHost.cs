@@ -69,29 +69,42 @@ namespace MathCursor.Host
             var doc = _app.ActiveDocument;
             var sel = _app.Selection;
 
-            // Le zone.StartOffset est relatif au ContextText lu, pas au document.
-            // On re-détermine la plage à remplacer : les derniers N caractères avant le curseur,
+            // La zone à remplacer : les N derniers caractères avant le curseur,
             // où N = longueur du texte source.
             int caretPos = sel.Start;
             int zoneStart = Math.Max(doc.Content.Start, caretPos - zone.Text.Length);
-            var target = doc.Range(zoneStart, caretPos);
 
-            // Remplacement atomique via InsertXML (1 seul undo step)
-            if (!string.IsNullOrEmpty(equation.Omml))
-            {
-                target.InsertXML(equation.Omml);
-            }
-            else
-            {
-                target.Text = equation.UnicodeFallback ?? equation.Source;
-            }
+            // 1. Remplacer le texte tapé par sa version linéaire propre
+            //    (UnicodeFallback = normalisation ASCII, ou Source brut en fallback).
+            var linearText = !string.IsNullOrEmpty(equation.UnicodeFallback)
+                ? equation.UnicodeFallback
+                : equation.Source;
 
-            // Identifier l'équation insérée via un ContentControl (optionnel pour édition future)
+            var replaceRange = doc.Range(zoneStart, caretPos);
+            replaceRange.Text = linearText;
+
+            // 2. Re-cibler la plage sur le nouveau texte, wrapper dans OMath,
+            //    puis BuildUp : Word parse le format linéaire et convertit en
+            //    équation formatée (fractions, exposants, √, etc.). C'est la
+            //    méthode native VSTO, plus robuste que l'insertion OOXML.
+            var mathRange = doc.Range(zoneStart, zoneStart + linearText.Length);
             var handleId = Guid.NewGuid().ToString("N");
-            // TODO phase C2 : wrapper l'équation dans un CC avec Tag = $"MathCursor:{handleId}"
 
-            // Curseur après la zone insérée
-            _app.Selection.Collapse(Word.WdCollapseDirection.wdCollapseEnd);
+            try
+            {
+                var oMath = mathRange.OMaths.Add(mathRange);
+                oMath.BuildUp();
+
+                // Curseur juste après l'équation
+                var endPos = oMath.Range.End;
+                _app.Selection.SetRange(endPos, endPos);
+            }
+            catch
+            {
+                // BuildUp a échoué (format non reconnu par Word) → on garde
+                // le texte linéaire tel quel. Cursor après.
+                _app.Selection.SetRange(zoneStart + linearText.Length, zoneStart + linearText.Length);
+            }
 
             return Task.FromResult(new EquationHandle(handleId));
         }
