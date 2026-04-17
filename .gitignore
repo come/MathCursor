@@ -32,3 +32,7 @@ coverage/
 
 # Claude Code local state
 .claude/
+
+# Certificats (clé privée) — jamais commiter
+*.pfx
+pfx-base64.txt
