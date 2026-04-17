@@ -31,13 +31,14 @@ const STOPWORDS = new Set([
   "on", "un", "une", "le", "la", "les", "de", "du", "des", "et", "ou", "en",
   "il", "ce", "se", "ne", "pas", "que", "qui", "est", "son", "sa", "ses",
   "au", "aux", "par", "sur", "dans", "pour", "avec", "soit", "car", "donc",
-  "mais", "the",
+  "mais", "donc", "alors", "ainsi", "puis", "comme", "bien", "tout",
+  "cette", "quel", "voici", "the",
   // EN
   "the", "is", "it", "in", "on", "at", "to", "an", "of", "or", "and",
   "we", "he", "she", "be", "do", "if", "so", "no", "not", "has", "had",
   "was", "are", "its", "but", "for", "let", "set",
   // DE
-  "es", "im", "zu", "ob", "da", "so", "um", "am", "ab",
+  "es", "im", "zu", "ob", "da", "so", "um", "am",
   "ist", "ein", "und", "der", "die", "das", "dem", "den", "des",
   "sei", "mit", "aus", "auf", "bei", "vor",
   // ES
@@ -101,17 +102,22 @@ export function scoreMathiness(token: Token, prevToken?: Token, nextToken?: Toke
     // Stopword → pas math (forcé)
     if (STOPWORDS.has(norm)) return 0.0;
 
-    // Variable 1 lettre → probable math
+    // Variable 1 lettre → probable math si un voisin direct est un opérateur, paren, ou chiffre
     if (norm.length === 1) {
-      // Encore plus probable si entouré de math
-      const prevMath = prevToken && prevToken.mathiness >= 0.5;
-      const nextMath = nextToken && nextToken.mathiness >= 0.5;
-      if (prevMath || nextMath) return 0.8;
-      return 0.4;
+      const prevIsOp = prevToken && (prevToken.categories.has("operator") || prevToken.categories.has("paren") || prevToken.categories.has("digit"));
+      const nextIsOp = nextToken && (nextToken.categories.has("operator") || nextToken.categories.has("paren") || nextToken.categories.has("digit"));
+      // Aussi checker à travers un whitespace : "x = 3" → x ws = → next(next) est opérateur
+      if (prevIsOp || nextIsOp) return 0.85;
+      return 0.35;
     }
 
-    // Mot 2 lettres → ambigü
-    if (norm.length === 2) return 0.2;
+    // Mot 2 lettres → ambigü, mais probable math si collé à un chiffre ou opérateur
+    if (norm.length === 2) {
+      const prevIsMath = prevToken && (prevToken.categories.has("digit") || prevToken.categories.has("operator"));
+      const nextIsMath = nextToken && (nextToken.categories.has("digit") || nextToken.categories.has("operator") || nextToken.categories.has("paren"));
+      if (prevIsMath || nextIsMath) return 0.7;
+      return 0.2;
+    }
 
     // Mot 3+ lettres avec ratio voyelles typique de prose → pas math
     if (norm.length >= 3) {
@@ -131,16 +137,31 @@ export function scoreMathiness(token: Token, prevToken?: Token, nextToken?: Toke
 // SCORE ALL TOKENS (2 passes pour le contexte)
 // ============================================================
 
+// Trouver le voisin non-whitespace
+function findPrevNonWs(tokens: Token[], i: number): Token | undefined {
+  for (let j = i - 1; j >= 0; j--) {
+    if (!tokens[j].categories.has("whitespace")) return tokens[j];
+  }
+  return undefined;
+}
+
+function findNextNonWs(tokens: Token[], i: number): Token | undefined {
+  for (let j = i + 1; j < tokens.length; j++) {
+    if (!tokens[j].categories.has("whitespace")) return tokens[j];
+  }
+  return undefined;
+}
+
 export function scoreAllTokens(tokens: Token[]): void {
   // Passe 1 : score sans contexte
   for (let i = 0; i < tokens.length; i++) {
     tokens[i].mathiness = scoreMathiness(tokens[i]);
   }
 
-  // Passe 2 : re-score avec contexte (voisins)
+  // Passe 2 : re-score avec contexte (voisins non-whitespace)
   for (let i = 0; i < tokens.length; i++) {
-    const prev = i > 0 ? tokens[i - 1] : undefined;
-    const next = i < tokens.length - 1 ? tokens[i + 1] : undefined;
+    const prev = findPrevNonWs(tokens, i);
+    const next = findNextNonWs(tokens, i);
     tokens[i].mathiness = scoreMathiness(tokens[i], prev, next);
   }
 }

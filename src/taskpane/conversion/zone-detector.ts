@@ -23,20 +23,41 @@ export function detectMathZone(tokens: Token[]): MathZone | null {
     const prev = start - 1;
     const prevToken = tokens[prev];
 
+    // Virgule = boundary SAUF si elle est dans des parenthèses
+    if (prevToken.categories.has("comma")) {
+      // Compter les parens ouvrantes/fermantes de prev vers end
+      // Si on croise plus de ) que de ( → on est dans des parens
+      let depth = 0;
+      for (let j = prev + 1; j <= end; j++) {
+        if (tokens[j].text === ")" || tokens[j].text === "]") depth++;
+        if (tokens[j].text === "(" || tokens[j].text === "[") depth--;
+      }
+      if (depth <= 0) break; // virgule hors parens → boundary
+      start = prev;
+      continue;
+    }
+
     // Whitespace : on regarde ce qu'il y a encore avant
     if (prevToken.categories.has("whitespace")) {
-      // Chercher le token non-whitespace avant
       let lookback = prev - 1;
       while (lookback >= 0 && tokens[lookback].categories.has("whitespace")) lookback--;
 
-      if (lookback < 0) break; // début de texte
+      if (lookback < 0) break;
 
-      // Si le token avant le whitespace est math → on continue
+      // Virgule avant le whitespace → boundary (sauf dans des parens)
+      if (lookback >= 0 && tokens[lookback].categories.has("comma")) {
+        let depth = 0;
+        for (let j = lookback + 1; j <= end; j++) {
+          if (tokens[j].text === ")" || tokens[j].text === "]") depth++;
+          if (tokens[j].text === "(" || tokens[j].text === "[") depth--;
+        }
+        if (depth <= 0) break;
+      }
+
       if (tokens[lookback].mathiness >= MATH_THRESHOLD) {
         start = lookback;
         continue;
       }
-      // Sinon → c'est la frontière
       break;
     }
 
@@ -58,7 +79,8 @@ export function detectMathZone(tokens: Token[]): MathZone | null {
   const nonWs = zoneTokens.filter(t => !t.categories.has("whitespace"));
   const avgScore = nonWs.reduce((sum, t) => sum + t.mathiness, 0) / nonWs.length;
 
-  // Doit contenir au moins un "feature" math (opérateur, paren, fraction, etc.)
+  // Doit contenir au moins un "feature" math (opérateur, paren, fonction, symbole)
+  // Un nombre seul ou une variable seule ne suffit pas
   const hasMathFeature = zoneTokens.some(t =>
     t.categories.has("operator") ||
     t.categories.has("mathSymbol") ||
@@ -66,7 +88,7 @@ export function detectMathZone(tokens: Token[]): MathZone | null {
     (t.categories.has("paren") && t.mathiness >= 0.7)
   );
 
-  if (!hasMathFeature && avgScore < 0.7) return null;
+  if (!hasMathFeature) return null;
 
   return {
     startToken: start,

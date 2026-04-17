@@ -10,7 +10,7 @@ import type { Token, UnicodeCategory } from "./types";
 const GREEK_LOWER = new Set("αβγδεζηθικλμνξπρσςτυφχψω");
 const GREEK_UPPER = new Set("ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΠΡΣΤΥΦΧΨΩ");
 const MATH_SYMBOLS = new Set("∫∑∏∂∇∞≤≥≠≈∈∉⊂⊃⊆⊇∪∩±∓×÷∧∨¬→⟹⟺∀∃∄∅ℕℤℚℝℂ");
-const OPERATORS = new Set("+-*/^=<>");
+const OPERATORS = new Set("+-*/^=<>!");
 const PARENS = new Set("()[]{}");
 
 function classifyChar(c: string): Set<UnicodeCategory> {
@@ -170,13 +170,13 @@ export function tokenize(text: string): Token[] {
         const two = op + next;
         if (["<=", ">=", "!=", "=>"].includes(two)) {
           op = two; pos += next.length; i++;
-          // Check <=>
           if (op === "<=" && i < codepoints.length && codepoints[i] === ">") {
             op = "<=>"; pos += 1; i++;
           }
         } else if (op === "-" && next === ">") {
           op = "->"; pos += next.length; i++;
         }
+        // "!" seul (factoriel) reste "!" — ne pas grouper avec autre chose sauf "!="
       }
       tokens.push({
         text: op, normalized: op, start, end: pos,
