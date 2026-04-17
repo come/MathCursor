@@ -277,6 +277,21 @@
       "input": "a + b",
       "expectedZone": "a + b",
       "description": "Addition simple de variables"
+    },
+
+    {
+      "id": "multi-01",
+      "lang": "fr",
+      "input": "f(x)=1/x et g(x)=2x",
+      "expectedZone": "g(x)=2x",
+      "description": "Multi-formules : le zone detector remonte depuis la fin et s'arrête à 'et' (stopword) — seule la 2e formule capturée"
+    },
+    {
+      "id": "multi-02",
+      "lang": "fr",
+      "input": "Soit f(x)=1/x, on a g(x)=2x",
+      "expectedZone": "g(x)=2x",
+      "description": "Multi-formules avec prose entre — 'on a' stopwords coupent"
     }
   ]
 }

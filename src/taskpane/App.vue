@@ -13,6 +13,7 @@ import {
   debugInfo,
   debugSteps,
 } from "./watcher";
+import { eventLog, clearEventLog } from "./diagnostic/events";
 
 const openSection = ref<string | null>(null);
 function toggle(name: string) {
@@ -66,6 +67,22 @@ function toggle(name: string) {
     <!-- Debug steps -->
     <div v-if="debugSteps.length > 0" class="debug-steps">
       <div v-for="(step, i) in debugSteps" :key="i" class="debug-step">{{ step }}</div>
+    </div>
+
+    <!-- Event diagnostic -->
+    <div class="event-diag">
+      <div class="event-header" @click="toggle('events')">
+        <h3>Events <span class="count">({{ eventLog.length }})</span> <span class="tog">{{ openSection === 'events' ? '−' : '+' }}</span></h3>
+        <button class="clear-btn" @click.stop="clearEventLog">clear</button>
+      </div>
+      <div v-if="openSection === 'events'" class="event-list">
+        <div v-for="(e, i) in [...eventLog].reverse()" :key="eventLog.length - i" class="event-row">
+          <span class="event-t">+{{ e.t }}ms</span>
+          <span class="event-type">{{ e.type }}</span>
+          <span v-if="e.source" class="event-src">[{{ e.source }}]</span>
+          <span v-if="e.detail" class="event-detail">{{ e.detail }}</span>
+        </div>
+      </div>
     </div>
 
     <!-- Reference -->
@@ -477,4 +494,65 @@ body {
   color: var(--accent);
   font-size: 11px;
 }
+
+/* ---- Event diagnostic panel ---- */
+.event-diag {
+  margin: 6px 8px;
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 4px;
+  background: #fafafa;
+  font-family: var(--font-mono);
+}
+.event-diag .event-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  cursor: pointer;
+  user-select: none;
+  background: #f0f0f0;
+  border-bottom: 1px solid var(--border, #e0e0e0);
+}
+.event-diag .event-header h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #666);
+}
+.event-diag .count {
+  font-weight: normal;
+  opacity: 0.6;
+}
+.event-diag .tog {
+  font-weight: bold;
+  margin-left: 4px;
+}
+.event-diag .clear-btn {
+  font-size: 10px;
+  padding: 2px 6px;
+  border: 1px solid #ccc;
+  background: white;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.event-list {
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px;
+  font-size: 10px;
+  line-height: 1.35;
+}
+.event-row {
+  display: flex;
+  gap: 4px;
+  padding: 1px 2px;
+  border-bottom: 1px dotted #eee;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.event-t { color: #999; flex: 0 0 60px; }
+.event-type { color: var(--accent, #0078d4); font-weight: 600; flex: 0 0 120px; }
+.event-src { color: #888; flex: 0 0 50px; }
+.event-detail { color: #333; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
 </style>

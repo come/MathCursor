@@ -1,7 +1,6 @@
 // Word API helpers — lecture, remplacement, insertion OMath
 
 import type { DocChoice } from "./conversion/types";
-import { storeSource } from "./storage";
 
 // Échapper ^ en ^^ pour Word search
 export function wordEscape(s: string): string {
@@ -39,22 +38,11 @@ export async function doReplace(
   const fullRange = found.expandTo(sel.getRange("End")); // inclut le \t
 
   if (chosen.ooxml) {
-    // ATOMIQUE : un seul insertOoxml(replace) au lieu de delete + insert
-    fullRange.insertOoxml(chosen.ooxml, Word.InsertLocation.replace);
-    await ctx.sync();
-
-    // Stocker le texte source (hors undo stack — document.settings)
-    para.load("uniqueLocalId");
-    await ctx.sync();
-    storeSource(`math_${para.uniqueLocalId}`, searchStr);
-
-    // Curseur après l'OMath
-    const fp = ctx.document.getSelection().paragraphs;
-    fp.load("items");
-    await ctx.sync();
-    if (fp.items.length > 0) {
-      fp.items[0].insertText(" ", Word.InsertLocation.end).select("End");
-    }
+    // ATOMIQUE : un seul insertOoxml(replace) sur le range qui inclut le tab.
+    // Le package n'a plus de <w:r> trailing pour éviter le split de paragraphe.
+    // Le curseur est placé APRÈS l'OMath (hors du contexte italic) via "After".
+    const inserted = fullRange.insertOoxml(chosen.ooxml, Word.InsertLocation.replace);
+    inserted.getRange("After").select("Start");
     await ctx.sync();
   } else {
     fullRange.insertText(chosen.replacement + " ", Word.InsertLocation.replace)
