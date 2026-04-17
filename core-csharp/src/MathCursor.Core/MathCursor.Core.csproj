@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>MathCursor.Core</RootNamespace>
+    <AssemblyName>MathCursor.Core</AssemblyName>
+    <LangVersion>10.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Version>0.1.0</Version>
+    <Description>Pipeline de conversion texte → équation math. Aucune dépendance plateforme.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\host-contract-csharp\src\MathCursor.HostContract\MathCursor.HostContract.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Données multilingues partagées, embarquées dans l'assembly -->
+    <EmbeddedResource Include="..\..\..\data\*.json">
+      <Link>Data\%(Filename)%(Extension)</Link>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MathCursor — Prendre des notes de maths au clavier dans Word</title>
+  <meta name="description" content="Un complément Word qui permet de prendre des notes de maths au clavier, rapidement et sans friction. Pensé pour les lycéens, notamment sous PAP." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="#" class="brand">MathCursor</a>
+      <nav class="nav">
+        <a href="#pour-qui">Pour qui</a>
+        <a href="#fonctionnement">Fonctionnement</a>
+        <a href="#fonctionnalites">Fonctionnalités</a>
+        <a href="#installation">Installation</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <h1>Prendre des notes de maths au clavier, dans Word.</h1>
+        <p class="lead">
+          MathCursor convertit ta frappe en équations Word propres, à la demande.
+          Tu tapes <code>1/2</code>, <code>x^2</code>, <code>sqrt(3)</code> au fil du cours —
+          puis un raccourci transforme la zone en équation formatée.
+        </p>
+        <div class="cta-row">
+          <a href="#installation" class="button button--primary">Installer la bêta</a>
+          <a href="#fonctionnement" class="button button--secondary">Voir comment ça marche</a>
+        </div>
+        <p class="hero-meta">Word Desktop Windows — Mac, Web et iPad à venir.</p>
+      </div>
+    </section>
+
+    <section id="pour-qui" class="section">
+      <div class="container">
+        <h2>Pour qui</h2>
+        <div class="cards">
+          <article class="card">
+            <h3>Élèves avec PAP</h3>
+            <p>
+              Quand tu prends un cours de maths au clavier, l'éditeur d'équations
+              classique de Word casse le rythme. MathCursor te laisse taper
+              naturellement et convertit en une frappe. L'objectif : suivre le
+              cours sans effort supplémentaire.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Profs de maths</h3>
+            <p>
+              Un outil gratuit à recommander à vos élèves qui tapent leurs cours.
+              Pas de compte, pas de cloud, rien ne sort de l'ordinateur de
+              l'élève. Compatible avec Word que vos élèves utilisent déjà.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Tout lycéen au clavier</h3>
+            <p>
+              Même sans aménagement spécifique, si tu as choisi le clavier pour
+              les cours de maths, MathCursor fait disparaître la friction de
+              l'éditeur d'équations.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="fonctionnement" class="section section--alt">
+      <div class="container">
+        <h2>Comment ça marche</h2>
+        <ol class="steps">
+          <li>
+            <h3>Tu tapes normalement</h3>
+            <p>
+              Dans ta phrase, tu écris <code>La dérivée de x^2 est 2x</code> ou
+              <code>On a 1/2 + 1/3 = 5/6</code>. Aucune manipulation.
+            </p>
+          </li>
+          <li>
+            <h3>Tu déclenches la conversion</h3>
+            <p>
+              Un raccourci clavier (<code>Ctrl + Espace</code>) ou un bouton
+              convertit la zone math détectée en équation Word formatée.
+              Pas de conversion automatique agressive : tu gardes le contrôle.
+            </p>
+          </li>
+          <li>
+            <h3>Tu peux rééditer</h3>
+            <p>
+              Repositionne-toi dans une équation existante : MathCursor te
+              ramène à la notation clavier. Tu modifies, tu reconvertis.
+            </p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="fonctionnalites" class="section">
+      <div class="container">
+        <h2>Fonctionnalités</h2>
+        <ul class="features">
+          <li>
+            <strong>Notation clavier naturelle.</strong>
+            Opérateurs <code>^</code>, <code>_</code>, <code>/</code>,
+            fractions, racines, exposants, indices.
+          </li>
+          <li>
+            <strong>Conversion à la demande.</strong>
+            Déclenchée explicitement par un raccourci ou un bouton — jamais
+            de transformation surprise au milieu d'une phrase.
+          </li>
+          <li>
+            <strong>Détection intelligente des zones math.</strong>
+            MathCursor identifie les portions de texte qui ressemblent à des
+            maths dans une phrase normale, et ne convertit que celles-là.
+          </li>
+          <li>
+            <strong>Multilingue.</strong>
+            Français, anglais, allemand, espagnol — reconnaît les
+            mots-clés de chaque langue (fonctions trigonométriques, logarithmes…).
+          </li>
+          <li>
+            <strong>Local et privé.</strong>
+            Aucune donnée envoyée sur Internet. Tout se passe sur l'ordinateur
+            de l'élève.
+          </li>
+          <li>
+            <strong>Sources préservées.</strong>
+            La notation clavier originale est gardée dans le document — tu peux
+            toujours rééditer une équation sans tout retaper.
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="installation" class="section section--alt">
+      <div class="container">
+        <h2>Installation</h2>
+        <p>
+          MathCursor est actuellement en phase de validation avec quelques
+          élèves et profs. L'installation arrive — voici ce à quoi t'attendre :
+        </p>
+        <ol class="install-steps">
+          <li>
+            <h3>1. Importer le certificat</h3>
+            <p>
+              Pour que Word accepte le complément, il faut importer un petit
+              certificat de sécurité. Un script PowerShell fait ça en un clic
+              (une seule fois, sur chaque machine testeur).
+            </p>
+          </li>
+          <li>
+            <h3>2. Lancer l'installeur</h3>
+            <p>
+              Un installeur ClickOnce (<code>setup.exe</code>) installe
+              MathCursor et le garde à jour automatiquement. À chaque ouverture
+              de Word, le complément se met à jour en silence si une nouvelle
+              version est disponible.
+            </p>
+          </li>
+          <li>
+            <h3>3. Utiliser</h3>
+            <p>
+              Un nouvel onglet ou un bouton apparaît dans Word. Raccourci par
+              défaut : <code>Ctrl + Espace</code>.
+            </p>
+          </li>
+        </ol>
+        <p class="install-note">
+          Tu es prof ou élève et tu veux participer à la bêta ?
+          <a href="mailto:come2percin@gmail.com">Contacte-nous par email</a>.
+        </p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>Statut du projet</h2>
+        <p>
+          Phase 1 : Word Desktop Windows, en validation avec quelques élèves
+          (dont un élève sous PAP) et profs de maths bêta-testeurs. Si la
+          validation est concluante, la phase 2 portera MathCursor vers Word
+          Web, Mac et iPad.
+        </p>
+        <p>
+          Projet open source, disponible sur
+          <a href="https://github.com/come/MathCursor">GitHub</a>.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>MathCursor — projet personnel, gratuit, sans tracking.</p>
+      <p>
+        <a href="https://github.com/come/MathCursor">Code source</a> ·
+        <a href="mailto:come2percin@gmail.com">Contact</a>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

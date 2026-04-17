@@ -1,0 +1,297 @@
+{
+  "_comment": "Corpus de test pour la détection de zone math. expectedZone = null si pas de math détectable.",
+  "cases": [
+    {
+      "id": "fr-01",
+      "lang": "fr",
+      "input": "On a f(x) = 2x + 1",
+      "expectedZone": "f(x) = 2x + 1",
+      "description": "Phrase classique cours de maths FR"
+    },
+    {
+      "id": "fr-02",
+      "lang": "fr",
+      "input": "Soit f(x) = 1/x",
+      "expectedZone": "f(x) = 1/x",
+      "description": "Soit + expression"
+    },
+    {
+      "id": "fr-03",
+      "lang": "fr",
+      "input": "On pose g(x) = x^2 + 3x - 1",
+      "expectedZone": "g(x) = x^2 + 3x - 1",
+      "description": "On pose + polynôme"
+    },
+    {
+      "id": "fr-04",
+      "lang": "fr",
+      "input": "Calculer la dérivée de f(x) = sin(x) + cos(x)",
+      "expectedZone": "f(x) = sin(x) + cos(x)",
+      "description": "Texte long avant l'expression"
+    },
+    {
+      "id": "fr-05",
+      "lang": "fr",
+      "input": "Pour tout x dans R, f(x) >= 0",
+      "expectedZone": "f(x) >= 0",
+      "description": "Pour tout + inégalité"
+    },
+    {
+      "id": "fr-06",
+      "lang": "fr",
+      "input": "On en déduit que x = 3",
+      "expectedZone": "x = 3",
+      "description": "Prose FR + résultat simple"
+    },
+    {
+      "id": "fr-07",
+      "lang": "fr",
+      "input": "Il existe un unique x tel que f(x) = 0",
+      "expectedZone": "f(x) = 0",
+      "description": "Il existe + équation"
+    },
+    {
+      "id": "fr-08",
+      "lang": "fr",
+      "input": "Donc (a+b)^2 = a^2 + 2ab + b^2",
+      "expectedZone": "(a+b)^2 = a^2 + 2ab + b^2",
+      "description": "Identité remarquable"
+    },
+    {
+      "id": "fr-09",
+      "lang": "fr",
+      "input": "La fonction est définie sur R par f(x) = (2x+1)/(x-3)",
+      "expectedZone": "f(x) = (2x+1)/(x-3)",
+      "description": "Fraction rationnelle"
+    },
+    {
+      "id": "fr-10",
+      "lang": "fr",
+      "input": "On a alors 1/2 + 1/3 = 5/6",
+      "expectedZone": "1/2 + 1/3 = 5/6",
+      "description": "Somme de fractions"
+    },
+    {
+      "id": "fr-11",
+      "lang": "fr",
+      "input": "Bonjour tout le monde",
+      "expectedZone": null,
+      "description": "Pas de math du tout"
+    },
+    {
+      "id": "fr-12",
+      "lang": "fr",
+      "input": "Le chat est sur le tapis",
+      "expectedZone": null,
+      "description": "Phrase banale sans math"
+    },
+    {
+      "id": "fr-13",
+      "lang": "fr",
+      "input": "x",
+      "expectedZone": null,
+      "description": "Variable isolée sans contexte math — pas assez pour détecter"
+    },
+    {
+      "id": "fr-14",
+      "lang": "fr",
+      "input": "3 + 5 = 8",
+      "expectedZone": "3 + 5 = 8",
+      "description": "Calcul arithmétique simple"
+    },
+    {
+      "id": "fr-15",
+      "lang": "fr",
+      "input": "En résumé, la solution est x = -b/(2a)",
+      "expectedZone": "x = -b/(2a)",
+      "description": "Prose puis formule discriminant"
+    },
+    {
+      "id": "fr-16",
+      "lang": "fr",
+      "input": "On sait que sin(x)^2 + cos(x)^2 = 1",
+      "expectedZone": "sin(x)^2 + cos(x)^2 = 1",
+      "description": "Identité trigonométrique"
+    },
+    {
+      "id": "fr-17",
+      "lang": "fr",
+      "input": "Soit n un entier, on a n! = n*(n-1)!",
+      "expectedZone": "n! = n*(n-1)!",
+      "description": "Factorielle"
+    },
+    {
+      "id": "fr-18",
+      "lang": "fr",
+      "input": "Montrer que pour tout n >= 1, 2^n > n",
+      "expectedZone": "2^n > n",
+      "description": "Inégalité avec exposant"
+    },
+    {
+      "id": "fr-19",
+      "lang": "fr",
+      "input": "D'après le théorème, lim x -> +inf f(x) = 0",
+      "expectedZone": "lim x -> +inf f(x) = 0",
+      "description": "Limite en l'infini"
+    },
+    {
+      "id": "fr-20",
+      "lang": "fr",
+      "input": "Le vecteur AB a pour coordonnées (3, -1)",
+      "expectedZone": "(3, -1)",
+      "description": "Vecteur avec coordonnées — 'AB a pour' est prose, seules les coords sont math (v1)"
+    },
+
+    {
+      "id": "en-01",
+      "lang": "en",
+      "input": "We have f(x) = 2x + 1",
+      "expectedZone": "f(x) = 2x + 1",
+      "description": "Classic math statement EN"
+    },
+    {
+      "id": "en-02",
+      "lang": "en",
+      "input": "Let g(x) = x^2 - 4",
+      "expectedZone": "g(x) = x^2 - 4",
+      "description": "Let + polynomial"
+    },
+    {
+      "id": "en-03",
+      "lang": "en",
+      "input": "Therefore x = (-b + sqrt(b^2 - 4ac)) / (2a)",
+      "expectedZone": "x = (-b + sqrt(b^2 - 4ac)) / (2a)",
+      "description": "Quadratic formula"
+    },
+    {
+      "id": "en-04",
+      "lang": "en",
+      "input": "The derivative of sin(x) is cos(x)",
+      "expectedZone": "cos(x)",
+      "description": "EN prose + trig functions — 'is' est un stopword qui coupe (accepté v1)"
+    },
+    {
+      "id": "en-05",
+      "lang": "en",
+      "input": "For all x in R, f(x) >= 0",
+      "expectedZone": "f(x) >= 0",
+      "description": "Universal quantifier EN"
+    },
+    {
+      "id": "en-06",
+      "lang": "en",
+      "input": "Hello world",
+      "expectedZone": null,
+      "description": "No math at all"
+    },
+    {
+      "id": "en-07",
+      "lang": "en",
+      "input": "Compute the integral of x^2 from 0 to 1",
+      "expectedZone": null,
+      "description": "Integral EN — hors scope v1, nécessite Phase 3 (opérateurs nommés)"
+    },
+    {
+      "id": "en-08",
+      "lang": "en",
+      "input": "If a + b = c then a = c - b",
+      "expectedZone": "a = c - b",
+      "description": "If/then — second equation is the zone at cursor"
+    },
+    {
+      "id": "en-09",
+      "lang": "en",
+      "input": "Note that (a+b)(a-b) = a^2 - b^2",
+      "expectedZone": "(a+b)(a-b) = a^2 - b^2",
+      "description": "Difference of squares"
+    },
+    {
+      "id": "en-10",
+      "lang": "en",
+      "input": "The area is pi*r^2",
+      "expectedZone": "pi*r^2",
+      "description": "Area formula"
+    },
+
+    {
+      "id": "de-01",
+      "lang": "de",
+      "input": "Sei f(x) = 2x + 1",
+      "expectedZone": "f(x) = 2x + 1",
+      "description": "German math statement"
+    },
+    {
+      "id": "de-02",
+      "lang": "de",
+      "input": "Es gilt x^2 + y^2 = r^2",
+      "expectedZone": "x^2 + y^2 = r^2",
+      "description": "Pythagorean theorem DE"
+    },
+
+    {
+      "id": "es-01",
+      "lang": "es",
+      "input": "Sea f(x) = x^2 - 1",
+      "expectedZone": "f(x) = x^2 - 1",
+      "description": "Spanish math statement"
+    },
+
+    {
+      "id": "edge-01",
+      "lang": "fr",
+      "input": "f(x) = 2x",
+      "expectedZone": "f(x) = 2x",
+      "description": "Expression pure, pas de prose"
+    },
+    {
+      "id": "edge-02",
+      "lang": "fr",
+      "input": "= 3x + 1",
+      "expectedZone": "= 3x + 1",
+      "description": "Expression commençant par ="
+    },
+    {
+      "id": "edge-03",
+      "lang": "fr",
+      "input": "(a + b + c) / (d + 1)",
+      "expectedZone": "(a + b + c) / (d + 1)",
+      "description": "Fraction avec parenthèses multiples"
+    },
+    {
+      "id": "edge-04",
+      "lang": "fr",
+      "input": "alpha + beta = gamma",
+      "expectedZone": "alpha + beta = gamma",
+      "description": "Lettres grecques en texte"
+    },
+    {
+      "id": "edge-05",
+      "lang": "fr",
+      "input": "2",
+      "expectedZone": null,
+      "description": "Nombre seul — pas assez de contexte math"
+    },
+    {
+      "id": "edge-06",
+      "lang": "fr",
+      "input": "a + b",
+      "expectedZone": "a + b",
+      "description": "Addition simple de variables"
+    },
+
+    {
+      "id": "multi-01",
+      "lang": "fr",
+      "input": "f(x)=1/x et g(x)=2x",
+      "expectedZone": "g(x)=2x",
+      "description": "Multi-formules : le zone detector remonte depuis la fin et s'arrête à 'et' (stopword) — seule la 2e formule capturée"
+    },
+    {
+      "id": "multi-02",
+      "lang": "fr",
+      "input": "Soit f(x)=1/x, on a g(x)=2x",
+      "expectedZone": "g(x)=2x",
+      "description": "Multi-formules avec prose entre — 'on a' stopwords coupent"
+    }
+  ]
+}
