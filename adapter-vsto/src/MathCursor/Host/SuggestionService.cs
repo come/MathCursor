@@ -1,4 +1,5 @@
 using System;
+using System.Windows.Threading;
 using MathCursor.Core.Symbols;
 using MathCursor.UI;
 using Word = Microsoft.Office.Interop.Word;
@@ -6,17 +7,26 @@ using Word = Microsoft.Office.Interop.Word;
 namespace MathCursor.Host
 {
     /// <summary>
-    /// Écoute les mouvements du curseur, lit le contexte (~50 chars avant le
-    /// caret), interroge SymbolMatcher, et affiche/cache une popup WPF près
-    /// du caret avec les candidats. Tab valide via le hook clavier (déjà branché),
-    /// Up/Down naviguent, Esc cache.
+    /// Surveille en continu le texte avant le caret (timer 200 ms) et
+    /// affiche/cache une popup WPF avec les candidats SymbolMatcher.
+    ///
+    /// Pourquoi un timer plutôt que <c>WindowSelectionChange</c> seul :
+    /// l'event Word ne fire pas sur chaque keystroke (seulement sur les
+    /// mouvements explicites de curseur). Le polling 200 ms attrape la frappe.
+    ///
+    /// Aussi câblé : <c>WindowDeactivate</c> → cache la popup quand Word
+    /// perd le focus (Alt+Tab) pour qu'elle ne reste pas TopMost à l'écran.
     /// </summary>
     public sealed class SuggestionService : IDisposable
     {
         private const int ContextChars = 50;
+        private const int PollIntervalMs = 200;
 
         private readonly Word.Application _app;
         private SuggestionPopupWindow _popup;
+        private DispatcherTimer _pollTimer;
+        private string _lastContext = "";
+        private int _lastCaretPos = -1;
         private bool _installed;
 
         public SuggestionService(Word.Application app)
@@ -28,14 +38,25 @@ namespace MathCursor.Host
         {
             if (_installed) return;
             _app.WindowSelectionChange += OnSelectionChange;
+            _app.WindowDeactivate += OnWindowDeactivate;
+
+            _pollTimer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromMilliseconds(PollIntervalMs),
+            };
+            _pollTimer.Tick += (_, __) => CheckContextAndUpdate();
+            _pollTimer.Start();
             _installed = true;
         }
 
         public void Dispose()
         {
             try { if (_installed) _app.WindowSelectionChange -= OnSelectionChange; } catch { }
+            try { if (_installed) _app.WindowDeactivate -= OnWindowDeactivate; } catch { }
+            try { _pollTimer?.Stop(); } catch { }
             try { _popup?.Close(); } catch { }
             _popup = null;
+            _pollTimer = null;
             _installed = false;
         }
 
@@ -48,9 +69,32 @@ namespace MathCursor.Host
 
         private void OnSelectionChange(Word.Selection sel)
         {
+            // Backup : déclenche aussi un check immédiat (sans attendre le tick)
+            // pour les mouvements explicites de curseur (clic, flèches).
+            CheckContextAndUpdate();
+        }
+
+        private void OnWindowDeactivate(Word.Document doc, Word.Window wnd)
+        {
+            // Word perd le focus (Alt+Tab, click hors Word) → cacher la popup
+            // pour qu'elle ne reste pas TopMost de façon distrayante.
+            HidePopup();
+        }
+
+        private void CheckContextAndUpdate()
+        {
             try
             {
-                var ctx = ReadContext();
+                // Optimisation : ne lit le texte que si le caret a bougé OU
+                // que le contexte texte a potentiellement changé. Pour détecter
+                // une frappe sans mouvement de caret, on lit toujours quand
+                // le caret est au même endroit (le texte avant a pu grossir).
+                var caretPos = _app.Selection.Start;
+                var ctx = ReadContext(caretPos);
+                if (ctx == _lastContext && caretPos == _lastCaretPos) return;
+                _lastContext = ctx;
+                _lastCaretPos = caretPos;
+
                 var match = SymbolMatcher.FindSymbol(ctx);
                 if (match != null && match.Choices.Count > 0)
                 {
@@ -63,14 +107,12 @@ namespace MathCursor.Host
             }
             catch
             {
-                // Ne jamais propager depuis un event handler Word
+                // Jamais d'exception depuis le timer
             }
         }
 
-        private string ReadContext()
+        private string ReadContext(int caretPos)
         {
-            var sel = _app.Selection;
-            int caretPos = sel.Start;
             var doc = _app.ActiveDocument;
             int start = Math.Max(doc.Content.Start, caretPos - ContextChars);
             if (start >= caretPos) return "";
@@ -89,16 +131,13 @@ namespace MathCursor.Host
             try
             {
                 var sel = _app.Selection;
-                // Position du caret en points (1/72") relativement à la page
                 double hPos = (double)sel.get_Information(Word.WdInformation.wdHorizontalPositionRelativeToPage);
                 double vPos = (double)sel.get_Information(Word.WdInformation.wdVerticalPositionRelativeToPage);
-                // dynamic pour bypasser le type-checking : avec EmbedInteropTypes=true,
-                // PointsToScreenPixelsX/Y n'apparaît pas dans les types embarqués alors
-                // qu'elle existe au runtime sur Word.Window.
+                // dynamic : EmbedInteropTypes masque PointsToScreenPixelsX/Y
                 dynamic win = _app.ActiveWindow;
                 double x = (double)win.PointsToScreenPixelsX(hPos);
                 double y = (double)win.PointsToScreenPixelsY(vPos);
-                return (x, y + 22); // 22px sous la ligne du caret
+                return (x, y + 22);
             }
             catch
             {
