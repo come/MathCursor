@@ -1,0 +1,16 @@
+{
+  "_comment": "Mots-clés math et fonctions reconnues universellement (non liés à une langue).",
+  "mathFunctions": [
+    "sin", "cos", "tan", "cot", "sec", "csc",
+    "log", "ln", "exp",
+    "lim", "sum", "prod", "int",
+    "max", "min", "sup", "inf",
+    "det", "dim", "ker", "arg", "mod", "gcd", "lcm",
+    "sqrt", "abs"
+  ],
+  "mathKeywords": [
+    "alpha", "beta", "gamma", "delta", "epsilon", "theta", "lambda",
+    "mu", "pi", "sigma", "omega", "phi", "psi", "rho", "tau",
+    "vec", "seg", "ang", "vide"
+  ]
+}

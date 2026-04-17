@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>MathCursor.HostContract</RootNamespace>
+    <AssemblyName>MathCursor.HostContract</AssemblyName>
+    <LangVersion>10.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Version>0.1.0</Version>
+    <Description>Abstract host contracts for MathCursor — interfaces that every platform adapter implements.</Description>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,7 @@
+{
+  "_comment": "Mots de liaison entre zones math (utiles au zone detector pour comprendre 'f(x) et g(x)'). Base à enrichir en phase B.",
+  "fr": ["et", "ou", "si", "tel", "que", "donc"],
+  "en": ["and", "or", "if", "then", "so", "thus"],
+  "de": ["und", "oder", "wenn"],
+  "es": ["y", "o", "si"]
+}
