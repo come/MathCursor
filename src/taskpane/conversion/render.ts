@@ -23,6 +23,8 @@ export function render(n: N): string {
     }
     case "juxt":
       return n.parts.map(render).join("");
+    default:
+      return mr(`[${(n as any).k}]`);
   }
 }
 

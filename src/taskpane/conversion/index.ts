@@ -1,21 +1,30 @@
 // Conversion : texte → OMath
 // Façade qui combine scanner + tokenizer + parser + render
+// Le tokenizer v2 (enrichi) alimente le zone-detector
+// Le parser v1 (récursif) utilise encore l'ancien format Tk — un adaptateur fait le pont
 
-import type { DocChoice } from "./types";
+import type { DocChoice, Tk, Token, MathZone } from "./types";
 import type { Delimiter } from "./scanner";
 import { scanMathExpr } from "./scanner";
-import { tokenize } from "./tokenizer";
+import { tokenize as tokenizeV2 } from "./tokenizer";
+import { scoreAllTokens } from "./scorer";
+import { detectMathZone } from "./zone-detector";
+import { tokenize as tokenizeV1 } from "./tokenizer-v1";
 import { parse, astToString } from "./parser";
 import { render } from "./render";
 import { omathPkg } from "../omath/helpers";
 
-export type { DocChoice, Delimiter };
-export { scanMathExpr };
+export type { DocChoice, Delimiter, Token, MathZone };
+export { scanMathExpr, tokenizeV2, scoreAllTokens, detectMathZone };
+
+// ============================================================
+// BUILD OOXML (utilise le parser v1 pour l'instant)
+// ============================================================
 
 export function buildMathOoxml(raw: string, debugSteps?: string[]): string {
   debugSteps?.push(`1. Input: "${raw}"`);
 
-  const tks = tokenize(raw);
+  const tks = tokenizeV1(raw);
   debugSteps?.push(`2. Tokens: ${tks.map(t => t.v).join(" ")}`);
 
   const ast = parse(tks);
@@ -29,6 +38,34 @@ export function buildMathOoxml(raw: string, debugSteps?: string[]): string {
 
   return ooxml;
 }
+
+// ============================================================
+// FIND EXPRESSION — v2 avec zone detection
+// ============================================================
+
+export function findExpressionV2(
+  text: string,
+  debugInfo?: { value: string },
+): { raw: string; normalized: string; zone: MathZone } | null {
+  const tokens = tokenizeV2(text);
+  scoreAllTokens(tokens);
+  const zone = detectMathZone(tokens);
+  if (!zone) return null;
+
+  if (debugInfo) {
+    const scores = zone.tokens
+      .filter(t => !t.categories.has("whitespace"))
+      .map(t => `${t.normalized}(${t.mathiness.toFixed(1)})`)
+      .join(" ");
+    debugInfo.value = `Zone: ${scores}`;
+  }
+
+  return { raw: zone.raw, normalized: zone.normalized, zone };
+}
+
+// ============================================================
+// FIND EXPRESSION — v1 compat (scanner heuristique)
+// ============================================================
 
 export function findExpression(
   text: string,

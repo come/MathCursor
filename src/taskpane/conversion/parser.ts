@@ -95,5 +95,6 @@ export function astToString(n: N, depth = 0): string {
     case "sup": return `${pad}sup\n${astToString(n.base, depth + 1)}\n${astToString(n.exp, depth + 1)}`;
     case "paren": return `${pad}paren(${n.d})\n${astToString(n.inner, depth + 1)}`;
     case "juxt": return `${pad}juxt\n${n.parts.map(p => astToString(p, depth + 1)).join("\n")}`;
+    default: return `${pad}${(n as any).k}(...)`;
   }
 }
