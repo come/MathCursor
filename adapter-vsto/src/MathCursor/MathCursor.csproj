@@ -234,6 +234,8 @@
     <Compile Include="Host\VstoEditorSurface.cs" />
     <Compile Include="Host\VstoUserFeedback.cs" />
     <Compile Include="Host\KeyboardInterceptor.cs" />
+    <Compile Include="Host\SuggestionService.cs" />
+    <Compile Include="UI\SuggestionPopupWindow.cs" />
     <Compile Include="RibbonCallback.cs" />
     <EmbeddedResource Include="Ribbon.xml" />
     <AppDesigner Include="Properties\" />

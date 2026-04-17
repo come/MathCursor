@@ -13,6 +13,7 @@ namespace MathCursor
         private VstoUserFeedback _feedback;
         private MathCursorOrchestrator _orchestrator;
         private KeyboardInterceptor _keyboard;
+        private SuggestionService _suggestions;
 
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
@@ -25,14 +26,21 @@ namespace MathCursor
 
                 _orchestrator = new MathCursorOrchestrator(_host, _store, _surface, _feedback);
 
-                // Hook clavier Tab
+                // Popup de suggestions ancrée au caret
+                _suggestions = new SuggestionService(this.Application);
+                _suggestions.Install();
+
+                // Hook clavier global pour Tab + nav popup
                 _keyboard = new KeyboardInterceptor
                 {
                     OnTabPressed = HandleTabPressed,
+                    OnUpPressed = HandleUpPressed,
+                    OnDownPressed = HandleDownPressed,
+                    OnEscapePressed = HandleEscapePressed,
                 };
                 _keyboard.Install();
 
-                _surface.Notify("MathCursor prêt. Tapez une expression puis Tab (ou Alt+M).", HostContract.NotificationLevel.Info);
+                _surface.Notify("MathCursor prêt. Tapez une expression puis Tab.", HostContract.NotificationLevel.Info);
             }
             catch (Exception ex)
             {
@@ -47,24 +55,59 @@ namespace MathCursor
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
         {
             try { _keyboard?.Dispose(); } catch { }
+            try { _suggestions?.Dispose(); } catch { }
         }
 
-        /// <summary>
-        /// Sur Tab pressé : retourne true si on a effectivement converti (→ consommer le Tab),
-        /// false sinon (→ laisser Word insérer un tab normal / tabuler / outdent).
-        /// </summary>
         private bool HandleTabPressed()
         {
             if (_orchestrator == null) return false;
             try
             {
-                return _orchestrator.TryConvertAtCaret();
+                bool converted = _orchestrator.TryConvertAtCaret();
+                if (converted)
+                {
+                    _suggestions?.HidePopup();
+                }
+                return converted;
             }
             catch (Exception ex)
             {
                 _feedback?.LogParsingError("(tab_hook)", ex.Message);
-                return false; // en cas d'erreur, ne pas consommer le Tab
+                return false;
             }
+        }
+
+        // Up / Down : navigation dans la popup si visible. Sinon laisser passer
+        // (pour que les flèches restent disponibles dans Word).
+        private bool HandleUpPressed()
+        {
+            if (_suggestions?.IsPopupVisible == true)
+            {
+                _suggestions.MoveSelection(-1);
+                return true;
+            }
+            return false;
+        }
+
+        private bool HandleDownPressed()
+        {
+            if (_suggestions?.IsPopupVisible == true)
+            {
+                _suggestions.MoveSelection(+1);
+                return true;
+            }
+            return false;
+        }
+
+        // Esc : ferme la popup. Si elle est cachée, laisse passer (Word gère).
+        private bool HandleEscapePressed()
+        {
+            if (_suggestions?.IsPopupVisible == true)
+            {
+                _suggestions.HidePopup();
+                return true;
+            }
+            return false;
         }
 
         /// <summary>Appelé par le bouton ribbon "Convertir".</summary>
