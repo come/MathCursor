@@ -53,7 +53,9 @@ public sealed class MathCursorOrchestrator
         var textBefore = ctx.TextBefore;
 
         var result = ConversionPipeline.Convert(textBefore, ctx.LanguageHint);
-        if (!result.Success || result.Zone == null || result.Equation == null)
+        // Note : Zone peut être null sur un match symbol (alpha, ≥, etc.) — on
+        // ne s'en sert que si présent. C'est Equation qui porte le résultat.
+        if (!result.Success || result.Equation == null)
         {
             _feedback.LogParsingError(textBefore, result.Reason ?? "unknown");
             return false;

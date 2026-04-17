@@ -78,20 +78,9 @@ namespace MathCursor.Host
 
             var handleId = Guid.NewGuid().ToString("N");
 
-            // Cas 1 : remplacement texte simple (symbol pattern alpha→α, >=→≥...).
-            //         Pas de wrap OMath, pas d'espace trailing → curseur juste après.
-            if (string.IsNullOrEmpty(equation.Omml))
-            {
-                replaceRange.Text = linearText;
-                int cursor = zoneStart + linearText.Length;
-                if (cursor > doc.Content.End) cursor = doc.Content.End;
-                _app.Selection.SetRange(cursor, cursor);
-                return Task.FromResult(new EquationHandle(handleId));
-            }
-
-            // Cas 2 : expression math complète. Texte_linéaire + ESPACE pour rester
-            //         inline (sinon Word auto-convertit en display mode), puis
-            //         OMaths.Add + BuildUp natif Word.
+            // Toute conversion finit en OMath (cohérence visuelle : math en
+            // Cambria Math italic, pas de mélange texte plat / équation).
+            // Texte_linéaire + ESPACE pour rester inline (sinon display mode).
             replaceRange.Text = linearText + " ";
 
             var mathRange = doc.Range(zoneStart, zoneStart + linearText.Length);
