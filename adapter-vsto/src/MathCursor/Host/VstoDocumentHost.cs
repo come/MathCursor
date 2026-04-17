@@ -74,19 +74,19 @@ namespace MathCursor.Host
             int caretPos = sel.Start;
             int zoneStart = Math.Max(doc.Content.Start, caretPos - zone.Text.Length);
 
-            // 1. Remplacer le texte tapé par sa version linéaire propre
-            //    (UnicodeFallback = normalisation ASCII, ou Source brut en fallback).
+            // 1. Texte linéaire à convertir (Unicode fallback normalisé, ou Source brut)
             var linearText = !string.IsNullOrEmpty(equation.UnicodeFallback)
                 ? equation.UnicodeFallback
                 : equation.Source;
 
+            // Remplacer la zone par : texte_linéaire + ESPACE.
+            // L'espace après est essentiel : sans lui, si la math représente le
+            // paragraphe entier, Word convertit en display mode (centré, isolé).
+            // Avec l'espace, le paragraphe contient autre chose → math reste inline.
             var replaceRange = doc.Range(zoneStart, caretPos);
-            replaceRange.Text = linearText;
+            replaceRange.Text = linearText + " ";
 
-            // 2. Re-cibler la plage sur le nouveau texte, wrapper dans OMath,
-            //    puis BuildUp sur la collection : Word parse le format linéaire
-            //    et convertit en équation formatée (fractions, exposants, √, etc.).
-            //    Méthode native VSTO, plus robuste que l'insertion OOXML.
+            // 2. Cibler UNIQUEMENT le texte math (sans l'espace) pour BuildUp
             var mathRange = doc.Range(zoneStart, zoneStart + linearText.Length);
             var handleId = Guid.NewGuid().ToString("N");
 
@@ -95,25 +95,26 @@ namespace MathCursor.Host
                 mathRange.OMaths.Add(mathRange);
                 mathRange.OMaths.BuildUp();
 
-                // Après BuildUp, on retrouve l'OMath qui vient d'être créé
-                // via la collection OMaths du document (le dernier ajouté).
-                int endPos;
+                // Curseur : après le OMath + l'espace qu'on a ajouté
+                int afterPos;
                 if (doc.OMaths.Count > 0)
                 {
                     var lastMath = doc.OMaths[doc.OMaths.Count];
-                    endPos = lastMath.Range.End;
+                    afterPos = lastMath.Range.End + 1; // +1 = espace trailing
                 }
                 else
                 {
-                    endPos = mathRange.End;
+                    afterPos = zoneStart + linearText.Length + 1;
                 }
-                _app.Selection.SetRange(endPos, endPos);
+                if (afterPos > doc.Content.End) afterPos = doc.Content.End;
+                _app.Selection.SetRange(afterPos, afterPos);
             }
             catch
             {
-                // BuildUp a échoué (format non reconnu par Word) → on garde
-                // le texte linéaire tel quel. Cursor après.
-                _app.Selection.SetRange(zoneStart + linearText.Length, zoneStart + linearText.Length);
+                // BuildUp a échoué (format non reconnu) → garder le texte linéaire
+                var fallbackPos = zoneStart + linearText.Length + 1;
+                if (fallbackPos > doc.Content.End) fallbackPos = doc.Content.End;
+                _app.Selection.SetRange(fallbackPos, fallbackPos);
             }
 
             return Task.FromResult(new EquationHandle(handleId));
