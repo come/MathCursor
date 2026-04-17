@@ -39,6 +39,7 @@ namespace MathCursor.Host
             if (_installed) return;
             _app.WindowSelectionChange += OnSelectionChange;
             _app.WindowDeactivate += OnWindowDeactivate;
+            _app.WindowActivate += OnWindowActivate;
 
             _pollTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
@@ -53,6 +54,7 @@ namespace MathCursor.Host
         {
             try { if (_installed) _app.WindowSelectionChange -= OnSelectionChange; } catch { }
             try { if (_installed) _app.WindowDeactivate -= OnWindowDeactivate; } catch { }
+            try { if (_installed) _app.WindowActivate -= OnWindowActivate; } catch { }
             try { _pollTimer?.Stop(); } catch { }
             try { _popup?.Close(); } catch { }
             _popup = null;
@@ -76,21 +78,43 @@ namespace MathCursor.Host
 
         private void OnWindowDeactivate(Word.Document doc, Word.Window wnd)
         {
-            // Word perd le focus (Alt+Tab, click hors Word) → cacher la popup
-            // pour qu'elle ne reste pas TopMost de façon distrayante.
+            // Word perd le focus → cacher la popup + pauser le polling pour
+            // ne pas accéder à un Selection invalide quand Word est hors focus.
             HidePopup();
+            try { _pollTimer?.Stop(); } catch { }
+        }
+
+        private void OnWindowActivate(Word.Document doc, Word.Window wnd)
+        {
+            try { _pollTimer?.Start(); } catch { }
         }
 
         private void CheckContextAndUpdate()
         {
             try
             {
-                // Optimisation : ne lit le texte que si le caret a bougé OU
-                // que le contexte texte a potentiellement changé. Pour détecter
-                // une frappe sans mouvement de caret, on lit toujours quand
-                // le caret est au même endroit (le texte avant a pu grossir).
-                var caretPos = _app.Selection.Start;
-                var ctx = ReadContext(caretPos);
+                // Garde : pas de doc actif → rien à faire (timer continue mais
+                // skip rapide). Évite d'accéder à Selection en état transitoire.
+                if (_app.Documents.Count == 0)
+                {
+                    HidePopup();
+                    return;
+                }
+
+                int caretPos;
+                string ctx;
+                try
+                {
+                    var sel = _app.Selection;
+                    if (sel == null) return;
+                    caretPos = sel.Start;
+                    ctx = ReadContext(caretPos);
+                }
+                catch
+                {
+                    return; // Word en état transitoire, on attend le prochain tick
+                }
+
                 if (ctx == _lastContext && caretPos == _lastCaretPos) return;
                 _lastContext = ctx;
                 _lastCaretPos = caretPos;
