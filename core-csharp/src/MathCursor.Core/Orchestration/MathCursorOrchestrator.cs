@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using MathCursor.Core.Pipeline;
 using MathCursor.HostContract;
@@ -7,6 +8,10 @@ namespace MathCursor.Core.Orchestration;
 /// <summary>
 /// Chef d'orchestre : coordonne le pipeline de conversion avec les interfaces
 /// host-contract. Aucune référence directe à Word / VSTO / Office.js.
+///
+/// En VSTO, le déclenchement est explicite (Tab hook ou bouton ribbon) → pas de
+/// polling, pas de loop possible, donc pas d'anti-boucle nécessaire (relicat
+/// retiré du prototype Office.js).
 /// </summary>
 public sealed class MathCursorOrchestrator
 {
@@ -14,9 +19,6 @@ public sealed class MathCursorOrchestrator
     private readonly IEquationStore _store;
     private readonly IEditorSurface _surface;
     private readonly IUserFeedback _feedback;
-
-    // Anti-boucle Ctrl+Z : textes récemment convertis. Libéré quand l'utilisateur édite.
-    private string? _lastConvertedSource;
 
     public MathCursorOrchestrator(
         IDocumentHost host,
@@ -29,22 +31,16 @@ public sealed class MathCursorOrchestrator
         _surface = surface;
         _feedback = feedback;
 
-        _host.OnConversionRequested(() => _ = OnConversionRequestedAsync());
+        _host.OnConversionRequested(() => _ = TryConvertAtCaretAsync());
         _host.OnEquationEntered(handle => _ = OnEquationEnteredAsync(handle));
         _host.OnEquationExited(_ => _surface.ExitEditMode());
-        _surface.OnSuggestionSelected(_ => { /* phase C — 1 candidat unique pour l'instant */ });
         _surface.OnEditCommitted(newSource => _ = OnEditCommittedAsync(newSource));
     }
 
-    private async Task OnConversionRequestedAsync()
-    {
-        await TryConvertAtCaretAsync();
-    }
-
     /// <summary>
-    /// Tente la conversion de l'expression sous le curseur de façon synchrone.
-    /// Retourne true si une conversion a été effectuée, false sinon.
-    /// Utilisé par le hook clavier pour décider si on consomme la touche Tab.
+    /// Tente la conversion de l'expression sous le curseur. Retourne true si
+    /// effectuée, false sinon. Utilisé par le hook clavier pour décider si on
+    /// consomme la touche Tab.
     /// </summary>
     public bool TryConvertAtCaret()
     {
@@ -70,9 +66,29 @@ public sealed class MathCursorOrchestrator
             Text = result.Equation.Source,
         };
 
-        var handle = await _host.InsertEquationAsync(zone, result.Equation);
-        await _store.StoreAsync(handle, result.Equation.Source, result.Equation.Metadata);
-        _lastConvertedSource = result.Equation.Source;
+        // Insertion : si l'host refuse (zone chevauche un OMath, etc.), on
+        // log et on rend la main au caller (Tab → propagation normale).
+        EquationHandle handle;
+        try
+        {
+            handle = await _host.InsertEquationAsync(zone, result.Equation);
+        }
+        catch (Exception insertEx)
+        {
+            _feedback.LogParsingError("(insert)", insertEx.Message);
+            return false;
+        }
+
+        // Storage best-effort : un échec ne doit pas casser l'UX de conversion.
+        try
+        {
+            await _store.StoreAsync(handle, result.Equation.Source, result.Equation.Metadata);
+        }
+        catch (Exception storeEx)
+        {
+            _feedback.LogParsingError("(store)", storeEx.Message);
+        }
+
         _feedback.LogSuggestionSelected(0);
         return true;
     }
@@ -88,7 +104,6 @@ public sealed class MathCursorOrchestrator
 
     private async Task OnEditCommittedAsync(string newSource)
     {
-        // Re-conversion depuis le texte édité et update de l'équation
         var result = ConversionPipeline.Convert(newSource);
         if (!result.Success || result.Equation == null)
         {

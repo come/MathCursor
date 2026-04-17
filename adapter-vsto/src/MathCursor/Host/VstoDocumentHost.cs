@@ -6,32 +6,25 @@ using Word = Microsoft.Office.Interop.Word;
 namespace MathCursor.Host
 {
     /// <summary>
-    /// Implémentation VSTO de IDocumentHost. Accès direct mémoire Word via
-    /// Microsoft.Office.Interop.Word — pas de latence réseau, events natifs fiables.
+    /// Implémentation VSTO de IDocumentHost. Accès direct mémoire Word, events
+    /// natifs fiables. Pas de polling.
+    ///
+    /// Phase C1 : OnConversionRequested seul est utilisé activement (par le hook
+    /// Tab + bouton ribbon). Les autres events (CaretMoved, EquationEntered/Exited)
+    /// sont stub pour préparer la phase C2 (mode édition d'OMath via Content Control).
     /// </summary>
     public sealed class VstoDocumentHost : IDocumentHost
     {
         private readonly Word.Application _app;
-
-        // Events abonnés par l'orchestrateur
-        private event CaretMovedListener _caretMoved;
-        private event EquationEnteredListener _equationEntered;
-        private event EquationExitedListener _equationExited;
         private event ConversionRequestedListener _conversionRequested;
 
         public VstoDocumentHost(Word.Application app)
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
-            _app.WindowSelectionChange += OnSelectionChange;
-            // NOTE phase C2 : ContentControlOnEnter / ContentControlOnExit existent
-            // sur Application mais ne sont pas exposés directement via l'interop embarqué.
-            // Il faut passer par ((Word.ApplicationEvents4_Event)_app).ContentControlOnEnter
-            // ou gérer via un wrapper. Reporté tant qu'on n'utilise pas les CC.
         }
 
         public Task<ContextText> ReadContextAroundCaretAsync(int charsBefore, int charsAfter)
         {
-            // Accès synchrone direct : pas besoin d'async réel.
             var sel = _app.Selection;
             int caretPos = sel.Start;
             var doc = _app.ActiveDocument;
@@ -44,15 +37,13 @@ namespace MathCursor.Host
             string textBefore = "";
             if (caretPos > startOffset)
             {
-                var rBefore = doc.Range(startOffset, caretPos);
-                textBefore = rBefore.Text ?? "";
+                textBefore = doc.Range(startOffset, caretPos).Text ?? "";
             }
 
             string textAfter = "";
             if (endOffset > caretPos)
             {
-                var rAfter = doc.Range(caretPos, endOffset);
-                textAfter = rAfter.Text ?? "";
+                textAfter = doc.Range(caretPos, endOffset).Text ?? "";
             }
 
             return Task.FromResult(new ContextText
@@ -69,24 +60,27 @@ namespace MathCursor.Host
             var doc = _app.ActiveDocument;
             var sel = _app.Selection;
 
-            // La zone à remplacer : les N derniers caractères avant le curseur,
-            // où N = longueur du texte source.
             int caretPos = sel.Start;
             int zoneStart = Math.Max(doc.Content.Start, caretPos - zone.Text.Length);
 
-            // 1. Texte linéaire à convertir (Unicode fallback normalisé, ou Source brut)
             var linearText = !string.IsNullOrEmpty(equation.UnicodeFallback)
                 ? equation.UnicodeFallback
                 : equation.Source;
 
-            // Remplacer la zone par : texte_linéaire + ESPACE.
-            // L'espace après est essentiel : sans lui, si la math représente le
-            // paragraphe entier, Word convertit en display mode (centré, isolé).
-            // Avec l'espace, le paragraphe contient autre chose → math reste inline.
+            // Refus si la zone à remplacer contient déjà une OMath : on ne peut
+            // pas la "deleter" via .Text=, et fusionner deux maths est délicat.
             var replaceRange = doc.Range(zoneStart, caretPos);
+            if (replaceRange.OMaths.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    "Zone à convertir chevauche une OMath existante.");
+            }
+
+            // Texte_linéaire + ESPACE final : sans l'espace, si la math est seule
+            // dans le paragraphe, Word convertit en display mode (centré, isolé).
             replaceRange.Text = linearText + " ";
 
-            // 2. Cibler UNIQUEMENT le texte math (sans l'espace) pour BuildUp
+            // BuildUp natif Word : parse le format linéaire en équation formatée.
             var mathRange = doc.Range(zoneStart, zoneStart + linearText.Length);
             var handleId = Guid.NewGuid().ToString("N");
 
@@ -95,7 +89,6 @@ namespace MathCursor.Host
                 mathRange.OMaths.Add(mathRange);
                 mathRange.OMaths.BuildUp();
 
-                // Curseur : après le OMath + l'espace qu'on a ajouté
                 int afterPos;
                 if (doc.OMaths.Count > 0)
                 {
@@ -120,41 +113,25 @@ namespace MathCursor.Host
             return Task.FromResult(new EquationHandle(handleId));
         }
 
+        // --- Stubs phase C2 (édition d'équations via Content Controls) ---
+
         public Task UpdateEquationAsync(EquationHandle handle, EquationOutput equation)
-        {
-            // TODO phase C2 : retrouver le CC par Tag et remplacer son contenu
-            return Task.CompletedTask;
-        }
+            => Task.CompletedTask;
 
         public Task RevertEquationAsync(EquationHandle handle)
-        {
-            // TODO phase C2 : retrouver le CC par Tag et remplacer par le source texte
-            return Task.CompletedTask;
-        }
+            => Task.CompletedTask;
 
         public Task<EquationHandle> GetCaretEquationAsync()
-        {
-            // TODO phase C2 : inspecter selection.ParentContentControl
-            return Task.FromResult<EquationHandle>(null);
-        }
+            => Task.FromResult<EquationHandle>(null);
 
         public Unsubscribe OnCaretMoved(CaretMovedListener listener)
-        {
-            _caretMoved += listener;
-            return () => _caretMoved -= listener;
-        }
+            => () => { }; // pas de polling cursor en VSTO (relicat Office.js)
 
         public Unsubscribe OnEquationEntered(EquationEnteredListener listener)
-        {
-            _equationEntered += listener;
-            return () => _equationEntered -= listener;
-        }
+            => () => { }; // phase C2 via ContentControlOnEnter
 
         public Unsubscribe OnEquationExited(EquationExitedListener listener)
-        {
-            _equationExited += listener;
-            return () => _equationExited -= listener;
-        }
+            => () => { }; // phase C2 via ContentControlOnExit
 
         public Unsubscribe OnConversionRequested(ConversionRequestedListener listener)
         {
@@ -162,14 +139,7 @@ namespace MathCursor.Host
             return () => _conversionRequested -= listener;
         }
 
-        /// <summary>Appelé par le bouton ribbon : trigger une conversion.</summary>
+        /// <summary>Appelé par le bouton ribbon ou le hook Tab : déclenche conversion.</summary>
         public void TriggerConversion() => _conversionRequested?.Invoke();
-
-        // --- Events Word → listeners abstraits ---
-
-        private void OnSelectionChange(Word.Selection sel)
-        {
-            _caretMoved?.Invoke(new CaretPosition { Offset = sel.Start });
-        }
     }
 }
