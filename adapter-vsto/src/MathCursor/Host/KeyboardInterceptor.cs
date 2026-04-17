@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 
 namespace MathCursor.Host
@@ -58,15 +59,22 @@ namespace MathCursor.Host
                     {
                         try
                         {
-                            if (handler())
+                            bool consumed = handler();
+                            LogHook("tab_down handler=" + (consumed ? "consume" : "passthru"));
+                            if (consumed)
                             {
                                 return new IntPtr(1); // consommé, Word ne voit pas le Tab
                             }
                         }
-                        catch
+                        catch (Exception ex)
                         {
+                            LogHook("tab_down exception: " + ex.Message);
                             // Jamais remonter d'exception depuis le hook : Windows décroche
                         }
+                    }
+                    else
+                    {
+                        LogHook("tab_down handler=null");
                     }
                 }
             }
@@ -98,5 +106,19 @@ namespace MathCursor.Host
 
         [DllImport("user32.dll")]
         private static extern short GetKeyState(int nVirtKey);
+
+        private static void LogHook(string message)
+        {
+            try
+            {
+                var dir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "MathCursor", "logs");
+                Directory.CreateDirectory(dir);
+                File.AppendAllText(Path.Combine(dir, "mathcursor.log"),
+                    $"{DateTime.UtcNow:o} hook {message}{Environment.NewLine}");
+            }
+            catch { /* jamais d'exception depuis le logging */ }
+        }
     }
 }
