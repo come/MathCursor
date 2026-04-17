@@ -3,9 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MathCursor — Prendre des notes de maths au clavier dans Word</title>
-  <meta name="description" content="Un complément Word qui permet de prendre des notes de maths au clavier, rapidement et sans friction. Pensé pour les lycéens, notamment sous PAP." />
+  <title>MathCursor — Saisissez des maths en langage naturel dans Word</title>
+  <meta name="description" content="Un complément Word qui convertit la notation math au clavier en équations propres. Pensé pour les lycéens, notamment sous PAP, et leurs profs." />
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+  <script>
+    window.addEventListener('load', function () {
+      document.querySelectorAll('[data-math]').forEach(function (el) {
+        katex.render(el.dataset.math, el, { throwOnError: false });
+      });
+    });
+  </script>
 </head>
 <body>
   <header class="site-header">
@@ -14,8 +23,9 @@
       <nav class="nav">
         <a href="#pour-qui">Pour qui</a>
         <a href="#fonctionnement">Fonctionnement</a>
-        <a href="#fonctionnalites">Fonctionnalités</a>
+        <a href="#exemples">Exemples</a>
         <a href="#installation">Installation</a>
+        <a href="#faq">FAQ</a>
       </nav>
     </div>
   </header>
@@ -23,17 +33,22 @@
   <main>
     <section class="hero">
       <div class="container">
-        <h1>Prendre des notes de maths au clavier, dans Word.</h1>
+        <h1>Saisissez des maths en langage naturel, dans Word.</h1>
         <p class="lead">
-          MathCursor convertit ta frappe en équations Word propres, à la demande.
-          Tu tapes <code>1/2</code>, <code>x^2</code>, <code>sqrt(3)</code> au fil du cours —
-          puis un raccourci transforme la zone en équation formatée.
+          MathCursor transforme vos formules tapées au clavier en équations Word propres,
+          à la demande. Tapez <code>1/2</code>, <code>x^2</code>, <code>sqrt(3)</code> —
+          un raccourci convertit la zone.
         </p>
         <div class="cta-row">
           <a href="#installation" class="button button--primary">Installer la bêta</a>
           <a href="#fonctionnement" class="button button--secondary">Voir comment ça marche</a>
         </div>
-        <p class="hero-meta">Word Desktop Windows — Mac, Web et iPad à venir.</p>
+        <div class="hero-badges">
+          <span class="badge">Windows 10 / 11</span>
+          <span class="badge">Word 2016+</span>
+          <span class="badge">Français · English · Deutsch · Español</span>
+          <span class="badge badge--soft">Gratuit · Open source · Sans cloud</span>
+        </div>
       </div>
     </section>
 
@@ -100,7 +115,68 @@
       </div>
     </section>
 
-    <section id="fonctionnalites" class="section">
+    <section id="exemples" class="section">
+      <div class="container">
+        <h2>Exemples multilingues</h2>
+        <p>
+          MathCursor reconnaît les mots-clés math dans les quatre langues
+          supportées. Voici ce que donne la conversion sur quelques phrases
+          typiques.
+        </p>
+        <div class="examples">
+          <article class="example">
+            <div class="example-lang">Français</div>
+            <div class="example-input">
+              <span class="example-label">Tapé :</span>
+              <code>La dérivée de x^2 est 2x</code>
+            </div>
+            <div class="example-output">
+              <span class="example-label">Rendu :</span>
+              La dérivée de <span data-math="x^2"></span> est
+              <span data-math="2x"></span>
+            </div>
+          </article>
+          <article class="example">
+            <div class="example-lang">English</div>
+            <div class="example-input">
+              <span class="example-label">Typed:</span>
+              <code>We have 1/2 + 1/3 = 5/6</code>
+            </div>
+            <div class="example-output">
+              <span class="example-label">Rendered:</span>
+              We have
+              <span data-math="\frac{1}{2} + \frac{1}{3} = \frac{5}{6}"></span>
+            </div>
+          </article>
+          <article class="example">
+            <div class="example-lang">Deutsch</div>
+            <div class="example-input">
+              <span class="example-label">Eingabe:</span>
+              <code>Die Wurzel von 2 ist sqrt(2)</code>
+            </div>
+            <div class="example-output">
+              <span class="example-label">Darstellung:</span>
+              Die Wurzel von 2 ist
+              <span data-math="\sqrt{2}"></span>
+            </div>
+          </article>
+          <article class="example">
+            <div class="example-lang">Español</div>
+            <div class="example-input">
+              <span class="example-label">Tecleado:</span>
+              <code>Sea x = (1 + sqrt(5)) / 2</code>
+            </div>
+            <div class="example-output">
+              <span class="example-label">Representado:</span>
+              Sea
+              <span data-math="x = \frac{1 + \sqrt{5}}{2}"></span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="fonctionnalites" class="section section--alt">
       <div class="container">
         <h2>Fonctionnalités</h2>
         <ul class="features">
@@ -138,7 +214,7 @@
       </div>
     </section>
 
-    <section id="installation" class="section section--alt">
+    <section id="installation" class="section">
       <div class="container">
         <h2>Installation</h2>
         <p>
@@ -186,6 +262,68 @@
           Besoin d'aide, un bug, envie de rejoindre la bêta ?
           <a href="mailto:come2percin@gmail.com">Contact</a>.
         </p>
+      </div>
+    </section>
+
+    <section id="faq" class="section section--alt">
+      <div class="container">
+        <h2>Questions fréquentes</h2>
+        <div class="faq">
+          <details>
+            <summary>Mes données sont-elles envoyées sur Internet ?</summary>
+            <p>
+              Non. MathCursor fonctionne entièrement en local. Aucune donnée
+              ne sort de l'ordinateur — ni les documents, ni la frappe, ni
+              de télémétrie. Pas de compte, pas de cloud.
+            </p>
+          </details>
+          <details>
+            <summary>Ça fonctionne hors ligne ?</summary>
+            <p>
+              Oui. Une connexion Internet n'est utile que pour la mise à
+              jour automatique de la bêta : à chaque ouverture de Word,
+              ClickOnce vérifie s'il y a une nouvelle version sur GitHub
+              Pages. Sans réseau, la version installée continue de
+              fonctionner normalement.
+            </p>
+          </details>
+          <details>
+            <summary>Et le RGPD ?</summary>
+            <p>
+              Rien à signaler. Aucune donnée personnelle n'est collectée,
+              aucun cookie, aucun traceur. MathCursor est un complément Word
+              qui reste sur la machine de l'utilisateur.
+            </p>
+          </details>
+          <details>
+            <summary>Quelles versions de Word sont supportées ?</summary>
+            <p>
+              Word 2016, 2019, 2021 et Microsoft 365 Desktop sur Windows 10
+              et 11. Les portages Mac, Word Web et iPad sont prévus pour la
+              phase 2, après validation de la bêta Windows.
+            </p>
+          </details>
+          <details>
+            <summary>Le certificat auto-signé, c'est safe ?</summary>
+            <p>
+              Oui. Le certificat est importé dans le compte utilisateur
+              uniquement (pas au niveau système), sans droits
+              administrateur. Il peut être supprimé à tout moment via
+              <code>certmgr.msc</code>. Le script d'installation et le code
+              source sont publics sur
+              <a href="https://github.com/come/MathCursor">GitHub</a>.
+            </p>
+          </details>
+          <details>
+            <summary>Comment signaler un bug ou proposer une amélioration ?</summary>
+            <p>
+              Par <a href="mailto:come2percin@gmail.com">email</a> ou en
+              ouvrant une
+              <a href="https://github.com/come/MathCursor/issues">issue GitHub</a>.
+              Les retours des profs et des élèves pilotent la roadmap.
+            </p>
+          </details>
+        </div>
       </div>
     </section>
 
