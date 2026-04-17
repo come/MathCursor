@@ -169,13 +169,34 @@ namespace MathCursor.Host
                 {
                     ClientToScreen(hwnd, ref pt);
                 }
-                LogPos($"caret screen=({pt.X},{pt.Y}) hwnd=0x{hwnd.ToInt64():X}");
-                return (pt.X, pt.Y + 22); // 22px sous la ligne
+                // GetCaretPos retourne des pixels physiques. WPF Window.Left/Top
+                // sont en DIPs (1/96"). Sur un écran à 150% DPI, sans cette conversion,
+                // la popup atterrit 50% trop loin.
+                double scale = GetDpiScale();
+                double dipX = pt.X / scale;
+                double dipY = pt.Y / scale;
+                LogPos($"caret physical=({pt.X},{pt.Y}) scale={scale:F2} dip=({dipX:F0},{dipY:F0})");
+                return (dipX, dipY + 22); // 22 DIP sous la ligne
             }
             catch (Exception ex)
             {
                 LogPos("ERR " + ex.GetType().Name + " " + ex.Message);
                 return (200, 200);
+            }
+        }
+
+        private static double GetDpiScale()
+        {
+            try
+            {
+                using (var g = System.Drawing.Graphics.FromHwnd(IntPtr.Zero))
+                {
+                    return g.DpiX / 96.0;
+                }
+            }
+            catch
+            {
+                return 1.0;
             }
         }
 
