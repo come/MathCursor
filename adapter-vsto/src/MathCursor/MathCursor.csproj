@@ -147,6 +147,13 @@
       <Name>MathCursor.Core</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <!-- NER : ONNX Runtime + Google.Protobuf (lecture du fichier sentencepiece.bpe.model).
+         Le tokenizer Unigram est implémenté en interne (cf. Detection/Sp/),
+         pas de dépendance native externe (pas de BlingFire / Microsoft.ML.Tokenizers). -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
+    <PackageReference Include="Google.Protobuf" Version="3.28.3" />
+  </ItemGroup>
   <Choose>
     <When Condition="$([System.String]::Copy(&quot;;$(DefineConstants);&quot;).ToLower().Contains(';useofficeinterop;')) or $([System.String]::Copy(&quot;,$(DefineConstants),&quot;).ToLower().Contains(',useofficeinterop,'))">
       <ItemGroup>
@@ -237,6 +244,11 @@
     <Compile Include="Host\SuggestionService.cs" />
     <Compile Include="Host\WordContextReader.cs" />
     <Compile Include="UI\SuggestionPopupWindow.cs" />
+    <Compile Include="Detection\DetectedZone.cs" />
+    <Compile Include="Detection\MathNerDetector.cs" />
+    <Compile Include="Detection\Sp\SentencePieceModel.cs" />
+    <Compile Include="Detection\Sp\PieceTrie.cs" />
+    <Compile Include="Detection\Sp\SentencePieceTokenizer.cs" />
     <Compile Include="RibbonCallback.cs" />
     <EmbeddedResource Include="Ribbon.xml" />
     <AppDesigner Include="Properties\" />

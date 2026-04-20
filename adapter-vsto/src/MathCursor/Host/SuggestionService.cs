@@ -1,42 +1,44 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows.Threading;
-using MathCursor.Core.Pipeline;
 using MathCursor.Core.Symbols;
+using MathCursor.Detection;
 using MathCursor.UI;
 using Word = Microsoft.Office.Interop.Word;
 
 namespace MathCursor.Host
 {
     /// <summary>
-    /// Surveille en continu le texte avant le caret (timer 200 ms) et
-    /// affiche/cache une popup WPF avec les candidats SymbolMatcher.
+    /// Surveille en continu le paragraphe courant (timer 200 ms) et affiche
+    /// une popup WPF avec les zones math détectées par le modèle NER.
     ///
-    /// Pourquoi un timer plutôt que <c>WindowSelectionChange</c> seul :
-    /// l'event Word ne fire pas sur chaque keystroke (seulement sur les
-    /// mouvements explicites de curseur). Le polling 200 ms attrape la frappe.
-    ///
-    /// Aussi câblé : <c>WindowDeactivate</c> → cache la popup quand Word
-    /// perd le focus (Alt+Tab) pour qu'elle ne reste pas TopMost à l'écran.
+    /// Pivot pivot ML : la popup affiche maintenant ce que le modèle NER détecte
+    /// (zones math + confiance), pas le résultat du pipeline heuristique.
     /// </summary>
     public sealed class SuggestionService : IDisposable
     {
-        private const int ContextChars = 50;
         private const int PollIntervalMs = 200;
 
         private readonly Word.Application _app;
         private readonly WordContextReader _contextReader;
+        private readonly MathNerDetector _ner;
+
         private SuggestionPopupWindow _popup;
         private DispatcherTimer _pollTimer;
-        private string _lastContext = "";
+        private string _lastParagraph = "";
         private int _lastCaretPos = -1;
         private bool _installed;
+        // Inférence asynchrone : on évite de bloquer le thread UI
+        private bool _inferenceInFlight;
 
-        public SuggestionService(Word.Application app)
+        public SuggestionService(Word.Application app, MathNerDetector ner)
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
+            _ner = ner ?? throw new ArgumentNullException(nameof(ner));
             _contextReader = new WordContextReader(_app);
         }
 
@@ -51,7 +53,7 @@ namespace MathCursor.Host
             {
                 Interval = TimeSpan.FromMilliseconds(PollIntervalMs),
             };
-            _pollTimer.Tick += (_, __) => CheckContextAndUpdate();
+            _pollTimer.Tick += (_, __) => CheckAndUpdate();
             _pollTimer.Start();
             _installed = true;
         }
@@ -74,20 +76,12 @@ namespace MathCursor.Host
 
         public void MoveSelection(int delta) => _popup?.MoveSelection(delta);
         public void EnterNavMode() => _popup?.EnterNavMode();
-
         public void HidePopup() => _popup?.HidePopup();
 
-        private void OnSelectionChange(Word.Selection sel)
-        {
-            // Backup : déclenche aussi un check immédiat (sans attendre le tick)
-            // pour les mouvements explicites de curseur (clic, flèches).
-            CheckContextAndUpdate();
-        }
+        private void OnSelectionChange(Word.Selection sel) => CheckAndUpdate();
 
         private void OnWindowDeactivate(Word.Document doc, Word.Window wnd)
         {
-            // Word perd le focus → cacher la popup + pauser le polling pour
-            // ne pas accéder à un Selection invalide quand Word est hors focus.
             HidePopup();
             try { _pollTimer?.Stop(); } catch { }
         }
@@ -97,69 +91,124 @@ namespace MathCursor.Host
             try { _pollTimer?.Start(); } catch { }
         }
 
-        private void CheckContextAndUpdate()
+        private void CheckAndUpdate()
         {
+            if (_inferenceInFlight) return;
             try
             {
-                // Garde : pas de doc actif → rien à faire (timer continue mais
-                // skip rapide). Évite d'accéder à Selection en état transitoire.
                 if (_app.Documents.Count == 0)
                 {
                     HidePopup();
                     return;
                 }
 
-                int caretPos;
-                string ctx;
+                string paragraphText;
+                int caretInParagraph, caretPos;
                 try
                 {
-                    var sel = _app.Selection;
-                    if (sel == null) return;
-                    caretPos = sel.Start;
-                    // Lecture déléguée à WordContextReader (paragraph-bounded, source unique)
-                    ctx = _contextReader.ReadBefore(ContextChars);
+                    var (text, offset) = _contextReader.ReadCurrentParagraph();
+                    paragraphText = text;
+                    caretInParagraph = offset; // déjà relatif au paragraphe
+                    caretPos = _app.Selection.Start;
                 }
                 catch
                 {
-                    return; // Word en état transitoire, on attend le prochain tick
+                    return;
                 }
 
-                if (ctx == _lastContext && caretPos == _lastCaretPos) return;
-                _lastContext = ctx;
+                // Skip si rien n'a changé depuis le dernier check
+                if (paragraphText == _lastParagraph && caretPos == _lastCaretPos) return;
+                _lastParagraph = paragraphText;
                 _lastCaretPos = caretPos;
 
-                // On utilise le pipeline complet pour que la popup reflète
-                // exactement ce que Tab produira : "alpha+beta" → "α+β" plutôt
-                // que juste "β" (qui était le résultat avec FindSymbol seul).
-                var result = ConversionPipeline.Convert(ctx);
-                if (result.Success && result.Equation != null)
-                {
-                    var display = !string.IsNullOrEmpty(result.Equation.UnicodeFallback)
-                        ? result.Equation.UnicodeFallback
-                        : result.Equation.Source;
-                    var label = result.Zone != null ? "expression" : "symbole";
-                    var choice = new SymbolChoice
-                    {
-                        Display = display,
-                        Replacement = display,
-                        Label = label,
-                    };
-                    int rawLen = result.Equation.Source?.Length ?? 0;
-                    ShowPopup(new[] { choice }, rawLen);
-                }
-                else
+                if (string.IsNullOrWhiteSpace(paragraphText))
                 {
                     HidePopup();
+                    return;
                 }
+
+                LogDiag($"tick len={paragraphText.Length} caret={caretInParagraph} text=\"{Preview(paragraphText)}\"");
+
+                // Inférence sur thread pool (~30-80 ms hors warm-up)
+                _inferenceInFlight = true;
+                Task.Run(() =>
+                {
+                    IReadOnlyList<DetectedZone> zones;
+                    try { zones = _ner.Detect(paragraphText); }
+                    catch (Exception ex) { LogDiag("ner_error: " + ex.Message); zones = Array.Empty<DetectedZone>(); }
+
+                    LogDiag($"zones={zones.Count} -> {string.Join(" | ", zones.Select(z => z.ToString()))}");
+
+                    // Retour sur le thread UI pour mettre à jour la popup
+                    _pollTimer?.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        try { ApplyZones(zones, caretInParagraph); }
+                        finally { _inferenceInFlight = false; }
+                    }));
+                });
             }
             catch
             {
-                // Jamais d'exception depuis le timer
+                _inferenceInFlight = false;
             }
         }
 
-        // Largeur moyenne d'un caractère (DIPs) — estimation pour Calibri 11pt à 100%.
-        // Pour ajuster selon zoom Word, on pourrait lire ActiveWindow.View.Zoom.Percentage.
+        private void ApplyZones(IReadOnlyList<DetectedZone> zones, int caretInParagraph)
+        {
+            if (zones == null || zones.Count == 0)
+            {
+                HidePopup();
+                return;
+            }
+
+            // On n'affiche que la zone la plus proche du curseur, et uniquement
+            // si le curseur est DANS la zone ou directement collé à un bord
+            // (touche la frontière). Sinon → rien.
+            var target = PickNearestZone(zones, caretInParagraph, out int dist);
+            LogDiag($"pick caret={caretInParagraph} target={(target == null ? "null" : target.ToString())} dist={dist}");
+            if (target == null || dist > 0)
+            {
+                HidePopup();
+                return;
+            }
+
+            var choices = new List<SymbolChoice>
+            {
+                new SymbolChoice
+                {
+                    Display = target.Text,
+                    Replacement = target.Text,
+                    Label = $"{target.Confidence:P0}",
+                }
+            };
+
+            int rawLen = target.Text?.Length ?? 0;
+            ShowPopup(choices, rawLen);
+        }
+
+        private static DetectedZone PickNearestZone(IReadOnlyList<DetectedZone> zones, int caret, out int bestDist)
+        {
+            DetectedZone best = null;
+            bestDist = int.MaxValue;
+            foreach (var z in zones)
+            {
+                int dist;
+                if (caret >= z.Start && caret <= z.End) dist = 0;       // curseur dedans ou collé au bord
+                else if (caret < z.Start) dist = z.Start - caret;       // zone après le curseur
+                else dist = caret - z.End;                              // zone avant le curseur
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    best = z;
+                }
+            }
+            return best;
+        }
+
+        // ============================================================
+        // Positionnement popup (inchangé du heuristique)
+        // ============================================================
+
         private const double AvgCharWidthDip = 7.0;
         private const double PopupWidthDip = 280.0;
 
@@ -167,17 +216,10 @@ namespace MathCursor.Host
         {
             if (_popup == null) _popup = new SuggestionPopupWindow();
             var pos = GetCaretScreenPosition();
-
-            // Décale la popup vers la GAUCHE pour qu'elle se positionne sous le
-            // texte qu'elle va remplacer (la zone math), plutôt que pile sous le
-            // curseur. Largeur estimée = rawZoneLength × char_width. Plafonnée
-            // à la largeur popup pour que le curseur reste à minima au-dessus
-            // (à la limite : au bord droit de la popup pour les zones très longues).
             double zoneWidth = Math.Max(0, rawZoneLength) * AvgCharWidthDip;
             double offset = Math.Min(zoneWidth, PopupWidthDip);
             double popupX = pos.x - offset;
-            if (popupX < 0) popupX = 0; // ne pas sortir à gauche de l'écran
-
+            if (popupX < 0) popupX = 0;
             _popup.ShowSuggestions(choices, popupX, pos.y);
         }
 
@@ -185,31 +227,17 @@ namespace MathCursor.Host
         {
             try
             {
-                // Word maintient un caret système (pour accessibilité / IME).
-                // GetCaretPos retourne sa position dans les coords client de la
-                // fenêtre qui le possède. ClientToScreen convertit en absolu.
                 if (!GetCaretPos(out POINT pt))
                 {
-                    LogPos("ERR GetCaretPos returned false");
                     return (200, 200);
                 }
                 IntPtr hwnd = GetFocus();
-                if (hwnd != IntPtr.Zero)
-                {
-                    ClientToScreen(hwnd, ref pt);
-                }
-                // GetCaretPos retourne des pixels physiques. WPF Window.Left/Top
-                // sont en DIPs (1/96"). Sur un écran à 150% DPI, sans cette conversion,
-                // la popup atterrit 50% trop loin.
+                if (hwnd != IntPtr.Zero) ClientToScreen(hwnd, ref pt);
                 double scale = GetDpiScale();
-                double dipX = pt.X / scale;
-                double dipY = pt.Y / scale;
-                LogPos($"caret physical=({pt.X},{pt.Y}) scale={scale:F2} dip=({dipX:F0},{dipY:F0})");
-                return (dipX, dipY + 22); // 22 DIP sous la ligne
+                return (pt.X / scale, pt.Y / scale + 22);
             }
-            catch (Exception ex)
+            catch
             {
-                LogPos("ERR " + ex.GetType().Name + " " + ex.Message);
                 return (200, 200);
             }
         }
@@ -223,13 +251,17 @@ namespace MathCursor.Host
                     return g.DpiX / 96.0;
                 }
             }
-            catch
-            {
-                return 1.0;
-            }
+            catch { return 1.0; }
         }
 
-        private static void LogPos(string message)
+        private static string Preview(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            s = s.Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t");
+            return s.Length > 120 ? s.Substring(0, 120) + "…" : s;
+        }
+
+        private static void LogDiag(string message)
         {
             try
             {
@@ -238,7 +270,7 @@ namespace MathCursor.Host
                     "MathCursor", "logs");
                 Directory.CreateDirectory(dir);
                 File.AppendAllText(Path.Combine(dir, "mathcursor.log"),
-                    $"{DateTime.UtcNow:o} pos {message}{Environment.NewLine}");
+                    $"{DateTime.UtcNow:o} ner {message}{Environment.NewLine}");
             }
             catch { }
         }

@@ -36,3 +36,8 @@ coverage/
 # Certificats (clé privée) — jamais commiter
 *.pfx
 pfx-base64.txt
+
+# Modèle ML — gros fichiers binaires, distribués hors git
+models/
+*.onnx
+*.bpe.model

@@ -1,6 +1,8 @@
 using System;
+using System.IO;
+using System.Threading.Tasks;
 using Microsoft.Office.Core;
-using MathCursor.Core.Orchestration;
+using MathCursor.Detection;
 using MathCursor.Host;
 
 namespace MathCursor
@@ -11,9 +13,9 @@ namespace MathCursor
         private VstoEquationStore _store;
         private VstoEditorSurface _surface;
         private VstoUserFeedback _feedback;
-        private MathCursorOrchestrator _orchestrator;
-        private KeyboardInterceptor _keyboard;
+        private MathNerDetector _ner;
         private SuggestionService _suggestions;
+        private KeyboardInterceptor _keyboard;
 
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
@@ -24,29 +26,37 @@ namespace MathCursor
                 _surface = new VstoEditorSurface(this.Application);
                 _feedback = new VstoUserFeedback();
 
-                _orchestrator = new MathCursorOrchestrator(_host, _store, _surface, _feedback);
+                // Charge le modèle NER (chemin dev hardcodé pour MVP)
+                var modelDir = FindModelDir();
+                _ner = new MathNerDetector(modelDir);
 
-                // Popup de suggestions ancrée au caret
-                _suggestions = new SuggestionService(this.Application);
+                // Warm-up async : la 1ère inférence prend ~500ms, on la fait
+                // hors thread UI pour ne pas bloquer le chargement de Word.
+                _ = _ner.WarmUpAsync();
+
+                // Popup de suggestions
+                _suggestions = new SuggestionService(this.Application, _ner);
                 _suggestions.Install();
 
-                // Hook clavier global pour Tab + Enter + nav popup
+                // Hook clavier — Tab/Enter DÉSACTIVÉS (validation uniquement,
+                // l'utilisateur veut être en contrôle, pas d'action automatique).
+                // Esc seul reste actif pour cacher la popup manuellement.
                 _keyboard = new KeyboardInterceptor
                 {
-                    OnTabPressed = HandleTabPressed,
-                    OnEnterPressed = HandleEnterPressed,
-                    OnUpPressed = HandleUpPressed,
-                    OnDownPressed = HandleDownPressed,
+                    OnTabPressed = () => false,         // pass-through, Word insère un tab
+                    OnEnterPressed = () => false,       // pass-through, Word insère un saut
+                    OnUpPressed = () => false,          // pass-through
+                    OnDownPressed = () => false,        // pass-through
                     OnEscapePressed = HandleEscapePressed,
                 };
                 _keyboard.Install();
 
-                _surface.Notify("MathCursor prêt. Tapez une expression puis Tab.", HostContract.NotificationLevel.Info);
+                _surface.Notify("MathCursor (NER) prêt — détection seule, pas de conversion.", HostContract.NotificationLevel.Info);
             }
             catch (Exception ex)
             {
                 System.Windows.MessageBox.Show(
-                    "Échec du démarrage MathCursor :\n" + ex.Message,
+                    "Échec du démarrage MathCursor :\n" + ex.Message + "\n\n" + ex.StackTrace,
                     "MathCursor",
                     System.Windows.MessageBoxButton.OK,
                     System.Windows.MessageBoxImage.Error);
@@ -57,68 +67,34 @@ namespace MathCursor
         {
             try { _keyboard?.Dispose(); } catch { }
             try { _suggestions?.Dispose(); } catch { }
+            try { _ner?.Dispose(); } catch { }
         }
 
-        private bool HandleTabPressed()
+        /// <summary>
+        /// Cherche le dossier du modèle dans plusieurs endroits standards.
+        /// </summary>
+        private static string FindModelDir()
         {
-            if (_orchestrator == null) return false;
-            try
+            var candidates = new[]
             {
-                bool converted = _orchestrator.TryConvertAtCaret();
-                if (converted)
-                {
-                    _suggestions?.HidePopup();
-                }
-                return converted;
-            }
-            catch (Exception ex)
+                Environment.GetEnvironmentVariable("MATHCURSOR_MODEL_DIR"),
+                Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MathCursor", "models"),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "models"),
+                @"D:\Software\DocMath\models", // dev fallback
+            };
+            foreach (var p in candidates)
             {
-                _feedback?.LogParsingError("(tab_hook)", ex.Message);
-                return false;
+                if (string.IsNullOrEmpty(p)) continue;
+                if (Directory.Exists(p) && File.Exists(Path.Combine(p, "model_quantized.onnx")))
+                    return p;
             }
+            throw new DirectoryNotFoundException(
+                "Modèle NER introuvable. Chemins testés :\n" + string.Join("\n", candidates));
         }
 
-        // Down : si popup visible
-        //   - pas en mode nav → entrer en mode nav (highlight 1er, opacité 0.7)
-        //   - déjà en mode nav → naviguer +1
-        // Sinon → laisser Word gérer la flèche (déplacer le curseur).
-        private bool HandleDownPressed()
-        {
-            if (_suggestions?.IsPopupVisible != true) return false;
-            if (!_suggestions.IsNavMode)
-            {
-                _suggestions.EnterNavMode();
-            }
-            else
-            {
-                _suggestions.MoveSelection(+1);
-            }
-            return true;
-        }
-
-        // Up : navigue dans la popup uniquement en mode nav. En display, laisse Word.
-        private bool HandleUpPressed()
-        {
-            if (_suggestions?.IsPopupVisible == true && _suggestions.IsNavMode)
-            {
-                _suggestions.MoveSelection(-1);
-                return true;
-            }
-            return false;
-        }
-
-        // Enter : valide le choix sélectionné si en mode nav. En display, laisse
-        // Word insérer un saut de paragraphe normalement.
-        private bool HandleEnterPressed()
-        {
-            if (_suggestions?.IsPopupVisible == true && _suggestions.IsNavMode)
-            {
-                return HandleTabPressed();
-            }
-            return false;
-        }
-
-        // Esc : ferme la popup. Si elle est cachée, laisse passer (Word gère).
+        // Esc : cache la popup. Seul handler clavier actif en mode validation.
         private bool HandleEscapePressed()
         {
             if (_suggestions?.IsPopupVisible == true)
@@ -129,10 +105,10 @@ namespace MathCursor
             return false;
         }
 
-        /// <summary>Appelé par le bouton ribbon "Convertir".</summary>
+        /// <summary>Bouton ribbon "Convertir" : DÉSACTIVÉ en mode validation NER.</summary>
         public void TriggerConversion()
         {
-            _orchestrator?.TryConvertAtCaret();
+            // No-op : on est en mode validation détection seule.
         }
 
         protected override IRibbonExtensibility CreateRibbonExtensibilityObject()

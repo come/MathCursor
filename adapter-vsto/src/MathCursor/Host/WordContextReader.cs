@@ -43,6 +43,32 @@ namespace MathCursor.Host
             }
         }
 
+        /// <summary>
+        /// Lit le paragraphe courant entier + la position du caret dans ce texte.
+        /// Utilisé par le détecteur NER qui travaille sur paragraphe complet.
+        /// </summary>
+        public (string paragraphText, int caretOffset) ReadCurrentParagraph()
+        {
+            var doc = _app.ActiveDocument;
+            if (doc == null) return ("", 0);
+            try
+            {
+                var sel = _app.Selection;
+                int caretPos = sel.Start;
+                var paraRange = sel.Paragraphs[1].Range;
+                int paraStart = paraRange.Start;
+                int paraEnd = paraRange.End;
+                if (paraStart >= paraEnd) return ("", 0);
+                var text = doc.Range(paraStart, paraEnd).Text ?? "";
+                int offset = Math.Max(0, Math.Min(caretPos - paraStart, text.Length));
+                return (text, offset);
+            }
+            catch
+            {
+                return ("", 0);
+            }
+        }
+
         /// <summary>Lit le contexte autour du curseur (avant + après), borné par le paragraphe.</summary>
         public ContextText ReadAround(int charsBefore, int charsAfter)
         {
