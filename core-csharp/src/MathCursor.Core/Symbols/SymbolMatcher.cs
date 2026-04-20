@@ -26,14 +26,16 @@ public static class SymbolMatcher
 
     private sealed class Pattern
     {
-        public Regex Re { get; }
+        public Regex EndAnchored { get; }   // pour FindSymbol (popup, end-anchored)
+        public Regex Anywhere { get; }      // pour ReplaceAllInText (scan dans toute la zone)
         public Func<Match, IReadOnlyList<SymbolChoice>> Resolve { get; }
         // Par défaut case-SENSITIVE : nécessaire pour distinguer Delta/delta,
         // Sigma/sigma, et éviter que "inf" matche le pattern AnB (intersection).
         public Pattern(string regex, Func<Match, IReadOnlyList<SymbolChoice>> resolve, bool ignoreCase = false)
         {
             var opts = ignoreCase ? RegexOptions.IgnoreCase : RegexOptions.None;
-            Re = new Regex(regex + "$", opts);
+            EndAnchored = new Regex(regex + "$", opts);
+            Anywhere = new Regex(regex, opts);
             Resolve = resolve;
         }
     }
@@ -165,6 +167,7 @@ public static class SymbolMatcher
     /// <summary>
     /// Cherche un pattern symbolique en fin de <paramref name="text"/>.
     /// Retourne null si aucun pattern ne matche.
+    /// Utilisé par la popup et par le matcher rapide.
     /// </summary>
     public static SymbolMatch? FindSymbol(string text)
     {
@@ -172,7 +175,7 @@ public static class SymbolMatcher
         var trimmed = text.TrimEnd(' ', '\t', '\r', '\n');
         foreach (var p in Patterns)
         {
-            var m = p.Re.Match(trimmed);
+            var m = p.EndAnchored.Match(trimmed);
             if (m.Success)
             {
                 var choices = p.Resolve(m);
@@ -183,5 +186,60 @@ public static class SymbolMatcher
             }
         }
         return null;
+    }
+
+    /// <summary>
+    /// Scan tout <paramref name="text"/> et applique TOUS les remplacements
+    /// symboliques trouvés. Utilisé pour pré-traiter une zone math avant le
+    /// pipeline parser/render : "alpha+beta" devient "α+β" puis traité comme
+    /// une expression unique.
+    /// Les overlaps sont résolus en gardant le 1er match trouvé (par priorité
+    /// dans la table Patterns) à chaque position.
+    /// </summary>
+    public static string ReplaceAllInText(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+
+        // 1. Collecter tous les matches (start, end, replacement)
+        var found = new List<(int start, int end, string replacement)>();
+        foreach (var p in Patterns)
+        {
+            foreach (Match m in p.Anywhere.Matches(text))
+            {
+                var choices = p.Resolve(m);
+                if (choices.Count > 0)
+                {
+                    found.Add((m.Index, m.Index + m.Length, choices[0].Replacement));
+                }
+            }
+        }
+        if (found.Count == 0) return text;
+
+        // 2. Trier par start, garder le 1er match à chaque position (pas d'overlap)
+        found.Sort((a, b) =>
+        {
+            int c = a.start.CompareTo(b.start);
+            return c != 0 ? c : (b.end - b.start).CompareTo(a.end - a.start); // longest at same start wins
+        });
+        var kept = new List<(int, int, string)>();
+        int lastEnd = -1;
+        foreach (var f in found)
+        {
+            if (f.start >= lastEnd)
+            {
+                kept.Add(f);
+                lastEnd = f.end;
+            }
+        }
+
+        // 3. Remplacer de droite à gauche pour ne pas décaler les indices
+        var sb = new System.Text.StringBuilder(text);
+        for (int i = kept.Count - 1; i >= 0; i--)
+        {
+            var (s, e, r) = kept[i];
+            sb.Remove(s, e - s);
+            sb.Insert(s, r);
+        }
+        return sb.ToString();
     }
 }

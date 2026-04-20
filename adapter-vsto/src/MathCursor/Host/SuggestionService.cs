@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
+using MathCursor.Core.Pipeline;
 using MathCursor.Core.Symbols;
 using MathCursor.UI;
 using Word = Microsoft.Office.Interop.Word;
@@ -25,6 +27,7 @@ namespace MathCursor.Host
         private const int PollIntervalMs = 200;
 
         private readonly Word.Application _app;
+        private readonly WordContextReader _contextReader;
         private SuggestionPopupWindow _popup;
         private DispatcherTimer _pollTimer;
         private string _lastContext = "";
@@ -34,6 +37,7 @@ namespace MathCursor.Host
         public SuggestionService(Word.Application app)
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
+            _contextReader = new WordContextReader(_app);
         }
 
         public void Install()
@@ -65,9 +69,11 @@ namespace MathCursor.Host
         }
 
         public bool IsPopupVisible => _popup != null && _popup.IsVisible;
+        public bool IsNavMode => _popup != null && _popup.IsNavMode;
         public int SelectedIndex => _popup?.SelectedIndex ?? 0;
 
         public void MoveSelection(int delta) => _popup?.MoveSelection(delta);
+        public void EnterNavMode() => _popup?.EnterNavMode();
 
         public void HidePopup() => _popup?.HidePopup();
 
@@ -110,7 +116,8 @@ namespace MathCursor.Host
                     var sel = _app.Selection;
                     if (sel == null) return;
                     caretPos = sel.Start;
-                    ctx = ReadContext(caretPos);
+                    // Lecture déléguée à WordContextReader (paragraph-bounded, source unique)
+                    ctx = _contextReader.ReadBefore(ContextChars);
                 }
                 catch
                 {
@@ -121,10 +128,24 @@ namespace MathCursor.Host
                 _lastContext = ctx;
                 _lastCaretPos = caretPos;
 
-                var match = SymbolMatcher.FindSymbol(ctx);
-                if (match != null && match.Choices.Count > 0)
+                // On utilise le pipeline complet pour que la popup reflète
+                // exactement ce que Tab produira : "alpha+beta" → "α+β" plutôt
+                // que juste "β" (qui était le résultat avec FindSymbol seul).
+                var result = ConversionPipeline.Convert(ctx);
+                if (result.Success && result.Equation != null)
                 {
-                    ShowPopup(match.Choices);
+                    var display = !string.IsNullOrEmpty(result.Equation.UnicodeFallback)
+                        ? result.Equation.UnicodeFallback
+                        : result.Equation.Source;
+                    var label = result.Zone != null ? "expression" : "symbole";
+                    var choice = new SymbolChoice
+                    {
+                        Display = display,
+                        Replacement = display,
+                        Label = label,
+                    };
+                    int rawLen = result.Equation.Source?.Length ?? 0;
+                    ShowPopup(new[] { choice }, rawLen);
                 }
                 else
                 {
@@ -137,19 +158,27 @@ namespace MathCursor.Host
             }
         }
 
-        private string ReadContext(int caretPos)
-        {
-            var doc = _app.ActiveDocument;
-            int start = Math.Max(doc.Content.Start, caretPos - ContextChars);
-            if (start >= caretPos) return "";
-            return doc.Range(start, caretPos).Text ?? "";
-        }
+        // Largeur moyenne d'un caractère (DIPs) — estimation pour Calibri 11pt à 100%.
+        // Pour ajuster selon zoom Word, on pourrait lire ActiveWindow.View.Zoom.Percentage.
+        private const double AvgCharWidthDip = 7.0;
+        private const double PopupWidthDip = 280.0;
 
-        private void ShowPopup(System.Collections.Generic.IReadOnlyList<SymbolChoice> choices)
+        private void ShowPopup(IReadOnlyList<SymbolChoice> choices, int rawZoneLength)
         {
             if (_popup == null) _popup = new SuggestionPopupWindow();
             var pos = GetCaretScreenPosition();
-            _popup.ShowSuggestions(choices, pos.x, pos.y);
+
+            // Décale la popup vers la GAUCHE pour qu'elle se positionne sous le
+            // texte qu'elle va remplacer (la zone math), plutôt que pile sous le
+            // curseur. Largeur estimée = rawZoneLength × char_width. Plafonnée
+            // à la largeur popup pour que le curseur reste à minima au-dessus
+            // (à la limite : au bord droit de la popup pour les zones très longues).
+            double zoneWidth = Math.Max(0, rawZoneLength) * AvgCharWidthDip;
+            double offset = Math.Min(zoneWidth, PopupWidthDip);
+            double popupX = pos.x - offset;
+            if (popupX < 0) popupX = 0; // ne pas sortir à gauche de l'écran
+
+            _popup.ShowSuggestions(choices, popupX, pos.y);
         }
 
         private (double x, double y) GetCaretScreenPosition()

@@ -235,6 +235,7 @@
     <Compile Include="Host\VstoUserFeedback.cs" />
     <Compile Include="Host\KeyboardInterceptor.cs" />
     <Compile Include="Host\SuggestionService.cs" />
+    <Compile Include="Host\WordContextReader.cs" />
     <Compile Include="UI\SuggestionPopupWindow.cs" />
     <Compile Include="RibbonCallback.cs" />
     <EmbeddedResource Include="Ribbon.xml" />

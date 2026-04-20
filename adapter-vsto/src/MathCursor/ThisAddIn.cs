@@ -30,10 +30,11 @@ namespace MathCursor
                 _suggestions = new SuggestionService(this.Application);
                 _suggestions.Install();
 
-                // Hook clavier global pour Tab + nav popup
+                // Hook clavier global pour Tab + Enter + nav popup
                 _keyboard = new KeyboardInterceptor
                 {
                     OnTabPressed = HandleTabPressed,
+                    OnEnterPressed = HandleEnterPressed,
                     OnUpPressed = HandleUpPressed,
                     OnDownPressed = HandleDownPressed,
                     OnEscapePressed = HandleEscapePressed,
@@ -77,11 +78,28 @@ namespace MathCursor
             }
         }
 
-        // Up / Down : navigation dans la popup si visible. Sinon laisser passer
-        // (pour que les flèches restent disponibles dans Word).
+        // Down : si popup visible
+        //   - pas en mode nav → entrer en mode nav (highlight 1er, opacité 0.7)
+        //   - déjà en mode nav → naviguer +1
+        // Sinon → laisser Word gérer la flèche (déplacer le curseur).
+        private bool HandleDownPressed()
+        {
+            if (_suggestions?.IsPopupVisible != true) return false;
+            if (!_suggestions.IsNavMode)
+            {
+                _suggestions.EnterNavMode();
+            }
+            else
+            {
+                _suggestions.MoveSelection(+1);
+            }
+            return true;
+        }
+
+        // Up : navigue dans la popup uniquement en mode nav. En display, laisse Word.
         private bool HandleUpPressed()
         {
-            if (_suggestions?.IsPopupVisible == true)
+            if (_suggestions?.IsPopupVisible == true && _suggestions.IsNavMode)
             {
                 _suggestions.MoveSelection(-1);
                 return true;
@@ -89,12 +107,13 @@ namespace MathCursor
             return false;
         }
 
-        private bool HandleDownPressed()
+        // Enter : valide le choix sélectionné si en mode nav. En display, laisse
+        // Word insérer un saut de paragraphe normalement.
+        private bool HandleEnterPressed()
         {
-            if (_suggestions?.IsPopupVisible == true)
+            if (_suggestions?.IsPopupVisible == true && _suggestions.IsNavMode)
             {
-                _suggestions.MoveSelection(+1);
-                return true;
+                return HandleTabPressed();
             }
             return false;
         }

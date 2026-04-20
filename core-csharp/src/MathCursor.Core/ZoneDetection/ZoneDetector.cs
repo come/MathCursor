@@ -31,9 +31,17 @@ public static class ZoneDetector
     {
         if (tokens.Count == 0) return null;
 
-        // Ignorer les whitespaces en fin
+        // Ignorer les whitespaces ET les tokens prose en fin. Un mot non-math
+        // collé après une zone math ("f(x)=1/x bonjour") ne doit pas étendre la
+        // zone — on la borne au dernier token vraiment math.
         int end = tokens.Count - 1;
-        while (end >= 0 && tokens[end].Categories.Contains(UnicodeCategory.Whitespace)) end--;
+        while (end >= 0)
+        {
+            var t = tokens[end];
+            if (t.Categories.Contains(UnicodeCategory.Whitespace)) { end--; continue; }
+            if (t.Mathiness < MathThreshold) { end--; continue; }
+            break;
+        }
         if (end < 0) return null;
 
         // Remonter depuis la fin : chercher la dernière transition prose → math

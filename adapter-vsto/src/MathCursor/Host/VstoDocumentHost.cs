@@ -16,43 +16,19 @@ namespace MathCursor.Host
     public sealed class VstoDocumentHost : IDocumentHost
     {
         private readonly Word.Application _app;
+        private readonly WordContextReader _contextReader;
         private event ConversionRequestedListener _conversionRequested;
 
         public VstoDocumentHost(Word.Application app)
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
+            _contextReader = new WordContextReader(_app);
         }
 
+        /// <summary>Lecture déléguée à WordContextReader (source unique).</summary>
         public Task<ContextText> ReadContextAroundCaretAsync(int charsBefore, int charsAfter)
         {
-            var sel = _app.Selection;
-            int caretPos = sel.Start;
-            var doc = _app.ActiveDocument;
-            int docStart = doc.Content.Start;
-            int docEnd = doc.Content.End;
-
-            int startOffset = Math.Max(docStart, caretPos - charsBefore);
-            int endOffset = Math.Min(docEnd, caretPos + charsAfter);
-
-            string textBefore = "";
-            if (caretPos > startOffset)
-            {
-                textBefore = doc.Range(startOffset, caretPos).Text ?? "";
-            }
-
-            string textAfter = "";
-            if (endOffset > caretPos)
-            {
-                textAfter = doc.Range(caretPos, endOffset).Text ?? "";
-            }
-
-            return Task.FromResult(new ContextText
-            {
-                TextBefore = textBefore,
-                TextAfter = textAfter,
-                CaretOffset = textBefore.Length,
-                LanguageHint = null,
-            });
+            return Task.FromResult(_contextReader.ReadAround(charsBefore, charsAfter));
         }
 
         public Task<EquationHandle> InsertEquationAsync(TextZone zone, EquationOutput equation)
@@ -67,14 +43,11 @@ namespace MathCursor.Host
                 ? equation.UnicodeFallback
                 : equation.Source;
 
-            // Refus si la zone à remplacer contient déjà une OMath : on ne peut
-            // pas la "deleter" via .Text=, et fusionner deux maths est délicat.
+            // La zone peut chevaucher un OMath existant — c'est le cas typique
+            // après "alpha"+Tab puis "+beta"+Tab : on veut MISE À JOUR de l'OMath
+            // existant pour qu'il devienne α+β. Word's Range.Text = "..." remplace
+            // tout y compris les OMaths.
             var replaceRange = doc.Range(zoneStart, caretPos);
-            if (replaceRange.OMaths.Count > 0)
-            {
-                throw new InvalidOperationException(
-                    "Zone à convertir chevauche une OMath existante.");
-            }
 
             var handleId = Guid.NewGuid().ToString("N");
 
@@ -90,18 +63,28 @@ namespace MathCursor.Host
                 mathRange.OMaths.Add(mathRange);
                 mathRange.OMaths.BuildUp();
 
-                int afterPos;
-                if (doc.OMaths.Count > 0)
+                // Trouver L'OMath qu'on vient d'ajouter — celui qui contient
+                // zoneStart. doc.OMaths[Count] donnerait le DERNIER OMath du
+                // document (en bas de page), pas le nôtre. Scan explicite.
+                int afterPos = zoneStart + linearText.Length + 1; // estimation par défaut
+                foreach (Word.OMath om in doc.OMaths)
                 {
-                    var lastMath = doc.OMaths[doc.OMaths.Count];
-                    afterPos = lastMath.Range.End + 1; // +1 = espace trailing
-                }
-                else
-                {
-                    afterPos = zoneStart + linearText.Length + 1;
+                    var rng = om.Range;
+                    if (rng.Start <= zoneStart && rng.End > zoneStart)
+                    {
+                        // +1 pour passer l'espace trailing inséré juste après
+                        afterPos = rng.End + 1;
+                        break;
+                    }
                 }
                 if (afterPos > doc.Content.End) afterPos = doc.Content.End;
                 _app.Selection.SetRange(afterPos, afterPos);
+
+                // Workaround Word : positionner le curseur juste après un OMath
+                // peut le laisser INSIDE l'éditeur math (notamment dans le cas de
+                // mise à jour d'un OMath existant). On vérifie via wdInMathBuilder
+                // et on avance d'un caractère tant qu'on est encore dans le math.
+                NudgeCursorOutOfMath(doc);
             }
             catch
             {
@@ -109,9 +92,33 @@ namespace MathCursor.Host
                 var fallbackPos = zoneStart + linearText.Length + 1;
                 if (fallbackPos > doc.Content.End) fallbackPos = doc.Content.End;
                 _app.Selection.SetRange(fallbackPos, fallbackPos);
+                NudgeCursorOutOfMath(doc);
             }
 
             return Task.FromResult(new EquationHandle(handleId));
+        }
+
+        /// <summary>
+        /// Si Word a placé le curseur à l'intérieur d'un OMath malgré notre
+        /// SetRange (Word interprète parfois "juste après" comme "dedans"),
+        /// on saute directement à la fin de cet OMath + 1 (un seul saut, pas
+        /// d'itération à travers l'expression).
+        /// </summary>
+        private void NudgeCursorOutOfMath(Word.Document doc)
+        {
+            try
+            {
+                var sel = _app.Selection;
+                if (sel.OMaths.Count == 0) return;
+                int omEnd = sel.OMaths[1].Range.End;
+                int target = omEnd + 1;
+                if (target > doc.Content.End) target = doc.Content.End;
+                _app.Selection.SetRange(target, target);
+            }
+            catch
+            {
+                // Ne jamais propager : positionnement curseur best-effort
+            }
         }
 
         // --- Stubs phase C2 (édition d'équations via Content Controls) ---

@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using MathCursor.Core.Symbols;
 
 namespace MathCursor.UI
@@ -16,7 +17,17 @@ namespace MathCursor.UI
     /// </summary>
     public sealed class SuggestionPopupWindow : Window
     {
+        // Brief ergo : popup discrète, fondu in/out 150ms.
+        // Display mode (popup informative) = 0.5
+        // Nav mode (utilisateur a pressé Down et navigue dans les choix) = 0.7
+        private const double DisplayOpacity = 0.5;
+        private const double NavOpacity = 0.7;
+        private const int FadeMs = 150;
+
         private readonly ListBox _list;
+        private bool _navMode;
+
+        public bool IsNavMode => _navMode;
 
         public SuggestionPopupWindow()
         {
@@ -28,6 +39,8 @@ namespace MathCursor.UI
             Width = 280;
             SizeToContent = SizeToContent.Height;
             Background = Brushes.White;
+            AllowsTransparency = true; // requis pour Opacity < 1 sur Window borderless
+            Opacity = 0; // démarrer invisible, on fade in à Show
 
             var border = new Border
             {
@@ -86,9 +99,27 @@ namespace MathCursor.UI
                 });
             }
             _list.SelectedIndex = 0;
+            _navMode = false; // toute mise à jour ramène en display mode
             Left = screenX;
             Top = screenY;
             if (!IsVisible) Show();
+
+            // Fade vers DisplayOpacity. DoubleAnimation à 1 paramètre anime
+            // depuis la valeur courante. Si on était en cours de fade-out,
+            // ça interrompt et repart en sens inverse.
+            BeginAnimation(OpacityProperty,
+                new DoubleAnimation(DisplayOpacity, TimeSpan.FromMilliseconds(FadeMs)));
+        }
+
+        /// <summary>L'utilisateur a pressé Down — on entre en mode navigation
+        /// (opacité augmentée, sélection mise en avant). Up/Down navigueront
+        /// désormais dans les choix, Enter validera le sélectionné.</summary>
+        public void EnterNavMode()
+        {
+            if (_navMode) return;
+            _navMode = true;
+            BeginAnimation(OpacityProperty,
+                new DoubleAnimation(NavOpacity, TimeSpan.FromMilliseconds(FadeMs / 2)));
         }
 
         public void MoveSelection(int delta)
@@ -100,7 +131,20 @@ namespace MathCursor.UI
 
         public void HidePopup()
         {
-            if (IsVisible) Hide();
+            if (!IsVisible) return;
+            var anim = new DoubleAnimation(0, TimeSpan.FromMilliseconds(FadeMs));
+            anim.Completed += (_, __) =>
+            {
+                // Si l'opacité est revenue à ~0 (pas interrompue par un Show
+                // entre temps), on cache vraiment la fenêtre.
+                if (Opacity <= 0.01)
+                {
+                    Hide();
+                    BeginAnimation(OpacityProperty, null);
+                    Opacity = 0;
+                }
+            };
+            BeginAnimation(OpacityProperty, anim);
         }
 
         // --- Win32 pour WS_EX_NOACTIVATE / WS_EX_TOOLWINDOW ---
