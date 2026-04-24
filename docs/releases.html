@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MathCursor — Téléchargements</title>
+  <meta name="description" content="Installateurs MathCursor pour Word Desktop — version courante et historique." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Badge pour versions retirées du téléchargement mais conservées dans le changelog. */
+    .retired-note {
+      display: inline-block;
+      font-size: 12px;
+      color: #888;
+      background: #f3f3f3;
+      border: 1px solid #e5e5e5;
+      border-radius: 4px;
+      padding: 4px 10px;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="brand">MathCursor</a>
+      <nav class="nav">
+        <a href="index.html#pour-qui" data-i18n="nav_for">Pour qui</a>
+        <a href="index.html#fonctionnement" data-i18n="nav_how">Fonctionnement</a>
+        <a href="index.html#exemples" data-i18n="nav_examples">Exemples</a>
+        <a href="index.html#installation" data-i18n="nav_install">Installation</a>
+        <a href="releases.html" class="active" data-i18n="nav_downloads">Téléchargements</a>
+        <a href="index.html#inscription" data-i18n="nav_signup">Inscription</a>
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button type="button" data-lang="fr" class="active">FR</button>
+          <button type="button" data-lang="en">EN</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+
+    <section class="section">
+      <div class="container">
+        <h1 data-i18n="dl_h1">Téléchargements</h1>
+        <p class="lead" data-i18n="dl_lead">Installateur MathCursor pour Windows + Word Desktop. Le lien <code>latest.exe</code> pointe toujours sur la dernière version stable.</p>
+
+        <div class="cta-row" style="margin: 24px 0 40px;">
+          <a href="/download/latest.exe" class="button button--primary" download data-i18n="dl_cta_latest">
+            Télécharger la dernière version (0.3.2)
+          </a>
+          <a href="index.html#installation" class="button button--secondary" data-i18n="dl_cta_guide">
+            Guide d'installation
+          </a>
+        </div>
+
+        <h2 data-i18n="dl_history_h">Historique des versions</h2>
+
+        <article class="card" style="margin-bottom: 20px;">
+          <h3>0.3.2 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_032_date">— 24 avril 2026</span></h3>
+          <ul>
+            <li data-i18n="dl_032_1"><strong>Install vraiment silencieux</strong> : plus de popup Windows pendant l'installation. Le certificat est importé uniquement dans le store <em>TrustedPublisher</em> (suffisant pour VSTO), pas dans <em>Root</em> qui déclenchait un dialog de confirmation forcé par Windows.</li>
+          </ul>
+          <a href="/download/MathCursor-Setup-0.3.2.exe" class="button button--secondary" download data-i18n="dl_032_btn">Télécharger 0.3.2</a>
+        </article>
+
+        <article class="card" style="margin-bottom: 20px;">
+          <h3>0.3.1 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_031_date">— 24 avril 2026</span></h3>
+          <ul>
+            <li data-i18n="dl_031_1"><strong>Installation en un click</strong> (première tentative) : l'installateur importe lui-même le certificat. Plus besoin d'ouvrir PowerShell avant.</li>
+          </ul>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.3.2 qui inclut ces changements.</div>
+        </article>
+
+        <article class="card" style="margin-bottom: 20px;">
+          <h3>0.3.0 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_030_date">— 24 avril 2026</span></h3>
+          <ul>
+            <li data-i18n="dl_030_1"><strong>Feedback in-popup</strong> : lien « Signaler une erreur » au pied de chaque suggestion, dialog modal avec pré-remplissage du contexte, envoi via presse-papier ou HTTP (selon config).</li>
+            <li data-i18n="dl_030_2"><strong>Matching préfixe</strong> : propositions partielles avec <code>…</code> en rouge quand aucun pattern complet ne matche.</li>
+            <li data-i18n="dl_030_3"><strong>Sum / product / integral sans mot-clé</strong> : <code>Sum k 1 n f(x)</code> marche comme <code>lim x 0 f(x)</code>.</li>
+            <li data-i18n="dl_030_4"><strong>Angle <code>ABC</code></strong> (3 lettres majuscules) proposé avec la notation <code>∠ABC</code>.</li>
+            <li data-i18n="dl_030_5"><strong>Fix</strong> : Ctrl+Espace ne coupe plus la span sur un <code>;</code> ou <code>,</code> à l'intérieur d'un intervalle <code>[0;+∞[</code>.</li>
+          </ul>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.3.2 qui inclut ces changements.</div>
+        </article>
+
+        <article class="card" style="margin-bottom: 20px;">
+          <h3>0.2.0 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_020_date">— 23 avril 2026</span></h3>
+          <ul>
+            <li data-i18n="dl_020_1"><strong>Ctrl+Espace</strong> force la popup sur ce qui vient d'être tapé (issue de secours quand la détection automatique rate).</li>
+            <li data-i18n="dl_020_2"><strong>Bouton « Signaler un souci »</strong> dans le ruban : zip log + contexte prêt à envoyer.</li>
+            <li data-i18n="dl_020_3"><strong>Bouton « Aide »</strong> avec un readme des raccourcis.</li>
+            <li data-i18n="dl_020_4"><strong>Alignement</strong> : l'équation suit l'alignement du paragraphe (plus de centrage forcé).</li>
+            <li data-i18n="dl_020_5"><strong>Fix</strong> : position popup fiable même quand le doc contient déjà des équations.</li>
+            <li data-i18n="dl_020_6"><strong>Fix</strong> : plus de « . » dégénéré quand un rendu LaTeX partiel échoue (fallback propre).</li>
+          </ul>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.3.2 qui inclut ces changements.</div>
+        </article>
+
+        <article class="card" style="margin-bottom: 20px;">
+          <h3>0.1.0 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_010_date">— 22 avril 2026</span></h3>
+          <ul>
+            <li data-i18n="dl_010_1">Première bêta interne. Détection NER des zones math, popup de suggestions, insertion en OMath Word.</li>
+          </ul>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.3.2 qui inclut ces changements.</div>
+        </article>
+
+        <p class="install-note" style="margin-top: 40px;" data-i18n="dl_note">
+          L'installation se fait en un click : aucun compte, aucun cloud, aucun
+          document n'est envoyé nulle part. Voir le
+          <a href="index.html#installation">guide d'installation</a> pour les
+          détails.
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p data-i18n="dl_foot">© 2026 MathCursor · Bêta privée · <a href="mailto:come2percin@gmail.com">Contact</a></p>
+    </div>
+  </footer>
+
+  <script>
+    const I18N = {
+      en: {
+        nav_for: "Who it's for",
+        nav_how: "How it works",
+        nav_examples: "Examples",
+        nav_install: "Install",
+        nav_downloads: "Downloads",
+        nav_signup: "Sign up",
+
+        dl_h1: "Downloads",
+        dl_lead: "MathCursor installer for Windows + Word Desktop. The <code>latest.exe</code> link always points to the current stable release.",
+        dl_cta_latest: "Download the latest version (0.3.2)",
+        dl_cta_guide: "Install guide",
+        dl_history_h: "Version history",
+
+        dl_032_date: "— April 24, 2026",
+        dl_032_1: "<strong>Truly silent install</strong>: no more Windows popup during install. The certificate is imported only into the <em>TrustedPublisher</em> store (enough for VSTO), not into <em>Root</em> which triggered a forced Windows confirmation dialog.",
+        dl_032_btn: "Download 0.3.2",
+
+        dl_031_date: "— April 24, 2026",
+        dl_031_1: "<strong>One-click install</strong> (first attempt): the installer imports the certificate itself. No more PowerShell prompt to run.",
+
+        dl_030_date: "— April 24, 2026",
+        dl_030_1: "<strong>In-popup feedback</strong>: \"Report an issue\" link at the foot of each suggestion, modal dialog with context pre-filled, send via clipboard or HTTP (configurable).",
+        dl_030_2: "<strong>Prefix matching</strong>: partial suggestions with red <code>…</code> placeholders when no complete pattern matches.",
+        dl_030_3: "<strong>Sum / product / integral without keywords</strong>: <code>Sum k 1 n f(x)</code> works like <code>lim x 0 f(x)</code>.",
+        dl_030_4: "<strong>Angle <code>ABC</code></strong> (3 uppercase letters) offered with <code>∠ABC</code> notation.",
+        dl_030_5: "<strong>Fix</strong>: Ctrl+Space no longer truncates the span on a <code>;</code> or <code>,</code> inside an interval <code>[0;+∞[</code>.",
+
+        dl_020_date: "— April 23, 2026",
+        dl_020_1: "<strong>Ctrl+Space</strong> forces the popup on what you just typed (fallback when auto-detection fails).",
+        dl_020_2: "<strong>\"Report an issue\" button</strong> in the ribbon: ready-to-send log + context zip.",
+        dl_020_3: "<strong>\"Help\" button</strong> with a readme of shortcuts.",
+        dl_020_4: "<strong>Alignment</strong>: equations follow the paragraph alignment (no more forced centering).",
+        dl_020_5: "<strong>Fix</strong>: reliable popup positioning even when the doc already contains equations.",
+        dl_020_6: "<strong>Fix</strong>: no more degenerate \".\" when a partial LaTeX render fails (clean fallback).",
+
+        dl_010_date: "— April 22, 2026",
+        dl_010_1: "First internal beta. NER math zone detection, suggestion popup, OMath Word insertion.",
+
+        dl_retired: "Archived version — use 0.3.2 which includes these changes.",
+        dl_note: "One-click install: no account, no cloud, no document is sent anywhere. See the <a href=\"index.html#installation\">install guide</a> for details.",
+        dl_foot: "© 2026 MathCursor · Private beta · <a href=\"mailto:come2percin@gmail.com\">Contact</a>"
+      }
+    };
+
+    function setLang(lang) {
+      const dict = I18N[lang];
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        if (!dict) return;
+        if (dict[key]) el.innerHTML = dict[key];
+      });
+      document.querySelectorAll('.lang-toggle button').forEach(b => {
+        b.classList.toggle('active', b.dataset.lang === lang);
+      });
+      try { localStorage.setItem('mc_lang', lang); } catch (e) {}
+    }
+
+    const FR_SNAPSHOT = {};
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      FR_SNAPSHOT[el.dataset.i18n] = el.innerHTML;
+    });
+    I18N.fr = FR_SNAPSHOT;
+
+    document.querySelectorAll('.lang-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => setLang(btn.dataset.lang));
+    });
+
+    let saved = null;
+    try { saved = localStorage.getItem('mc_lang'); } catch (e) {}
+    if (!saved) {
+      saved = (navigator.language || 'fr').toLowerCase().startsWith('en') ? 'en' : 'fr';
+    }
+    if (saved === 'en') setLang('en');
+  </script>
+
+</body>
+</html>

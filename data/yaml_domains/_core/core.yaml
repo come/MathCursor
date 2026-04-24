@@ -1,0 +1,246 @@
+# Core — tokens universels, indépendants de la langue
+# Ces tokens sont chargés systématiquement.
+
+domain: core
+version: 1
+description: "Symboles, opérateurs, nombres, relations"
+priority: 0
+
+tokens:
+
+  # Opérateurs arithmétiques
+  PLUS:
+    canonical: "+"
+    aliases: ["+"]
+  MINUS:
+    canonical: "-"
+    aliases: ["-"]
+  TIMES:
+    canonical: "\\cdot"
+    aliases: ["*", "."]
+    # note: 'x' ambigu (variables) → non aliasé ; '.' géré comme décimale si entouré de digits
+  DIV:
+    canonical: "/"
+    aliases: ["/"]
+    # Note: ':' RETIRÉ (conflit avec COLON utilisé par fonction mapsto). En
+    # pratique ':' comme division/ratio est rare — un élève tape "a/b".
+  POWER:
+    canonical: "^"
+    aliases: ["^", "**"]
+  UNDERSCORE:
+    canonical: "_"
+    aliases: ["_"]
+
+  # Relations
+  EQ:
+    canonical: "="
+    aliases: ["=", "=="]
+  NEQ:
+    canonical: "\\neq"
+    aliases: ["!=", "<>", "=/="]
+  LT:
+    canonical: "<"
+    aliases: ["<"]
+  GT:
+    canonical: ">"
+    aliases: [">"]
+  LEQ:
+    canonical: "\\leq"
+    aliases: ["<=", "=<"]
+  GEQ:
+    canonical: "\\geq"
+    aliases: [">=", "=>"]
+  APPROX:
+    canonical: "\\approx"
+    aliases: ["~=", "~~"]
+
+  # Flèches
+  ARROW:
+    canonical: "\\to"
+    aliases: ["->", "-->", "→"]
+  DOUBLEARROW:
+    canonical: "\\iff"
+    aliases: ["<=>", "<->", "⟺"]
+  IMPLIES:
+    canonical: "\\Rightarrow"
+    aliases: ["=>", "==>", "⟹"]
+
+  # Infini
+  INFINITY:
+    canonical: "\\infty"
+    aliases: [inf, infty, infini, infinity, "∞", oo]
+    fuzzy_max_distance: 1
+
+  # Lettres grecques courantes (nommées en ASCII)
+  ALPHA:
+    canonical: "\\alpha"
+    aliases: [alpha, α]
+  BETA:
+    canonical: "\\beta"
+    aliases: [beta, β]
+  GAMMA:
+    canonical: "\\gamma"
+    aliases: [gamma, γ]
+  DELTA:
+    canonical: "\\delta"
+    aliases: [delta, δ]
+  EPSILON:
+    canonical: "\\epsilon"
+    aliases: [epsilon, eps, ε]
+  THETA:
+    canonical: "\\theta"
+    aliases: [theta, θ]
+  LAMBDA:
+    canonical: "\\lambda"
+    aliases: [lambda, λ]
+  MU:
+    canonical: "\\mu"
+    aliases: [mu, μ]
+  PI:
+    canonical: "\\pi"
+    aliases: [pi, π]
+  SIGMA:
+    canonical: "\\sigma"
+    aliases: [sigma, σ]
+  PHI:
+    canonical: "\\varphi"
+    aliases: [phi, φ]
+  OMEGA:
+    canonical: "\\omega"
+    aliases: [omega, ω]
+
+  # Lettres grecques supplémentaires (minuscules)
+  ZETA:
+    canonical: "\\zeta"
+    aliases: [zeta, ζ]
+  ETA:
+    canonical: "\\eta"
+    aliases: [eta, η]
+  IOTA:
+    canonical: "\\iota"
+    aliases: [iota, ι]
+  KAPPA:
+    canonical: "\\kappa"
+    aliases: [kappa, κ]
+  NU:
+    canonical: "\\nu"
+    aliases: [nu, ν]
+  XI:
+    canonical: "\\xi"
+    aliases: [xi, ξ]
+  RHO:
+    canonical: "\\rho"
+    aliases: [rho, ρ]
+  TAU:
+    canonical: "\\tau"
+    aliases: [tau, τ]
+  UPSILON:
+    canonical: "\\upsilon"
+    aliases: [upsilon, υ]
+  CHI:
+    canonical: "\\chi"
+    aliases: [chi, χ]
+  PSI:
+    canonical: "\\psi"
+    aliases: [psi, ψ]
+
+  # Lettres grecques majuscules
+  GAMMA_UPPER:
+    canonical: "\\Gamma"
+    aliases: [Gamma, Γ]
+  DELTA_UPPER:
+    canonical: "\\Delta"
+    aliases: [Delta, Δ]
+  THETA_UPPER:
+    canonical: "\\Theta"
+    aliases: [Theta, Θ]
+  LAMBDA_UPPER:
+    canonical: "\\Lambda"
+    aliases: [Lambda, Λ]
+  XI_UPPER:
+    canonical: "\\Xi"
+    aliases: [Xi, Ξ]
+  PI_UPPER:
+    canonical: "\\Pi"
+    aliases: [Pi, Π]
+  SIGMA_UPPER:
+    canonical: "\\Sigma"
+    aliases: [Sigma, Σ]
+  UPSILON_UPPER:
+    canonical: "\\Upsilon"
+    aliases: [Upsilon, ϒ]
+  PHI_UPPER:
+    canonical: "\\Phi"
+    aliases: [Phi, Φ]
+  PSI_UPPER:
+    canonical: "\\Psi"
+    aliases: [Psi, Ψ]
+  OMEGA_UPPER:
+    canonical: "\\Omega"
+    aliases: [Omega, Ω]
+
+  # Variantes (varepsilon, vartheta, etc.)
+  VAREPSILON:
+    canonical: "\\varepsilon"
+    aliases: [varepsilon, varep]
+  VARTHETA:
+    canonical: "\\vartheta"
+    aliases: [vartheta]
+  VARPI:
+    canonical: "\\varpi"
+    aliases: [varpi]
+  VARRHO:
+    canonical: "\\varrho"
+    aliases: [varrho]
+  VARSIGMA:
+    canonical: "\\varsigma"
+    aliases: [varsigma]
+  VARPHI:
+    canonical: "\\phi"
+    aliases: [varphi]
+
+  # Délimiteurs
+  LPAREN:
+    canonical: "("
+    aliases: ["("]
+  RPAREN:
+    canonical: ")"
+    aliases: [")"]
+  LBRACKET:
+    canonical: "["
+    aliases: ["["]
+  RBRACKET:
+    canonical: "]"
+    aliases: ["]"]
+  LBRACE:
+    canonical: "\\{"
+    aliases: ["{"]
+  RBRACE:
+    canonical: "\\}"
+    aliases: ["}"]
+  PIPE:
+    canonical: "|"
+    aliases: ["|"]
+
+  # Ponctuation math
+  COMMA:
+    canonical: ","
+    aliases: [","]
+  SEMICOLON:
+    canonical: ";"
+    aliases: [";"]
+
+  # Pourcentage : utilisé avec NUMBER pour produire "\%"
+  PERCENT:
+    canonical: "\\%"
+    aliases: ["%"]
+
+  # Deux-points : séparateur dans "f : x ↦ ..."
+  COLON:
+    canonical: ":"
+    aliases: [":"]
+
+  # Flèche "mapsto" : notation formelle des fonctions (f : x ↦ x^2)
+  MAPSTO:
+    canonical: "\\mapsto"
+    aliases: ["↦", "|->", "|-->"]

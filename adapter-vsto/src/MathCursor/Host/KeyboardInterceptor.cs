@@ -23,7 +23,9 @@ namespace MathCursor.Host
         private const int VK_TAB = 0x09;
         private const int VK_RETURN = 0x0D;
         private const int VK_SHIFT = 0x10;
+        private const int VK_CONTROL = 0x11;
         private const int VK_ESCAPE = 0x1B;
+        private const int VK_SPACE = 0x20;
         private const int VK_UP = 0x26;
         private const int VK_DOWN = 0x28;
 
@@ -32,6 +34,7 @@ namespace MathCursor.Host
         public Func<bool> OnUpPressed { get; set; }
         public Func<bool> OnDownPressed { get; set; }
         public Func<bool> OnEscapePressed { get; set; }
+        public Func<bool> OnCtrlSpacePressed { get; set; }
 
         private IntPtr _hookHandle;
         private KeyboardHookProc _proc; // référence GC-stable
@@ -62,9 +65,11 @@ namespace MathCursor.Host
                 if (keyDown)
                 {
                     bool shiftDown = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+                    bool ctrlDown = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
                     Func<bool> handler = null;
 
-                    if (vkCode == VK_TAB && !shiftDown) handler = OnTabPressed;
+                    if (vkCode == VK_SPACE && ctrlDown) handler = OnCtrlSpacePressed;
+                    else if (vkCode == VK_TAB && !shiftDown) handler = OnTabPressed;
                     else if (vkCode == VK_RETURN && !shiftDown) handler = OnEnterPressed;
                     else if (vkCode == VK_UP) handler = OnUpPressed;
                     else if (vkCode == VK_DOWN) handler = OnDownPressed;

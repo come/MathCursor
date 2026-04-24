@@ -1,0 +1,16 @@
+name = "mathcursor"
+compatibility_date = "2024-10-22"
+pages_build_output_dir = "."
+
+# Bucket R2 qui héberge les installers. Les fichiers sont trop gros (~200 MB
+# chacun) pour la limite Pages (25 MB par asset), d'où R2.
+[[r2_buckets]]
+binding = "RELEASES"
+bucket_name = "mathcursor-releases"
+
+# Analytics Engine : stats par download (fichier, date, pays, user-agent...).
+# Dataset créé manuellement dans le dashboard Cloudflare (une fois le compte
+# AE activé). La Function log fire-and-forget via env.DOWNLOADS.
+[[analytics_engine_datasets]]
+binding = "DOWNLOADS"
+dataset = "mathcursor_downloads"

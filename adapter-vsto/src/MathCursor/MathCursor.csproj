@@ -105,6 +105,9 @@
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Net.Http" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Core" />
@@ -153,6 +156,8 @@
          pas de dépendance native externe (pas de BlingFire / Microsoft.ML.Tokenizers). -->
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
     <PackageReference Include="Google.Protobuf" Version="3.28.3" />
+    <!-- Rendu LaTeX → WPF (FormulaControl). Pur managé, pas de runtime externe. -->
+    <PackageReference Include="WpfMath" Version="2.1.0" />
   </ItemGroup>
   <Choose>
     <When Condition="$([System.String]::Copy(&quot;;$(DefineConstants);&quot;).ToLower().Contains(';useofficeinterop;')) or $([System.String]::Copy(&quot;,$(DefineConstants),&quot;).ToLower().Contains(',useofficeinterop,'))">
@@ -236,14 +241,20 @@
     <Compile Include="ThisAddIn.Designer.cs">
       <DependentUpon>ThisAddIn.Designer.xml</DependentUpon>
     </Compile>
-    <Compile Include="Host\VstoDocumentHost.cs" />
     <Compile Include="Host\VstoEquationStore.cs" />
-    <Compile Include="Host\VstoEditorSurface.cs" />
-    <Compile Include="Host\VstoUserFeedback.cs" />
     <Compile Include="Host\KeyboardInterceptor.cs" />
     <Compile Include="Host\SuggestionService.cs" />
     <Compile Include="Host\WordContextReader.cs" />
+    <Compile Include="Host\FeedbackBundle.cs" />
+    <Compile Include="Host\Feedback\FeedbackReport.cs" />
+    <Compile Include="Host\Feedback\IFeedbackSender.cs" />
+    <Compile Include="Host\Feedback\FeedbackJson.cs" />
+    <Compile Include="Host\Feedback\UserIdStore.cs" />
+    <Compile Include="Host\Feedback\ClipboardFeedbackSender.cs" />
+    <Compile Include="Host\Feedback\HttpFeedbackSender.cs" />
+    <Compile Include="Host\Feedback\FeedbackSenderFactory.cs" />
     <Compile Include="UI\SuggestionPopupWindow.cs" />
+    <Compile Include="UI\FeedbackDialog.cs" />
     <Compile Include="Detection\DetectedZone.cs" />
     <Compile Include="Detection\MathNerDetector.cs" />
     <Compile Include="Detection\Sp\SentencePieceModel.cs" />

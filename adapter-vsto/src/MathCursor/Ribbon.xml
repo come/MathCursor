@@ -4,19 +4,17 @@
     <tabs>
       <tab idMso="TabHome">
         <group id="MathCursorGroup" label="MathCursor">
-          <button id="ConvertButton"
-                  label="Convertir"
-                  screentip="Convertir l'expression math au curseur"
-                  supertip="Analyse le texte avant le curseur, détecte une expression math, et l'insère comme équation Word (Cambria Math). Raccourci : Alt+M."
+          <button id="ReportIssueButton"
+                  label="Signaler un souci"
+                  screentip="Prépare un rapport (log + screenshot + contexte) prêt à envoyer"
                   size="large"
-                  imageMso="EquationInsertNew"
-                  keytip="M"
-                  onAction="OnConvertClicked" />
+                  imageMso="ReviewComments"
+                  onAction="OnReportIssueClicked" />
           <button id="AboutButton"
-                  label="À propos"
-                  screentip="À propos de MathCursor"
-                  size="normal"
-                  imageMso="HelpAbout"
+                  label="Aide"
+                  screentip="Guide rapide MathCursor"
+                  size="large"
+                  imageMso="Help"
                   onAction="OnAboutClicked" />
         </group>
       </tab>

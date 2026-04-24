@@ -7,6 +7,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using MathCursor.Core.Symbols;
+using WpfMath.Controls;
 
 namespace MathCursor.UI
 {
@@ -21,13 +22,22 @@ namespace MathCursor.UI
         // Display mode (popup informative) = 0.5
         // Nav mode (utilisateur a pressé Down et navigue dans les choix) = 0.7
         private const double DisplayOpacity = 0.5;
-        private const double NavOpacity = 0.7;
+        private const double NavOpacity = 0.9;
         private const int FadeMs = 150;
 
         private readonly ListBox _list;
+        private readonly TextBlock _debugFooter;
+        private readonly TextBlock _reportLink;
         private bool _navMode;
 
         public bool IsNavMode => _navMode;
+
+        /// <summary>
+        /// Déclenché quand l'utilisateur clique sur "Signaler une erreur".
+        /// <see cref="SuggestionService"/> y abonne son handler pour construire
+        /// le FeedbackReport avec le contexte et ouvrir le dialog.
+        /// </summary>
+        public event Action ReportRequested;
 
         public SuggestionPopupWindow()
         {
@@ -55,8 +65,56 @@ namespace MathCursor.UI
                 Background = Brushes.White,
                 Focusable = false, // ne prend pas le focus clavier
             };
+            _list.ItemContainerStyle = BuildItemContainerStyle();
 
-            border.Child = _list;
+            // Footer debug : affiche le texte NER extrait, aide à vérifier qu'on
+            // analyse bien la zone attendue. Petite taille, gris discret.
+            _debugFooter = new TextBlock
+            {
+                Text = "",
+                FontSize = 10,
+                FontStyle = FontStyles.Italic,
+                Foreground = new SolidColorBrush(Color.FromRgb(140, 140, 140)),
+                Margin = new Thickness(8, 2, 8, 4),
+                Padding = new Thickness(0),
+                TextWrapping = TextWrapping.Wrap,
+            };
+
+            var topSeparator = new Border
+            {
+                BorderBrush = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
+                BorderThickness = new Thickness(0, 1, 0, 0),
+                Margin = new Thickness(0, 4, 0, 0),
+                Child = _debugFooter,
+            };
+
+            // Lien "Signaler une erreur" — dernière ligne, petit, discret.
+            // Click → événement ReportRequested que SuggestionService écoute pour
+            // ouvrir le FeedbackDialog.
+            _reportLink = new TextBlock
+            {
+                Text = "Signaler une erreur",
+                FontSize = 10,
+                Foreground = new SolidColorBrush(Color.FromRgb(90, 110, 160)),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                Margin = new Thickness(8, 2, 8, 4),
+                TextDecorations = TextDecorations.Underline,
+                HorizontalAlignment = HorizontalAlignment.Right,
+            };
+            _reportLink.MouseLeftButtonUp += (_, __) => ReportRequested?.Invoke();
+
+            var reportLinkBorder = new Border
+            {
+                BorderBrush = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
+                BorderThickness = new Thickness(0, 1, 0, 0),
+                Child = _reportLink,
+            };
+
+            var stack = new StackPanel();
+            stack.Children.Add(_list);
+            stack.Children.Add(topSeparator);
+            stack.Children.Add(reportLinkBorder);
+            border.Child = stack;
             Content = border;
 
             // Renforce le no-focus via WS_EX_NOACTIVATE en plus de ShowActivated=false
@@ -70,20 +128,135 @@ namespace MathCursor.UI
 
         public int SelectedIndex => _list.SelectedIndex;
 
-        public void ShowSuggestions(IReadOnlyList<SymbolChoice> choices, double screenX, double screenY)
+        /// <summary>
+        /// Style des ListBoxItem : fond transparent par défaut, teinte bleue
+        /// claire au hover et à la sélection. Override la sélection système pour
+        /// rester cohérent avec la popup transparente.
+        /// </summary>
+        private static Style BuildItemContainerStyle()
         {
-            _list.Items.Clear();
-            foreach (var c in choices)
+            var style = new Style(typeof(ListBoxItem));
+            style.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
+            style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+            style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
+
+            var hoverColor = new SolidColorBrush(Color.FromRgb(220, 235, 255));
+            var selectColor = new SolidColorBrush(Color.FromRgb(190, 215, 250));
+
+            var hoverTrigger = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+            hoverTrigger.Setters.Add(new Setter(Control.BackgroundProperty, hoverColor));
+            style.Triggers.Add(hoverTrigger);
+
+            var selectedTrigger = new Trigger { Property = ListBoxItem.IsSelectedProperty, Value = true };
+            selectedTrigger.Setters.Add(new Setter(Control.BackgroundProperty, selectColor));
+            style.Triggers.Add(selectedTrigger);
+
+            return style;
+        }
+
+        /// <summary>
+        /// Remplace les macros LaTeX que WPF-Math ne rend pas (ou mal) par leurs
+        /// équivalents unicode : \mathbb{R} → ℝ, \forall → ∀, \in → ∈, etc.
+        /// Indispensable pour que les ensembles et quantificateurs apparaissent.
+        /// </summary>
+        private static string AdaptForWpfMath(string latex)
+        {
+            if (string.IsNullOrEmpty(latex)) return latex;
+            // Remplace les macros non-rendues par leurs équivalents unicode : WPF-Math
+            // peut ne pas avoir le font blackboard bold (\mathbb), mais il sait afficher
+            // n'importe quel char unicode via le font math standard.
+            return latex
+                .Replace("\\mathbb{R}", "\u211D") // ℝ
+                .Replace("\\mathbb{N}", "\u2115") // ℕ
+                .Replace("\\mathbb{Z}", "\u2124") // ℤ
+                .Replace("\\mathbb{Q}", "\u211A") // ℚ
+                .Replace("\\mathbb{C}", "\u2102") // ℂ
+                .Replace("\\iff", "\\Leftrightarrow")
+                .Replace("\\mid", "|")
+                .Replace("\\setminus", "\\backslash")
+                .Replace("\\bmod", "\\mathrm{mod}")
+                // \operatorname{xxx} → \mathrm{xxx} : WPF-Math 2.1 rend mal \operatorname,
+                // \mathrm est l'équivalent fiable pour du texte droit dans une formule.
+                .Replace("\\operatorname", "\\mathrm")
+                // WpfMath traite "-" comme op binaire même en contexte unaire (dans
+                // "]-∞, 0]" par ex) → padding visible entre "-" et "∞". En wrappant
+                // en {...} on en fait un atome unique et le rendu est serré.
+                // Côté Word (OMath) ce n'est pas un souci : son moteur typographe
+                // gère l'unaire correctement tout seul.
+                .Replace("-\\infty", "{-\\infty}")
+                .Replace("+\\infty", "{+\\infty}");
+        }
+
+        /// <summary>
+        /// Rendu LaTeX → UIElement via WPF-Math uniquement, après pré-substitutions
+        /// (AdaptForWpfMath). Plus de TextBlock en superposition : ça faisait
+        /// apparaître la formule "barrée" (le texte brut traversait le rendu).
+        /// En cas d'échec du parse WPF-Math, on tombe sur un TextBlock unicode
+        /// simple — sans empilement visuel.
+        /// </summary>
+        private static UIElement RenderMath(string latex, bool isPartial = false)
+        {
+            string adapted = AdaptForWpfMath(latex);
+            // En mode partiel, on colorie les \ldots en rouge pour signaler
+            // visuellement à l'utilisateur qu'il reste à taper ces bouts-là.
+            // WpfMath supporte \color{red}{...} nativement.
+            if (isPartial)
+                adapted = adapted.Replace("\\ldots", "\\color{red}{\\ldots}");
+            var container = new Grid { Margin = new Thickness(8, 4, 12, 4) };
+
+            if (string.IsNullOrWhiteSpace(adapted))
             {
-                var panel = new StackPanel { Orientation = Orientation.Horizontal };
-                panel.Children.Add(new TextBlock
+                container.Children.Add(new TextBlock { Text = "", FontSize = 14 });
+                return container;
+            }
+
+            bool renderedOk = false;
+            try
+            {
+                var formula = new FormulaControl
                 {
-                    Text = c.Display,
-                    FontSize = 16,
-                    FontFamily = new FontFamily("Cambria Math, Cambria, Segoe UI"),
-                    Margin = new Thickness(8, 4, 12, 4),
+                    Formula = adapted,
+                    Scale = 18,
                     VerticalAlignment = VerticalAlignment.Center,
+                };
+
+                // FormulaControl parse la formule dans le setter Formula et
+                // expose HasError/Errors si le parse/rendu a échoué. Sans ce
+                // check on affiche parfois un "." (placeholder WPF-Math
+                // quand la formule est acceptée partiellement par le parser
+                // mais ne produit rien de rendable).
+                if (!formula.HasError && formula.Errors.Count == 0)
+                {
+                    container.Children.Add(formula);
+                    renderedOk = true;
+                }
+            }
+            catch { /* exception dans le ctor : tombe dans le fallback */ }
+
+            if (!renderedOk)
+            {
+                // Parse/rendu WPF-Math raté : fallback texte brut unicode lisible.
+                container.Children.Add(new TextBlock
+                {
+                    Text = adapted,
+                    FontSize = 14,
+                    FontFamily = new FontFamily("Cambria Math, Cambria, Segoe UI Symbol, Segoe UI"),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = new SolidColorBrush(Color.FromRgb(50, 50, 50)),
                 });
+            }
+            return container;
+        }
+
+        public void ShowSuggestions(IReadOnlyList<SymbolChoice> choices, double screenX, double screenY, string debugText = "")
+        {
+            _debugFooter.Text = string.IsNullOrEmpty(debugText) ? "" : "NER: \"" + debugText + "\"";
+            _list.Items.Clear();
+            for (int i = 0; i < choices.Count; i++)
+            {
+                var c = choices[i];
+                var panel = new StackPanel { Orientation = Orientation.Horizontal };
+                panel.Children.Add(RenderMath(c.Display, c.IsPartial));
                 panel.Children.Add(new TextBlock
                 {
                     Text = c.Label,
@@ -92,11 +265,19 @@ namespace MathCursor.UI
                     Margin = new Thickness(0, 4, 8, 4),
                     VerticalAlignment = VerticalAlignment.Center,
                 });
-                _list.Items.Add(new ListBoxItem
+                var item = new ListBoxItem
                 {
                     Content = panel,
                     Padding = new Thickness(0),
-                });
+                };
+                int index = i;
+                // Hover souris : entre en mode nav + sélectionne l'item survolé
+                item.MouseEnter += (_, __) =>
+                {
+                    _list.SelectedIndex = index;
+                    EnterNavMode();
+                };
+                _list.Items.Add(item);
             }
             _list.SelectedIndex = 0;
             _navMode = false; // toute mise à jour ramène en display mode

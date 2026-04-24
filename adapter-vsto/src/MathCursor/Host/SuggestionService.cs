@@ -5,9 +5,13 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Threading;
+using MathCursor.Core;
+using MathCursor.Core.PatternEngine;
 using MathCursor.Core.Symbols;
 using MathCursor.Detection;
+using MathCursor.HostContract;
 using MathCursor.UI;
+using Engine = MathCursor.Core.PatternEngine.PatternEngine;
 using Word = Microsoft.Office.Interop.Word;
 
 namespace MathCursor.Host
@@ -23,9 +27,17 @@ namespace MathCursor.Host
     {
         private const int PollIntervalMs = 200;
 
+        // Préfixe bookmark : chaque OMath inséré par MathCursor est entouré d'un
+        // bookmark "mcEq_<handleId>" pour (a) identifier que l'équation nous
+        // appartient et (b) retrouver la source brute en CustomXMLPart au moment
+        // où le caret revient dessus (mode édition).
+        private const string BookmarkPrefix = "mcEq_";
+
         private readonly Word.Application _app;
         private readonly WordContextReader _contextReader;
         private readonly MathNerDetector _ner;
+        private readonly Engine _engine;
+        private readonly IEquationStore _store;
 
         private SuggestionPopupWindow _popup;
         private DispatcherTimer _pollTimer;
@@ -35,10 +47,29 @@ namespace MathCursor.Host
         // Inférence asynchrone : on évite de bloquer le thread UI
         private bool _inferenceInFlight;
 
-        public SuggestionService(Word.Application app, MathNerDetector ner)
+        // État de la dernière popup affichée — nécessaire pour commit sur Enter :
+        // on a besoin des positions absolues dans le document (pas juste offsets
+        // paragraphe), des choix présentés, et de la source brute pour la store.
+        private int _lastZoneAbsStart = -1;
+        private int _lastZoneAbsEnd = -1;
+        private string _lastZoneSource = "";
+        private IReadOnlyList<SymbolChoice> _lastChoices = Array.Empty<SymbolChoice>();
+
+        // État mode édition : popup alimentée par la source d'un OMath existant.
+        // Commit dans ce mode → REMPLACE l'OMath (pas d'insertion nouvelle).
+        private EquationHandle _editHandle;
+
+        // ID de session : même GUID tout au long d'une session Word. Sert à
+        // corréler plusieurs feedbacks consécutifs du même utilisateur sans
+        // le tracker — il disparaît quand Word est redémarré.
+        private readonly string _sessionId = Guid.NewGuid().ToString("D");
+
+        public SuggestionService(Word.Application app, MathNerDetector ner, Engine engine, IEquationStore store)
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
             _ner = ner ?? throw new ArgumentNullException(nameof(ner));
+            _engine = engine ?? throw new ArgumentNullException(nameof(engine));
+            _store = store ?? throw new ArgumentNullException(nameof(store));
             _contextReader = new WordContextReader(_app);
         }
 
@@ -80,6 +111,65 @@ namespace MathCursor.Host
 
         private void OnSelectionChange(Word.Selection sel) => CheckAndUpdate();
 
+        /// <summary>
+        /// OMath dans lequel se trouve strictement le caret (pas seulement au
+        /// bord). Utilisé pour distinguer "vraiment dans l'équation" → mode
+        /// édition, de "juste à côté" → zone texte libre.
+        ///
+        /// Critère "strictement dedans" :
+        ///  - Word signale la sélection comme étant inside un OMath (sel.OMaths),
+        ///  - OU caret strictement dans ]r.Start, r.End[ (bords exclus).
+        /// Le bord droit (r.End) est la position juste APRÈS l'OMath, qu'on veut
+        /// considérer comme "en zone texte" pour laisser taper la suite.
+        /// </summary>
+        private Word.OMath FindOMathAtCaret()
+        {
+            try
+            {
+                var sel = _app.Selection;
+                if (sel.OMaths != null && sel.OMaths.Count > 0)
+                {
+                    foreach (Word.OMath om in sel.OMaths) return om;
+                }
+                var para = sel.Paragraphs[1].Range;
+                int caretPos = sel.Start;
+                foreach (Word.OMath om in para.OMaths)
+                {
+                    var r = om.Range;
+                    if (caretPos > r.Start && caretPos < r.End) return om;
+                }
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Cherche un bookmark "mcEq_..." couvrant l'OMath donné, et renvoie son
+        /// handle (sans le préfixe) — ou null si l'OMath n'est pas à nous.
+        /// </summary>
+        private string FindOurHandleForOMath(Word.OMath om)
+        {
+            try
+            {
+                var doc = _app.ActiveDocument;
+                int omStart = om.Range.Start;
+                int omEnd = om.Range.End;
+                foreach (Word.Bookmark bm in doc.Bookmarks)
+                {
+                    if (!bm.Name.StartsWith(BookmarkPrefix, StringComparison.Ordinal)) continue;
+                    var r = bm.Range;
+                    // Bookmark couvre ou touche l'OMath (tolérance 1 char pour l'espace trailing).
+                    if (r.Start <= omStart && r.End >= omEnd - 1)
+                        return bm.Name.Substring(BookmarkPrefix.Length);
+                }
+            }
+            catch { }
+            return null;
+        }
+
         private void OnWindowDeactivate(Word.Document doc, Word.Window wnd)
         {
             HidePopup();
@@ -102,19 +192,37 @@ namespace MathCursor.Host
                     return;
                 }
 
-                string paragraphText;
-                int caretInParagraph, caretPos;
+                // Caret sur un OMath ? Deux cas :
+                //  - OMath à nous (bookmark mcEq_...) → MODE ÉDITION : on recharge
+                //    la source brute depuis le store, on repasse l'engine dessus
+                //    et on affiche la popup avec les alternatives.
+                //  - OMath étranger (ex. une équation déjà dans le doc) → hide
+                //    popup (relancer l'algo sur du LaTeX rendu donnerait du bruit).
+                var omAtCaret = FindOMathAtCaret();
+                if (omAtCaret != null)
+                {
+                    var ok = TryEnterEditMode(omAtCaret);
+                    if (!ok) HidePopup();
+                    return;
+                }
+                // Sortie propre du mode édition quand on quitte l'OMath
+                _editHandle = null;
+
+                ParagraphRead paragraph;
+                int caretPos;
                 try
                 {
-                    var (text, offset) = _contextReader.ReadCurrentParagraph();
-                    paragraphText = text;
-                    caretInParagraph = offset; // déjà relatif au paragraphe
+                    paragraph = _contextReader.ReadCurrentParagraph();
                     caretPos = _app.Selection.Start;
                 }
                 catch
                 {
                     return;
                 }
+                string paragraphText = paragraph.Text;
+                int caretInParagraph = paragraph.CaretOffset;
+                int paragraphAbsStart = paragraph.ParagraphAbsStart;
+                var omathRegions = paragraph.OMathRegions;
 
                 // Skip si rien n'a changé depuis le dernier check
                 if (paragraphText == _lastParagraph && caretPos == _lastCaretPos) return;
@@ -127,7 +235,7 @@ namespace MathCursor.Host
                     return;
                 }
 
-                LogDiag($"tick len={paragraphText.Length} caret={caretInParagraph} text=\"{Preview(paragraphText)}\"");
+                LogDiag($"tick len={paragraphText.Length} caret={caretInParagraph} omaths={omathRegions.Count} text=\"{Preview(paragraphText)}\"");
 
                 // Inférence sur thread pool (~30-80 ms hors warm-up)
                 _inferenceInFlight = true;
@@ -137,12 +245,16 @@ namespace MathCursor.Host
                     try { zones = _ner.Detect(paragraphText); }
                     catch (Exception ex) { LogDiag("ner_error: " + ex.Message); zones = Array.Empty<DetectedZone>(); }
 
-                    LogDiag($"zones={zones.Count} -> {string.Join(" | ", zones.Select(z => z.ToString()))}");
+                    // Filtre : on jette les zones NER qui chevauchent une région OMath.
+                    // Ces zones sont déjà converties — les re-proposer serait redondant
+                    // (et piégeux : on insèrerait un 2e OMath par-dessus).
+                    var filteredZones = FilterOutOMathOverlap(zones, omathRegions);
+                    LogDiag($"zones={zones.Count} → filtered={filteredZones.Count} (omath_overlap dropped={zones.Count - filteredZones.Count})");
 
                     // Retour sur le thread UI pour mettre à jour la popup
                     _pollTimer?.Dispatcher.BeginInvoke(new Action(() =>
                     {
-                        try { ApplyZones(zones, caretInParagraph); }
+                        try { ApplyZones(filteredZones, caretInParagraph, paragraphAbsStart); }
                         finally { _inferenceInFlight = false; }
                     }));
                 });
@@ -153,7 +265,7 @@ namespace MathCursor.Host
             }
         }
 
-        private void ApplyZones(IReadOnlyList<DetectedZone> zones, int caretInParagraph)
+        private void ApplyZones(IReadOnlyList<DetectedZone> zones, int caretInParagraph, int paragraphAbsStart)
         {
             if (zones == null || zones.Count == 0)
             {
@@ -172,18 +284,325 @@ namespace MathCursor.Host
                 return;
             }
 
-            var choices = new List<SymbolChoice>
+            // Le NER rate parfois des mots-clés math en début de zone (lim, sqrt, etc.)
+            // On tente une extension arrière : si le mot immédiatement avant la zone est
+            // un keyword math connu, on l'absorbe.
+            target = ExtendZoneBackwardWithKeyword(_lastParagraph, target);
+            LogDiag($"extended target={target}");
+
+            // Le texte détecté par le NER est envoyé au moteur de patterns,
+            // qui renvoie une liste de candidats LaTeX triés par score.
+            IReadOnlyList<LatexSuggestion> suggestions;
+            try { suggestions = _engine.Convert(target.Text); }
+            catch (Exception ex) { LogDiag("engine_error: " + ex.Message); suggestions = Array.Empty<LatexSuggestion>(); }
+
+            LogDiag($"engine zone=\"{target.Text}\" suggestions={suggestions.Count}");
+
+            // Conversion offsets paragraphe → positions absolues document.
+            // Indispensable pour que CommitSelected sache où remplacer sans se
+            // re-synchroniser (l'utilisateur a pu bouger le caret entre temps).
+            int absStart = paragraphAbsStart + target.Start;
+            int absEnd = paragraphAbsStart + target.End;
+
+            if (suggestions.Count == 0)
             {
-                new SymbolChoice
+                // Aucun pattern ne matche → on affiche quand même le texte brut
+                // détecté (avec son score de confiance NER) pour éviter la frustration.
+                var fallback = new List<SymbolChoice>
                 {
-                    Display = target.Text,
-                    Replacement = target.Text,
-                    Label = $"{target.Confidence:P0}",
-                }
-            };
+                    new SymbolChoice
+                    {
+                        Display = target.Text,
+                        Replacement = target.Text,
+                        Label = $"{target.Confidence:P0}",
+                    }
+                };
+                ShowPopup(fallback, absStart, absEnd, target.Text?.Length ?? 0, target.Text ?? "");
+                return;
+            }
+
+            // Top N suggestions LaTeX (cf. brief : popup affiche top 3-5).
+            var choices = suggestions.Take(5).Select(s => new SymbolChoice
+            {
+                Display = s.Latex,
+                Replacement = s.Latex,
+                Label = s.IsPartial ? "…" : $"{s.Score:F0}",
+                IsPartial = s.IsPartial,
+            }).ToList();
 
             int rawLen = target.Text?.Length ?? 0;
-            ShowPopup(choices, rawLen);
+            _lastZoneSource = target.Text ?? "";
+            ShowPopup(choices, absStart, absEnd, rawLen, target.Text ?? "");
+        }
+
+        /// <summary>
+        /// Si l'OMath au caret est à nous (bookmark mcEq_...), on récupère la
+        /// source depuis la store et on repasse l'engine dessus pour présenter
+        /// les variantes. Popup déjà ouverte quand ça renvoie true.
+        /// </summary>
+        private bool TryEnterEditMode(Word.OMath om)
+        {
+            var handleId = FindOurHandleForOMath(om);
+            if (handleId == null) return false;
+
+            StoredEquation stored;
+            try { stored = _store.RetrieveAsync(new EquationHandle(handleId)).GetAwaiter().GetResult(); }
+            catch (Exception ex) { LogDiag("store_retrieve_error: " + ex.Message); return false; }
+            if (stored == null || string.IsNullOrWhiteSpace(stored.Source))
+            {
+                LogDiag($"edit: bookmark {handleId} mais source introuvable en store");
+                return false;
+            }
+
+            string source = stored.Source;
+            IReadOnlyList<LatexSuggestion> suggestions;
+            try { suggestions = _engine.Convert(source); }
+            catch (Exception ex) { LogDiag("edit_engine_error: " + ex.Message); return false; }
+            if (suggestions.Count == 0) return false;
+
+            int omStart = om.Range.Start;
+            int omEnd = om.Range.End;
+            var choices = suggestions.Take(5).Select(s => new SymbolChoice
+            {
+                Display = s.Latex,
+                Replacement = s.Latex,
+                Label = s.IsPartial ? "…" : $"{s.Score:F0}",
+                IsPartial = s.IsPartial,
+            }).ToList();
+
+            _editHandle = new EquationHandle(handleId);
+            _lastZoneSource = source;
+            ShowPopup(choices, omStart, omEnd, source.Length, "édit: " + source);
+            LogDiag($"edit mode: handle={handleId} source=\"{source}\" → {suggestions.Count} candidats");
+            return true;
+        }
+
+        // Stopwords courts FR qui bornent la span du trigger manuel (Ctrl+Espace).
+        // Idée : quand l'utilisateur force la popup, on prend le texte entre le
+        // caret et le dernier "mot-outil" (ou délimiteur, ou OMath précédent).
+        // Liste volontairement petite et ciblée — des mots qui introduisent ou
+        // séparent des expressions math dans un cours de lycée français.
+        private static readonly HashSet<string> ManualTriggerStopwords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "soit", "soient", "et", "ou", "donc", "alors", "avec", "si",
+            "on", "car", "mais", "ainsi", "puis", "comme", "tout",
+            "un", "une", "le", "la", "les", "des", "du", "de",
+            "pour", "par", "sur", "dans", "au", "aux",
+        };
+
+        private static readonly char[] ManualTriggerDelimiters =
+            { '.', ',', ';', ':', '!', '?', '\n', '\r' };
+
+        /// <summary>
+        /// Trigger explicite (Ctrl+Espace) : bypass NER, calcule la span
+        /// texte à partir du caret en remontant jusqu'au premier "séparateur"
+        /// (délimiteur ponctuation, stopword mot-outil, fin d'OMath précédent
+        /// ou début du paragraphe), envoie au pattern engine, affiche la popup.
+        ///
+        /// Utile quand le NER a rendu une partie muette (ex: "Soit f et g"
+        /// après conversion de f → "g" n'est plus détecté contextuellement).
+        /// L'utilisateur force la conversion de ce qu'il vient de taper.
+        /// </summary>
+        public void TriggerManual()
+        {
+            try
+            {
+                if (_app.Documents.Count == 0) return;
+
+                // Si on est dans un OMath, laisser le flux édition habituel tourner.
+                if (FindOMathAtCaret() != null) { CheckAndUpdate(); return; }
+
+                var paragraph = _contextReader.ReadCurrentParagraph();
+                int caretInParagraph = paragraph.CaretOffset;
+                int paragraphAbsStart = paragraph.ParagraphAbsStart;
+                string text = paragraph.Text ?? "";
+                if (string.IsNullOrEmpty(text) || caretInParagraph <= 0) return;
+
+                int spanStart = ComputeManualSpanStart(text, caretInParagraph, paragraph.OMathRegions);
+                // Trim leading whitespace
+                while (spanStart < caretInParagraph && char.IsWhiteSpace(text[spanStart])) spanStart++;
+                int spanEnd = caretInParagraph;
+                // Trim trailing whitespace
+                while (spanEnd > spanStart && char.IsWhiteSpace(text[spanEnd - 1])) spanEnd--;
+                if (spanEnd <= spanStart) return;
+
+                string span = text.Substring(spanStart, spanEnd - spanStart);
+                LogDiag($"manual trigger span=[{spanStart},{spanEnd}] → \"{Preview(span)}\"");
+
+                IReadOnlyList<LatexSuggestion> suggestions;
+                try { suggestions = _engine.Convert(span); }
+                catch (Exception ex) { LogDiag("manual_engine_error: " + ex.Message); suggestions = Array.Empty<LatexSuggestion>(); }
+
+                int absStart = paragraphAbsStart + spanStart;
+                int absEnd = paragraphAbsStart + spanEnd;
+
+                _lastZoneSource = span;
+                _editHandle = null;
+
+                if (suggestions.Count == 0)
+                {
+                    // Pas de match engine : on montre quand même la source comme
+                    // candidat unique pour que l'utilisateur voie ce qu'on a pris
+                    // comme span, et puisse au besoin ajuster (Esc + retaper).
+                    var fallback = new List<SymbolChoice>
+                    {
+                        new SymbolChoice { Display = span, Replacement = span, Label = "∅" },
+                    };
+                    ShowPopup(fallback, absStart, absEnd, span.Length, "manuel: " + span);
+                    return;
+                }
+
+                var choices = suggestions.Take(5).Select(s => new SymbolChoice
+                {
+                    Display = s.Latex,
+                    Replacement = s.Latex,
+                    Label = s.IsPartial ? "…" : $"{s.Score:F0}",
+                    IsPartial = s.IsPartial,
+                }).ToList();
+                ShowPopup(choices, absStart, absEnd, span.Length, "manuel: " + span);
+                // Entre direct en mode nav : l'utilisateur a demandé explicitement
+                // la conversion, il n'a pas besoin de la flèche bas pour signifier
+                // "oui je veux commit".
+                _popup?.EnterNavMode();
+            }
+            catch (Exception ex)
+            {
+                LogDiag("manual_trigger_error: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Remonte depuis le caret pour trouver le début de la span manuelle.
+        /// Boundary = max de : début du paragraphe, fin du dernier OMath avant
+        /// caret, position juste après le dernier délimiteur, position juste
+        /// après le dernier stopword mot-outil.
+        ///
+        /// Détail important : <c>;</c> et <c>,</c> ne sont des délimiteurs QUE
+        /// hors brackets/parens. À l'intérieur de <c>[...]</c> ou <c>(...)</c>
+        /// ce sont des séparateurs d'intervalle ou d'arguments de fonction, pas
+        /// des ruptures de phrase. Sans ce check, <c>[0;+inf[</c> serait coupé
+        /// sur le <c>;</c> et la span ne capturerait que <c>+inf[</c>.
+        /// </summary>
+        private static int ComputeManualSpanStart(string text, int caret, IReadOnlyList<(int start, int end)> omathRegions)
+        {
+            int start = 0;
+
+            // Après le dernier délimiteur (point, virgule, etc.) — walk backward
+            // avec suivi de profondeur brackets/parens pour ignorer `;` et `,`
+            // internes à une structure math.
+            int bracketDepth = 0;
+            int parenDepth = 0;
+            for (int k = caret - 1; k >= 0; k--)
+            {
+                char c = text[k];
+                if (c == ']') { bracketDepth++; continue; }
+                if (c == '[') { if (bracketDepth > 0) bracketDepth--; continue; }
+                if (c == ')') { parenDepth++; continue; }
+                if (c == '(') { if (parenDepth > 0) parenDepth--; continue; }
+
+                if (Array.IndexOf(ManualTriggerDelimiters, c) < 0) continue;
+                // `;` et `,` : séparateurs math internes si on est dans [...] ou (...)
+                if ((c == ';' || c == ',') && (bracketDepth > 0 || parenDepth > 0)) continue;
+                start = Math.Max(start, k + 1);
+                break;
+            }
+
+            // Après la fin du dernier OMath qui se termine avant le caret
+            if (omathRegions != null)
+            {
+                foreach (var (s, e) in omathRegions)
+                {
+                    if (e <= caret) start = Math.Max(start, e);
+                }
+            }
+
+            // Après le dernier stopword (mot entier)
+            int i = caret - 1;
+            while (i >= start)
+            {
+                // skip whitespace
+                while (i >= start && char.IsWhiteSpace(text[i])) i--;
+                if (i < start) break;
+                // fin du mot est à i (inclus)
+                int wordEnd = i + 1;
+                while (i >= start && IsWordChar(text[i])) i--;
+                int wordStart = i + 1;
+                if (wordEnd <= wordStart) { i--; continue; }
+                string w = text.Substring(wordStart, wordEnd - wordStart);
+                if (ManualTriggerStopwords.Contains(w))
+                {
+                    start = wordEnd;
+                    break;
+                }
+                // Sinon on continue à remonter
+            }
+
+            return start;
+        }
+
+        private static bool IsWordChar(char c) => char.IsLetter(c) || c == '\'' || c == '-';
+
+        // Liste de mots-clés math que le NER rate parfois en début d'expression.
+        // On les absorbe dans la zone détectée si ils précèdent immédiatement celle-ci.
+        private static readonly HashSet<string> MathPrefixKeywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "lim", "limite", "lmt",
+            "sqrt", "rac", "racine",
+            "int", "integrale", "integ", "integral",
+            "sum", "somme",
+            "forall", "qq", "qqe",
+            "exists", "existe",
+            "vec", "vect", "vecteur",
+        };
+
+        private static DetectedZone ExtendZoneBackwardWithKeyword(string paragraph, DetectedZone zone)
+        {
+            if (string.IsNullOrEmpty(paragraph) || zone == null) return zone;
+
+            int i = zone.Start;
+            // Skip whitespace juste avant la zone
+            while (i > 0 && char.IsWhiteSpace(paragraph[i - 1])) i--;
+            int wordEnd = i;
+            // Remonte sur le mot alphabétique
+            while (i > 0 && char.IsLetter(paragraph[i - 1])) i--;
+            int wordStart = i;
+            if (wordEnd <= wordStart) return zone;
+
+            string prevWord = paragraph.Substring(wordStart, wordEnd - wordStart);
+            if (!MathPrefixKeywords.Contains(prevWord)) return zone;
+
+            // Extension : la zone inclut désormais le mot-clé
+            int newEnd = zone.End;
+            int newStart = wordStart;
+            if (newStart >= 0 && newEnd <= paragraph.Length && newEnd > newStart)
+            {
+                string newText = paragraph.Substring(newStart, newEnd - newStart);
+                return new DetectedZone(newStart, newEnd, newText, zone.Confidence);
+            }
+            return zone;
+        }
+
+        /// <summary>
+        /// Jette les zones NER qui chevauchent une région OMath : ces zones sont
+        /// déjà converties, pas besoin de les re-proposer.
+        /// </summary>
+        private static IReadOnlyList<DetectedZone> FilterOutOMathOverlap(
+            IReadOnlyList<DetectedZone> zones, IReadOnlyList<(int start, int end)> regions)
+        {
+            if (zones == null || zones.Count == 0 || regions == null || regions.Count == 0)
+                return zones ?? Array.Empty<DetectedZone>();
+            var kept = new List<DetectedZone>(zones.Count);
+            foreach (var z in zones)
+            {
+                bool overlaps = false;
+                foreach (var (s, e) in regions)
+                {
+                    // Chevauchement strict : [z.Start, z.End) intersecte [s, e)
+                    if (z.End > s && z.Start < e) { overlaps = true; break; }
+                }
+                if (!overlaps) kept.Add(z);
+            }
+            return kept;
         }
 
         private static DetectedZone PickNearestZone(IReadOnlyList<DetectedZone> zones, int caret, out int bestDist)
@@ -212,29 +631,480 @@ namespace MathCursor.Host
         private const double AvgCharWidthDip = 7.0;
         private const double PopupWidthDip = 280.0;
 
-        private void ShowPopup(IReadOnlyList<SymbolChoice> choices, int rawZoneLength)
+        /// <summary>
+        /// Handler du click "Signaler une erreur" : construit le rapport avec le
+        /// contexte courant (NER text, candidat sélectionné, log tail, versions),
+        /// ouvre le <see cref="FeedbackDialog"/> modal, laisse le sender faire
+        /// l'envoi. Non-bloquant vis-à-vis du polling popup (Word reprend la main
+        /// après fermeture du dialog).
+        /// </summary>
+        private void OnReportRequested()
         {
-            if (_popup == null) _popup = new SuggestionPopupWindow();
+            try
+            {
+                var report = BuildFeedbackReport();
+                var sender = Feedback.FeedbackSenderFactory.Create();
+                var dialog = new FeedbackDialog(report, sender);
+                // ShowDialog = modal vis-à-vis de Word (focus bloqué tant qu'ouvert),
+                // choix acté dans decisions.md.
+                dialog.ShowDialog();
+            }
+            catch (Exception ex) { LogDiag("feedback_dialog_error: " + ex.Message); }
+        }
+
+        /// <summary>
+        /// Construit un <see cref="Feedback.FeedbackReport"/> pré-rempli à partir
+        /// de l'état courant : source NER / span manuel, formule sélectionnée,
+        /// version add-in, version Word, OS, et tail du log.
+        /// </summary>
+        private Feedback.FeedbackReport BuildFeedbackReport()
+        {
+            string recognized = "";
+            try
+            {
+                if (_lastChoices != null && _lastChoices.Count > 0)
+                {
+                    int idx = _popup?.SelectedIndex ?? 0;
+                    if (idx < 0 || idx >= _lastChoices.Count) idx = 0;
+                    var c = _lastChoices[idx];
+                    recognized = c.Replacement ?? c.Display ?? "";
+                }
+            }
+            catch { }
+
+            string wordVersion = "?";
+            try { wordVersion = _app?.Version ?? "?"; } catch { }
+
+            string version = "?";
+            try { version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "?"; } catch { }
+
+            return new Feedback.FeedbackReport
+            {
+                Version = version,
+                Timestamp = DateTimeOffset.UtcNow,
+                UserId = Feedback.UserIdStore.GetOrCreate(),
+                SessionId = _sessionId,
+                NerText = _lastZoneSource ?? "",
+                RecognizedFormula = recognized,
+                LogTail = ReadLogTail(),
+                WordVersion = wordVersion,
+                OsVersion = Environment.OSVersion.ToString(),
+            };
+        }
+
+        private static string ReadLogTail()
+        {
+            try
+            {
+                var path = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "MathCursor", "logs", "mathcursor.log");
+                if (!File.Exists(path)) return "";
+                const int maxBytes = 16 * 1024; // 16 KB
+                using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    byte[] buf;
+                    if (fs.Length <= maxBytes)
+                    {
+                        buf = new byte[fs.Length];
+                        fs.Read(buf, 0, buf.Length);
+                    }
+                    else
+                    {
+                        fs.Seek(-maxBytes, SeekOrigin.End);
+                        buf = new byte[maxBytes];
+                        fs.Read(buf, 0, buf.Length);
+                    }
+                    return System.Text.Encoding.UTF8.GetString(buf);
+                }
+            }
+            catch { return ""; }
+        }
+
+        private void ShowPopup(IReadOnlyList<SymbolChoice> choices, int absStart, int absEnd, int rawZoneLength, string debugText = "")
+        {
+            if (_popup == null)
+            {
+                _popup = new SuggestionPopupWindow();
+                // Le lien "Signaler une erreur" de la popup lève ReportRequested.
+                // On le branche une seule fois à la création, puis pour chaque click
+                // on construit le FeedbackReport avec le contexte courant
+                // (_lastZoneSource + candidat sélectionné + logs).
+                _popup.ReportRequested += OnReportRequested;
+            }
             var pos = GetCaretScreenPosition();
             double zoneWidth = Math.Max(0, rawZoneLength) * AvgCharWidthDip;
             double offset = Math.Min(zoneWidth, PopupWidthDip);
             double popupX = pos.x - offset;
             if (popupX < 0) popupX = 0;
-            _popup.ShowSuggestions(choices, popupX, pos.y);
+            _lastZoneAbsStart = absStart;
+            _lastZoneAbsEnd = absEnd;
+            _lastChoices = choices;
+            _popup.ShowSuggestions(choices, popupX, pos.y, debugText);
+        }
+
+        /// <summary>
+        /// Commit du candidat sélectionné :
+        ///  - mode normal → insère un nouvel OMath, crée bookmark mcEq_ID, persiste
+        ///    la source brute dans la store.
+        ///  - mode édition (_editHandle != null) → remplace l'OMath existant et
+        ///    conserve le même handle/bookmark (la source brute ne change pas).
+        /// Retourne true si le commit a été fait (Enter consommé), false sinon.
+        /// </summary>
+        public bool CommitSelected()
+        {
+            if (_popup == null || !_popup.IsVisible || !_popup.IsNavMode) return false;
+            if (_lastZoneAbsStart < 0 || _lastZoneAbsEnd <= _lastZoneAbsStart) return false;
+            if (_lastChoices == null || _lastChoices.Count == 0) return false;
+            int idx = _popup.SelectedIndex;
+            if (idx < 0 || idx >= _lastChoices.Count) return false;
+            var choice = _lastChoices[idx];
+            var latex = choice.Replacement ?? choice.Display ?? "";
+            if (string.IsNullOrWhiteSpace(latex)) return false;
+
+            var editing = _editHandle;
+            var source = _lastZoneSource ?? "";
+            try
+            {
+                var (newStart, newEnd) = InsertOMathAt(_lastZoneAbsStart, _lastZoneAbsEnd, latex);
+                if (editing != null)
+                {
+                    // Le bookmark préexistant couvre encore l'OMath (Word le
+                    // réadapte lors du remplacement). On ne touche à rien côté
+                    // store : la source d'origine reste valable.
+                    LogDiag($"edit commit idx={idx} handle={editing.Id} latex=\"{latex}\"");
+                }
+                else
+                {
+                    var handle = new EquationHandle(NewHandleId());
+                    CreateBookmarkForRange(handle.Id, newStart, newEnd);
+                    try
+                    {
+                        _store.StoreAsync(handle, source, new EquationMetadata
+                        {
+                            SourceLanguage = "fr",
+                            CreatedAt = DateTimeOffset.UtcNow,
+                        }).GetAwaiter().GetResult();
+                    }
+                    catch (Exception ex) { LogDiag("store_save_error: " + ex.Message); }
+                    LogDiag($"insert commit idx={idx} handle={handle.Id} range=[{newStart},{newEnd}] latex=\"{latex}\" source=\"{source}\"");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogDiag("commit_error: " + ex.Message);
+            }
+
+            // Reset état
+            _lastZoneAbsStart = -1;
+            _lastZoneAbsEnd = -1;
+            _lastChoices = Array.Empty<SymbolChoice>();
+            _lastZoneSource = "";
+            _editHandle = null;
+            HidePopup();
+            return true;
+        }
+
+        /// <summary>
+        /// Aligne l'OMath sur l'alignement du paragraphe texte qui le contient.
+        /// Word centre par défaut les équations via OMath.Justification et
+        /// OMathPara.Justification (wdOMathJcCenterGroup). On récupère l'alignement
+        /// paragraphe (Left/Center/Right/Justify), on le mappe vers la valeur
+        /// WdOMathJc correspondante, et on l'applique :
+        ///   1. à l'OMath lui-même (r.Start &lt;= pos &lt; r.End)
+        ///   2. à l'OMathPara parent (via doc.Content.OMathParagraphs) si présent
+        /// Ne TOUCHE PAS au paragraphe texte : on respecte le choix utilisateur.
+        /// </summary>
+        private void SyncOMathJustificationToParagraph(Word.Document doc, int pos, int spanEnd)
+        {
+            try
+            {
+                // 1) Lit l'alignment du paragraphe contenant la position
+                int paraAlign = 0; // wdAlignParagraphLeft par défaut
+                try
+                {
+                    var para = doc.Range(pos, pos).Paragraphs[1];
+                    paraAlign = (int)para.Format.GetType().InvokeMember(
+                        "Alignment",
+                        System.Reflection.BindingFlags.GetProperty,
+                        null, para.Format, null);
+                }
+                catch (Exception ex) { LogDiag("para_align_read_error: " + ex.Message); }
+
+                int omathJc = MapParagraphAlignToOMathJc(paraAlign);
+                LogDiag($"align_sync paraAlign={paraAlign} → omathJc={omathJc}");
+
+                // 2) Applique sur l'OMath couvrant pos
+                try
+                {
+                    foreach (Word.OMath om in doc.OMaths)
+                    {
+                        var r = om.Range;
+                        if (r.Start > pos || r.End <= pos) continue;
+                        try
+                        {
+                            om.GetType().InvokeMember(
+                                "Justification",
+                                System.Reflection.BindingFlags.SetProperty,
+                                null, om, new object[] { omathJc });
+                        }
+                        catch (Exception ex) { LogDiag("omath_just_set_error: " + ex.Message); }
+                        break;
+                    }
+                }
+                catch (Exception ex) { LogDiag("omath_scan_error: " + ex.Message); }
+
+                // 3) Applique sur l'OMathPara parent (seulement si display-mode).
+                //    OMathParagraphs vit sur Range, pas sur Document (DISP_E_UNKNOWNNAME
+                //    direct sur Document). Itération indexée Count+Item : l'IEnumerable
+                //    des collections COM Word rate parfois les derniers éléments ajoutés.
+                try
+                {
+                    var contentRange = doc.Content;
+                    if (contentRange == null) return;
+                    object omathParas = contentRange.GetType().InvokeMember(
+                        "OMathParagraphs",
+                        System.Reflection.BindingFlags.GetProperty,
+                        null, contentRange, null);
+                    if (omathParas == null) return;
+
+                    var parasType = omathParas.GetType();
+                    int count = (int)parasType.InvokeMember(
+                        "Count",
+                        System.Reflection.BindingFlags.GetProperty,
+                        null, omathParas, null);
+                    for (int i = 1; i <= count; i++)
+                    {
+                        try
+                        {
+                            object omp = parasType.InvokeMember(
+                                "Item",
+                                System.Reflection.BindingFlags.InvokeMethod | System.Reflection.BindingFlags.GetProperty,
+                                null, omathParas, new object[] { i });
+                            if (omp == null) continue;
+                            var ompType = omp.GetType();
+                            object range = ompType.InvokeMember(
+                                "Range",
+                                System.Reflection.BindingFlags.GetProperty,
+                                null, omp, null);
+                            if (range == null) continue;
+                            var rangeType = range.GetType();
+                            int rStart = (int)rangeType.InvokeMember("Start", System.Reflection.BindingFlags.GetProperty, null, range, null);
+                            int rEnd = (int)rangeType.InvokeMember("End", System.Reflection.BindingFlags.GetProperty, null, range, null);
+                            if (rEnd < pos || rStart > spanEnd) continue;
+
+                            ompType.InvokeMember(
+                                "Justification",
+                                System.Reflection.BindingFlags.SetProperty,
+                                null, omp, new object[] { omathJc });
+                        }
+                        catch (Exception ex) { LogDiag($"omath_para[{i}]_set_error: " + ex.Message); }
+                    }
+                }
+                catch (Exception ex) { LogDiag("omath_paras_error: " + ex.Message); }
+            }
+            catch (Exception ex) { LogDiag("align_sync_error: " + ex.Message); }
+        }
+
+        /// <summary>
+        /// Map WdParagraphAlignment → WdOMathJc.
+        /// WdParagraphAlignment : Left=0, Center=1, Right=2, Justify=3 (et variantes 4-9 rares).
+        /// WdOMathJc             : CenterGroup=1, Center=2, Left=3, Right=4, Inline=7.
+        /// Justify → Left (l'équation tient sur une ligne, justify dégénère en left).
+        /// </summary>
+        private static int MapParagraphAlignToOMathJc(int paragraphAlign)
+        {
+            switch (paragraphAlign)
+            {
+                case 1: return 2; // Center
+                case 2: return 4; // Right
+                default: return 3; // Left (couvre Left, Justify, et les variantes rares)
+            }
+        }
+
+        private static bool IsWhitespaceCharAt(Word.Document doc, int pos)
+        {
+            try
+            {
+                var t = doc.Range(pos, pos + 1).Text ?? "";
+                return t.Length > 0 && char.IsWhiteSpace(t[0]);
+            }
+            catch { return false; }
+        }
+
+        private static string NewHandleId()
+        {
+            // 16 premiers hex du Guid — assez unique pour notre usage, compatible
+            // avec les restrictions Word sur les noms de bookmark (alphanum + _).
+            return Guid.NewGuid().ToString("N").Substring(0, 16);
+        }
+
+        /// <summary>
+        /// Crée un bookmark "mcEq_{id}" couvrant [absStart, absEnd]. Si un bookmark
+        /// de même nom existe déjà on l'écrase (cas improbable avec guid).
+        /// </summary>
+        private void CreateBookmarkForRange(string handleId, int absStart, int absEnd)
+        {
+            try
+            {
+                var doc = _app.ActiveDocument;
+                string name = BookmarkPrefix + handleId;
+                var range = doc.Range(absStart, absEnd);
+                if (doc.Bookmarks.Exists(name)) doc.Bookmarks[name].Delete();
+                doc.Bookmarks.Add(name, range);
+            }
+            catch (Exception ex) { LogDiag("bookmark_create_error: " + ex.Message); }
+        }
+
+        /// <summary>
+        /// Remplace le range [absStart, absEnd) du document par un OMath construit
+        /// à partir du LaTeX fourni. Word's BuildUp ne parse pas le LaTeX nativement,
+        /// on convertit donc d'abord en UnicodeMath (le format natif qu'il comprend).
+        /// Renvoie (newStart, newEnd) = bornes réelles de l'OMath inséré pour qu'on
+        /// puisse accrocher un bookmark dessus.
+        /// </summary>
+        private (int newStart, int newEnd) InsertOMathAt(int absStart, int absEnd, string latex)
+        {
+            var doc = _app.ActiveDocument;
+            if (doc == null) return (absStart, absEnd);
+            int docStart = doc.Content.Start;
+            int docEnd = doc.Content.End;
+            if (absStart < docStart) absStart = docStart;
+            if (absEnd > docEnd) absEnd = docEnd;
+            if (absEnd <= absStart) return (absStart, absEnd);
+
+            // Trim whitespaces aux bords de la zone détectée : le NER inclut
+            // parfois un espace avant/après dans la zone, et on ne veut PAS le
+            // remplacer. Sinon on colle l'OMath au mot précédent ("Soit V x" →
+            // NER zone "  V x" → remplacement engloutit l'espace → "Soit∀ x").
+            while (absStart < absEnd && IsWhitespaceCharAt(doc, absStart)) absStart++;
+            while (absEnd > absStart && IsWhitespaceCharAt(doc, absEnd - 1)) absEnd--;
+            if (absEnd <= absStart) return (absStart, absEnd);
+
+            // Conversion LaTeX → UnicodeMath : Word's OMaths.BuildUp parse
+            // l'UnicodeMath (\frac{a}{b} → (a)/(b), \sqrt{x} → √(x), etc.).
+            string unicodeMath = LatexToUnicodeMath.Convert(latex);
+            LogDiag($"latex→umath \"{latex}\" → \"{unicodeMath}\"");
+
+            // Espace trailing : seulement si le caractère suivant n'est pas déjà
+            // un whitespace (sinon on se retrouve avec des doubles espaces).
+            bool nextIsWs = absEnd < docEnd && IsWhitespaceCharAt(doc, absEnd);
+            string insertText = nextIsWs ? unicodeMath : unicodeMath + " ";
+
+            var replaceRange = doc.Range(absStart, absEnd);
+            replaceRange.Text = insertText;
+
+            int insertedLen = unicodeMath.Length;
+            var mathRange = doc.Range(absStart, absStart + insertedLen);
+            try
+            {
+                mathRange.OMaths.Add(mathRange);
+                mathRange.OMaths.BuildUp();
+            }
+            catch (Exception ex)
+            {
+                LogDiag("omath_add_error: " + ex.Message);
+            }
+
+            // On aligne l'OMath sur l'alignement du paragraphe texte — par défaut
+            // Word centre les équations (wdOMathJcCenterGroup), ce qui ne respecte
+            // pas le choix utilisateur. On touche uniquement OMath.Justification et
+            // OMathPara.Justification, jamais le paragraphe texte.
+            SyncOMathJustificationToParagraph(doc, absStart, absStart + insertedLen);
+
+            // Récupère les bornes effectives de l'OMath créé (BuildUp peut
+            // recalculer la taille du range).
+            int newStart = absStart;
+            int newEnd = absStart + insertedLen;
+            try
+            {
+                foreach (Word.OMath om in doc.OMaths)
+                {
+                    var rng = om.Range;
+                    if (rng.Start <= absStart && rng.End > absStart)
+                    {
+                        newStart = rng.Start;
+                        newEnd = rng.End;
+                        break;
+                    }
+                }
+            }
+            catch { }
+
+            // Positionne le curseur juste après l'OMath, puis vérifie qu'on n'est
+            // PAS resté dans l'éditeur math (Word interprète parfois "pile après"
+            // comme "encore dedans", surtout en display-mode). Nudge jusqu'à 3 fois
+            // pour sortir proprement sur une zone de texte libre.
+            int afterPos = Math.Min(newEnd + 1, doc.Content.End);
+            try { _app.Selection.SetRange(afterPos, afterPos); } catch { }
+            NudgeCursorOutOfMath(doc, maxAttempts: 3);
+            return (newStart, newEnd);
+        }
+
+        /// <summary>
+        /// Force la sortie de l'éditeur OMath après une insertion. Word a tendance
+        /// à garder le caret "en mode math" quand il est positionné pile à la fin
+        /// d'une équation — il faut plusieurs leviers pour sortir proprement :
+        ///  1. SetRange(omEnd + 1) : suffit parfois pour inline simple.
+        ///  2. Selection.EndKey(wdLine) : pousse jusqu'à la fin de ligne, ce qui
+        ///     sort systématiquement d'un OMath display-mode (la ligne suivante
+        ///     est en texte libre).
+        ///  3. Répétition jusqu'à maxAttempts (caret toujours dans un OMath → on
+        ///     re-tente en augmentant la position).
+        /// </summary>
+        private void NudgeCursorOutOfMath(Word.Document doc, int maxAttempts)
+        {
+            for (int i = 0; i < maxAttempts; i++)
+            {
+                try
+                {
+                    var sel = _app.Selection;
+                    if (sel.OMaths == null || sel.OMaths.Count == 0) return;
+
+                    // Niveau 1 : SetRange juste après la fin de l'OMath courant
+                    int omEnd = sel.OMaths[1].Range.End;
+                    int target = Math.Min(omEnd + 1, doc.Content.End);
+                    if (target > sel.Start) _app.Selection.SetRange(target, target);
+
+                    // Niveau 2 : si toujours dans un OMath, EndKey(wdLine) pour
+                    // sortir jusqu'à la fin de la ligne courante (late-bind :
+                    // wdLine = 5, wdMove = 0 dans toutes les versions Word).
+                    if (_app.Selection.OMaths != null && _app.Selection.OMaths.Count > 0)
+                    {
+                        try
+                        {
+                            _app.Selection.GetType().InvokeMember(
+                                "EndKey",
+                                System.Reflection.BindingFlags.InvokeMethod,
+                                null, _app.Selection,
+                                new object[] { 5, 0 });
+                        }
+                        catch { }
+                    }
+                }
+                catch { return; }
+            }
         }
 
         private (double x, double y) GetCaretScreenPosition()
         {
+            // GetGUIThreadInfo renvoie atomiquement hwndCaret (fenêtre qui
+            // possède le caret) et rcCaret (rect du caret dans ce référentiel).
+            // On convertit ensuite avec hwndCaret, pas GetFocus() : dès qu'un
+            // OMath existe dans le doc, Word multiplie les sous-fenêtres
+            // (éditeur math, pane texte) et les deux HWND peuvent diverger,
+            // ce qui décalait la popup.
             try
             {
-                if (!GetCaretPos(out POINT pt))
+                var gti = new GUITHREADINFO { cbSize = (uint)Marshal.SizeOf(typeof(GUITHREADINFO)) };
+                if (!GetGUIThreadInfo(0, ref gti) || gti.hwndCaret == IntPtr.Zero)
                 {
                     return (200, 200);
                 }
-                IntPtr hwnd = GetFocus();
-                if (hwnd != IntPtr.Zero) ClientToScreen(hwnd, ref pt);
+                var pt = new POINT { X = gti.rcCaret.Left, Y = gti.rcCaret.Bottom };
+                ClientToScreen(gti.hwndCaret, ref pt);
                 double scale = GetDpiScale();
-                return (pt.X / scale, pt.Y / scale + 22);
+                return (pt.X / scale, pt.Y / scale + 4);
             }
             catch
             {
@@ -279,15 +1149,29 @@ namespace MathCursor.Host
         [StructLayout(LayoutKind.Sequential)]
         private struct POINT { public int X; public int Y; }
 
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT { public int Left, Top, Right, Bottom; }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct GUITHREADINFO
+        {
+            public uint cbSize;
+            public uint flags;
+            public IntPtr hwndActive;
+            public IntPtr hwndFocus;
+            public IntPtr hwndCapture;
+            public IntPtr hwndMenuOwner;
+            public IntPtr hwndMoveSize;
+            public IntPtr hwndCaret;
+            public RECT rcCaret;
+        }
+
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool GetCaretPos(out POINT lpPoint);
+        private static extern bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO lpgui);
 
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetFocus();
     }
 }

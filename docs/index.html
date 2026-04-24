@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MathCursor — Saisissez des maths en langage naturel dans Word</title>
   <meta name="description" content="Un complément Word qui convertit la notation math au clavier en équations propres. Pensé pour les lycéens, notamment sous PAP, et leurs profs." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous" />
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
@@ -17,334 +22,295 @@
   </script>
 </head>
 <body>
+
   <header class="site-header">
     <div class="container">
       <a href="#" class="brand">MathCursor</a>
       <nav class="nav">
-        <a href="#pour-qui">Pour qui</a>
-        <a href="#fonctionnement">Fonctionnement</a>
-        <a href="#exemples">Exemples</a>
-        <a href="#installation">Installation</a>
+        <a href="#pour-qui" data-i18n="nav_for">Pour qui</a>
+        <a href="#fonctionnement" data-i18n="nav_how">Fonctionnement</a>
+        <a href="#exemples" data-i18n="nav_examples">Exemples</a>
+        <a href="#installation" data-i18n="nav_install">Installation</a>
+        <a href="releases.html" data-i18n="nav_downloads">Téléchargements</a>
+        <a href="#inscription" data-i18n="nav_signup">Inscription</a>
         <a href="#faq">FAQ</a>
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button type="button" data-lang="fr" class="active">FR</button>
+          <button type="button" data-lang="en">EN</button>
+        </div>
       </nav>
     </div>
   </header>
 
   <main>
+
+    <!-- Hero -->
     <section class="hero">
-      <div class="container">
-        <h1>Saisissez des maths en langage naturel, dans Word.</h1>
-        <p class="lead">
-          MathCursor transforme vos formules tapées au clavier en équations Word propres,
-          à la demande. Tapez
-          <span class="demo-display" aria-live="polite"></span>
-          — un raccourci convertit la zone.
-        </p>
-        <div class="cta-row">
-          <a href="#installation" class="button button--primary">Installer la bêta</a>
-          <a href="#fonctionnement" class="button button--secondary">Voir comment ça marche</a>
-        </div>
-        <div class="hero-badges">
-          <span class="badge">Windows 10 / 11</span>
-          <span class="badge">Word 2016+</span>
-          <span class="badge">Français · English · Deutsch · Español</span>
-          <span class="badge badge--soft">Gratuit · Open source · Sans cloud</span>
-        </div>
+      <div class="hero-tag" data-i18n="tag">Projet MathCursor · Bêta 0.1</div>
+      <h1>
+        <span data-i18n="hero_h1_pre">Saisissez des maths</span>
+        <span class="highlighter" data-i18n="hero_h1_hl">en langage naturel</span>,
+        <span data-i18n="hero_h1_post">dans Word.</span>
+      </h1>
+      <p class="lead">
+        <span data-i18n="hero_lead_pre">MathCursor transforme vos formules tapées au clavier en équations Word propres, à la demande. Tapez</span>
+        <span class="demo-display" aria-live="polite"></span>
+        <span data-i18n="hero_lead_post">— un raccourci convertit la zone.</span>
+      </p>
+      <div class="cta-row">
+        <a href="#inscription" class="button button--primary" data-i18n="cta_join">Rejoindre la bêta</a>
+        <a href="#fonctionnement" class="button button--secondary" data-i18n="cta_learn">Voir comment ça marche</a>
+      </div>
+      <div class="hero-badges">
+        <span class="badge">Windows 10 / 11</span>
+        <span class="badge">Word 2016+</span>
+        <span class="badge" data-i18n="badge_langs">Français · English · Deutsch · Español</span>
+        <span class="badge badge--soft" data-i18n="badge_free">Gratuit en bêta · 100 % local · Sans cloud</span>
       </div>
     </section>
 
+    <!-- Pour qui -->
     <section id="pour-qui" class="section">
       <div class="container">
-        <h2>Pour qui</h2>
+        <h2 data-i18n="for_h">Pour qui</h2>
         <div class="cards">
           <article class="card">
-            <h3>Élèves avec PAP</h3>
-            <p>
-              Quand tu prends un cours de maths au clavier, l'éditeur d'équations
-              classique de Word casse le rythme. MathCursor te laisse taper
-              naturellement et convertit en une frappe. L'objectif : suivre le
-              cours sans effort supplémentaire.
-            </p>
+            <h3 data-i18n="for_1_h">Élèves avec PAP</h3>
+            <p data-i18n="for_1_p">Quand tu prends un cours de maths au clavier, l'éditeur d'équations classique de Word casse le rythme. MathCursor te laisse taper naturellement et convertit en une frappe. L'objectif : suivre le cours sans effort supplémentaire.</p>
+            <div class="card-quote" data-i18n="for_1_q">« Enfin, je tape aussi vite que je pense. »</div>
+          </article>
+          <article class="card card--red">
+            <h3 data-i18n="for_2_h">Profs de maths</h3>
+            <p data-i18n="for_2_p">Un outil gratuit à recommander à vos élèves qui tapent leurs cours. Pas de compte, pas de cloud, rien ne sort de l'ordinateur de l'élève. Compatible avec Word que vos élèves utilisent déjà.</p>
+            <div class="card-quote" data-i18n="for_2_q">« Un pont entre l'écran et le cahier. »</div>
           </article>
           <article class="card">
-            <h3>Profs de maths</h3>
-            <p>
-              Un outil gratuit à recommander à vos élèves qui tapent leurs cours.
-              Pas de compte, pas de cloud, rien ne sort de l'ordinateur de
-              l'élève. Compatible avec Word que vos élèves utilisent déjà.
-            </p>
-          </article>
-          <article class="card">
-            <h3>Tout lycéen au clavier</h3>
-            <p>
-              Même sans aménagement spécifique, si tu as choisi le clavier pour
-              les cours de maths, MathCursor fait disparaître la friction de
-              l'éditeur d'équations.
-            </p>
+            <h3 data-i18n="for_3_h">Tout lycéen au clavier</h3>
+            <p data-i18n="for_3_p">Même sans aménagement spécifique, si tu as choisi le clavier pour les cours de maths, MathCursor fait disparaître la friction de l'éditeur d'équations.</p>
+            <div class="card-quote" data-i18n="for_3_q">« Fini de se battre avec l'éditeur d'équations de Word. »</div>
           </article>
         </div>
       </div>
     </section>
 
-    <section id="fonctionnement" class="section section--alt">
+    <!-- Fonctionnement -->
+    <section id="fonctionnement" class="section">
       <div class="container">
-        <h2>Comment ça marche</h2>
+        <h2 data-i18n="how_h">Comment ça marche</h2>
         <ol class="steps">
           <li>
-            <h3>Tu tapes normalement</h3>
-            <p>
-              Dans ta phrase, tu écris <code>La dérivée de x^2 est 2x</code> ou
-              <code>On a 1/2 + 1/3 = 5/6</code>. Aucune manipulation.
-            </p>
+            <h3 data-i18n="how_1_h">Tu tapes normalement</h3>
+            <p data-i18n="how_1_p">Dans ta phrase, tu écris <code>La dérivée de x^2 est 2x</code> ou <code>On a 1/2 + 1/3 = 5/6</code>. Aucune manipulation.</p>
           </li>
           <li>
-            <h3>Tu déclenches la conversion</h3>
-            <p>
-              Un raccourci clavier (<code>Ctrl + Espace</code>) ou un bouton
-              convertit la zone math détectée en équation Word formatée.
-              Pas de conversion automatique agressive : tu gardes le contrôle.
-            </p>
+            <h3 data-i18n="how_2_h">Tu déclenches la conversion</h3>
+            <p data-i18n="how_2_p">Un raccourci clavier (<code>Ctrl + Espace</code>) ou un bouton convertit la zone math détectée en équation Word formatée. Pas de conversion automatique agressive : tu gardes le contrôle.</p>
           </li>
           <li>
-            <h3>Tu peux rééditer</h3>
-            <p>
-              Repositionne-toi dans une équation existante : MathCursor te
-              ramène à la notation clavier. Tu modifies, tu reconvertis.
-            </p>
+            <h3 data-i18n="how_3_h">Tu peux rééditer</h3>
+            <p data-i18n="how_3_p">Repositionne-toi dans une équation existante : MathCursor te ramène à la notation clavier. Tu modifies, tu reconvertis.</p>
           </li>
         </ol>
       </div>
     </section>
 
+    <!-- Exemples multilingues -->
     <section id="exemples" class="section">
       <div class="container">
-        <h2>Exemples multilingues</h2>
-        <p>
-          MathCursor reconnaît les mots-clés math dans les quatre langues
-          supportées. Voici ce que donne la conversion sur quelques phrases
-          typiques.
-        </p>
+        <h2 data-i18n="ex_h">Exemples multilingues</h2>
+        <p data-i18n="ex_p">MathCursor reconnaît les mots-clés math dans les quatre langues supportées. Voici ce que donne la conversion sur quelques phrases typiques.</p>
         <div class="examples">
           <article class="example">
             <div class="example-lang">Français</div>
             <div class="example-input">
-              <span class="example-label">Tapé :</span>
+              <span class="example-label" data-i18n="ex_typed">Tapé :</span>
               <code>La dérivée de x^2 est 2x</code>
             </div>
             <div class="example-output">
-              <span class="example-label">Rendu :</span>
-              La dérivée de <span data-math="x^2"></span> est
-              <span data-math="2x"></span>
+              <span class="example-label" data-i18n="ex_rendered">Rendu :</span>
+              La dérivée de <span data-math="x^2"></span> est <span data-math="2x"></span>
             </div>
           </article>
           <article class="example">
             <div class="example-lang">English</div>
             <div class="example-input">
-              <span class="example-label">Typed:</span>
+              <span class="example-label" data-i18n="ex_typed">Tapé :</span>
               <code>We have 1/2 + 1/3 = 5/6</code>
             </div>
             <div class="example-output">
-              <span class="example-label">Rendered:</span>
-              We have
-              <span data-math="\frac{1}{2} + \frac{1}{3} = \frac{5}{6}"></span>
+              <span class="example-label" data-i18n="ex_rendered">Rendu :</span>
+              We have <span data-math="\frac{1}{2} + \frac{1}{3} = \frac{5}{6}"></span>
             </div>
           </article>
           <article class="example">
             <div class="example-lang">Deutsch</div>
             <div class="example-input">
-              <span class="example-label">Eingabe:</span>
+              <span class="example-label" data-i18n="ex_typed">Tapé :</span>
               <code>Die Wurzel von 2 ist sqrt(2)</code>
             </div>
             <div class="example-output">
-              <span class="example-label">Darstellung:</span>
-              Die Wurzel von 2 ist
-              <span data-math="\sqrt{2}"></span>
+              <span class="example-label" data-i18n="ex_rendered">Rendu :</span>
+              Die Wurzel von 2 ist <span data-math="\sqrt{2}"></span>
             </div>
           </article>
           <article class="example">
             <div class="example-lang">Español</div>
             <div class="example-input">
-              <span class="example-label">Tecleado:</span>
+              <span class="example-label" data-i18n="ex_typed">Tapé :</span>
               <code>Sea x = (1 + sqrt(5)) / 2</code>
             </div>
             <div class="example-output">
-              <span class="example-label">Representado:</span>
-              Sea
-              <span data-math="x = \frac{1 + \sqrt{5}}{2}"></span>
+              <span class="example-label" data-i18n="ex_rendered">Rendu :</span>
+              Sea <span data-math="x = \frac{1 + \sqrt{5}}{2}"></span>
             </div>
           </article>
         </div>
       </div>
     </section>
 
-    <section id="fonctionnalites" class="section section--alt">
+    <!-- Fonctionnalités -->
+    <section id="fonctionnalites" class="section">
       <div class="container">
-        <h2>Fonctionnalités</h2>
+        <h2 data-i18n="feat_h">Fonctionnalités</h2>
         <ul class="features">
           <li>
-            <strong>Notation clavier naturelle.</strong>
-            Opérateurs <code>^</code>, <code>_</code>, <code>/</code>,
-            fractions, racines, exposants, indices.
+            <strong data-i18n="feat_1_h">Notation clavier naturelle.</strong>
+            <span data-i18n="feat_1_p">Opérateurs <code>^</code>, <code>_</code>, <code>/</code>, fractions, racines, exposants, indices.</span>
           </li>
           <li>
-            <strong>Conversion à la demande.</strong>
-            Déclenchée explicitement par un raccourci ou un bouton — jamais
-            de transformation surprise au milieu d'une phrase.
+            <strong data-i18n="feat_2_h">Conversion à la demande.</strong>
+            <span data-i18n="feat_2_p">Déclenchée explicitement par un raccourci ou un bouton — jamais de transformation surprise au milieu d'une phrase.</span>
           </li>
           <li>
-            <strong>Détection intelligente des zones math.</strong>
-            MathCursor identifie les portions de texte qui ressemblent à des
-            maths dans une phrase normale, et ne convertit que celles-là.
+            <strong data-i18n="feat_3_h">Détection intelligente des zones math.</strong>
+            <span data-i18n="feat_3_p">MathCursor identifie les portions de texte qui ressemblent à des maths dans une phrase normale, et ne convertit que celles-là.</span>
           </li>
           <li>
-            <strong>Multilingue.</strong>
-            Français, anglais, allemand, espagnol — reconnaît les
-            mots-clés de chaque langue (fonctions trigonométriques, logarithmes…).
+            <strong data-i18n="feat_4_h">Multilingue.</strong>
+            <span data-i18n="feat_4_p">Français, anglais, allemand, espagnol — reconnaît les mots-clés de chaque langue (fonctions trigonométriques, logarithmes…).</span>
           </li>
           <li>
-            <strong>Local et privé.</strong>
-            Aucune donnée envoyée sur Internet. Tout se passe sur l'ordinateur
-            de l'élève.
+            <strong data-i18n="feat_5_h">Local et privé.</strong>
+            <span data-i18n="feat_5_p">Aucune donnée envoyée sur Internet. Tout se passe sur l'ordinateur de l'élève.</span>
           </li>
           <li>
-            <strong>Sources préservées.</strong>
-            La notation clavier originale est gardée dans le document — tu peux
-            toujours rééditer une équation sans tout retaper.
+            <strong data-i18n="feat_6_h">Sources préservées.</strong>
+            <span data-i18n="feat_6_p">La notation clavier originale est gardée dans le document — tu peux toujours rééditer une équation sans tout retaper.</span>
           </li>
         </ul>
       </div>
     </section>
 
+    <!-- Installation -->
     <section id="installation" class="section">
       <div class="container">
-        <h2>Installation</h2>
-        <p>
-          MathCursor est en bêta. L'installation prend deux minutes et se
-          fait en deux étapes, une seule fois par machine.
-        </p>
+        <h2 data-i18n="inst_h">Installation</h2>
+        <p data-i18n="inst_p">MathCursor est en bêta. L'installation prend moins d'une minute, une seule fois par machine.</p>
 
         <ol class="install-steps">
           <li>
-            <h3>1. Importer le certificat</h3>
-            <p>
-              Ouvre <strong>PowerShell</strong> (Démarrer → tape
-              <code>PowerShell</code> → Entrée), puis colle cette commande :
-            </p>
-            <pre class="install-cmd"><code>iwr -UseBasicParsing https://come.github.io/MathCursor/install-cert.ps1 | iex</code></pre>
-            <p>
-              Le script <a href="install-cert.ps1">install-cert.ps1</a>
-              télécharge le <a href="mathcursor.cer">certificat public</a> et
-              l'importe dans ton compte utilisateur (pas besoin
-              d'administrateur). Cette étape permet à Word d'accepter le
-              complément.
-            </p>
+            <h3 data-i18n="inst_1_h">1. Télécharger l'installateur</h3>
+            <p data-i18n="inst_1_p">Récupère <a href="/download/latest.exe"><code>MathCursor-Setup.exe</code></a> (dernière version) ou choisis-en une sur la page <a href="releases.html">Téléchargements</a>.</p>
           </li>
           <li>
-            <h3>2. Lancer l'installeur</h3>
-            <p>
-              Télécharge et exécute
-              <a href="release/setup.exe"><code>setup.exe</code></a>.
-              ClickOnce installe MathCursor et le gardera à jour
-              automatiquement à chaque ouverture de Word.
-            </p>
+            <h3 data-i18n="inst_2_h">2. Lancer l'installateur</h3>
+            <p data-i18n="inst_2_p">Double-clique sur le fichier. L'installateur importe lui-même le <a href="mathcursor.cer">certificat</a> nécessaire puis installe le complément dans ton compte utilisateur — pas de droits administrateur, pas d'étape PowerShell.</p>
           </li>
           <li>
-            <h3>3. Utiliser</h3>
-            <p>
-              Ouvre Word : un onglet <strong>MathCursor</strong> apparaît dans
-              le ruban. Tape <code>x^2+1/2</code> dans un document, puis
-              déclenche la conversion (bouton de l'onglet ou raccourci
-              clavier).
-            </p>
+            <h3 data-i18n="inst_3_h">3. Utiliser</h3>
+            <p data-i18n="inst_3_p">Ouvre Word : un onglet <strong>MathCursor</strong> apparaît dans le ruban. Tape <code>x^2+1/2</code> dans un document, puis déclenche la conversion (bouton de l'onglet ou raccourci clavier).</p>
           </li>
         </ol>
 
-        <p class="install-note">
-          Besoin d'aide, un bug, envie de rejoindre la bêta ?
-          <a href="mailto:come2percin@gmail.com">Contact</a>.
-        </p>
+        <p class="install-note" data-i18n="inst_note">Besoin d'aide, un bug, envie de discuter ? <a href="mailto:come2percin@gmail.com">Contact</a>.</p>
       </div>
     </section>
 
-    <section id="faq" class="section section--alt">
+    <!-- Inscription — Google Form embed -->
+    <section id="inscription" class="section">
       <div class="container">
-        <h2>Questions fréquentes</h2>
+        <div class="signup">
+          <div class="signup-head">
+            <h2 data-i18n="sign_h">Rejoindre la bêta</h2>
+            <p data-i18n="sign_p">Aide-nous à façonner MathCursor · élèves, profs, parents</p>
+          </div>
+          <div class="signup-frame">
+            <!--
+              TODO : remplacer SRC ci-dessous par l'URL du Google Form.
+              Dans Google Forms, clique sur "Envoyer" → onglet "< >" (embed)
+              et copie le src de l'iframe ici. Format attendu :
+              https://docs.google.com/forms/d/e/XXXXXXXXXXX/viewform?embedded=true
+            -->
+            <iframe
+              src="about:blank"
+              data-form-src="https://docs.google.com/forms/d/e/1FAIpQLSe-RjaQfG5RL6Iso4xD0tkReWOipwoLbd9OXkux1S_J5l4Y1A/viewform?embedded=true"
+              title="Formulaire d'inscription MathCursor"
+              loading="lazy">
+              <span data-i18n="sign_fallback">Votre navigateur ne prend pas en charge les formulaires intégrés. Utilisez le lien ci-dessous.</span>
+            </iframe>
+          </div>
+          <p class="signup-fallback" data-i18n="sign_link">
+            Si le formulaire ne s'affiche pas, ouvre-le directement : <a href="#" id="signup-link">lien du formulaire</a>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="section">
+      <div class="container">
+        <h2 data-i18n="faq_h">Questions fréquentes</h2>
         <div class="faq">
           <details>
-            <summary>Mes données sont-elles envoyées sur Internet ?</summary>
-            <p>
-              Non. MathCursor fonctionne entièrement en local. Aucune donnée
-              ne sort de l'ordinateur — ni les documents, ni la frappe, ni
-              de télémétrie. Pas de compte, pas de cloud.
-            </p>
+            <summary data-i18n="faq_1_q">Mes données sont-elles envoyées sur Internet ?</summary>
+            <p data-i18n="faq_1_a">Non. MathCursor fonctionne entièrement en local. Aucune donnée ne sort de l'ordinateur — ni les documents, ni la frappe, ni de télémétrie. Pas de compte, pas de cloud.</p>
           </details>
           <details>
-            <summary>Ça fonctionne hors ligne ?</summary>
-            <p>
-              Oui. Une connexion Internet n'est utile que pour la mise à
-              jour automatique de la bêta : à chaque ouverture de Word,
-              ClickOnce vérifie s'il y a une nouvelle version sur GitHub
-              Pages. Sans réseau, la version installée continue de
-              fonctionner normalement.
-            </p>
+            <summary data-i18n="faq_2_q">Ça fonctionne hors ligne ?</summary>
+            <p data-i18n="faq_2_a">Oui. Une connexion Internet n'est utile que pour la mise à jour automatique de la bêta : à chaque ouverture de Word, ClickOnce vérifie s'il y a une nouvelle version sur GitHub Pages. Sans réseau, la version installée continue de fonctionner normalement.</p>
           </details>
           <details>
-            <summary>Et le RGPD ?</summary>
-            <p>
-              Rien à signaler. Aucune donnée personnelle n'est collectée,
-              aucun cookie, aucun traceur. MathCursor est un complément Word
-              qui reste sur la machine de l'utilisateur.
-            </p>
+            <summary data-i18n="faq_3_q">Et le RGPD ?</summary>
+            <p data-i18n="faq_3_a">Rien à signaler. Aucune donnée personnelle n'est collectée, aucun cookie, aucun traceur. MathCursor est un complément Word qui reste sur la machine de l'utilisateur.</p>
           </details>
           <details>
-            <summary>Quelles versions de Word sont supportées ?</summary>
-            <p>
-              Word 2016, 2019, 2021 et Microsoft 365 Desktop sur Windows 10
-              et 11. Les portages Mac, Word Web et iPad sont prévus pour la
-              phase 2, après validation de la bêta Windows.
-            </p>
+            <summary data-i18n="faq_4_q">Quelles versions de Word sont supportées ?</summary>
+            <p data-i18n="faq_4_a">Word 2016, 2019, 2021 et Microsoft 365 Desktop sur Windows 10 et 11. Les portages Mac, Word Web et iPad sont prévus pour la phase 2, après validation de la bêta Windows.</p>
           </details>
           <details>
-            <summary>Le certificat auto-signé, c'est safe ?</summary>
-            <p>
-              Oui. Le certificat est importé dans le compte utilisateur
-              uniquement (pas au niveau système), sans droits
-              administrateur. Il peut être supprimé à tout moment via
-              <code>certmgr.msc</code>. Le script d'installation et le code
-              source sont publics sur
-              <a href="https://github.com/come/MathCursor">GitHub</a>.
-            </p>
+            <summary data-i18n="faq_5_q">Le certificat auto-signé, c'est safe ?</summary>
+            <p data-i18n="faq_5_a">Oui. Le certificat est importé dans le compte utilisateur uniquement (pas au niveau système), sans droits administrateur. Il peut être supprimé à tout moment via <code>certmgr.msc</code>. Le <a href="install-cert.ps1">script d'import</a> est consultable avant exécution.</p>
           </details>
           <details>
-            <summary>Comment signaler un bug ou proposer une amélioration ?</summary>
-            <p>
-              Par <a href="mailto:come2percin@gmail.com">email</a> ou en
-              ouvrant une
-              <a href="https://github.com/come/MathCursor/issues">issue GitHub</a>.
-              Les retours des profs et des élèves pilotent la roadmap.
-            </p>
+            <summary data-i18n="faq_6_q">Comment signaler un bug ou proposer une amélioration ?</summary>
+            <p data-i18n="faq_6_a">Par <a href="mailto:come2percin@gmail.com">email</a>. Les retours des profs et des élèves pilotent la roadmap.</p>
           </details>
         </div>
       </div>
     </section>
 
+    <!-- Statut -->
     <section class="section">
       <div class="container">
-        <h2>Statut du projet</h2>
-        <p>
-          Phase 1 : Word Desktop Windows, en validation avec quelques élèves
-          (dont un élève sous PAP) et profs de maths bêta-testeurs. Si la
-          validation est concluante, la phase 2 portera MathCursor vers Word
-          Web, Mac et iPad.
-        </p>
-        <p>
-          Projet open source, disponible sur
-          <a href="https://github.com/come/MathCursor">GitHub</a>.
-        </p>
+        <h2 data-i18n="stat_h">Statut du projet</h2>
+        <p data-i18n="stat_p1">Phase 1 : Word Desktop Windows, en validation avec quelques élèves (dont un élève sous PAP) et profs de maths bêta-testeurs. Si la validation est concluante, la phase 2 portera MathCursor vers Word Web, Mac et iPad.</p>
+        <p data-i18n="stat_p2">Bêta fermée, gratuite pour les testeurs. <a href="#inscription">Demande ton accès</a>.</p>
       </div>
     </section>
+
   </main>
 
+  <footer class="site-footer">
+    <div class="container">
+      <div data-i18n="foot_copy">MathCursor · 100 % local, sans tracking, sans compte</div>
+      <nav>
+        <a href="#inscription" data-i18n="foot_signup">Rejoindre la bêta</a>
+        <a href="mailto:come2percin@gmail.com">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- Hero demo animation (typewriter → KaTeX) -->
   <script>
     (function () {
       const EXAMPLES = [
@@ -371,7 +337,6 @@
         const display = document.querySelector('.demo-display');
         if (!display) return;
 
-        // prefers-reduced-motion : pas d'animation, juste un rendu statique
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
           display.className = 'demo-display demo-rendered';
           if (typeof katex !== 'undefined') {
@@ -383,27 +348,22 @@
         let i = 0;
         while (true) {
           const ex = EXAMPLES[i % EXAMPLES.length];
-
           display.className = 'demo-display demo-typing';
           display.textContent = '';
           await sleep(FADE_MS);
-
           for (const ch of ex.input) {
             display.textContent += ch;
             await sleep(TYPE_SPEED_MS);
           }
           await sleep(PAUSE_AFTER_TYPE);
-
           display.className = 'demo-display demo-rendered';
           if (typeof katex !== 'undefined') {
             try { katex.render(ex.tex, display, { throwOnError: false }); }
             catch (e) { /* ignore */ }
           }
           await sleep(SHOW_RENDERED_MS);
-
           display.className = 'demo-display demo-fading';
           await sleep(FADE_MS);
-
           i++;
         }
       }
@@ -413,14 +373,172 @@
     })();
   </script>
 
-  <footer class="site-footer">
-    <div class="container">
-      <p>MathCursor — projet personnel, gratuit, sans tracking.</p>
-      <p>
-        <a href="https://github.com/come/MathCursor">Code source</a> ·
-        <a href="mailto:come2percin@gmail.com">Contact</a>
-      </p>
-    </div>
-  </footer>
+  <!-- Google Form loader -->
+  <script>
+    (function () {
+      const frame = document.querySelector('.signup-frame iframe');
+      const link  = document.getElementById('signup-link');
+      if (!frame) return;
+      const src = frame.getAttribute('data-form-src');
+      if (src && src.indexOf('http') === 0) {
+        frame.src = src;
+        if (link) link.href = src.replace('?embedded=true', '').replace('&embedded=true', '');
+      } else {
+        // No form configured yet — show placeholder message in-frame
+        frame.srcdoc = `
+          <!doctype html><html><head><meta charset="utf-8">
+          <style>
+            body{font-family:Inter,system-ui,sans-serif;background:#fde047;color:#00236f;
+                 display:flex;align-items:center;justify-content:center;height:100vh;margin:0;
+                 padding:32px;text-align:center;line-height:1.5;}
+            code{background:#00236f;color:#fde047;padding:2px 6px;border-radius:2px;font-size:.9em;}
+          </style></head><body>
+          <div>
+            <strong>Formulaire Google non encore configuré.</strong><br>
+            Remplace <code>data-form-src</code> dans <code>index.html</code> par l'URL d'embed du Google Form.
+          </div>
+          </body></html>`;
+        if (link) link.style.display = 'none';
+      }
+    })();
+  </script>
+
+  <!-- i18n FR/EN -->
+  <script>
+    const I18N = {
+      en: {
+        nav_for: "Who it's for",
+        nav_how: "How it works",
+        nav_examples: "Examples",
+        nav_install: "Install",
+        nav_downloads: "Downloads",
+        nav_signup: "Sign up",
+
+        tag: "Project MathCursor · Beta 0.1",
+        hero_h1_pre: "Type math",
+        hero_h1_hl:  "in plain language",
+        hero_h1_post: ", right in Word.",
+        hero_lead_pre: "MathCursor turns the math you type on your keyboard into clean Word equations, on demand. Type",
+        hero_lead_post: "— a shortcut converts the zone.",
+        cta_join: "Join the beta",
+        cta_learn: "See how it works",
+        badge_langs: "Français · English · Deutsch · Español",
+        badge_free: "Free during beta · 100% local · No cloud",
+
+        for_h: "Who it's for",
+        for_1_h: "Students with accommodations",
+        for_1_p: "When you're taking math notes on a keyboard, Word's equation editor breaks your flow. MathCursor lets you type naturally and converts in one keystroke. Goal: keep up with class, no extra effort.",
+        for_1_q: "\"Finally, I can type as fast as I think.\"",
+        for_2_h: "Math teachers",
+        for_2_p: "A free tool to recommend to the students who take their notes on a laptop. No account, no cloud, nothing leaves the student's machine. Works with the Word they already use.",
+        for_2_q: "\"A bridge between the screen and the notebook.\"",
+        for_3_h: "Any high-schooler on a keyboard",
+        for_3_p: "Even without a formal accommodation, if you've chosen the keyboard for math class, MathCursor removes the friction of the equation editor.",
+        for_3_q: "\"No more fighting with Word's equation editor.\"",
+
+        how_h: "How it works",
+        how_1_h: "You type normally",
+        how_1_p: "In your sentence, you write <code>The derivative of x^2 is 2x</code> or <code>We have 1/2 + 1/3 = 5/6</code>. No manipulation.",
+        how_2_h: "You trigger the conversion",
+        how_2_p: "A keyboard shortcut (<code>Ctrl + Space</code>) or a ribbon button converts the detected math zone into a formatted Word equation. No aggressive auto-convert: you stay in control.",
+        how_3_h: "You can re-edit",
+        how_3_p: "Place your cursor back inside an existing equation: MathCursor brings it back to the keyboard notation. You edit, you re-convert.",
+
+        ex_h: "Multilingual examples",
+        ex_p: "MathCursor recognises math keywords in the four supported languages. Here's what the conversion looks like on a few typical sentences.",
+        ex_typed: "Typed:",
+        ex_rendered: "Rendered:",
+
+        feat_h: "Features",
+        feat_1_h: "Natural keyboard notation.",
+        feat_1_p: "Operators <code>^</code>, <code>_</code>, <code>/</code>, fractions, roots, superscripts, subscripts.",
+        feat_2_h: "On-demand conversion.",
+        feat_2_p: "Triggered explicitly by a shortcut or a button — never a surprise transformation mid-sentence.",
+        feat_3_h: "Smart math-zone detection.",
+        feat_3_p: "MathCursor identifies the portions of a sentence that look like math and converts only those.",
+        feat_4_h: "Multilingual.",
+        feat_4_p: "French, English, German, Spanish — recognises each language's keywords (trig functions, logarithms…).",
+        feat_5_h: "Local and private.",
+        feat_5_p: "No data sent over the Internet. Everything runs on the student's machine.",
+        feat_6_h: "Source preserved.",
+        feat_6_p: "The original keyboard notation is kept in the document — you can always re-edit an equation without retyping it.",
+
+        inst_h: "Installation",
+        inst_p: "MathCursor is in beta. Installation takes less than a minute, once per machine.",
+        inst_1_h: "1. Download the installer",
+        inst_1_p: "Grab <a href=\"/download/latest.exe\"><code>MathCursor-Setup.exe</code></a> (latest) or pick a version on the <a href=\"releases.html\">Downloads</a> page.",
+        inst_1_p2: "",
+        inst_2_h: "2. Run the installer",
+        inst_2_p: "Double-click the file. The installer imports the required <a href=\"mathcursor.cer\">certificate</a> itself, then installs the add-in into your user profile — no admin rights, no PowerShell step.",
+        inst_3_h: "3. Use it",
+        inst_3_p: "Open Word: a <strong>MathCursor</strong> tab appears in the ribbon. Type <code>x^2+1/2</code> in a document, then trigger the conversion (ribbon button or keyboard shortcut).",
+        inst_note: "Need help, found a bug, want to chat? <a href=\"mailto:come2percin@gmail.com\">Contact</a>.",
+
+        sign_h: "Join the beta",
+        sign_p: "Help us shape MathCursor · students, teachers, parents",
+        sign_fallback: "Your browser doesn't support embedded forms. Use the link below.",
+        sign_link: "If the form doesn't show, open it directly: <a href=\"#\" id=\"signup-link\">form link</a>.",
+
+        faq_h: "Frequently asked questions",
+        faq_1_q: "Is my data sent over the Internet?",
+        faq_1_a: "No. MathCursor runs entirely locally. No data leaves the computer — not the documents, not the keystrokes, no telemetry. No account, no cloud.",
+        faq_2_q: "Does it work offline?",
+        faq_2_a: "Yes. An Internet connection is only useful for the beta's auto-update: every time Word starts, ClickOnce checks GitHub Pages for a new version. Without a network, the installed version keeps working as usual.",
+        faq_3_q: "What about GDPR?",
+        faq_3_a: "Nothing to report. No personal data collected, no cookie, no tracker. MathCursor is a Word add-in that stays on the user's machine.",
+        faq_4_q: "Which Word versions are supported?",
+        faq_4_a: "Word 2016, 2019, 2021 and Microsoft 365 Desktop on Windows 10 and 11. Mac, Word Web and iPad ports are planned for phase 2, after validating the Windows beta.",
+        faq_5_q: "Is the self-signed certificate safe?",
+        faq_5_a: "Yes. The certificate is imported into the user account only (not system-wide), with no admin rights. It can be removed at any time via <code>certmgr.msc</code>. The <a href=\"install-cert.ps1\">import script</a> can be inspected before running it.",
+        faq_6_q: "How do I report a bug or suggest an improvement?",
+        faq_6_a: "By <a href=\"mailto:come2percin@gmail.com\">email</a>. Teacher and student feedback drives the roadmap.",
+
+        stat_h: "Project status",
+        stat_p1: "Phase 1: Word Desktop for Windows, in validation with a few students (including one with formal accommodations) and math-teacher beta-testers. If validation succeeds, phase 2 will bring MathCursor to Word Web, Mac and iPad.",
+        stat_p2: "Closed beta, free for testers. <a href=\"#inscription\">Request access</a>.",
+
+        foot_copy: "MathCursor · 100% local, no tracking, no account",
+        foot_signup: "Join the beta"
+      }
+    };
+
+    function setLang(lang) {
+      const dict = I18N[lang];
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        if (!dict) {
+          // reset to FR = default in markup — keep original
+          return;
+        }
+        if (dict[key]) {
+          el.innerHTML = dict[key];
+        }
+      });
+      document.querySelectorAll('.lang-toggle button').forEach(b => {
+        b.classList.toggle('active', b.dataset.lang === lang);
+      });
+      try { localStorage.setItem('mc_lang', lang); } catch (e) {}
+    }
+
+    // Snapshot FR originals so we can switch back
+    const FR_SNAPSHOT = {};
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      FR_SNAPSHOT[el.dataset.i18n] = el.innerHTML;
+    });
+    I18N.fr = FR_SNAPSHOT;
+
+    document.querySelectorAll('.lang-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => setLang(btn.dataset.lang));
+    });
+
+    let saved = null;
+    try { saved = localStorage.getItem('mc_lang'); } catch (e) {}
+    if (!saved) {
+      saved = (navigator.language || 'fr').toLowerCase().startsWith('en') ? 'en' : 'fr';
+    }
+    if (saved === 'en') setLang('en');
+  </script>
+
 </body>
 </html>

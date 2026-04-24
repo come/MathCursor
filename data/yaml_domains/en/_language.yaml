@@ -1,0 +1,134 @@
+# English — stop phrases, connectors, transition vocabulary
+
+language: en
+version: 1
+
+stop_phrases:
+  - { phrase: "we have",      type: verb }
+  - { phrase: "we know that", type: verb }
+  - { phrase: "let us set",   type: verb }
+  - { phrase: "let",          type: verb }
+  - { phrase: "suppose that", type: verb }
+  - { phrase: "assume that",  type: verb }
+  - { phrase: "there exists", type: quantifier, maps_to: EXISTS }
+  - { phrase: "for all",      type: quantifier, maps_to: FORALL }
+  - { phrase: "such that",    type: connector,  maps_to: SUCH_THAT }
+
+stop_words:
+  # Structural keywords absorbed by patterns
+  - to
+  - from
+  - is
+  - are
+  - was
+  - were
+  - be
+  - been
+  - being
+  - has
+  - have
+  - had
+  - therefore
+  - thus
+  - hence
+  - so
+
+connectors:
+  - of
+  - the
+  - a
+  - an
+  - to
+  - by
+  - for
+  - and
+  - with
+  - on
+  - in
+  - from
+  - as
+
+tokens:
+
+  LIMIT:
+    canonical: "\\lim"
+    aliases: [lim, limit]
+
+  TENDS_TO:
+    canonical: "\\to"
+    aliases: ["->", to, towards, approaches]
+
+  WHEN:
+    canonical: ""
+    aliases: [when, as]
+    role: connector
+
+  SQRT:
+    canonical: "\\sqrt"
+    aliases: [sqrt]
+
+  INTEGRAL:
+    canonical: "\\int"
+    aliases: [int, integ, integral]
+    fuzzy_max_distance: 1
+
+  SUM:
+    canonical: "\\sum"
+    aliases: [sum]
+
+  VEC:
+    canonical: "\\vec"
+    aliases: [vec, vector]
+
+  IN:
+    canonical: "\\in"
+    aliases: [in, "∈"]
+
+  FORALL:
+    canonical: "\\forall"
+    aliases: [forall]
+
+  EXISTS:
+    canonical: "\\exists"
+    aliases: [exists]
+
+  SUCH_THAT:
+    canonical: "\\mid"
+    aliases: [st, "|"]
+
+patterns:
+
+  - id: limit_en_as
+    description: "lim f(x) as x -> a"
+    match: "LIMIT IDENT:f LPAREN EXPR:x RPAREN WHEN? IDENT:var TENDS_TO EXPR:target"
+    template: "\\lim_{{{var}} \\to {{target}}} {{f}}({{x}})"
+    examples:
+      - input: "lim f(x) as x -> 1"
+        output: "\\lim_{x \\to 1} f(x)"
+      - input: "limit of f(x) as x approaches 1"
+        output: "\\lim_{x \\to 1} f(x)"
+
+  - id: sqrt_en
+    description: "Square root"
+    match: "SQRT LPAREN? EXPR:x RPAREN?"
+    template: "\\sqrt{{{x}}}"
+    examples:
+      - input: "sqrt(2)"
+        output: "\\sqrt{2}"
+      - input: "V(x+1)"
+        output: "\\sqrt{x+1}"
+        skip: "V ambiguous with variance token"
+
+  - id: forall_en
+    match: "FORALL IDENT:var IN EXPR:set"
+    template: "\\forall {{var}} \\in {{set}}"
+    examples:
+      - input: "for all x in R"
+        output: "\\forall x \\in \\mathbb{R}"
+
+  - id: exists_en
+    match: "EXISTS IDENT:var SUCH_THAT? EXPR:cond"
+    template: "\\exists {{var}} \\mid {{cond}}"
+    examples:
+      - input: "there exists alpha st alpha > 0"
+        output: "\\exists \\alpha \\mid \\alpha > 0"

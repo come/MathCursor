@@ -1,0 +1,40 @@
+# Journal de décisions — MathCursor
+
+Une entrée par décision produit ou technique, dans un fichier séparé,
+nommé `YYYY-MM-DD-<Kind>-<slug>.md`.
+
+Format et conventions : voir
+[2026-04-24-Meta-adr-format.md](2026-04-24-Meta-adr-format.md).
+
+## Kinds
+`Feat-` · `Fix-` · `UX-` · `Release-` · `Meta-`
+
+## Températures
+- **[forte]** — structurelle, coûte cher à changer. On n'y revient qu'avec un très bon argument.
+- **[molle]** — décision de travail, ouverte à révision si bon argument.
+- **[provisoire]** — "on fait comme ça aujourd'hui mais on reverra". À re-examiner activement.
+
+## Statuts
+`proposé` · `acté` · `retracté`
+
+## Index chronologique (plus récent en haut)
+
+### 2026-04-24
+- `[molle]` Fix — [Cert importé uniquement dans TrustedPublisher (pas Root)](2026-04-24-Fix-cert-trustedpublisher-only.md)
+- `[molle]` UX — [L'installer importe le certificat lui-même (plus de PowerShell)](2026-04-24-UX-installer-imports-cert.md)
+- `[molle]` Feat — [Déploiement Cloudflare Pages + R2 + Analytics Engine](2026-04-24-Feat-cloudflare-deployment.md)
+- `[forte]` Meta — [Process de décision rappelé dans CLAUDE.md](2026-04-24-Meta-process-decision-claude-md.md)
+- `[molle]` Meta — [Format des ADR + température de décision](2026-04-24-Meta-adr-format.md)
+- `[molle]` Feat — [Feedback in-popup "Signaler une erreur"](2026-04-24-Feat-feedback-in-popup.md) (scaffold HTTP = provisoire dedans)
+- Release — [0.3.0](2026-04-24-Release-0.3.0.md)
+
+### 2026-04-23
+- `[molle]` Feat — [Patterns sum/product/integral séparateur espace + angle ABC](2026-04-23-Feat-sum-angle-patterns.md)
+- `[molle]` Fix — [Span Ctrl+Espace respecte brackets/parens](2026-04-23-Fix-span-respects-brackets.md)
+- `[molle]` Feat — [Matching préfixe (propositions partielles)](2026-04-23-Feat-partial-matching.md)
+- Release — [0.2.0](2026-04-23-Release-0.2.0.md)
+- `[molle]` UX — [Alignement OMath respecte le paragraphe parent](2026-04-23-UX-alignment-respect-paragraph.md)
+- `[molle]` Feat — [Trigger explicite Ctrl+Espace](2026-04-23-Feat-trigger-ctrl-space.md)
+- `[molle]` Feat — [Feedback via bundle zip + groupe WhatsApp](2026-04-23-Feat-feedback-bundle-whatsapp.md)
+- `[molle]` Fix — [Rendu LaTeX : fallback sur `HasError`](2026-04-23-Fix-latex-render-fallback.md)
+- `[molle]` Fix — [Position popup via GetGUIThreadInfo](2026-04-23-Fix-popup-position-guithreadinfo.md)

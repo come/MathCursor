@@ -1,18 +1,41 @@
 using System;
-using MathCursor.HostContract;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
 using Word = Microsoft.Office.Interop.Word;
 
 namespace MathCursor.Host
 {
     /// <summary>
-    /// Source UNIQUE de vérité pour la règle "lecture du contexte autour du curseur".
+    /// Résultat de lecture du paragraphe : le texte reconstruit (OMaths
+    /// remplacés par leur source si elle existe, sinon espaces) + la position
+    /// du caret + la liste des régions dans le texte où se trouvent les OMaths.
+    /// Ces régions servent à filtrer les zones NER qui chevauchent des équations
+    /// déjà posées (on ne re-propose pas ce qui est déjà converti).
+    /// </summary>
+    internal sealed class ParagraphRead
+    {
+        public string Text { get; set; } = "";
+        public int CaretOffset { get; set; }
+        public IReadOnlyList<(int start, int end)> OMathRegions { get; set; } = Array.Empty<(int, int)>();
+        public int ParagraphAbsStart { get; set; }
+    }
+
+    /// <summary>
+    /// Lecture du paragraphe courant pour alimenter le NER + popup.
     ///
-    /// Règle absolue (cf. briefs/architecture-flow.md §1) : on ne traverse JAMAIS
-    /// un saut de ligne. Le contexte est borné par le paragraphe courant via
-    /// Selection.Paragraphs[1].Range.
+    /// Les régions OMath sont MASQUÉES (remplacées par des espaces de même
+    /// longueur) — le NER est entraîné sur du texte brut, pas sur du math
+    /// rendu, et substituer la source au milieu du paragraphe le confond
+    /// (il ne détecte plus les expressions adjacentes). Le masquage fait
+    /// "disparaître" l'équation sans décaler les positions.
     ///
-    /// Utilisé par VstoDocumentHost.ReadContextAroundCaretAsync (pour le pipeline
-    /// déclenché par Tab) et par SuggestionService (pour la popup polling).
+    /// Les zones OMath sont quand même remontées dans <c>OMathRegions</c>
+    /// pour que SuggestionService filtre les zones NER qui tomberaient dans
+    /// cette région (si jamais le NER spike dessus).
+    ///
+    /// La source brute des équations reste récupérable via bookmark mcEq_
+    /// → CustomXMLPart côté <c>SuggestionService.TryEnterEditMode</c>.
     /// </summary>
     internal sealed class WordContextReader
     {
@@ -23,34 +46,11 @@ namespace MathCursor.Host
             _app = app ?? throw new ArgumentNullException(nameof(app));
         }
 
-        /// <summary>Lit jusqu'à <paramref name="charsBefore"/> caractères avant le curseur.</summary>
-        public string ReadBefore(int charsBefore)
+        public ParagraphRead ReadCurrentParagraph()
         {
+            var empty = new ParagraphRead();
             var doc = _app.ActiveDocument;
-            if (doc == null) return "";
-            try
-            {
-                var sel = _app.Selection;
-                int caretPos = sel.Start;
-                int paraStart = ParaStart(sel, doc);
-                int start = Math.Max(paraStart, caretPos - charsBefore);
-                if (start >= caretPos) return "";
-                return doc.Range(start, caretPos).Text ?? "";
-            }
-            catch
-            {
-                return "";
-            }
-        }
-
-        /// <summary>
-        /// Lit le paragraphe courant entier + la position du caret dans ce texte.
-        /// Utilisé par le détecteur NER qui travaille sur paragraphe complet.
-        /// </summary>
-        public (string paragraphText, int caretOffset) ReadCurrentParagraph()
-        {
-            var doc = _app.ActiveDocument;
-            if (doc == null) return ("", 0);
+            if (doc == null) return empty;
             try
             {
                 var sel = _app.Selection;
@@ -58,45 +58,53 @@ namespace MathCursor.Host
                 var paraRange = sel.Paragraphs[1].Range;
                 int paraStart = paraRange.Start;
                 int paraEnd = paraRange.End;
-                if (paraStart >= paraEnd) return ("", 0);
-                var text = doc.Range(paraStart, paraEnd).Text ?? "";
-                int offset = Math.Max(0, Math.Min(caretPos - paraStart, text.Length));
-                return (text, offset);
-            }
-            catch
-            {
-                return ("", 0);
-            }
-        }
+                if (paraStart >= paraEnd) return empty;
+                var rawText = doc.Range(paraStart, paraEnd).Text ?? "";
 
-        /// <summary>Lit le contexte autour du curseur (avant + après), borné par le paragraphe.</summary>
-        public ContextText ReadAround(int charsBefore, int charsAfter)
-        {
-            var empty = new ContextText { TextBefore = "", TextAfter = "", CaretOffset = 0 };
-            var doc = _app.ActiveDocument;
-            if (doc == null) return empty;
-            try
-            {
-                var sel = _app.Selection;
-                int caretPos = sel.Start;
-                int paraStart = ParaStart(sel, doc);
-                int paraEnd = ParaEnd(sel, doc);
+                var regions = new List<(int start, int end)>();
+                string text = rawText;
 
-                int startOffset = Math.Max(paraStart, caretPos - charsBefore);
-                int endOffset = Math.Min(paraEnd, caretPos + charsAfter);
-
-                string textBefore = caretPos > startOffset
-                    ? (doc.Range(startOffset, caretPos).Text ?? "")
-                    : "";
-                string textAfter = endOffset > caretPos
-                    ? (doc.Range(caretPos, endOffset).Text ?? "")
-                    : "";
-
-                return new ContextText
+                if (rawText.Length > 0)
                 {
-                    TextBefore = textBefore,
-                    TextAfter = textAfter,
-                    CaretOffset = textBefore.Length,
+                    var sb = new StringBuilder(rawText);
+                    try
+                    {
+                        foreach (Word.OMath om in doc.OMaths)
+                        {
+                            var r = om.Range;
+                            if (r.End <= paraStart || r.Start >= paraEnd) continue;
+                            int omRelStart = Math.Max(0, r.Start - paraStart);
+                            int omRelEnd = Math.Min(sb.Length, r.End - paraStart);
+                            int regionLen = omRelEnd - omRelStart;
+                            if (regionLen <= 0) continue;
+
+                            // Masquage : on remplace chaque caractère de la région OMath
+                            // par un espace. Deux motifs :
+                            // 1) Le NER est entraîné sur du texte brut, pas sur du math
+                            //    rendu — substituer la source brute au milieu d'un
+                            //    paragraphe le confond parfois (il ne détecte plus les
+                            //    expressions adjacentes). Masquer le fait "disparaître".
+                            // 2) La source reste accessible via bookmark→store côté
+                            //    TryEnterEditMode quand le caret entre dans l'équation.
+                            for (int i = 0; i < regionLen; i++)
+                                sb[omRelStart + i] = ' ';
+
+                            regions.Add((omRelStart, omRelEnd));
+                        }
+                    }
+                    catch (Exception ex) { LogDiag("omath_iter_error: " + ex.Message); }
+                    text = sb.ToString();
+                }
+
+                if (regions.Count > 0)
+                    LogDiag($"paragraph reconstructed (OMaths={regions.Count}, len={text.Length}) → \"{Preview(text)}\"");
+
+                return new ParagraphRead
+                {
+                    Text = text,
+                    CaretOffset = Math.Max(0, Math.Min(caretPos - paraStart, text.Length)),
+                    OMathRegions = regions,
+                    ParagraphAbsStart = paraStart,
                 };
             }
             catch
@@ -105,16 +113,25 @@ namespace MathCursor.Host
             }
         }
 
-        private static int ParaStart(Word.Selection sel, Word.Document doc)
+        private static string Preview(string s)
         {
-            try { return sel.Paragraphs[1].Range.Start; }
-            catch { return doc.Content.Start; }
+            if (string.IsNullOrEmpty(s)) return "";
+            s = s.Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t");
+            return s.Length > 120 ? s.Substring(0, 120) + "…" : s;
         }
 
-        private static int ParaEnd(Word.Selection sel, Word.Document doc)
+        private static void LogDiag(string message)
         {
-            try { return sel.Paragraphs[1].Range.End; }
-            catch { return doc.Content.End; }
+            try
+            {
+                var dir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "MathCursor", "logs");
+                Directory.CreateDirectory(dir);
+                File.AppendAllText(Path.Combine(dir, "mathcursor.log"),
+                    $"{DateTime.UtcNow:o} ctx {message}{Environment.NewLine}");
+            }
+            catch { }
         }
     }
 }

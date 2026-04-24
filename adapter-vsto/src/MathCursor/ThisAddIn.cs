@@ -4,16 +4,15 @@ using System.Threading.Tasks;
 using Microsoft.Office.Core;
 using MathCursor.Detection;
 using MathCursor.Host;
+using Engine = MathCursor.Core.PatternEngine.PatternEngine;
 
 namespace MathCursor
 {
     public partial class ThisAddIn
     {
-        private VstoDocumentHost _host;
         private VstoEquationStore _store;
-        private VstoEditorSurface _surface;
-        private VstoUserFeedback _feedback;
         private MathNerDetector _ner;
+        private Engine _engine;
         private SuggestionService _suggestions;
         private KeyboardInterceptor _keyboard;
 
@@ -21,12 +20,11 @@ namespace MathCursor
         {
             try
             {
-                _host = new VstoDocumentHost(this.Application);
+                // Store des sources (CustomXMLParts) : utilisé par le mode édition
+                // d'un OMath existant (phase C2 : bookmark → source → popup).
                 _store = new VstoEquationStore(this.Application);
-                _surface = new VstoEditorSurface(this.Application);
-                _feedback = new VstoUserFeedback();
 
-                // Charge le modèle NER (chemin dev hardcodé pour MVP)
+                // Modèle NER (chemin dev hardcodé pour MVP)
                 var modelDir = FindModelDir();
                 _ner = new MathNerDetector(modelDir);
 
@@ -34,24 +32,27 @@ namespace MathCursor
                 // hors thread UI pour ne pas bloquer le chargement de Word.
                 _ = _ner.WarmUpAsync();
 
-                // Popup de suggestions
-                _suggestions = new SuggestionService(this.Application, _ner);
+                // Moteur de patterns YAML : convertit le texte détecté par le NER
+                // en suggestions LaTeX classées par score.
+                _engine = Engine.LoadEmbedded("fr");
+
+                _suggestions = new SuggestionService(this.Application, _ner, _engine, _store);
                 _suggestions.Install();
 
-                // Hook clavier — Tab/Enter DÉSACTIVÉS (validation uniquement,
-                // l'utilisateur veut être en contrôle, pas d'action automatique).
-                // Esc seul reste actif pour cacher la popup manuellement.
+                // Hook clavier : Enter valide le candidat sélectionné UNIQUEMENT
+                // quand la popup est en NavMode. Tab pass-through, Esc masque.
                 _keyboard = new KeyboardInterceptor
                 {
-                    OnTabPressed = () => false,         // pass-through, Word insère un tab
-                    OnEnterPressed = () => false,       // pass-through, Word insère un saut
-                    OnUpPressed = () => false,          // pass-through
-                    OnDownPressed = () => false,        // pass-through
+                    OnTabPressed = () => false,
+                    OnEnterPressed = HandleEnterPressed,
+                    OnUpPressed = HandleUpPressed,
+                    OnDownPressed = HandleDownPressed,
                     OnEscapePressed = HandleEscapePressed,
+                    OnCtrlSpacePressed = HandleCtrlSpacePressed,
                 };
                 _keyboard.Install();
 
-                _surface.Notify("MathCursor (NER) prêt — détection seule, pas de conversion.", HostContract.NotificationLevel.Info);
+                this.Application.StatusBar = "MathCursor prêt";
             }
             catch (Exception ex)
             {
@@ -94,6 +95,16 @@ namespace MathCursor
                 "Modèle NER introuvable. Chemins testés :\n" + string.Join("\n", candidates));
         }
 
+        // Ctrl+Espace : trigger explicite — force la popup sur la span
+        // "caret → stopword/délimiteur/OMath précédent". Escape hatch quand le
+        // NER rate un bout (ex: "Soit f et g" avec f déjà converti → NER ne
+        // capte plus "g" tout seul, on tape Ctrl+Espace pour forcer).
+        private bool HandleCtrlSpacePressed()
+        {
+            _suggestions?.TriggerManual();
+            return true; // consomme la touche, évite l'IME/compose de Word
+        }
+
         // Esc : cache la popup. Seul handler clavier actif en mode validation.
         private bool HandleEscapePressed()
         {
@@ -105,10 +116,31 @@ namespace MathCursor
             return false;
         }
 
-        /// <summary>Bouton ribbon "Convertir" : DÉSACTIVÉ en mode validation NER.</summary>
-        public void TriggerConversion()
+        // Down : entre en mode nav et descend dans la liste si la popup est visible.
+        private bool HandleDownPressed()
         {
-            // No-op : on est en mode validation détection seule.
+            if (_suggestions?.IsPopupVisible != true) return false;
+            if (!_suggestions.IsNavMode) _suggestions.EnterNavMode();
+            else _suggestions.MoveSelection(+1);
+            return true; // consomme la touche
+        }
+
+        // Up : remonte dans la liste si déjà en nav mode, sinon pass-through.
+        private bool HandleUpPressed()
+        {
+            if (_suggestions?.IsPopupVisible != true) return false;
+            if (!_suggestions.IsNavMode) return false;
+            _suggestions.MoveSelection(-1);
+            return true;
+        }
+
+        // Enter : si popup visible + NavMode → commit du candidat sélectionné,
+        // sinon pass-through (Word insère un saut de ligne normal).
+        private bool HandleEnterPressed()
+        {
+            if (_suggestions?.IsPopupVisible != true) return false;
+            if (!_suggestions.IsNavMode) return false;
+            return _suggestions.CommitSelected();
         }
 
         protected override IRibbonExtensibility CreateRibbonExtensibilityObject()
