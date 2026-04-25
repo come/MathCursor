@@ -68,6 +68,11 @@ patterns:
         output: "x^2"
       - input: "(x+1)^3"
         output: "(x+1)^3"
+      # ² (touche AZERTY) pré-normalisé par le tokenizer en ^2
+      - input: "x²"
+        output: "x^2"
+      - input: "(x+1)²"
+        output: "(x+1)^2"
 
   # Indice
   - id: subscript_simple
@@ -168,13 +173,16 @@ patterns:
         output: "\\log(x)"
 
   - id: named_function_exp
+    description: "exp(x) → e^{x} — notation standard lycée FR (plus parlante que \\exp)"
     match: "EXP LPAREN? EXPR:arg RPAREN?"
-    template: "\\exp({{arg}})"
+    template: "e^{{{arg}}}"
     tokens_inline:
       EXP: { aliases: [exp], canonical: "\\exp" }
     examples:
       - input: "exp(x)"
-        output: "\\exp(x)"
+        output: "e^{x}"
+      - input: "exp(2x+1)"
+        output: "e^{2x+1}"
 
   # Trigo inverse : arccos/acos, arcsin/asin, arctan/atan
   - id: named_function_arccos

@@ -20,6 +20,13 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-04-24
+- `[molle]` Feat — [Corpus NER v3 (fixtures projet + `²` + anti-FP) & challenge modèle](2026-04-24-Feat-ner-corpus-v3-and-model-challenge.md)
+- `[molle]` UX — [Popup silencieuse jusqu'à la première interaction utilisateur](2026-04-24-UX-popup-silent-until-interaction.md)
+- `[molle]` Feat — [Revert popup vers WpfMath + substitutions ciblées](2026-04-24-Feat-popup-revert-wpfmath.md) (Supersedes WebView2)
+- `[forte]` Feat — [Rendu popup via WebView2 + KaTeX (remplace WPF-Math)](2026-04-24-Feat-popup-webview-katex.md) `retracté`
+- `[molle]` Feat — [Caractère `²` (AZERTY) traité comme `^2`](2026-04-24-Feat-superscript-two-keyboard.md)
+- `[molle]` Feat — [`exp(x)` rendu comme `e^x`](2026-04-24-Feat-exp-as-power-e.md)
+- `[molle]` Fix — [`\widehat` non converti + tests de conformance de rendu (OMath & WPF)](2026-04-24-Fix-widehat-omath-conformance.md)
 - `[molle]` Fix — [Cert importé uniquement dans TrustedPublisher (pas Root)](2026-04-24-Fix-cert-trustedpublisher-only.md)
 - `[molle]` UX — [L'installer importe le certificat lui-même (plus de PowerShell)](2026-04-24-UX-installer-imports-cert.md)
 - `[molle]` Feat — [Déploiement Cloudflare Pages + R2 + Analytics Engine](2026-04-24-Feat-cloudflare-deployment.md)

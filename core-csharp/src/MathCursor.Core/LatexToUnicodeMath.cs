@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace MathCursor.Core
 {
@@ -27,9 +28,15 @@ namespace MathCursor.Core
         {
             if (string.IsNullOrEmpty(latex)) return latex ?? "";
 
+            // 0) Environnements LaTeX \begin{...}...\end{...} → syntaxe UnicodeMath.
+            //    Fait en pré-étape (regex) car \begin{cases} n'est pas une macro
+            //    à arg entre accolades simples : c'est un couple begin/end avec
+            //    séparateur \\ à remplacer par @.
+            var s = ConvertEnvironments(latex);
+
             // 1) Remplacements de commandes structurelles à argument entre accolades.
             //    On scanne manuellement pour respecter la profondeur des accolades.
-            var s = ConvertStructural(latex);
+            s = ConvertStructural(s);
 
             // 2) Remplacements littéraux : lettres grecques, symboles, relations.
             foreach (var kv in LiteralReplacements)
@@ -41,6 +48,31 @@ namespace MathCursor.Core
             //    par ConvertStructural qui transforme {abc} en (abc).
 
             return s;
+        }
+
+        // ------------------------------------------------------------
+        // Étape 0 : environnements LaTeX \begin{...}…\end{...}
+        // ------------------------------------------------------------
+
+        // \begin{cases} A \\ B \end{cases} → "{█(A@B)┤"
+        // █ (U+2588) démarre une pile d'équations, @ sépare les lignes,
+        // ┤ (U+2524) ferme sans accolade droite visible — c'est la syntaxe
+        // UnicodeMath que Word transforme en {: (système avec accolade gauche).
+        private static readonly Regex CasesEnvironmentRegex = new Regex(
+            @"\\begin\{cases\}(?<body>.*?)\\end\{cases\}",
+            RegexOptions.Singleline | RegexOptions.Compiled);
+
+        private static string ConvertEnvironments(string src)
+        {
+            return CasesEnvironmentRegex.Replace(src, m =>
+            {
+                string body = m.Groups["body"].Value.Trim();
+                // \\ LaTeX = fin de ligne → @ UnicodeMath
+                body = Regex.Replace(body, @"\\\\", "@");
+                // Nettoyage espaces autour des @
+                body = Regex.Replace(body, @"\s*@\s*", "@");
+                return "{█(" + body + ")┤";
+            });
         }
 
         // ------------------------------------------------------------
@@ -138,17 +170,22 @@ namespace MathCursor.Core
                             continue;
                         }
                     }
-                    else if (cmd == "vec" || cmd == "bar" || cmd == "tilde"
-                             || cmd == "hat" || cmd == "dot" || cmd == "ddot"
-                             || cmd == "overline" || cmd == "underline")
+                    else if (CombiningAccents.TryGetValue(cmd, out var combiningChar))
                     {
                         if (TryReadBracedArg(src, after, out string arg, out int afterArg))
                         {
-                            // UnicodeMath : \vec(x) ou x + combining — on garde la
-                            // commande LaTeX, Word reconnaît \vec et quelques autres.
-                            // Fallback : on écrit "cmd(arg)".
-                            string unicodeMap = AccentMap.TryGetValue(cmd, out var m) ? m : "\\" + cmd;
-                            sb.Append(unicodeMap).Append("(").Append(ConvertStructural(arg)).Append(")");
+                            // ACCENTS : on utilise le caractère Unicode combinant
+                            // que Word reconnaît nativement dans BuildUp (menu
+                            // accent "Rightwards Arrow Above" pour \vec = U+20D7).
+                            // Le combinant se met après le groupe entre parens ;
+                            // Word rend l'accent au-dessus du contenu.
+                            //   \vec{AB}    → (AB)⃗
+                            //   \hat{x}     → x̂  (un seul char : pas besoin de parens)
+                            string inner = ConvertStructural(arg);
+                            if (inner.Length == 1)
+                                sb.Append(inner).Append(combiningChar);
+                            else
+                                sb.Append("(").Append(inner).Append(")").Append(combiningChar);
                             i = afterArg;
                             continue;
                         }
@@ -227,6 +264,7 @@ namespace MathCursor.Core
                 new KeyValuePair<string, string>("\\nabla", "∇"),
                 new KeyValuePair<string, string>("\\times", "×"),
                 new KeyValuePair<string, string>("\\cdot", "⋅"),
+                new KeyValuePair<string, string>("\\circ", "∘"),
                 new KeyValuePair<string, string>("\\otimes", "⊗"),
                 new KeyValuePair<string, string>("\\oplus", "⊕"),
                 new KeyValuePair<string, string>("\\approx", "≈"),
@@ -300,6 +338,7 @@ namespace MathCursor.Core
                 new KeyValuePair<string, string>("\\pm", "±"),
                 new KeyValuePair<string, string>("\\mp", "∓"),
                 new KeyValuePair<string, string>("\\to", "→"),
+                new KeyValuePair<string, string>("\\mapsto", "↦"),
                 new KeyValuePair<string, string>("\\perp", "⊥"),
                 new KeyValuePair<string, string>("\\ker", "ker"),
                 new KeyValuePair<string, string>("\\det", "det"),
@@ -340,17 +379,23 @@ namespace MathCursor.Core
                 { "K", "𝕂" }, { "P", "ℙ" }, { "F", "𝔽" },
             };
 
-        private static readonly Dictionary<string, string> AccentMap =
+        // Table des accents LaTeX → caractère Unicode combinant que Word
+        // interprète en BuildUp comme l'accent correspondant du menu
+        // "Accent" (Design tab des équations).
+        private static readonly Dictionary<string, string> CombiningAccents =
             new Dictionary<string, string>
             {
-                { "vec", "\\vec" },
-                { "hat", "\\hat" },
-                { "bar", "\\bar" },
-                { "tilde", "\\tilde" },
-                { "dot", "\\dot" },
-                { "ddot", "\\ddot" },
-                { "overline", "\\overline" },
-                { "underline", "\\underline" },
+                { "vec",            "⃗" }, // ⃗ Combining Right Arrow Above (\vec)
+                { "overrightarrow", "⃗" }, // même accent, nom alternatif
+                { "hat",            "̂" }, // ̂ Combining Circumflex Accent
+                { "widehat",        "̂" },
+                { "bar",            "̅" }, // ̅ Combining Overline
+                { "overline",       "̅" },
+                { "underline",      "̲" }, // ̲ Combining Low Line
+                { "tilde",          "̃" }, // ̃ Combining Tilde
+                { "widetilde",      "̃" },
+                { "dot",            "̇" }, // ̇ Combining Dot Above
+                { "ddot",           "̈" }, // ̈ Combining Diaeresis
             };
     }
 }

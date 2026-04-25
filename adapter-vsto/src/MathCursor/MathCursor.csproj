@@ -156,7 +156,10 @@
          pas de dépendance native externe (pas de BlingFire / Microsoft.ML.Tokenizers). -->
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
     <PackageReference Include="Google.Protobuf" Version="3.28.3" />
-    <!-- Rendu LaTeX → WPF (FormulaControl). Pur managé, pas de runtime externe. -->
+    <!-- Rendu LaTeX popup : WpfMath 2.1 + substitutions ciblées dans
+         WpfMathAdapter pour les 8 macros non couvertes (\mathbb, \setminus,
+         \mapsto, \widehat, \iint/\oint, \limsup/\liminf, \overline).
+         Cf. ADR 2026-04-24-Feat-popup-revert-wpfmath. -->
     <PackageReference Include="WpfMath" Version="2.1.0" />
   </ItemGroup>
   <Choose>
@@ -253,6 +256,7 @@
     <Compile Include="Host\Feedback\ClipboardFeedbackSender.cs" />
     <Compile Include="Host\Feedback\HttpFeedbackSender.cs" />
     <Compile Include="Host\Feedback\FeedbackSenderFactory.cs" />
+    <Compile Include="UI\WpfMathAdapter.cs" />
     <Compile Include="UI\SuggestionPopupWindow.cs" />
     <Compile Include="UI\FeedbackDialog.cs" />
     <Compile Include="Detection\DetectedZone.cs" />

@@ -47,6 +47,14 @@ namespace MathCursor.Host
         // Inférence asynchrone : on évite de bloquer le thread UI
         private bool _inferenceInFlight;
 
+        // Garde "popup silencieuse au démarrage" : à l'ouverture d'un doc on
+        // ne montre rien tant que l'utilisateur n'a pas cliqué ou tapé. Signal
+        // = le caret a bougé depuis la position observée au tout premier tick.
+        // One-shot : une fois levée, popup normale pour le reste de la session.
+        // Cf. ADR 2026-04-24-UX-popup-silent-until-interaction.
+        private int _initialCaretPos = -1;
+        private bool _userInteracted;
+
         // État de la dernière popup affichée — nécessaire pour commit sur Enter :
         // on a besoin des positions absolues dans le document (pas juste offsets
         // paragraphe), des choix présentés, et de la source brute pour la store.
@@ -58,6 +66,15 @@ namespace MathCursor.Host
         // État mode édition : popup alimentée par la source d'un OMath existant.
         // Commit dans ce mode → REMPLACE l'OMath (pas d'insertion nouvelle).
         private EquationHandle _editHandle;
+
+        // Cooldown post-commit : après une insertion, le caret peut rester
+        // momentanément DANS l'OMath créé (NudgeCursorOutOfMath n'est pas
+        // toujours capable de le faire sortir, surtout en display-mode).
+        // Sans cette garde, on entre immédiatement en mode édition de l'OMath
+        // qu'on vient d'insérer, et la popup re-spam (cf. log : "edit mode" 25×).
+        // 500 ms = le temps que l'utilisateur tape ou bouge.
+        private DateTime _lastCommitUtc = DateTime.MinValue;
+        private const int PostCommitCooldownMs = 500;
 
         // ID de session : même GUID tout au long d'une session Word. Sert à
         // corréler plusieurs feedbacks consécutifs du même utilisateur sans
@@ -192,6 +209,34 @@ namespace MathCursor.Host
                     return;
                 }
 
+                // Garde "popup silencieuse au démarrage" : tant que le caret n'a
+                // pas bougé depuis l'ouverture, on ne fait rien d'autre que
+                // d'enregistrer la position. Un seul mouvement (clic ou frappe)
+                // suffit à lever la garde pour le reste de la session.
+                int currentCaret;
+                try { currentCaret = _app.Selection.Start; }
+                catch { return; }
+                if (!_userInteracted)
+                {
+                    if (_initialCaretPos < 0)
+                    {
+                        _initialCaretPos = currentCaret;
+                        return; // 1er tick : on note, on attend
+                    }
+                    if (currentCaret == _initialCaretPos)
+                    {
+                        return; // pas encore d'interaction utilisateur
+                    }
+                    _userInteracted = true;
+                    LogDiag($"user interaction detected (caret moved from {_initialCaretPos} to {currentCaret}) — popup armed");
+                }
+
+                // Cooldown post-commit : si on vient d'insérer un OMath, le
+                // caret peut être resté à l'intérieur. On ne ré-ouvre PAS la
+                // popup en mode édition immédiatement (sinon respam visuel).
+                bool inPostCommitCooldown =
+                    (DateTime.UtcNow - _lastCommitUtc).TotalMilliseconds < PostCommitCooldownMs;
+
                 // Caret sur un OMath ? Deux cas :
                 //  - OMath à nous (bookmark mcEq_...) → MODE ÉDITION : on recharge
                 //    la source brute depuis le store, on repasse l'engine dessus
@@ -201,6 +246,11 @@ namespace MathCursor.Host
                 var omAtCaret = FindOMathAtCaret();
                 if (omAtCaret != null)
                 {
+                    if (inPostCommitCooldown)
+                    {
+                        HidePopup();
+                        return;
+                    }
                     var ok = TryEnterEditMode(omAtCaret);
                     if (!ok) HidePopup();
                     return;
@@ -390,8 +440,13 @@ namespace MathCursor.Host
             "pour", "par", "sur", "dans", "au", "aux",
         };
 
+        // Délimiteurs qui bornent la span du trigger manuel. Inclut les relations
+        // `=`/`<`/`>` : quand l'utilisateur tape "g(x) = (1+x)/V(x+1)" et
+        // Ctrl+Espace, il veut convertir le membre droit "(1+x)/V(x+1)", pas
+        // la span entière qui commencerait par un `=` (engine produit alors du
+        // bruit : "= (1+x)" dropping le reste, etc.).
         private static readonly char[] ManualTriggerDelimiters =
-            { '.', ',', ';', ':', '!', '?', '\n', '\r' };
+            { '.', ',', ';', ':', '!', '?', '=', '<', '>', '\n', '\r' };
 
         /// <summary>
         /// Trigger explicite (Ctrl+Espace) : bypass NER, calcule la span
@@ -419,10 +474,11 @@ namespace MathCursor.Host
                 if (string.IsNullOrEmpty(text) || caretInParagraph <= 0) return;
 
                 int spanStart = ComputeManualSpanStart(text, caretInParagraph, paragraph.OMathRegions);
-                // Trim leading whitespace
+                // Trim whitespace aux bords. On NE trim PAS les opérateurs
+                // binaires (`+`, `-`…) parce que `+inf`, `-5`, `-inf` sont des
+                // unaires légitimes en début de span.
                 while (spanStart < caretInParagraph && char.IsWhiteSpace(text[spanStart])) spanStart++;
                 int spanEnd = caretInParagraph;
-                // Trim trailing whitespace
                 while (spanEnd > spanStart && char.IsWhiteSpace(text[spanEnd - 1])) spanEnd--;
                 if (spanEnd <= spanStart) return;
 
@@ -732,15 +788,37 @@ namespace MathCursor.Host
                 // (_lastZoneSource + candidat sélectionné + logs).
                 _popup.ReportRequested += OnReportRequested;
             }
-            var pos = GetCaretScreenPosition();
-            double zoneWidth = Math.Max(0, rawZoneLength) * AvgCharWidthDip;
-            double offset = Math.Min(zoneWidth, PopupWidthDip);
-            double popupX = pos.x - offset;
-            if (popupX < 0) popupX = 0;
+
+            // Repositionnement : UNIQUEMENT si la popup n'est pas déjà visible,
+            // OU si la zone a changé (nouveau span détecté). Sinon on garde la
+            // position actuelle — quand l'utilisateur clique DANS la popup,
+            // Word perd le focus, GetCaretPos rate et renvoie un fallback
+            // (200, 200) qui ferait sauter la popup en haut-gauche de l'écran.
+            bool shouldReposition =
+                _popup == null || !_popup.IsVisible
+                || absStart != _lastZoneAbsStart || absEnd != _lastZoneAbsEnd;
+
+            double popupX, popupY;
+            if (shouldReposition)
+            {
+                var pos = GetCaretScreenPosition();
+                double zoneWidth = Math.Max(0, rawZoneLength) * AvgCharWidthDip;
+                double offset = Math.Min(zoneWidth, PopupWidthDip);
+                popupX = pos.x - offset;
+                if (popupX < 0) popupX = 0;
+                popupY = pos.y;
+            }
+            else
+            {
+                // Popup déjà visible sur la même zone : on garde sa position.
+                popupX = _popup.Left;
+                popupY = _popup.Top;
+            }
+
             _lastZoneAbsStart = absStart;
             _lastZoneAbsEnd = absEnd;
             _lastChoices = choices;
-            _popup.ShowSuggestions(choices, popupX, pos.y, debugText);
+            _popup.ShowSuggestions(choices, popupX, popupY, debugText);
         }
 
         /// <summary>
@@ -762,12 +840,31 @@ namespace MathCursor.Host
             var latex = choice.Replacement ?? choice.Display ?? "";
             if (string.IsNullOrWhiteSpace(latex)) return false;
 
+            // Partiels NON commitables : les "\ldots" sont des placeholders qui
+            // signalent "il reste à taper ça". Les commit enverrait "..." dans
+            // Word — incomplet pour l'utilisateur. On laisse Enter pass-through
+            // (newline normale) et l'utilisateur continue à taper pour compléter.
+            if (choice.IsPartial)
+            {
+                LogDiag($"commit refused: choice idx={idx} est partiel (\\ldots présents), Enter laissé à Word");
+                return false;
+            }
+
             var editing = _editHandle;
             var source = _lastZoneSource ?? "";
             try
             {
                 var (newStart, newEnd) = InsertOMathAt(_lastZoneAbsStart, _lastZoneAbsEnd, latex);
-                if (editing != null)
+
+                // InsertOMathAt rollback si BuildUp a échoué : il renvoie alors
+                // (absStart, absStart) = zone vide. Dans ce cas pas de bookmark,
+                // pas de store — l'utilisateur a son texte original intact.
+                bool insertionSucceeded = newEnd > newStart;
+                if (!insertionSucceeded)
+                {
+                    LogDiag($"commit ABORTED idx={idx} latex=\"{latex}\" — OMath build failed, rollback effectué dans InsertOMathAt");
+                }
+                else if (editing != null)
                 {
                     // Le bookmark préexistant couvre encore l'OMath (Word le
                     // réadapte lors du remplacement). On ne touche à rien côté
@@ -801,6 +898,7 @@ namespace MathCursor.Host
             _lastChoices = Array.Empty<SymbolChoice>();
             _lastZoneSource = "";
             _editHandle = null;
+            _lastCommitUtc = DateTime.UtcNow; // arme le cooldown anti-respam
             HidePopup();
             return true;
         }
@@ -848,7 +946,10 @@ namespace MathCursor.Host
                                 System.Reflection.BindingFlags.SetProperty,
                                 null, om, new object[] { omathJc });
                         }
-                        catch (Exception ex) { LogDiag("omath_just_set_error: " + ex.Message); }
+                        // API non dispo dans certaines PIA Word — silencieux,
+                        // l'OMath garde son alignement par défaut. Pas un bug
+                        // côté nous.
+                        catch { }
                         break;
                     }
                 }
@@ -898,10 +999,10 @@ namespace MathCursor.Host
                                 System.Reflection.BindingFlags.SetProperty,
                                 null, omp, new object[] { omathJc });
                         }
-                        catch (Exception ex) { LogDiag($"omath_para[{i}]_set_error: " + ex.Message); }
+                        catch { } // API absente sur cette PIA — silencieux
                     }
                 }
-                catch (Exception ex) { LogDiag("omath_paras_error: " + ex.Message); }
+                catch { } // OMathParagraphs pas exposé sur cette PIA — silencieux
             }
             catch (Exception ex) { LogDiag("align_sync_error: " + ex.Message); }
         }
@@ -986,6 +1087,14 @@ namespace MathCursor.Host
             string unicodeMath = LatexToUnicodeMath.Convert(latex);
             LogDiag($"latex→umath \"{latex}\" → \"{unicodeMath}\"");
 
+            // SAUVEGARDE du texte original avant remplacement, pour rollback si
+            // l'OMath n'est pas vraiment créé par BuildUp. Règle dure : on ne
+            // doit JAMAIS laisser dans Word du texte technique (UnicodeMath ou
+            // LaTeX brut) si la conversion en équation a échoué.
+            string originalText;
+            try { originalText = doc.Range(absStart, absEnd).Text ?? ""; }
+            catch { originalText = ""; }
+
             // Espace trailing : seulement si le caractère suivant n'est pas déjà
             // un whitespace (sinon on se retrouve avec des doubles espaces).
             bool nextIsWs = absEnd < docEnd && IsWhitespaceCharAt(doc, absEnd);
@@ -996,6 +1105,7 @@ namespace MathCursor.Host
 
             int insertedLen = unicodeMath.Length;
             var mathRange = doc.Range(absStart, absStart + insertedLen);
+            bool buildUpThrew = false;
             try
             {
                 mathRange.OMaths.Add(mathRange);
@@ -1004,18 +1114,16 @@ namespace MathCursor.Host
             catch (Exception ex)
             {
                 LogDiag("omath_add_error: " + ex.Message);
+                buildUpThrew = true;
             }
 
-            // On aligne l'OMath sur l'alignement du paragraphe texte — par défaut
-            // Word centre les équations (wdOMathJcCenterGroup), ce qui ne respecte
-            // pas le choix utilisateur. On touche uniquement OMath.Justification et
-            // OMathPara.Justification, jamais le paragraphe texte.
-            SyncOMathJustificationToParagraph(doc, absStart, absStart + insertedLen);
-
-            // Récupère les bornes effectives de l'OMath créé (BuildUp peut
-            // recalculer la taille du range).
+            // VÉRIFICATION : un OMath couvre-t-il vraiment notre plage ? Si non,
+            // BuildUp a échoué silencieusement (il n'a pas su parser l'UnicodeMath)
+            // et on a laissé le texte technique dans le doc — INADMISSIBLE.
+            // Rollback vers le texte original (ce que l'utilisateur avait tapé).
             int newStart = absStart;
             int newEnd = absStart + insertedLen;
+            bool omathCreated = false;
             try
             {
                 foreach (Word.OMath om in doc.OMaths)
@@ -1025,11 +1133,34 @@ namespace MathCursor.Host
                     {
                         newStart = rng.Start;
                         newEnd = rng.End;
+                        omathCreated = true;
                         break;
                     }
                 }
             }
             catch { }
+
+            if (!omathCreated)
+            {
+                LogDiag($"omath NOT created (buildUpThrew={buildUpThrew}) — rollback texte technique \"{insertText}\" → original \"{originalText}\"");
+                try
+                {
+                    var fallbackRange = doc.Range(absStart, absStart + insertText.Length);
+                    fallbackRange.Text = originalText;
+                    // Repositionne le caret à la fin de la zone restaurée
+                    int restoredEnd = absStart + originalText.Length;
+                    try { _app.Selection.SetRange(restoredEnd, restoredEnd); } catch { }
+                }
+                catch (Exception ex) { LogDiag("rollback_error: " + ex.Message); }
+                // On signale au caller que rien n'a été inséré : zone vide.
+                return (absStart, absStart);
+            }
+
+            // On aligne l'OMath sur l'alignement du paragraphe texte — par défaut
+            // Word centre les équations (wdOMathJcCenterGroup), ce qui ne respecte
+            // pas le choix utilisateur. On touche uniquement OMath.Justification et
+            // OMathPara.Justification, jamais le paragraphe texte.
+            SyncOMathJustificationToParagraph(doc, absStart, absStart + insertedLen);
 
             // Positionne le curseur juste après l'OMath, puis vérifie qu'on n'est
             // PAS resté dans l'éditeur math (Word interprète parfois "pile après"

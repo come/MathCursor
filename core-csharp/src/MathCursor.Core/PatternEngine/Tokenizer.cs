@@ -79,13 +79,19 @@ namespace MathCursor.Core.PatternEngine
             // - "–"    → "-" (tiret demi-cadratin U+2013, auto-corrigé par Word)
             // - "—"    → "-" (tiret cadratin U+2014)
             // - "−"    → "-" (signe moins unicode U+2212)
+            // - "²"    → "^2" (touche AZERTY FR au-dessus du Tab — cf. ADR
+            //   2026-04-24-Feat-superscript-two-keyboard). Seule substitution
+            //   qui produit plusieurs tokens en aval (POWER + NUMBER), mais
+            //   conceptuellement de même nature que les précédentes : un
+            //   caractère de saisie alias d'une séquence math canonique.
             // L'espace insécable U+00A0 est déjà traité comme whitespace par
             // char.IsWhiteSpace dans le Split.
             span = span
                 .Replace("\"", "''")
                 .Replace('–', '-')
                 .Replace('—', '-')
-                .Replace('−', '-');
+                .Replace('−', '-')
+                .Replace("²", "^2");
 
             var pieces = Split(span);
             // Merge des paires "lettre+digit" collées (Q1 → "Q1" single piece),

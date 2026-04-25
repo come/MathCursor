@@ -84,17 +84,23 @@ namespace MathCursor.Core.PatternEngine
                 if (seen.Add(NormalizeLatex(s.Latex))) deduped.Add(s);
 
             // Filtre de score : drop les candidats sous 30% du top.
-            // Exception pour full-coverage : ne s'applique QUE si le top est partiel
-            // (besoin de garder le fallback generic_expression qui capture tout).
-            // Si le top est déjà full-coverage, pas d'exception — on épure.
+            // Exception pour full-coverage si le top est partiel : on garde le
+            // fallback generic_expression qui capture tout, MAIS seulement si
+            // son score reste ≥ 50% du top — sinon c'est du bruit (ex: "Un="
+            // top=U_n score=50, fallback `U_n \rightleftharpoons` score=11 :
+            // utiliser = IMPLIES/DOUBLEARROW mais interprétation farfelue).
             if (deduped.Count > 1)
             {
                 double top = deduped[0].Score;
                 bool topIsFull = deduped[0].TotalTokens > 0 && deduped[0].ConsumedTokens == deduped[0].TotalTokens;
                 double threshold = top * 0.3;
+                double coverageFallbackFloor = top * 0.5;
                 deduped = deduped.Where(s =>
                     s.Score >= threshold
-                    || (!topIsFull && s.TotalTokens > 0 && s.ConsumedTokens == s.TotalTokens)
+                    || (!topIsFull
+                        && s.TotalTokens > 0
+                        && s.ConsumedTokens == s.TotalTokens
+                        && s.Score >= coverageFallbackFloor)
                 ).ToList();
             }
 

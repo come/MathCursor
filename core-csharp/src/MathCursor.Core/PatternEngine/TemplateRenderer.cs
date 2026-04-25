@@ -229,6 +229,15 @@ namespace MathCursor.Core.PatternEngine
             bool isShorthandSingle = tokensSpan == 1
                 && start < tokens.Count
                 && IsLikelyShorthandToken(tokens[start].Raw);
+            // Règle d'ordre : la lecture LITTÉRALE (JoinTokens) est TOUJOURS
+            // la top-1 d'un sous-EXPR récursif. Les patterns spéciaux (vecteur,
+            // Chasles, norme, scalar_times_vector...) sont alternatives de
+            // secours, pas défaut. Sinon "4x" dans "f(x)=1/x^2+4x" produirait
+            // "4\vec{x}" en top, ce qui n'a pas de sens dans un contexte
+            // non-vectoriel.
+            var joined = JoinTokens(tokens.GetRange(start, end - start));
+            alts.Add(joined);
+
             if (_recursiveEngine != null && _recursionDepth > 0
                 && (tokensSpan >= 2 || isShorthandSingle))
             {
@@ -243,8 +252,6 @@ namespace MathCursor.Core.PatternEngine
                 }
             }
 
-            var joined = JoinTokens(tokens.GetRange(start, end - start));
-            if (!alts.Contains(joined)) alts.Add(joined);
             return alts;
         }
 

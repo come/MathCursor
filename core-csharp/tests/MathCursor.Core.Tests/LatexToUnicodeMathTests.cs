@@ -30,6 +30,19 @@ namespace MathCursor.Core.Tests
         [InlineData("\\operatorname{tr}(A)", "tr(A)")]
         [InlineData("\\mathrm{mod}", "mod")]
         [InlineData("\\sin^2(x)", "sin^2(x)")]
+        // Accents : émis comme char + combining unicode DÉCOMPOSÉ (ce que Word
+        // reconnaît dans son BuildUp — menu Accent du ribbon). On utilise des
+        // escape sequences \u pour lever toute ambiguïté avec les caractères
+        // précomposés (ẍ précomposé U+1E8D ≠ x + U+0308 décomposé).
+        [InlineData("\\vec{AB}", "(AB)⃗")]            // Combining Right Arrow Above
+        [InlineData("\\vec{u}", "u⃗")]
+        [InlineData("\\hat{x}", "x̂")]                // Combining Circumflex
+        [InlineData("\\widehat{ABC}", "(ABC)̂")]      // angle ABC
+        [InlineData("\\bar{y}", "y̅")]                // Combining Overline
+        [InlineData("\\overline{z}", "z̅")]
+        [InlineData("\\dot{x}", "ẋ")]                // Combining Dot Above
+        [InlineData("\\ddot{x}", "ẍ")]               // Combining Diaeresis
+        [InlineData("\\tilde{a}", "ã")]              // Combining Tilde
         public void Converts_expected(string latex, string expected)
         {
             var got = LatexToUnicodeMath.Convert(latex);

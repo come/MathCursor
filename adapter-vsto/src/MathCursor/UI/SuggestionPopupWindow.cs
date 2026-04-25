@@ -155,62 +155,31 @@ namespace MathCursor.UI
         }
 
         /// <summary>
-        /// Remplace les macros LaTeX que WPF-Math ne rend pas (ou mal) par leurs
-        /// équivalents unicode : \mathbb{R} → ℝ, \forall → ∀, \in → ∈, etc.
-        /// Indispensable pour que les ensembles et quantificateurs apparaissent.
+        /// Rendu LaTeX → UIElement via WpfMath <see cref="FormulaControl"/>,
+        /// après passage par <see cref="WpfMathAdapter"/> qui substitue les
+        /// macros non couvertes (\mathbb, \widehat, \begin{cases}, etc.) par
+        /// leurs équivalents Unicode/macros supportées.
+        ///
+        /// Si le parse WpfMath échoue (formule trop exotique ou inattendue),
+        /// fallback sur un TextBlock unicode lisible — pas de superposition
+        /// double rendu/texte (qui donnerait l'impression de LaTeX "barré").
+        /// Cf. ADR 2026-04-24-Feat-popup-revert-wpfmath.
         /// </summary>
-        private static string AdaptForWpfMath(string latex)
+        private UIElement RenderMath(string latex, bool isPartial = false)
         {
-            if (string.IsNullOrEmpty(latex)) return latex;
-            // Remplace les macros non-rendues par leurs équivalents unicode : WPF-Math
-            // peut ne pas avoir le font blackboard bold (\mathbb), mais il sait afficher
-            // n'importe quel char unicode via le font math standard.
-            return latex
-                .Replace("\\mathbb{R}", "\u211D") // ℝ
-                .Replace("\\mathbb{N}", "\u2115") // ℕ
-                .Replace("\\mathbb{Z}", "\u2124") // ℤ
-                .Replace("\\mathbb{Q}", "\u211A") // ℚ
-                .Replace("\\mathbb{C}", "\u2102") // ℂ
-                .Replace("\\iff", "\\Leftrightarrow")
-                .Replace("\\mid", "|")
-                .Replace("\\setminus", "\\backslash")
-                .Replace("\\bmod", "\\mathrm{mod}")
-                // \operatorname{xxx} → \mathrm{xxx} : WPF-Math 2.1 rend mal \operatorname,
-                // \mathrm est l'équivalent fiable pour du texte droit dans une formule.
-                .Replace("\\operatorname", "\\mathrm")
-                // WpfMath traite "-" comme op binaire même en contexte unaire (dans
-                // "]-∞, 0]" par ex) → padding visible entre "-" et "∞". En wrappant
-                // en {...} on en fait un atome unique et le rendu est serré.
-                // Côté Word (OMath) ce n'est pas un souci : son moteur typographe
-                // gère l'unaire correctement tout seul.
-                .Replace("-\\infty", "{-\\infty}")
-                .Replace("+\\infty", "{+\\infty}");
-        }
-
-        /// <summary>
-        /// Rendu LaTeX → UIElement via WPF-Math uniquement, après pré-substitutions
-        /// (AdaptForWpfMath). Plus de TextBlock en superposition : ça faisait
-        /// apparaître la formule "barrée" (le texte brut traversait le rendu).
-        /// En cas d'échec du parse WPF-Math, on tombe sur un TextBlock unicode
-        /// simple — sans empilement visuel.
-        /// </summary>
-        private static UIElement RenderMath(string latex, bool isPartial = false)
-        {
-            string adapted = AdaptForWpfMath(latex);
-            // En mode partiel, on colorie les \ldots en rouge pour signaler
-            // visuellement à l'utilisateur qu'il reste à taper ces bouts-là.
-            // WpfMath supporte \color{red}{...} nativement.
+            string adapted = WpfMathAdapter.Adapt(latex ?? "");
+            // Mode partiel : colorier \ldots en rouge si WpfMath le supporte ;
+            // sinon on laisse \ldots tel quel (reste lisible).
             if (isPartial)
                 adapted = adapted.Replace("\\ldots", "\\color{red}{\\ldots}");
-            var container = new Grid { Margin = new Thickness(8, 4, 12, 4) };
 
+            var container = new Grid { Margin = new Thickness(8, 4, 12, 4) };
             if (string.IsNullOrWhiteSpace(adapted))
             {
                 container.Children.Add(new TextBlock { Text = "", FontSize = 14 });
                 return container;
             }
 
-            bool renderedOk = false;
             try
             {
                 var formula = new FormulaControl
@@ -219,23 +188,10 @@ namespace MathCursor.UI
                     Scale = 18,
                     VerticalAlignment = VerticalAlignment.Center,
                 };
-
-                // FormulaControl parse la formule dans le setter Formula et
-                // expose HasError/Errors si le parse/rendu a échoué. Sans ce
-                // check on affiche parfois un "." (placeholder WPF-Math
-                // quand la formule est acceptée partiellement par le parser
-                // mais ne produit rien de rendable).
-                if (!formula.HasError && formula.Errors.Count == 0)
-                {
-                    container.Children.Add(formula);
-                    renderedOk = true;
-                }
+                container.Children.Add(formula);
             }
-            catch { /* exception dans le ctor : tombe dans le fallback */ }
-
-            if (!renderedOk)
+            catch
             {
-                // Parse/rendu WPF-Math raté : fallback texte brut unicode lisible.
                 container.Children.Add(new TextBlock
                 {
                     Text = adapted,

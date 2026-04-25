@@ -69,6 +69,7 @@ namespace MathCursor.Core.PatternEngine
             "U", "converge",
             "bar", "barre",   // "x barre" → \overline{x} : absorbé par mean_overline_spaced
             "Bar", "Barre",
+            "exp", "Exp",     // "exp(x)" → "e^{x}" : mot-clé absorbé, trace via "e"
         };
 
         private static bool IsStrongToken(CanonicalToken t)
