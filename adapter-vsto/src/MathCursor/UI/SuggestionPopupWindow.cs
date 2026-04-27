@@ -246,11 +246,19 @@ namespace MathCursor.UI
         {
             LogPopup($"ShowSuggestions count={choices.Count} pos=({screenX:F0},{screenY:F0}) debug=\"{debugText}\"");
             _debugFooter.Text = string.IsNullOrEmpty(debugText) ? "" : "NER: \"" + debugText + "\"";
+            // Pas d'ambiguïté = un seul candidat → fond vert clair pour signaler
+            // "formule reconnue, valide, l'élève peut continuer". Quand il y aura
+            // plusieurs candidats (phase 5 : ambiguïté), on gardera le fond
+            // neutre pour distinguer le mode "à choisir".
+            bool unambiguous = choices.Count == 1;
+
             _list.Items.Clear();
             for (int i = 0; i < choices.Count; i++)
             {
                 var c = choices[i];
                 var panel = new StackPanel { Orientation = Orientation.Horizontal };
+                if (unambiguous)
+                    panel.Background = new SolidColorBrush(Color.FromArgb(48, 80, 200, 120)); // vert clair discret
                 panel.Children.Add(RenderMath(c.Display, c.IsPartial));
                 panel.Children.Add(new TextBlock
                 {

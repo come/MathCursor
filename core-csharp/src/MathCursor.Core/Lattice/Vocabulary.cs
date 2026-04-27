@@ -67,8 +67,11 @@ namespace MathCursor.Core.Lattice
             { "=>", "Rightarrow" },
         };
 
-        /// <summary>Opérateurs mono-caractère reconnus.</summary>
-        public const string SingleOps = "+-*/^_=()[]{},|;";
+        /// <summary>Opérateurs mono-caractère reconnus. Inclut les relations
+        /// `=`, `&lt;`, `&gt;` qui sont consommées par <c>parseRelation</c> au
+        /// top-level (sinon des inputs comme "a &lt; b" produisent un résultat
+        /// vide car `&lt;` n'est pas tokenisé).</summary>
+        public const string SingleOps = "+-*/^_=<>()[]{},|;";
 
         /// <summary>Opérateurs binaires pour lesquels on calcule le drapeau Tight.</summary>
         public const string TightOpChars = "+-*/^";

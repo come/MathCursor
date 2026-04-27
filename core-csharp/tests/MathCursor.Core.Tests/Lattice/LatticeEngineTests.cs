@@ -65,10 +65,10 @@ namespace MathCursor.Core.Tests.Lattice
         [Fact]
         public void Frac_with_holes_renders_glyphs()
         {
-            // L'élève tape "frac a", on lui rend la formule incomplète avec ②
+            // L'élève tape "frac a", on lui rend la formule incomplète avec \square
             var s = _engine.Convert("frac a");
             Assert.Single(s);
-            Assert.Equal("\\frac{a}{②}", s[0].Latex);
+            Assert.Equal("\\frac{a}{\\square }", s[0].Latex);
             // La présence d'un Hole ne lève PAS IsPartial : c'est une formule
             // valide (juste incomplète au sens utilisateur), Word l'insérera.
             Assert.False(s[0].IsPartial);

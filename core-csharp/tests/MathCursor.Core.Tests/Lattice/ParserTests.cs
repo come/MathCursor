@@ -353,6 +353,62 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.Equal("\\forall", c.Value);
         }
 
+        // ------------------ Relations (=, <, >, <=, ...) ------------------
+
+        [Fact]
+        public void Equals_relation_at_top_level()
+        {
+            // "x = 1" : Bin(=, lhs=x, rhs=1) au top-level (parseRelation)
+            var ast = ParseTop("x = 1");
+            var b = Assert.IsType<Bin>(ast);
+            Assert.Equal("=", b.Op);
+            Assert.IsType<Atom>(b.Lhs);
+            Assert.IsType<Atom>(b.Rhs);
+        }
+
+        [Fact]
+        public void Equals_with_complex_rhs_does_not_truncate()
+        {
+            // Régression : sans parseRelation, "f(x) = sin x" produisait f(x)
+            // et abandonnait silencieusement "= sin x".
+            var ast = ParseTop("f(x) = sin x");
+            var b = Assert.IsType<Bin>(ast);
+            Assert.Equal("=", b.Op);
+            // RHS = Func("sin", x)
+            Assert.IsType<Func>(b.Rhs);
+        }
+
+        [Fact]
+        public void Less_than_tokenized_and_parsed()
+        {
+            var ast = ParseTop("a < b");
+            var b = Assert.IsType<Bin>(ast);
+            Assert.Equal("<", b.Op);
+        }
+
+        [Fact]
+        public void Multichar_relations_recognized()
+        {
+            foreach (var op in new[] { "<=", ">=", "!=", "<>" })
+            {
+                var ast = ParseTop($"a {op} b");
+                var b = Assert.IsType<Bin>(ast);
+                Assert.Equal(op, b.Op);
+            }
+        }
+
+        [Fact]
+        public void Chained_equals_left_associative()
+        {
+            // "a = b = c" → Bin(=, Bin(=, a, b), c)
+            var ast = ParseTop("a = b = c");
+            var outer = Assert.IsType<Bin>(ast);
+            Assert.Equal("=", outer.Op);
+            var inner = Assert.IsType<Bin>(outer.Lhs);
+            Assert.Equal("=", inner.Op);
+            Assert.IsType<Atom>(outer.Rhs); // c
+        }
+
         // ------------------ Unaire ------------------
 
         [Fact]

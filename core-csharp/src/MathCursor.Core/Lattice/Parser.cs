@@ -76,11 +76,47 @@ namespace MathCursor.Core.Lattice
 
         public AstNode Parse()
         {
-            var e = ParseExpr();
+            var e = ParseRelation();
             return e ?? Hole(1);
         }
 
-        // ---------------- Expr / Term / Postfix ----------------
+        // ---------------- Relation / Expr / Term / Postfix ----------------
+
+        // Relation = Expr (RelOp Expr)*
+        // RelOp ∈ {=, <, >, <=, >=, !=, <>}. Top-level UNIQUEMENT (à l'intérieur
+        // d'un Group ou d'un Argument on reste sur Expr — convention math
+        // classique : on n'écrit pas "lim x 0 (f(x) = 1)" mais "lim x 0 f(x)").
+        private AstNode? ParseRelation()
+        {
+            var lhs = ParseExpr();
+            if (lhs == null) return null;
+            while (IsRelOp())
+            {
+                var op = Consume();
+                var rhs = ParseExpr() ?? (AstNode)Hole(1);
+                lhs = new Bin(op.Value, op.Tight ?? false, false, lhs, rhs);
+            }
+            return lhs;
+        }
+
+        private bool IsRelOp()
+        {
+            var t = Peek();
+            if (t == null || t.Type != EdgeType.Op) return false;
+            switch (t.Value)
+            {
+                case "=":
+                case "<":
+                case ">":
+                case "<=":
+                case ">=":
+                case "!=":
+                case "<>":
+                    return true;
+                default:
+                    return false;
+            }
+        }
 
         // Expr = Term ((+|-) Term)*
         private AstNode? ParseExpr()

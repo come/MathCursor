@@ -250,6 +250,20 @@ namespace MathCursor.Core
                 // Relations multi-char (prioritaires)
                 new KeyValuePair<string, string>("\\leqslant", "≤"),
                 new KeyValuePair<string, string>("\\geqslant", "≥"),
+                // Délimiteurs auto-tailles \left \right (le renderer lattice
+                // les émet autour des Group). Word OMath n'a pas besoin de la
+                // commande LaTeX pour auto-redimensionner, donc on déballe.
+                // Ordre : versions à 2 chars d'abord pour matcher avant \left.
+                new KeyValuePair<string, string>("\\left\\{", "{"),
+                new KeyValuePair<string, string>("\\right\\}", "}"),
+                new KeyValuePair<string, string>("\\left(", "("),
+                new KeyValuePair<string, string>("\\right)", ")"),
+                new KeyValuePair<string, string>("\\left[", "["),
+                new KeyValuePair<string, string>("\\right]", "]"),
+                new KeyValuePair<string, string>("\\left|", "|"),
+                new KeyValuePair<string, string>("\\right|", "|"),
+                new KeyValuePair<string, string>("\\left.", ""),
+                new KeyValuePair<string, string>("\\right.", ""),
                 new KeyValuePair<string, string>("\\Leftrightarrow", "⇔"),
                 new KeyValuePair<string, string>("\\Rightarrow", "⇒"),
                 new KeyValuePair<string, string>("\\leftarrow", "←"),
@@ -271,6 +285,10 @@ namespace MathCursor.Core
                 new KeyValuePair<string, string>("\\propto", "∝"),
                 new KeyValuePair<string, string>("\\equiv", "≡"),
                 new KeyValuePair<string, string>("\\triangle", "△"),
+                // \square : carré vide. Émis par le renderer lattice pour les
+                // Holes (slots manquants). Word OMath BuildUp ne reconnaît pas
+                // \square en commande, mais affiche □ (U+25A1) en glyphe direct.
+                new KeyValuePair<string, string>("\\square", "□"),
                 new KeyValuePair<string, string>("\\parallel", "∥"),
                 new KeyValuePair<string, string>("\\coloneqq", "≔"),
                 new KeyValuePair<string, string>("\\subseteq", "⊆"),

@@ -68,6 +68,11 @@ namespace MathCursor.Host
         // Commit dans ce mode → REMPLACE l'OMath (pas d'insertion nouvelle).
         private EquationHandle _editHandle;
 
+        // Position absolue de l'OMath actuellement en mode édition. Utilisé pour
+        // ne PAS re-entrer en mode édition à chaque tick (5 Hz) tant que le caret
+        // reste dans le même OMath. -1 = pas en édition.
+        private int _editingOMathStart = -1;
+
         // Cooldown post-commit : après une insertion, le caret peut rester
         // momentanément DANS l'OMath créé (NudgeCursorOutOfMath n'est pas
         // toujours capable de le faire sortir, surtout en display-mode).
@@ -252,12 +257,21 @@ namespace MathCursor.Host
                         HidePopup();
                         return;
                     }
+                    // Si on est déjà en mode édition pour CET OMath, ne pas
+                    // re-relancer l'engine à chaque tick (sinon spam 5 Hz).
+                    int omStart = -1;
+                    try { omStart = omAtCaret.Range.Start; } catch { }
+                    if (_editingOMathStart == omStart && IsPopupVisible)
+                        return;
+
                     var ok = TryEnterEditMode(omAtCaret);
-                    if (!ok) HidePopup();
+                    if (ok) _editingOMathStart = omStart;
+                    else HidePopup();
                     return;
                 }
                 // Sortie propre du mode édition quand on quitte l'OMath
                 _editHandle = null;
+                _editingOMathStart = -1;
 
                 ParagraphRead paragraph;
                 int caretPos;
@@ -899,6 +913,7 @@ namespace MathCursor.Host
             _lastChoices = Array.Empty<SymbolChoice>();
             _lastZoneSource = "";
             _editHandle = null;
+            _editingOMathStart = -1;
             _lastCommitUtc = DateTime.UtcNow; // arme le cooldown anti-respam
             HidePopup();
             return true;

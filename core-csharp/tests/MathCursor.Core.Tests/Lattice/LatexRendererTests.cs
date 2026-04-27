@@ -34,11 +34,13 @@ namespace MathCursor.Core.Tests.Lattice
             => Assert.Equal("\\pi", LatexRenderer.Render(new Atom("greek", "pi")));
 
         [Fact]
-        public void Hole_renders_circled_glyph()
+        public void Hole_renders_square()
         {
-            Assert.Equal("①", LatexRenderer.Render(new Hole(1)));
-            Assert.Equal("②", LatexRenderer.Render(new Hole(2)));
-            Assert.Equal("④", LatexRenderer.Render(new Hole(4)));
+            // Tous les Holes rendent \square (numérotation sacrifiée pour
+            // avoir un rendu universel WpfMath ↔ Word OMath BuildUp).
+            Assert.Equal("\\square ", LatexRenderer.Render(new Hole(1)));
+            Assert.Equal("\\square ", LatexRenderer.Render(new Hole(2)));
+            Assert.Equal("\\square ", LatexRenderer.Render(new Hole(4)));
         }
 
         [Fact]
@@ -116,7 +118,7 @@ namespace MathCursor.Core.Tests.Lattice
 
         [Fact]
         public void Frac_with_hole_for_den()
-            => Assert.Equal("\\frac{a}{②}", RenderTop("frac a"));
+            => Assert.Equal("\\frac{a}{\\square }", RenderTop("frac a"));
 
         [Fact]
         public void Sqrt_unwraps_arg()
@@ -124,7 +126,7 @@ namespace MathCursor.Core.Tests.Lattice
 
         [Fact]
         public void Sqrt_with_hole()
-            => Assert.Equal("\\sqrt{①}", RenderTop("racine"));
+            => Assert.Equal("\\sqrt{\\square }", RenderTop("racine"));
 
         [Fact]
         public void Vec_with_name()
@@ -132,7 +134,7 @@ namespace MathCursor.Core.Tests.Lattice
 
         [Fact]
         public void Vec_alone_renders_hole()
-            => Assert.Equal("\\vec{①}", RenderTop("vec"));
+            => Assert.Equal("\\vec{\\square }", RenderTop("vec"));
 
         // ------------------ Sum / Lim / Int ------------------
 
@@ -144,7 +146,7 @@ namespace MathCursor.Core.Tests.Lattice
 
         [Fact]
         public void Sum_partial_with_holes()
-            => Assert.Equal("\\sum_{k=②}^{③} ④", RenderTop("sum k"));
+            => Assert.Equal("\\sum_{k=\\square }^{\\square } \\square ", RenderTop("sum k"));
 
         [Fact]
         public void Lim_with_arrow()
@@ -184,6 +186,43 @@ namespace MathCursor.Core.Tests.Lattice
             => Assert.Equal(
                 "\\sum_{k=1}^{n} f\\left(k\\right)+1",
                 RenderTop("sum k 1 n f(k)+1"));
+
+        // ------------------ Relations ------------------
+
+        [Fact]
+        public void Equals_renders_directly()
+            => Assert.Equal("x=1", RenderTop("x = 1"));
+
+        [Fact]
+        public void Leq_renders_with_latex_command_and_spaces()
+            => Assert.Equal("a \\leq b", RenderTop("a <= b"));
+
+        [Fact]
+        public void Geq_renders_with_latex_command_and_spaces()
+            => Assert.Equal("a \\geq b", RenderTop("a >= b"));
+
+        [Fact]
+        public void Neq_renders_with_latex_command_and_spaces()
+        {
+            Assert.Equal("a \\neq b", RenderTop("a != b"));
+            Assert.Equal("a \\neq b", RenderTop("a <> b"));
+        }
+
+        [Fact]
+        public void Equation_with_complex_rhs_fully_rendered()
+            // Régression : alpha + 1 = (a+x)/(b+x) ne doit plus être tronqué à α+1.
+            // Le `/` est rendu en \frac empilé (typo math) — les Group autour des
+            // opérandes sont déballés pour éviter les parens redondantes.
+            => Assert.Equal(
+                "\\alpha+1=\\frac{a+x}{b+x}",
+                RenderTop("alpha + 1 = (a+x)/(b+x)"));
+
+        [Fact]
+        public void Slash_division_renders_as_frac()
+            // Cas user : alpha=1/(x+1)^2 → fraction empilée, pas inline 1/(x+1)²
+            => Assert.Equal(
+                "\\alpha=\\frac{1}{\\left(x+1\\right)^{2}}",
+                RenderTop("alpha=1/(x+1)^2"));
 
         // ------------------ Cas non-triviaux du brief ------------------
 

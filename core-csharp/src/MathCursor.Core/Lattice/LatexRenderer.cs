@@ -6,20 +6,24 @@ namespace MathCursor.Core.Lattice
     /// Renderer AST → LaTeX. Récursion triviale, une branche par type de nœud.
     /// Port direct du proto JSX (cf. algorithm.md §5).
     ///
-    /// Les <see cref="Hole"/> sont rendus en glyphe Unicode brut (① ② ③ …) :
-    /// pas de <c>\color</c> pour ne pas polluer l'insertion Word/OMath. Si
-    /// l'utilisateur valide une formule incomplète, le glyphe apparaît tel quel
-    /// dans le document — c'est un choix produit assumé.
-    ///
-    /// Pas de Tab autocomplete : les espaces dans la saisie servent de
-    /// séparateurs entre slots ; pas besoin de naviguer entre Holes.
+    /// Les <see cref="Hole"/> sont rendus en <c>\square</c> (carré vide) :
+    /// universel, supporté par WpfMath (popup) ET par Word OMath BuildUp
+    /// (rend les boîtes vides natives de l'éditeur d'équation). On perd la
+    /// numérotation visuelle ① vs ② mais on n'a pas de Tab autocomplete dans
+    /// MathCursor (les espaces servent de séparateurs entre slots), donc
+    /// l'idx du Hole n'a qu'une valeur informative qu'on accepte de sacrifier
+    /// pour avoir un rendu qui marche partout.
     /// </summary>
     public static class LatexRenderer
     {
+        // Carré vide standard, rendu cohérent par WpfMath (popup) et Word OMath
+        // BuildUp (boîte vide native d'éditeur d'équation).
+        private const string HoleLatex = "\\square ";
+
         public static string Render(AstNode? node) => node switch
         {
             null => string.Empty,
-            Hole h => Circled(h.Idx),
+            Hole _ => HoleLatex,
             Atom a => RenderAtom(a),
             Const c => c.Value,
             Unary u => $"{u.Op}{Render(u.Arg)}",
@@ -29,7 +33,7 @@ namespace MathCursor.Core.Lattice
             Group g => $"\\left({Render(g.Expr)}\\right)",
             Frac f => $"\\frac{{{Render(Unwrap(f.Num))}}}{{{Render(Unwrap(f.Den))}}}",
             Sqrt sq => $"\\sqrt{{{Render(Unwrap(sq.Arg))}}}",
-            Vec v => v.Name != null ? $"\\vec{{{v.Name}}}" : $"\\vec{{{Circled(1)}}}",
+            Vec v => v.Name != null ? $"\\vec{{{v.Name}}}" : $"\\vec{{{HoleLatex}}}",
             Func fn => RenderFunc(fn),
             Sum sum => RenderSum(sum),
             Lim lim => $"\\lim_{{{Render(lim.Var)} \\to {Render(Unwrap(lim.Target))}}} {Render(lim.Body)}",
@@ -54,6 +58,19 @@ namespace MathCursor.Core.Lattice
             var rhs = Render(b.Rhs);
             if (b.Op == "*" && b.Implicit) return $"{lhs}{rhs}";
             if (b.Op == "*") return $"{lhs}\\cdot {rhs}";
+            // Division explicite "/" → fraction empilée typographique. C'est la
+            // convention math : un slash au clavier produit une fraction visuelle
+            // (Word et WpfMath rendent \frac empilé, pas inline). On déballe les
+            // Group autour des opérandes pour éviter les parens redondantes
+            // (la barre de fraction joue déjà le rôle de regroupement visuel).
+            if (b.Op == "/")
+                return $"\\frac{{{Render(Unwrap(b.Lhs))}}}{{{Render(Unwrap(b.Rhs))}}}";
+            // Relations multi-char : Word et WpfMath veulent les commandes LaTeX.
+            // \leq, \geq, \neq sont rendus avec des espaces de chaque côté pour
+            // la lisibilité (LaTeX gère l'espace contextuel mais Word non).
+            if (b.Op == "<=") return $"{lhs} \\leq {rhs}";
+            if (b.Op == ">=") return $"{lhs} \\geq {rhs}";
+            if (b.Op == "!=" || b.Op == "<>") return $"{lhs} \\neq {rhs}";
             return $"{lhs}{b.Op}{rhs}";
         }
 
@@ -76,16 +93,5 @@ namespace MathCursor.Core.Lattice
             return $"{sym}_{{{Render(sum.Var)}={Render(Unwrap(sum.Start))}}}^{{{Render(Unwrap(sum.End))}}} {Render(sum.Body)}";
         }
 
-        // ① ② ③ … pour les holes. Au-delà de 9, fallback texte (rare).
-        private static readonly string[] CircledGlyphs =
-        {
-            "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨",
-        };
-
-        private static string Circled(int idx)
-        {
-            if (idx >= 1 && idx <= 9) return CircledGlyphs[idx - 1];
-            return $"({idx})";
-        }
     }
 }
