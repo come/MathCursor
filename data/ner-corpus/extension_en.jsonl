@@ -1,0 +1,1000 @@
+{"text": "integration by parts is a useful technique", "spans": [], "lang": "en"}
+{"text": "Assume by contradiction that det(A*B) = det(A)*det(B) and see what contradiction follows.", "spans": [{"start": 29, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "wait so i won't hand in the homework before tomorrow honestly", "spans": [], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that un = q^n.", "spans": [{"start": 58, "end": 66, "label": "MATH"}], "lang": "en"}
+{"text": "the law of cosines generalizes the pythagorean theorem", "spans": [], "lang": "en"}
+{"text": "transcendental numbers are roots of no polynomial with integer coefficients", "spans": [], "lang": "en"}
+{"text": "The first step consists in proving that f(x) = 2x + 1 then we conclude.", "spans": [{"start": 40, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "By direct substitution, the expression becomes x^2 + 2x + 1 = (x+1)^2 which is much simpler.", "spans": [{"start": 47, "end": 69, "label": "MATH"}], "lang": "en"}
+{"text": "the trace is the sum of diagonal elements", "spans": [], "lang": "en"}
+{"text": "It is important to understand that h(x) = 1/x before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "an icosahedron has twenty triangular faces", "spans": [], "lang": "en"}
+{"text": "ok so i won't hand in the homework before tomorrow wait", "spans": [], "lang": "en"}
+{"text": "the norm measures the length of a vector", "spans": [], "lang": "en"}
+{"text": "ok then x^2 >= 0 maybe", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "The proof of this result relies on the fundamental equality x^2 - 4 = (x-2)(x+2).", "spans": [{"start": 60, "end": 80, "label": "MATH"}], "lang": "en"}
+{"text": "Applying the theorem seen in class, we immediately obtain un = 1/n.", "spans": [{"start": 58, "end": 66, "label": "MATH"}], "lang": "en"}
+{"text": "continuity is a local property", "spans": [], "lang": "en"}
+{"text": "the area of a circle is proportional to the square of its radius", "spans": [], "lang": "en"}
+{"text": "idk but f(x) = 2x+1 wait", "spans": [{"start": 8, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "conjunction is the logical and", "spans": [], "lang": "en"}
+{"text": "a central symmetry inverts with respect to a point", "spans": [], "lang": "en"}
+{"text": "the traveling salesman problem is np-complete", "spans": [], "lang": "en"}
+{"text": "kinda quand n->inf wait", "spans": [{"start": 6, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "bruh f(x) = 2x+1 no cap", "spans": [{"start": 5, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "After calculation and simplification, we arrive at the expression lim un = 0.", "spans": [{"start": 66, "end": 76, "label": "MATH"}], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that v(n) = 1/n.", "spans": [{"start": 58, "end": 68, "label": "MATH"}], "lang": "en"}
+{"text": "We then observe without difficulty that sin^2(x) + cos^2(x) = 1 and the result follows.", "spans": [{"start": 40, "end": 63, "label": "MATH"}], "lang": "en"}
+{"text": "kinda derivee x^2 c 2x fr fr", "spans": [{"start": 6, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "the kernel of a linear map is a subspace", "spans": [], "lang": "en"}
+{"text": "We will now look for solutions such that f(x) = x^2 - 4.", "spans": [{"start": 41, "end": 55, "label": "MATH"}], "lang": "en"}
+{"text": "variance measures dispersion around the mean", "spans": [], "lang": "en"}
+{"text": "The teacher emphasized that P(A inter B) = P(A) * P(B) is a remarkable identity.", "spans": [{"start": 28, "end": 54, "label": "MATH"}], "lang": "en"}
+{"text": "In the general framework, it should be noted that a^2 + b^2 = c^2 for any real number.", "spans": [{"start": 50, "end": 65, "label": "MATH"}], "lang": "en"}
+{"text": "euclidean geometry rests on five axioms", "spans": [], "lang": "en"}
+{"text": "Assume by contradiction that 1 + 2 + ... + n = n(n+1)/2 and see what contradiction follows.", "spans": [{"start": 29, "end": 55, "label": "MATH"}], "lang": "en"}
+{"text": "linear algebra handles matrices and vectors", "spans": [], "lang": "en"}
+{"text": "information theory measures uncertainty", "spans": [], "lang": "en"}
+{"text": "the concept of derivative is fundamental in analysis", "spans": [], "lang": "en"}
+{"text": "the inscribed circle is tangent to the three sides", "spans": [], "lang": "en"}
+{"text": "The right reflex here is to factor to obtain (A*B)^T = B^T * A^T.", "spans": [{"start": 45, "end": 64, "label": "MATH"}], "lang": "en"}
+{"text": "a vector space has an algebraic structure", "spans": [], "lang": "en"}
+{"text": "factorization helps simplify expressions", "spans": [], "lang": "en"}
+{"text": "a cylinder has two circular bases", "spans": [], "lang": "en"}
+{"text": "the trigonometric circle has radius one", "spans": [], "lang": "en"}
+{"text": "To solve this equation, let us first notice that u(n+1) = 2*un + 3.", "spans": [{"start": 49, "end": 66, "label": "MATH"}], "lang": "en"}
+{"text": "To finish the exercise, it remains to establish that P(A inter B) = P(A) * P(B) in this particular case.", "spans": [{"start": 53, "end": 79, "label": "MATH"}], "lang": "en"}
+{"text": "yo x = 3 ou x = -3 lol", "spans": [{"start": 3, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "an odd function is symmetric about the origin", "spans": [], "lang": "en"}
+{"text": "the angle bisector splits an angle into two equal parts", "spans": [], "lang": "en"}
+{"text": "a vertical asymptote indicates a discontinuity", "spans": [], "lang": "en"}
+{"text": "In what follows, we will assume that g(x) = sqrt(x) and study its consequences.", "spans": [{"start": 37, "end": 51, "label": "MATH"}], "lang": "en"}
+{"text": "In what follows, we will assume that un = 1/n and study its consequences.", "spans": [{"start": 37, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to understand that f''(x) + f(x) = 0 before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "bruh derivee x^2 c 2x tbh", "spans": [{"start": 5, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "yo derivee x^2 c 2x pretty sure", "spans": [{"start": 3, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "It is easy to verify that (A*B)^T = B^T * A^T by substituting numerical values.", "spans": [{"start": 26, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to understand that f'(x) = cos(x) before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 49, "label": "MATH"}], "lang": "en"}
+{"text": "Let us already note that f'(x) = cos(x) which will be useful later.", "spans": [{"start": 25, "end": 39, "label": "MATH"}], "lang": "en"}
+{"text": "the fundamental theorem of arithmetic establishes the uniqueness of factorization", "spans": [], "lang": "en"}
+{"text": "Assume by contradiction that E(X+Y) = E(X) + E(Y) and see what contradiction follows.", "spans": [{"start": 29, "end": 49, "label": "MATH"}], "lang": "en"}
+{"text": "lol lim en +inf or whatever", "spans": [{"start": 4, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "the twin prime conjecture is still open", "spans": [], "lang": "en"}
+{"text": "Let us already note that f'(x) = 2x which will be useful later.", "spans": [{"start": 25, "end": 35, "label": "MATH"}], "lang": "en"}
+{"text": "lmao i won't hand in the homework before tomorrow fr fr", "spans": [], "lang": "en"}
+{"text": "integration by parts is a useful technique", "spans": [], "lang": "en"}
+{"text": "yo sqrt 2 idk", "spans": [{"start": 3, "end": 9, "label": "MATH"}], "lang": "en"}
+{"text": "Applying the theorem seen in class, we immediately obtain vec u . vec v = ||u||*||v||*cos(theta).", "spans": [{"start": 58, "end": 96, "label": "MATH"}], "lang": "en"}
+{"text": "To solve this equation, let us first notice that f(x) = x^2.", "spans": [{"start": 49, "end": 59, "label": "MATH"}], "lang": "en"}
+{"text": "wait x = 3 ou x = -3 lol", "spans": [{"start": 5, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "wait so E(X) = 2 tbh", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "Let us already note that int de 0 a 1 de x^2 dx = 1/3 which will be useful later.", "spans": [{"start": 25, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "In what follows, we will assume that cos(2x) = 2cos^2(x) - 1 and study its consequences.", "spans": [{"start": 37, "end": 60, "label": "MATH"}], "lang": "en"}
+{"text": "From this hypothesis, we can deduce that E(X+Y) = E(X) + E(Y) in most cases.", "spans": [{"start": 41, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "Applying the theorem seen in class, we immediately obtain f(x) = x^2 - 4.", "spans": [{"start": 58, "end": 72, "label": "MATH"}], "lang": "en"}
+{"text": "pretty sure A inter B that's it", "spans": [{"start": 12, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "the graph of a function represents its variations", "spans": [], "lang": "en"}
+{"text": "integration by parts is a useful technique", "spans": [], "lang": "en"}
+{"text": "the canonical basis is simple to handle", "spans": [], "lang": "en"}
+{"text": "cryptography protects communications", "spans": [], "lang": "en"}
+{"text": "prime factorization is unique", "spans": [], "lang": "en"}
+{"text": "We then observe without difficulty that E(X+Y) = E(X) + E(Y) and the result follows.", "spans": [{"start": 40, "end": 60, "label": "MATH"}], "lang": "en"}
+{"text": "so like lim en +inf maybe", "spans": [{"start": 8, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "tbh A inter B no cap", "spans": [{"start": 4, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "the circumcenter is the point where perpendicular bisectors meet", "spans": [], "lang": "en"}
+{"text": "surjectivity means every target value is reached", "spans": [], "lang": "en"}
+{"text": "The goal of this exercise is to prove that u(n+1) = 2*un + 3 is always true.", "spans": [{"start": 43, "end": 60, "label": "MATH"}], "lang": "en"}
+{"text": "the convergence of a sequence depends on its limit", "spans": [], "lang": "en"}
+{"text": "complex numbers extend the real numbers", "spans": [], "lang": "en"}
+{"text": "yo i won't hand in the homework before tomorrow lol", "spans": [], "lang": "en"}
+{"text": "To solve this equation, let us first notice that cos(2x) = 2cos^2(x) - 1.", "spans": [{"start": 49, "end": 72, "label": "MATH"}], "lang": "en"}
+{"text": "ok then x = 3 ou x = -3 or whatever", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "a regular polyhedron has all identical faces", "spans": [], "lang": "en"}
+{"text": "Applying the theorem seen in class, we immediately obtain P(A inter B) = P(A) * P(B).", "spans": [{"start": 58, "end": 84, "label": "MATH"}], "lang": "en"}
+{"text": "Assume by contradiction that f''(x) + f(x) = 0 and see what contradiction follows.", "spans": [{"start": 29, "end": 46, "label": "MATH"}], "lang": "en"}
+{"text": "thales' theorem concerns similar triangles", "spans": [], "lang": "en"}
+{"text": "wait so f(x) = 2x+1 that's it", "spans": [{"start": 8, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "a cylinder has two circular bases", "spans": [], "lang": "en"}
+{"text": "wait so e^x pour x=1 fr fr", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "We denote by f the function defined by x^2 - 4 = (x-2)(x+2). Then f is linear.", "spans": [{"start": 39, "end": 59, "label": "MATH"}], "lang": "en"}
+{"text": "the zero vector is the additive identity", "spans": [], "lang": "en"}
+{"text": "kinda lim fx x=0 fr fr", "spans": [{"start": 6, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "Induction allows us to establish that vec u . vec v = ||u||*||v||*cos(theta) is true at every rank.", "spans": [{"start": 38, "end": 76, "label": "MATH"}], "lang": "en"}
+{"text": "injectivity means distinct inputs have distinct outputs", "spans": [], "lang": "en"}
+{"text": "We denote by f the function defined by f(x) = 2x + 1. Then f is linear.", "spans": [{"start": 39, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "At this stage of the proof, we have shown that int de 0 a 1 de x^2 dx = 1/3.", "spans": [{"start": 47, "end": 75, "label": "MATH"}], "lang": "en"}
+{"text": "asymmetric encryption uses two keys", "spans": [], "lang": "en"}
+{"text": "differential calculus studies rates of change", "spans": [], "lang": "en"}
+{"text": "We notice that un = n^2 by identifying terms of the same degree.", "spans": [{"start": 15, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "a prime number has only two divisors", "spans": [], "lang": "en"}
+{"text": "To finish the exercise, it remains to establish that f''(x) + f(x) = 0 in this particular case.", "spans": [{"start": 53, "end": 70, "label": "MATH"}], "lang": "en"}
+{"text": "To solve this equation, let us first notice that ln(x*y) = ln(x) + ln(y).", "spans": [{"start": 49, "end": 72, "label": "MATH"}], "lang": "en"}
+{"text": "Induction allows us to establish that sin^2(x) + cos^2(x) = 1 is true at every rank.", "spans": [{"start": 38, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "It is easy to verify that v(n) = 1/n by substituting numerical values.", "spans": [{"start": 26, "end": 36, "label": "MATH"}], "lang": "en"}
+{"text": "the mode is the most frequent value", "spans": [], "lang": "en"}
+{"text": "a probability tree visualizes possible outcomes", "spans": [], "lang": "en"}
+{"text": "The goal of this exercise is to prove that sin^2(x) + cos^2(x) = 1 is always true.", "spans": [{"start": 43, "end": 66, "label": "MATH"}], "lang": "en"}
+{"text": "The calculation is relatively simple: just notice that det(A*B) = det(A)*det(B).", "spans": [{"start": 55, "end": 79, "label": "MATH"}], "lang": "en"}
+{"text": "the expected value is the theoretical mean", "spans": [], "lang": "en"}
+{"text": "We notice that a^2 + b^2 = c^2 by identifying terms of the same degree.", "spans": [{"start": 15, "end": 30, "label": "MATH"}], "lang": "en"}
+{"text": "lmao E(X) = 2 pretty sure", "spans": [{"start": 5, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "the trigonometric circle has radius one", "spans": [], "lang": "en"}
+{"text": "It is important to understand that lim un = 0 before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "the logarithm is the inverse of the exponential", "spans": [], "lang": "en"}
+{"text": "This formula allows us to quickly compute x^2 - 4 = (x-2)(x+2) in practice.", "spans": [{"start": 42, "end": 62, "label": "MATH"}], "lang": "en"}
+{"text": "Assume by contradiction that f'(x) = 2x and see what contradiction follows.", "spans": [{"start": 29, "end": 39, "label": "MATH"}], "lang": "en"}
+{"text": "injectivity means distinct inputs have distinct outputs", "spans": [], "lang": "en"}
+{"text": "The right reflex here is to factor to obtain ln(x*y) = ln(x) + ln(y).", "spans": [{"start": 45, "end": 68, "label": "MATH"}], "lang": "en"}
+{"text": "the centroid is the point where medians meet", "spans": [], "lang": "en"}
+{"text": "It is crucial not to forget that u(n) = n^2 when computing.", "spans": [{"start": 33, "end": 43, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to remember that v(n) = 1/n is a central property of the course.", "spans": [{"start": 33, "end": 43, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to understand that u(n+1) = 2*un + 3 before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "proof by contradiction starts from a false hypothesis", "spans": [], "lang": "en"}
+{"text": "honestly P(A) = 1/2 fr fr", "spans": [{"start": 9, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "the binomial distribution counts successes in independent trials", "spans": [], "lang": "en"}
+{"text": "From this hypothesis, we can deduce that E(X+Y) = E(X) + E(Y) in most cases.", "spans": [{"start": 41, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "bruh cos pi = -1 idk", "spans": [{"start": 5, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "conjunction is the logical and", "spans": [], "lang": "en"}
+{"text": "the sphere is the most symmetric surface", "spans": [], "lang": "en"}
+{"text": "ok then i won't hand in the homework before tomorrow idk", "spans": [], "lang": "en"}
+{"text": "The teacher emphasized that f''(x) + f(x) = 0 is a remarkable identity.", "spans": [{"start": 28, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "ok then un+1 = 2un that's it", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "negation inverts the truth value", "spans": [], "lang": "en"}
+{"text": "The teacher emphasized that det(A*B) = det(A)*det(B) is a remarkable identity.", "spans": [{"start": 28, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "quartiles divide the distribution into four", "spans": [], "lang": "en"}
+{"text": "It is important to remember that E(X+Y) = E(X) + E(Y) is a central property of the course.", "spans": [{"start": 33, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "The calculation is relatively simple: just notice that ln(x*y) = ln(x) + ln(y).", "spans": [{"start": 55, "end": 78, "label": "MATH"}], "lang": "en"}
+{"text": "wait so lim fx x=0 maybe", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "the mandelbrot set has an infinitely complex boundary", "spans": [], "lang": "en"}
+{"text": "To solve this equation, let us first notice that x^3 - 1 = (x-1)(x^2+x+1).", "spans": [{"start": 49, "end": 73, "label": "MATH"}], "lang": "en"}
+{"text": "This formula allows us to quickly compute un = n^2 in practice.", "spans": [{"start": 42, "end": 50, "label": "MATH"}], "lang": "en"}
+{"text": "After calculation and simplification, we arrive at the expression cos(2x) = 2cos^2(x) - 1.", "spans": [{"start": 66, "end": 89, "label": "MATH"}], "lang": "en"}
+{"text": "a venn diagram represents sets", "spans": [], "lang": "en"}
+{"text": "honestly x in R or whatever", "spans": [{"start": 9, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "the graph of a function represents its variations", "spans": [], "lang": "en"}
+{"text": "the logarithmic spiral is a remarkable shape", "spans": [], "lang": "en"}
+{"text": "The teacher emphasized that u(n) = n^2 is a remarkable identity.", "spans": [{"start": 28, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "In what follows, we will assume that a^2 + b^2 = c^2 and study its consequences.", "spans": [{"start": 37, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "disjunction is the logical or", "spans": [], "lang": "en"}
+{"text": "From the previous course, we know that 1 + 2 + ... + n = n(n+1)/2 in all cases.", "spans": [{"start": 39, "end": 65, "label": "MATH"}], "lang": "en"}
+{"text": "From this hypothesis, we can deduce that e^(x+y) = e^x * e^y in most cases.", "spans": [{"start": 41, "end": 60, "label": "MATH"}], "lang": "en"}
+{"text": "the convergence of a sequence depends on its limit", "spans": [], "lang": "en"}
+{"text": "To solve this equation, let us first notice that sin^2(x) + cos^2(x) = 1.", "spans": [{"start": 49, "end": 72, "label": "MATH"}], "lang": "en"}
+{"text": "In the general framework, it should be noted that f(x) = x^2 for any real number.", "spans": [{"start": 50, "end": 60, "label": "MATH"}], "lang": "en"}
+{"text": "the trace is the sum of diagonal elements", "spans": [], "lang": "en"}
+{"text": "the traveling salesman problem is np-complete", "spans": [], "lang": "en"}
+{"text": "In what follows, we will assume that x^2 + 2x + 1 = (x+1)^2 and study its consequences.", "spans": [{"start": 37, "end": 59, "label": "MATH"}], "lang": "en"}
+{"text": "the fibonacci sequence appears in nature", "spans": [], "lang": "en"}
+{"text": "so like derivee x^2 c 2x tbh", "spans": [{"start": 8, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "an odd function is symmetric about the origin", "spans": [], "lang": "en"}
+{"text": "We denote by f the function defined by sin^2(x) + cos^2(x) = 1. Then f is linear.", "spans": [{"start": 39, "end": 62, "label": "MATH"}], "lang": "en"}
+{"text": "This formula allows us to quickly compute E(X+Y) = E(X) + E(Y) in practice.", "spans": [{"start": 42, "end": 62, "label": "MATH"}], "lang": "en"}
+{"text": "the perpendicular bisector cuts a segment at its midpoint perpendicularly", "spans": [], "lang": "en"}
+{"text": "a cone has a circular base and a vertex", "spans": [], "lang": "en"}
+{"text": "a similarity combines rotation and homothety", "spans": [], "lang": "en"}
+{"text": "pretty sure E(X) = 2 wait", "spans": [{"start": 12, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "the scalar product is a bilinear and symmetric operation", "spans": [], "lang": "en"}
+{"text": "ok so lim fx x=0 no cap", "spans": [{"start": 6, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "the inscribed angle theorem relates central and inscribed angles", "spans": [], "lang": "en"}
+{"text": "To finish the exercise, it remains to establish that lim un = 0 in this particular case.", "spans": [{"start": 53, "end": 63, "label": "MATH"}], "lang": "en"}
+{"text": "the complement depends on the reference set", "spans": [], "lang": "en"}
+{"text": "It is crucial not to forget that f''(x) + f(x) = 0 when computing.", "spans": [{"start": 33, "end": 50, "label": "MATH"}], "lang": "en"}
+{"text": "negation inverts the truth value", "spans": [], "lang": "en"}
+{"text": "It is important to remember that un = 1/n is a central property of the course.", "spans": [{"start": 33, "end": 41, "label": "MATH"}], "lang": "en"}
+{"text": "honestly x = 3 ou x = -3 maybe", "spans": [{"start": 9, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "pi is transcendental", "spans": [], "lang": "en"}
+{"text": "wait f(x) = 2x+1 idk", "spans": [{"start": 5, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "yo i won't hand in the homework before tomorrow right", "spans": [], "lang": "en"}
+{"text": "the identity matrix leaves vectors unchanged", "spans": [], "lang": "en"}
+{"text": "proof by induction has two steps", "spans": [], "lang": "en"}
+{"text": "To finish the exercise, it remains to establish that E(X+Y) = E(X) + E(Y) in this particular case.", "spans": [{"start": 53, "end": 73, "label": "MATH"}], "lang": "en"}
+{"text": "We notice that a^2 + b^2 = c^2 by identifying terms of the same degree.", "spans": [{"start": 15, "end": 30, "label": "MATH"}], "lang": "en"}
+{"text": "the sphere is the most symmetric surface", "spans": [], "lang": "en"}
+{"text": "the mandelbrot set has an infinitely complex boundary", "spans": [], "lang": "en"}
+{"text": "In what follows, we will assume that f'(x) = 2x and study its consequences.", "spans": [{"start": 37, "end": 47, "label": "MATH"}], "lang": "en"}
+{"text": "the fundamental theorem of arithmetic establishes the uniqueness of factorization", "spans": [], "lang": "en"}
+{"text": "pretty sure P(A) = 1/2 tbh", "spans": [{"start": 12, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "an affine transformation preserves lines", "spans": [], "lang": "en"}
+{"text": "The proof of this result relies on the fundamental equality int de 0 a 1 de x^2 dx = 1/3.", "spans": [{"start": 60, "end": 88, "label": "MATH"}], "lang": "en"}
+{"text": "lol vec AB + vec BC lol", "spans": [{"start": 4, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "The right reflex here is to factor to obtain a^2 + b^2 = c^2.", "spans": [{"start": 45, "end": 60, "label": "MATH"}], "lang": "en"}
+{"text": "a recurrence relation defines a sequence", "spans": [], "lang": "en"}
+{"text": "The first step consists in proving that 1 + 2 + ... + n = n(n+1)/2 then we conclude.", "spans": [{"start": 40, "end": 66, "label": "MATH"}], "lang": "en"}
+{"text": "Let us already note that f''(x) + f(x) = 0 which will be useful later.", "spans": [{"start": 25, "end": 42, "label": "MATH"}], "lang": "en"}
+{"text": "Let us already note that f(x) = 2x + 1 which will be useful later.", "spans": [{"start": 25, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "the centroid is the point where medians meet", "spans": [], "lang": "en"}
+{"text": "the fibonacci sequence appears in nature", "spans": [], "lang": "en"}
+{"text": "negation inverts the truth value", "spans": [], "lang": "en"}
+{"text": "By differentiating both sides of the equation, it follows that x^2 - 4 = (x-2)(x+2).", "spans": [{"start": 63, "end": 83, "label": "MATH"}], "lang": "en"}
+{"text": "negation inverts the truth value", "spans": [], "lang": "en"}
+{"text": "a tetrahedron is a pyramid with a triangular base", "spans": [], "lang": "en"}
+{"text": "a recurrence relation defines a sequence", "spans": [], "lang": "en"}
+{"text": "We then observe without difficulty that g(x) = sqrt(x) and the result follows.", "spans": [{"start": 40, "end": 54, "label": "MATH"}], "lang": "en"}
+{"text": "The proof of this result relies on the fundamental equality (A*B)^T = B^T * A^T.", "spans": [{"start": 60, "end": 79, "label": "MATH"}], "lang": "en"}
+{"text": "Induction allows us to establish that |z|^2 = z * z_barre is true at every rank.", "spans": [{"start": 38, "end": 57, "label": "MATH"}], "lang": "en"}
+{"text": "heron's formula gives the area of a triangle", "spans": [], "lang": "en"}
+{"text": "the graph of a function represents its variations", "spans": [], "lang": "en"}
+{"text": "To solve this equation, let us first notice that f(x) = x^2.", "spans": [{"start": 49, "end": 59, "label": "MATH"}], "lang": "en"}
+{"text": "negation inverts the truth value", "spans": [], "lang": "en"}
+{"text": "Let us already note that f'(x) = cos(x) which will be useful later.", "spans": [{"start": 25, "end": 39, "label": "MATH"}], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that v(n) = 1/n.", "spans": [{"start": 58, "end": 68, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to remember that u(n) = n^2 is a central property of the course.", "spans": [{"start": 33, "end": 43, "label": "MATH"}], "lang": "en"}
+{"text": "wait so sqrt 2 or whatever", "spans": [{"start": 8, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "To solve this equation, let us first notice that int de 0 a 1 de x^2 dx = 1/3.", "spans": [{"start": 49, "end": 77, "label": "MATH"}], "lang": "en"}
+{"text": "surjectivity means every target value is reached", "spans": [], "lang": "en"}
+{"text": "By differentiating both sides of the equation, it follows that f(x) = 2x + 1.", "spans": [{"start": 63, "end": 76, "label": "MATH"}], "lang": "en"}
+{"text": "Induction allows us to establish that un = n^2 is true at every rank.", "spans": [{"start": 38, "end": 46, "label": "MATH"}], "lang": "en"}
+{"text": "the traveling salesman problem is np-complete", "spans": [], "lang": "en"}
+{"text": "It is important to remember that f(x) = 2x + 1 is a central property of the course.", "spans": [{"start": 33, "end": 46, "label": "MATH"}], "lang": "en"}
+{"text": "We then observe without difficulty that v(n) = 1/n and the result follows.", "spans": [{"start": 40, "end": 50, "label": "MATH"}], "lang": "en"}
+{"text": "basically i won't hand in the homework before tomorrow that's it", "spans": [], "lang": "en"}
+{"text": "integration by parts is a useful technique", "spans": [], "lang": "en"}
+{"text": "yo i won't hand in the homework before tomorrow maybe", "spans": [], "lang": "en"}
+{"text": "a vertical asymptote indicates a discontinuity", "spans": [], "lang": "en"}
+{"text": "In the general framework, it should be noted that |z|^2 = z * z_barre for any real number.", "spans": [{"start": 50, "end": 69, "label": "MATH"}], "lang": "en"}
+{"text": "The first step consists in proving that sin^2(x) + cos^2(x) = 1 then we conclude.", "spans": [{"start": 40, "end": 63, "label": "MATH"}], "lang": "en"}
+{"text": "the period of a function is its smallest repeating pattern", "spans": [], "lang": "en"}
+{"text": "kinda i won't hand in the homework before tomorrow honestly", "spans": [], "lang": "en"}
+{"text": "tbh i won't hand in the homework before tomorrow fr fr", "spans": [], "lang": "en"}
+{"text": "kinda E(X) = 2 maybe", "spans": [{"start": 6, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "We denote by f the function defined by lim un = 0. Then f is linear.", "spans": [{"start": 39, "end": 49, "label": "MATH"}], "lang": "en"}
+{"text": "It is easy to verify that un = q^n by substituting numerical values.", "spans": [{"start": 26, "end": 34, "label": "MATH"}], "lang": "en"}
+{"text": "After calculation and simplification, we arrive at the expression f'(x) = cos(x).", "spans": [{"start": 66, "end": 80, "label": "MATH"}], "lang": "en"}
+{"text": "the empty set contains no element", "spans": [], "lang": "en"}
+{"text": "The right reflex here is to factor to obtain e^(x+y) = e^x * e^y.", "spans": [{"start": 45, "end": 64, "label": "MATH"}], "lang": "en"}
+{"text": "the median connects a vertex to the midpoint of the opposite side", "spans": [], "lang": "en"}
+{"text": "conjunction is the logical and", "spans": [], "lang": "en"}
+{"text": "a central symmetry inverts with respect to a point", "spans": [], "lang": "en"}
+{"text": "the slope coefficient is the slope of the line", "spans": [], "lang": "en"}
+{"text": "euler's number is also transcendental", "spans": [], "lang": "en"}
+{"text": "a central symmetry inverts with respect to a point", "spans": [], "lang": "en"}
+{"text": "In the general framework, it should be noted that g(x) = sqrt(x) for any real number.", "spans": [{"start": 50, "end": 64, "label": "MATH"}], "lang": "en"}
+{"text": "a translation moves each point by the same vector", "spans": [], "lang": "en"}
+{"text": "the complement depends on the reference set", "spans": [], "lang": "en"}
+{"text": "a series converges if its partial sums converge", "spans": [], "lang": "en"}
+{"text": "We then observe without difficulty that x^2 - 4 = (x-2)(x+2) and the result follows.", "spans": [{"start": 40, "end": 60, "label": "MATH"}], "lang": "en"}
+{"text": "The proof of this result relies on the fundamental equality vec u . vec v = ||u||*||v||*cos(theta).", "spans": [{"start": 60, "end": 98, "label": "MATH"}], "lang": "en"}
+{"text": "polynomial complexity is considered acceptable", "spans": [], "lang": "en"}
+{"text": "We will now look for solutions such that x^2 - 4 = (x-2)(x+2).", "spans": [{"start": 41, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "basically f(x) = 2x+1 tbh", "spans": [{"start": 10, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "an automorphism is an isomorphism from a set to itself", "spans": [], "lang": "en"}
+{"text": "The first step consists in proving that det(A*B) = det(A)*det(B) then we conclude.", "spans": [{"start": 40, "end": 64, "label": "MATH"}], "lang": "en"}
+{"text": "an odd function is symmetric about the origin", "spans": [], "lang": "en"}
+{"text": "a prism has two parallel polygonal bases", "spans": [], "lang": "en"}
+{"text": "the twin prime conjecture is still open", "spans": [], "lang": "en"}
+{"text": "the image of a function is its range", "spans": [], "lang": "en"}
+{"text": "From the previous course, we know that int de 0 a 1 de x^2 dx = 1/3 in all cases.", "spans": [{"start": 39, "end": 67, "label": "MATH"}], "lang": "en"}
+{"text": "sampling with replacement preserves initial probabilities", "spans": [], "lang": "en"}
+{"text": "Applying the theorem seen in class, we immediately obtain f''(x) + f(x) = 0.", "spans": [{"start": 58, "end": 75, "label": "MATH"}], "lang": "en"}
+{"text": "The calculation is relatively simple: just notice that det(A*B) = det(A)*det(B).", "spans": [{"start": 55, "end": 79, "label": "MATH"}], "lang": "en"}
+{"text": "negation inverts the truth value", "spans": [], "lang": "en"}
+{"text": "This formula allows us to quickly compute f''(x) + f(x) = 0 in practice.", "spans": [{"start": 42, "end": 59, "label": "MATH"}], "lang": "en"}
+{"text": "In what follows, we will assume that un = n^2 and study its consequences.", "spans": [{"start": 37, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that f(x) = 2x + 1.", "spans": [{"start": 58, "end": 71, "label": "MATH"}], "lang": "en"}
+{"text": "the image of a function is its range", "spans": [], "lang": "en"}
+{"text": "bruh un+1 = 2un no cap", "spans": [{"start": 5, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "euclidean geometry rests on five axioms", "spans": [], "lang": "en"}
+{"text": "Applying the theorem seen in class, we immediately obtain x^3 - 1 = (x-1)(x^2+x+1).", "spans": [{"start": 58, "end": 82, "label": "MATH"}], "lang": "en"}
+{"text": "The calculation is relatively simple: just notice that x^2 - 4 = (x-2)(x+2).", "spans": [{"start": 55, "end": 75, "label": "MATH"}], "lang": "en"}
+{"text": "a recurrence relation defines a sequence", "spans": [], "lang": "en"}
+{"text": "The right reflex here is to factor to obtain a^2 + b^2 = c^2.", "spans": [{"start": 45, "end": 60, "label": "MATH"}], "lang": "en"}
+{"text": "the traveling salesman problem is np-complete", "spans": [], "lang": "en"}
+{"text": "the antiderivative is the inverse of differentiation", "spans": [], "lang": "en"}
+{"text": "Let us already note that |z|^2 = z * z_barre which will be useful later.", "spans": [{"start": 25, "end": 44, "label": "MATH"}], "lang": "en"}
+{"text": "The goal of this exercise is to prove that u(n) = n^2 is always true.", "spans": [{"start": 43, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that un = 1/n.", "spans": [{"start": 58, "end": 66, "label": "MATH"}], "lang": "en"}
+{"text": "the mandelbrot set has an infinitely complex boundary", "spans": [], "lang": "en"}
+{"text": "a rotation preserves distances", "spans": [], "lang": "en"}
+{"text": "the graph of a function represents its variations", "spans": [], "lang": "en"}
+{"text": "Assume by contradiction that un = q^n and see what contradiction follows.", "spans": [{"start": 29, "end": 37, "label": "MATH"}], "lang": "en"}
+{"text": "Induction allows us to establish that f(x) = 2x + 1 is true at every rank.", "spans": [{"start": 38, "end": 51, "label": "MATH"}], "lang": "en"}
+{"text": "wait so E(X) = 2 i guess", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "so like i won't hand in the homework before tomorrow wait", "spans": [], "lang": "en"}
+{"text": "After calculation and simplification, we arrive at the expression a^2 + b^2 = c^2.", "spans": [{"start": 66, "end": 81, "label": "MATH"}], "lang": "en"}
+{"text": "the circumscribed circle passes through the three vertices", "spans": [], "lang": "en"}
+{"text": "Applying the theorem seen in class, we immediately obtain sin^2(x) + cos^2(x) = 1.", "spans": [{"start": 58, "end": 81, "label": "MATH"}], "lang": "en"}
+{"text": "We will now look for solutions such that E(X+Y) = E(X) + E(Y).", "spans": [{"start": 41, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "the normal distribution is a continuous probability distribution", "spans": [], "lang": "en"}
+{"text": "The proof of this result relies on the fundamental equality h(x) = 1/x.", "spans": [{"start": 60, "end": 70, "label": "MATH"}], "lang": "en"}
+{"text": "a prism has two parallel polygonal bases", "spans": [], "lang": "en"}
+{"text": "negation inverts the truth value", "spans": [], "lang": "en"}
+{"text": "the period of a function is its smallest repeating pattern", "spans": [], "lang": "en"}
+{"text": "the area of a circle is proportional to the square of its radius", "spans": [], "lang": "en"}
+{"text": "so like derivee x^2 c 2x honestly", "spans": [{"start": 8, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "Assume by contradiction that sin^2(x) + cos^2(x) = 1 and see what contradiction follows.", "spans": [{"start": 29, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "From this hypothesis, we can deduce that un = q^n in most cases.", "spans": [{"start": 41, "end": 49, "label": "MATH"}], "lang": "en"}
+{"text": "the logarithm is the inverse of the exponential", "spans": [], "lang": "en"}
+{"text": "the period of a function is its smallest repeating pattern", "spans": [], "lang": "en"}
+{"text": "From this hypothesis, we can deduce that x^3 - 1 = (x-1)(x^2+x+1) in most cases.", "spans": [{"start": 41, "end": 65, "label": "MATH"}], "lang": "en"}
+{"text": "We denote by f the function defined by f(x) = x^2 - 4. Then f is linear.", "spans": [{"start": 39, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "a probability tree visualizes possible outcomes", "spans": [], "lang": "en"}
+{"text": "linear regression fits a line to data", "spans": [], "lang": "en"}
+{"text": "In the general framework, it should be noted that sin^2(x) + cos^2(x) = 1 for any real number.", "spans": [{"start": 50, "end": 73, "label": "MATH"}], "lang": "en"}
+{"text": "pretty sure i won't hand in the homework before tomorrow right", "spans": [], "lang": "en"}
+{"text": "Let us already note that v(n) = 1/n which will be useful later.", "spans": [{"start": 25, "end": 35, "label": "MATH"}], "lang": "en"}
+{"text": "To finish the exercise, it remains to establish that u(n+1) = 2*un + 3 in this particular case.", "spans": [{"start": 53, "end": 70, "label": "MATH"}], "lang": "en"}
+{"text": "We notice that v(n) = 1/n by identifying terms of the same degree.", "spans": [{"start": 15, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "This formula allows us to quickly compute x^2 + 2x + 1 = (x+1)^2 in practice.", "spans": [{"start": 42, "end": 64, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to remember that un = q^n is a central property of the course.", "spans": [{"start": 33, "end": 41, "label": "MATH"}], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that |z|^2 = z * z_barre.", "spans": [{"start": 58, "end": 77, "label": "MATH"}], "lang": "en"}
+{"text": "lol A inter B lol", "spans": [{"start": 4, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "integration by parts is a useful technique", "spans": [], "lang": "en"}
+{"text": "the empty set contains no element", "spans": [], "lang": "en"}
+{"text": "After calculation and simplification, we arrive at the expression un = q^n.", "spans": [{"start": 66, "end": 74, "label": "MATH"}], "lang": "en"}
+{"text": "the union of two sets groups their elements", "spans": [], "lang": "en"}
+{"text": "It is important to remember that x^2 - 4 = (x-2)(x+2) is a central property of the course.", "spans": [{"start": 33, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "After calculation and simplification, we arrive at the expression a^2 + b^2 = c^2.", "spans": [{"start": 66, "end": 81, "label": "MATH"}], "lang": "en"}
+{"text": "the orthocenter is the point where altitudes meet", "spans": [], "lang": "en"}
+{"text": "basically x^2 >= 0 fr fr", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "The goal of this exercise is to prove that x^2 - 4 = (x-2)(x+2) is always true.", "spans": [{"start": 43, "end": 63, "label": "MATH"}], "lang": "en"}
+{"text": "In what follows, we will assume that sin^2(x) + cos^2(x) = 1 and study its consequences.", "spans": [{"start": 37, "end": 60, "label": "MATH"}], "lang": "en"}
+{"text": "a prime number has only two divisors", "spans": [], "lang": "en"}
+{"text": "the mode is the most frequent value", "spans": [], "lang": "en"}
+{"text": "The goal of this exercise is to prove that |z|^2 = z * z_barre is always true.", "spans": [{"start": 43, "end": 62, "label": "MATH"}], "lang": "en"}
+{"text": "topology studies properties invariant under continuous deformation", "spans": [], "lang": "en"}
+{"text": "the existential quantifier asserts the existence of at least one", "spans": [], "lang": "en"}
+{"text": "pi is transcendental", "spans": [], "lang": "en"}
+{"text": "The goal of this exercise is to prove that v(n) = 1/n is always true.", "spans": [{"start": 43, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "Assume by contradiction that a^2 + b^2 = c^2 and see what contradiction follows.", "spans": [{"start": 29, "end": 44, "label": "MATH"}], "lang": "en"}
+{"text": "the graph of a function represents its variations", "spans": [], "lang": "en"}
+{"text": "The calculation is relatively simple: just notice that f(x) = 2x + 1.", "spans": [{"start": 55, "end": 68, "label": "MATH"}], "lang": "en"}
+{"text": "bruh f de x = x^2 honestly", "spans": [{"start": 5, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "The right reflex here is to factor to obtain x^2 - 4 = (x-2)(x+2).", "spans": [{"start": 45, "end": 65, "label": "MATH"}], "lang": "en"}
+{"text": "basically x^2 >= 0 pretty sure", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "the intermediate value theorem is very useful", "spans": [], "lang": "en"}
+{"text": "proof by induction has two steps", "spans": [], "lang": "en"}
+{"text": "the pythagorean theorem applies to right triangles", "spans": [], "lang": "en"}
+{"text": "The right reflex here is to factor to obtain int de 0 a 1 de x^2 dx = 1/3.", "spans": [{"start": 45, "end": 73, "label": "MATH"}], "lang": "en"}
+{"text": "honestly quand n->inf i guess", "spans": [{"start": 9, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "a right angle measures ninety degrees", "spans": [], "lang": "en"}
+{"text": "Assume by contradiction that a^2 + b^2 = c^2 and see what contradiction follows.", "spans": [{"start": 29, "end": 44, "label": "MATH"}], "lang": "en"}
+{"text": "the factorial grows faster than the exponential", "spans": [], "lang": "en"}
+{"text": "euler's number is also transcendental", "spans": [], "lang": "en"}
+{"text": "Induction allows us to establish that sin^2(x) + cos^2(x) = 1 is true at every rank.", "spans": [{"start": 38, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "a cube has six identical faces", "spans": [], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that lim un = 0.", "spans": [{"start": 58, "end": 68, "label": "MATH"}], "lang": "en"}
+{"text": "We then observe without difficulty that f(x) = x^2 and the result follows.", "spans": [{"start": 40, "end": 50, "label": "MATH"}], "lang": "en"}
+{"text": "lol P(A) = 1/2 honestly", "spans": [{"start": 4, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "Applying the theorem seen in class, we immediately obtain un = n^2.", "spans": [{"start": 58, "end": 66, "label": "MATH"}], "lang": "en"}
+{"text": "At this stage of the proof, we have shown that u(n) = n^2.", "spans": [{"start": 47, "end": 57, "label": "MATH"}], "lang": "en"}
+{"text": "yo ln x = 2 pretty sure", "spans": [{"start": 3, "end": 11, "label": "MATH"}], "lang": "en"}
+{"text": "the twin prime conjecture is still open", "spans": [], "lang": "en"}
+{"text": "tbh i won't hand in the homework before tomorrow no cap", "spans": [], "lang": "en"}
+{"text": "quartiles divide the distribution into four", "spans": [], "lang": "en"}
+{"text": "In the general framework, it should be noted that ln(x*y) = ln(x) + ln(y) for any real number.", "spans": [{"start": 50, "end": 73, "label": "MATH"}], "lang": "en"}
+{"text": "Assume by contradiction that sin^2(x) + cos^2(x) = 1 and see what contradiction follows.", "spans": [{"start": 29, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "To finish the exercise, it remains to establish that x^2 - 4 = (x-2)(x+2) in this particular case.", "spans": [{"start": 53, "end": 73, "label": "MATH"}], "lang": "en"}
+{"text": "the fibonacci sequence appears in nature", "spans": [], "lang": "en"}
+{"text": "The calculation is relatively simple: just notice that u(n) = n^2.", "spans": [{"start": 55, "end": 65, "label": "MATH"}], "lang": "en"}
+{"text": "The first step consists in proving that x^2 + 2x + 1 = (x+1)^2 then we conclude.", "spans": [{"start": 40, "end": 62, "label": "MATH"}], "lang": "en"}
+{"text": "a right angle measures ninety degrees", "spans": [], "lang": "en"}
+{"text": "a venn diagram represents sets", "spans": [], "lang": "en"}
+{"text": "differential calculus studies rates of change", "spans": [], "lang": "en"}
+{"text": "To solve this equation, let us first notice that E(X+Y) = E(X) + E(Y).", "spans": [{"start": 49, "end": 69, "label": "MATH"}], "lang": "en"}
+{"text": "In the general framework, it should be noted that x^2 - 4 = (x-2)(x+2) for any real number.", "spans": [{"start": 50, "end": 70, "label": "MATH"}], "lang": "en"}
+{"text": "the concept of derivative is fundamental in analysis", "spans": [], "lang": "en"}
+{"text": "It is important to understand that E(X+Y) = E(X) + E(Y) before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 55, "label": "MATH"}], "lang": "en"}
+{"text": "a box plot summarizes five key values", "spans": [], "lang": "en"}
+{"text": "It is crucial not to forget that lim un = 0 when computing.", "spans": [{"start": 33, "end": 43, "label": "MATH"}], "lang": "en"}
+{"text": "wait vec AB + vec BC or whatever", "spans": [{"start": 5, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "cryptography protects communications", "spans": [], "lang": "en"}
+{"text": "It is crucial not to forget that h(x) = 1/x when computing.", "spans": [{"start": 33, "end": 43, "label": "MATH"}], "lang": "en"}
+{"text": "In what follows, we will assume that f(x) = x^2 and study its consequences.", "spans": [{"start": 37, "end": 47, "label": "MATH"}], "lang": "en"}
+{"text": "By direct substitution, the expression becomes cos(2x) = 2cos^2(x) - 1 which is much simpler.", "spans": [{"start": 47, "end": 70, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to understand that v(n) = 1/n before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "The goal of this exercise is to prove that u(n) = n^2 is always true.", "spans": [{"start": 43, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "wait x^2 >= 0 honestly", "spans": [{"start": 5, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "basically x^2 = 4 idk", "spans": [{"start": 10, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "The goal of this exercise is to prove that un = n^2 is always true.", "spans": [{"start": 43, "end": 51, "label": "MATH"}], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that cos(2x) = 2cos^2(x) - 1.", "spans": [{"start": 58, "end": 81, "label": "MATH"}], "lang": "en"}
+{"text": "We denote by f the function defined by x^2 + 2x + 1 = (x+1)^2. Then f is linear.", "spans": [{"start": 39, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "bruh i won't hand in the homework before tomorrow maybe", "spans": [], "lang": "en"}
+{"text": "conditional probability depends on the conditioning event", "spans": [], "lang": "en"}
+{"text": "a homothety scales distances by the same factor", "spans": [], "lang": "en"}
+{"text": "In the general framework, it should be noted that x^2 - 4 = (x-2)(x+2) for any real number.", "spans": [{"start": 50, "end": 70, "label": "MATH"}], "lang": "en"}
+{"text": "the median connects a vertex to the midpoint of the opposite side", "spans": [], "lang": "en"}
+{"text": "ok then P(A) = 1/2 fr fr", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "differential calculus studies rates of change", "spans": [], "lang": "en"}
+{"text": "a differential equation models a physical phenomenon", "spans": [], "lang": "en"}
+{"text": "Let us already note that un = q^n which will be useful later.", "spans": [{"start": 25, "end": 33, "label": "MATH"}], "lang": "en"}
+{"text": "sampling without replacement changes probabilities over time", "spans": [], "lang": "en"}
+{"text": "basically x^2 = 4 maybe", "spans": [{"start": 10, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "The teacher emphasized that f(x) = x^2 - 4 is a remarkable identity.", "spans": [{"start": 28, "end": 42, "label": "MATH"}], "lang": "en"}
+{"text": "the median connects a vertex to the midpoint of the opposite side", "spans": [], "lang": "en"}
+{"text": "It is important to understand that ln(x*y) = ln(x) + ln(y) before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 58, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to remember that un = 1/n is a central property of the course.", "spans": [{"start": 33, "end": 41, "label": "MATH"}], "lang": "en"}
+{"text": "goldbach's conjecture remains to be proven", "spans": [], "lang": "en"}
+{"text": "a torus has the shape of a ring", "spans": [], "lang": "en"}
+{"text": "wait so A inter B fr fr", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "so like lim en +inf lol", "spans": [{"start": 8, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "information theory measures uncertainty", "spans": [], "lang": "en"}
+{"text": "It is important to understand that int de 0 a 1 de x^2 dx = 1/3 before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 63, "label": "MATH"}], "lang": "en"}
+{"text": "entropy quantifies disorder", "spans": [], "lang": "en"}
+{"text": "complex numbers extend the real numbers", "spans": [], "lang": "en"}
+{"text": "proof by contradiction starts from a false hypothesis", "spans": [], "lang": "en"}
+{"text": "topology studies properties invariant under continuous deformation", "spans": [], "lang": "en"}
+{"text": "From this hypothesis, we can deduce that un = 1/n in most cases.", "spans": [{"start": 41, "end": 49, "label": "MATH"}], "lang": "en"}
+{"text": "a translation moves each point by the same vector", "spans": [], "lang": "en"}
+{"text": "the canonical basis is simple to handle", "spans": [], "lang": "en"}
+{"text": "Assume by contradiction that e^(x+y) = e^x * e^y and see what contradiction follows.", "spans": [{"start": 29, "end": 48, "label": "MATH"}], "lang": "en"}
+{"text": "The calculation is relatively simple: just notice that E(X+Y) = E(X) + E(Y).", "spans": [{"start": 55, "end": 75, "label": "MATH"}], "lang": "en"}
+{"text": "linear regression fits a line to data", "spans": [], "lang": "en"}
+{"text": "the least common multiple is used to add fractions", "spans": [], "lang": "en"}
+{"text": "the orthocenter is the point where altitudes meet", "spans": [], "lang": "en"}
+{"text": "a cylinder has two circular bases", "spans": [], "lang": "en"}
+{"text": "the traveling salesman problem is np-complete", "spans": [], "lang": "en"}
+{"text": "independence means one does not influence the other", "spans": [], "lang": "en"}
+{"text": "To solve this equation, let us first notice that f'(x) = 2x.", "spans": [{"start": 49, "end": 59, "label": "MATH"}], "lang": "en"}
+{"text": "At this stage of the proof, we have shown that f(x) = 2x + 1.", "spans": [{"start": 47, "end": 60, "label": "MATH"}], "lang": "en"}
+{"text": "the area of a circle is proportional to the square of its radius", "spans": [], "lang": "en"}
+{"text": "It is easy to verify that x^2 - 4 = (x-2)(x+2) by substituting numerical values.", "spans": [{"start": 26, "end": 46, "label": "MATH"}], "lang": "en"}
+{"text": "bruh derivee x^2 c 2x no cap", "spans": [{"start": 5, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "entropy quantifies disorder", "spans": [], "lang": "en"}
+{"text": "linear algebra handles matrices and vectors", "spans": [], "lang": "en"}
+{"text": "a recurrence relation defines a sequence", "spans": [], "lang": "en"}
+{"text": "the standard deviation is the square root of the variance", "spans": [], "lang": "en"}
+{"text": "the complement depends on the reference set", "spans": [], "lang": "en"}
+{"text": "the circumcenter is the point where perpendicular bisectors meet", "spans": [], "lang": "en"}
+{"text": "lol f de x = x^2 fr fr", "spans": [{"start": 4, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "the complement depends on the reference set", "spans": [], "lang": "en"}
+{"text": "a mobius strip has only one face", "spans": [], "lang": "en"}
+{"text": "quartiles divide the distribution into four", "spans": [], "lang": "en"}
+{"text": "a probability tree visualizes possible outcomes", "spans": [], "lang": "en"}
+{"text": "a rotation preserves distances", "spans": [], "lang": "en"}
+{"text": "The calculation is relatively simple: just notice that P(A inter B) = P(A) * P(B).", "spans": [{"start": 55, "end": 81, "label": "MATH"}], "lang": "en"}
+{"text": "asymmetric encryption uses two keys", "spans": [], "lang": "en"}
+{"text": "In what follows, we will assume that v(n) = 1/n and study its consequences.", "spans": [{"start": 37, "end": 47, "label": "MATH"}], "lang": "en"}
+{"text": "After calculation and simplification, we arrive at the expression v(n) = 1/n.", "spans": [{"start": 66, "end": 76, "label": "MATH"}], "lang": "en"}
+{"text": "the slope coefficient is the slope of the line", "spans": [], "lang": "en"}
+{"text": "prime factorization is unique", "spans": [], "lang": "en"}
+{"text": "basically E(X) = 2 lol", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "cryptography protects communications", "spans": [], "lang": "en"}
+{"text": "the median splits the population into two halves", "spans": [], "lang": "en"}
+{"text": "lmao E(X) = 2 that's it", "spans": [{"start": 5, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "In the general framework, it should be noted that (A*B)^T = B^T * A^T for any real number.", "spans": [{"start": 50, "end": 69, "label": "MATH"}], "lang": "en"}
+{"text": "By differentiating both sides of the equation, it follows that E(X+Y) = E(X) + E(Y).", "spans": [{"start": 63, "end": 83, "label": "MATH"}], "lang": "en"}
+{"text": "yo vec AB + vec BC maybe", "spans": [{"start": 3, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "a tetrahedron is a pyramid with a triangular base", "spans": [], "lang": "en"}
+{"text": "The teacher emphasized that |z|^2 = z * z_barre is a remarkable identity.", "spans": [{"start": 28, "end": 47, "label": "MATH"}], "lang": "en"}
+{"text": "the trace is the sum of diagonal elements", "spans": [], "lang": "en"}
+{"text": "wait so ln x = 2 tbh", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to remember that x^3 - 1 = (x-1)(x^2+x+1) is a central property of the course.", "spans": [{"start": 33, "end": 57, "label": "MATH"}], "lang": "en"}
+{"text": "Induction allows us to establish that vec u . vec v = ||u||*||v||*cos(theta) is true at every rank.", "spans": [{"start": 38, "end": 76, "label": "MATH"}], "lang": "en"}
+{"text": "algorithmics seeks computational efficiency", "spans": [], "lang": "en"}
+{"text": "the trace is the sum of diagonal elements", "spans": [], "lang": "en"}
+{"text": "the intermediate value theorem is very useful", "spans": [], "lang": "en"}
+{"text": "injectivity means distinct inputs have distinct outputs", "spans": [], "lang": "en"}
+{"text": "basically P(A) = 1/2 that's it", "spans": [{"start": 10, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "The right reflex here is to factor to obtain un = n^2.", "spans": [{"start": 45, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "disjunction is the logical or", "spans": [], "lang": "en"}
+{"text": "disjunction is the logical or", "spans": [], "lang": "en"}
+{"text": "This formula allows us to quickly compute un = q^n in practice.", "spans": [{"start": 42, "end": 50, "label": "MATH"}], "lang": "en"}
+{"text": "The first step consists in proving that vec u . vec v = ||u||*||v||*cos(theta) then we conclude.", "spans": [{"start": 40, "end": 78, "label": "MATH"}], "lang": "en"}
+{"text": "Let us already note that u(n+1) = 2*un + 3 which will be useful later.", "spans": [{"start": 25, "end": 42, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to remember that h(x) = 1/x is a central property of the course.", "spans": [{"start": 33, "end": 43, "label": "MATH"}], "lang": "en"}
+{"text": "It is easy to verify that g(x) = sqrt(x) by substituting numerical values.", "spans": [{"start": 26, "end": 40, "label": "MATH"}], "lang": "en"}
+{"text": "thales' theorem concerns similar triangles", "spans": [], "lang": "en"}
+{"text": "honestly x^2 = 4 no cap", "spans": [{"start": 9, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "euler's number is also transcendental", "spans": [], "lang": "en"}
+{"text": "Applying the theorem seen in class, we immediately obtain un = 1/n.", "spans": [{"start": 58, "end": 66, "label": "MATH"}], "lang": "en"}
+{"text": "the law of cosines generalizes the pythagorean theorem", "spans": [], "lang": "en"}
+{"text": "fractals have a self-similar structure", "spans": [], "lang": "en"}
+{"text": "From this hypothesis, we can deduce that g(x) = sqrt(x) in most cases.", "spans": [{"start": 41, "end": 55, "label": "MATH"}], "lang": "en"}
+{"text": "lmao E(X) = 2 honestly", "spans": [{"start": 5, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "the orthocenter is the point where altitudes meet", "spans": [], "lang": "en"}
+{"text": "the median splits the population into two halves", "spans": [], "lang": "en"}
+{"text": "At this stage of the proof, we have shown that cos(2x) = 2cos^2(x) - 1.", "spans": [{"start": 47, "end": 70, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to remember that lim un = 0 is a central property of the course.", "spans": [{"start": 33, "end": 43, "label": "MATH"}], "lang": "en"}
+{"text": "euclidean geometry rests on five axioms", "spans": [], "lang": "en"}
+{"text": "the antiderivative is the inverse of differentiation", "spans": [], "lang": "en"}
+{"text": "It is important to understand that 1 + 2 + ... + n = n(n+1)/2 before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "the exponential function grows rapidly", "spans": [], "lang": "en"}
+{"text": "The calculation is relatively simple: just notice that vec u . vec v = ||u||*||v||*cos(theta).", "spans": [{"start": 55, "end": 93, "label": "MATH"}], "lang": "en"}
+{"text": "To finish the exercise, it remains to establish that un = q^n in this particular case.", "spans": [{"start": 53, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "By differentiating both sides of the equation, it follows that cos(2x) = 2cos^2(x) - 1.", "spans": [{"start": 63, "end": 86, "label": "MATH"}], "lang": "en"}
+{"text": "After calculation and simplification, we arrive at the expression (A*B)^T = B^T * A^T.", "spans": [{"start": 66, "end": 85, "label": "MATH"}], "lang": "en"}
+{"text": "a torus has the shape of a ring", "spans": [], "lang": "en"}
+{"text": "the median splits the population into two halves", "spans": [], "lang": "en"}
+{"text": "The right reflex here is to factor to obtain ln(x*y) = ln(x) + ln(y).", "spans": [{"start": 45, "end": 68, "label": "MATH"}], "lang": "en"}
+{"text": "ok then x^2 >= 0 right", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "wait so i won't hand in the homework before tomorrow pretty sure", "spans": [], "lang": "en"}
+{"text": "In what follows, we will assume that f''(x) + f(x) = 0 and study its consequences.", "spans": [{"start": 37, "end": 54, "label": "MATH"}], "lang": "en"}
+{"text": "a cone has a circular base and a vertex", "spans": [], "lang": "en"}
+{"text": "the convergence of a sequence depends on its limit", "spans": [], "lang": "en"}
+{"text": "ok then P(A) = 1/2 tbh", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "This formula allows us to quickly compute x^2 + 2x + 1 = (x+1)^2 in practice.", "spans": [{"start": 42, "end": 64, "label": "MATH"}], "lang": "en"}
+{"text": "ok so i won't hand in the homework before tomorrow i guess", "spans": [], "lang": "en"}
+{"text": "wait so P(A) = 1/2 wait", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "By differentiating both sides of the equation, it follows that 1 + 2 + ... + n = n(n+1)/2.", "spans": [{"start": 63, "end": 89, "label": "MATH"}], "lang": "en"}
+{"text": "a box plot summarizes five key values", "spans": [], "lang": "en"}
+{"text": "In the general framework, it should be noted that u(n) = n^2 for any real number.", "spans": [{"start": 50, "end": 60, "label": "MATH"}], "lang": "en"}
+{"text": "ok then cos pi = -1 pretty sure", "spans": [{"start": 8, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "From the previous course, we know that e^(x+y) = e^x * e^y in all cases.", "spans": [{"start": 39, "end": 58, "label": "MATH"}], "lang": "en"}
+{"text": "ok then quand n->inf maybe", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "a differential equation models a physical phenomenon", "spans": [], "lang": "en"}
+{"text": "The teacher emphasized that e^(x+y) = e^x * e^y is a remarkable identity.", "spans": [{"start": 28, "end": 47, "label": "MATH"}], "lang": "en"}
+{"text": "We denote by f the function defined by det(A*B) = det(A)*det(B). Then f is linear.", "spans": [{"start": 39, "end": 63, "label": "MATH"}], "lang": "en"}
+{"text": "From the previous course, we know that u(n+1) = 2*un + 3 in all cases.", "spans": [{"start": 39, "end": 56, "label": "MATH"}], "lang": "en"}
+{"text": "independence means one does not influence the other", "spans": [], "lang": "en"}
+{"text": "To finish the exercise, it remains to establish that f'(x) = cos(x) in this particular case.", "spans": [{"start": 53, "end": 67, "label": "MATH"}], "lang": "en"}
+{"text": "Let us already note that E(X+Y) = E(X) + E(Y) which will be useful later.", "spans": [{"start": 25, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "We then observe without difficulty that a^2 + b^2 = c^2 and the result follows.", "spans": [{"start": 40, "end": 55, "label": "MATH"}], "lang": "en"}
+{"text": "sampling without replacement changes probabilities over time", "spans": [], "lang": "en"}
+{"text": "graph theory studies networks", "spans": [], "lang": "en"}
+{"text": "By differentiating both sides of the equation, it follows that f'(x) = 2x.", "spans": [{"start": 63, "end": 73, "label": "MATH"}], "lang": "en"}
+{"text": "By differentiating both sides of the equation, it follows that un = n^2.", "spans": [{"start": 63, "end": 71, "label": "MATH"}], "lang": "en"}
+{"text": "In what follows, we will assume that ln(x*y) = ln(x) + ln(y) and study its consequences.", "spans": [{"start": 37, "end": 60, "label": "MATH"}], "lang": "en"}
+{"text": "The teacher emphasized that cos(2x) = 2cos^2(x) - 1 is a remarkable identity.", "spans": [{"start": 28, "end": 51, "label": "MATH"}], "lang": "en"}
+{"text": "an isomorphism preserves algebraic structure", "spans": [], "lang": "en"}
+{"text": "a recurrence relation defines a sequence", "spans": [], "lang": "en"}
+{"text": "By differentiating both sides of the equation, it follows that f'(x) = 2x.", "spans": [{"start": 63, "end": 73, "label": "MATH"}], "lang": "en"}
+{"text": "To solve this equation, let us first notice that det(A*B) = det(A)*det(B).", "spans": [{"start": 49, "end": 73, "label": "MATH"}], "lang": "en"}
+{"text": "Assume by contradiction that f''(x) + f(x) = 0 and see what contradiction follows.", "spans": [{"start": 29, "end": 46, "label": "MATH"}], "lang": "en"}
+{"text": "the trace is the sum of diagonal elements", "spans": [], "lang": "en"}
+{"text": "To finish the exercise, it remains to establish that a^2 + b^2 = c^2 in this particular case.", "spans": [{"start": 53, "end": 68, "label": "MATH"}], "lang": "en"}
+{"text": "the norm measures the length of a vector", "spans": [], "lang": "en"}
+{"text": "honestly cos pi = -1 wait", "spans": [{"start": 9, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "heron's formula gives the area of a triangle", "spans": [], "lang": "en"}
+{"text": "a venn diagram represents sets", "spans": [], "lang": "en"}
+{"text": "Induction allows us to establish that sin^2(x) + cos^2(x) = 1 is true at every rank.", "spans": [{"start": 38, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "the normal distribution is a continuous probability distribution", "spans": [], "lang": "en"}
+{"text": "By differentiating both sides of the equation, it follows that un = q^n.", "spans": [{"start": 63, "end": 71, "label": "MATH"}], "lang": "en"}
+{"text": "the union of two sets groups their elements", "spans": [], "lang": "en"}
+{"text": "The calculation is relatively simple: just notice that un = n^2.", "spans": [{"start": 55, "end": 63, "label": "MATH"}], "lang": "en"}
+{"text": "bijectivity combines injectivity and surjectivity", "spans": [], "lang": "en"}
+{"text": "the centroid is the point where medians meet", "spans": [], "lang": "en"}
+{"text": "At this stage of the proof, we have shown that det(A*B) = det(A)*det(B).", "spans": [{"start": 47, "end": 71, "label": "MATH"}], "lang": "en"}
+{"text": "the contrapositive is logically equivalent", "spans": [], "lang": "en"}
+{"text": "To finish the exercise, it remains to establish that f''(x) + f(x) = 0 in this particular case.", "spans": [{"start": 53, "end": 70, "label": "MATH"}], "lang": "en"}
+{"text": "linear regression fits a line to data", "spans": [], "lang": "en"}
+{"text": "This formula allows us to quickly compute (A*B)^T = B^T * A^T in practice.", "spans": [{"start": 42, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "This formula allows us to quickly compute lim un = 0 in practice.", "spans": [{"start": 42, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "To solve this equation, let us first notice that v(n) = 1/n.", "spans": [{"start": 49, "end": 59, "label": "MATH"}], "lang": "en"}
+{"text": "the correlation coefficient is normalized", "spans": [], "lang": "en"}
+{"text": "proof by contradiction starts from a false hypothesis", "spans": [], "lang": "en"}
+{"text": "topology studies properties invariant under continuous deformation", "spans": [], "lang": "en"}
+{"text": "a probability tree visualizes possible outcomes", "spans": [], "lang": "en"}
+{"text": "By direct substitution, the expression becomes ln(x*y) = ln(x) + ln(y) which is much simpler.", "spans": [{"start": 47, "end": 70, "label": "MATH"}], "lang": "en"}
+{"text": "wait so x = 3 ou x = -3 or whatever", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "ok so i won't hand in the homework before tomorrow lol", "spans": [], "lang": "en"}
+{"text": "At this stage of the proof, we have shown that cos(2x) = 2cos^2(x) - 1.", "spans": [{"start": 47, "end": 70, "label": "MATH"}], "lang": "en"}
+{"text": "The proof of this result relies on the fundamental equality P(A inter B) = P(A) * P(B).", "spans": [{"start": 60, "end": 86, "label": "MATH"}], "lang": "en"}
+{"text": "The proof of this result relies on the fundamental equality det(A*B) = det(A)*det(B).", "spans": [{"start": 60, "end": 84, "label": "MATH"}], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that f'(x) = 2x.", "spans": [{"start": 58, "end": 68, "label": "MATH"}], "lang": "en"}
+{"text": "We then observe without difficulty that g(x) = sqrt(x) and the result follows.", "spans": [{"start": 40, "end": 54, "label": "MATH"}], "lang": "en"}
+{"text": "The teacher emphasized that x^2 - 4 = (x-2)(x+2) is a remarkable identity.", "spans": [{"start": 28, "end": 48, "label": "MATH"}], "lang": "en"}
+{"text": "basically lim en +inf wait", "spans": [{"start": 10, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "We denote by f the function defined by f'(x) = 2x. Then f is linear.", "spans": [{"start": 39, "end": 49, "label": "MATH"}], "lang": "en"}
+{"text": "the centroid is the point where medians meet", "spans": [], "lang": "en"}
+{"text": "It is important to remember that f(x) = x^2 is a central property of the course.", "spans": [{"start": 33, "end": 43, "label": "MATH"}], "lang": "en"}
+{"text": "idk but i won't hand in the homework before tomorrow or whatever", "spans": [], "lang": "en"}
+{"text": "the intermediate value theorem is very useful", "spans": [], "lang": "en"}
+{"text": "sampling with replacement preserves initial probabilities", "spans": [], "lang": "en"}
+{"text": "so like quand n->inf fr fr", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "In what follows, we will assume that e^(x+y) = e^x * e^y and study its consequences.", "spans": [{"start": 37, "end": 56, "label": "MATH"}], "lang": "en"}
+{"text": "This formula allows us to quickly compute un = n^2 in practice.", "spans": [{"start": 42, "end": 50, "label": "MATH"}], "lang": "en"}
+{"text": "It is crucial not to forget that x^3 - 1 = (x-1)(x^2+x+1) when computing.", "spans": [{"start": 33, "end": 57, "label": "MATH"}], "lang": "en"}
+{"text": "the fundamental theorem of arithmetic establishes the uniqueness of factorization", "spans": [], "lang": "en"}
+{"text": "linear regression fits a line to data", "spans": [], "lang": "en"}
+{"text": "bruh lim en +inf tbh", "spans": [{"start": 5, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "the trigonometric circle has radius one", "spans": [], "lang": "en"}
+{"text": "To finish the exercise, it remains to establish that h(x) = 1/x in this particular case.", "spans": [{"start": 53, "end": 63, "label": "MATH"}], "lang": "en"}
+{"text": "euler's number is also transcendental", "spans": [], "lang": "en"}
+{"text": "the logarithmic spiral is a remarkable shape", "spans": [], "lang": "en"}
+{"text": "We denote by f the function defined by f(x) = x^2. Then f is linear.", "spans": [{"start": 39, "end": 49, "label": "MATH"}], "lang": "en"}
+{"text": "the characteristic polynomial gives the eigenvalues", "spans": [], "lang": "en"}
+{"text": "We will now look for solutions such that v(n) = 1/n.", "spans": [{"start": 41, "end": 51, "label": "MATH"}], "lang": "en"}
+{"text": "euclidean distance is always positive", "spans": [], "lang": "en"}
+{"text": "heron's formula gives the area of a triangle", "spans": [], "lang": "en"}
+{"text": "information theory measures uncertainty", "spans": [], "lang": "en"}
+{"text": "the circumcenter is the point where perpendicular bisectors meet", "spans": [], "lang": "en"}
+{"text": "yo i won't hand in the homework before tomorrow right", "spans": [], "lang": "en"}
+{"text": "the mode is the most frequent value", "spans": [], "lang": "en"}
+{"text": "linear regression fits a line to data", "spans": [], "lang": "en"}
+{"text": "In what follows, we will assume that f(x) = 2x + 1 and study its consequences.", "spans": [{"start": 37, "end": 50, "label": "MATH"}], "lang": "en"}
+{"text": "the riemann hypothesis is a millennium problem", "spans": [], "lang": "en"}
+{"text": "After calculation and simplification, we arrive at the expression f(x) = 2x + 1.", "spans": [{"start": 66, "end": 79, "label": "MATH"}], "lang": "en"}
+{"text": "The teacher emphasized that v(n) = 1/n is a remarkable identity.", "spans": [{"start": 28, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "The proof of this result relies on the fundamental equality (A*B)^T = B^T * A^T.", "spans": [{"start": 60, "end": 79, "label": "MATH"}], "lang": "en"}
+{"text": "Assume by contradiction that f'(x) = 2x and see what contradiction follows.", "spans": [{"start": 29, "end": 39, "label": "MATH"}], "lang": "en"}
+{"text": "The right reflex here is to factor to obtain f'(x) = cos(x).", "spans": [{"start": 45, "end": 59, "label": "MATH"}], "lang": "en"}
+{"text": "the riemann hypothesis is a millennium problem", "spans": [], "lang": "en"}
+{"text": "We denote by f the function defined by un = 1/n. Then f is linear.", "spans": [{"start": 39, "end": 47, "label": "MATH"}], "lang": "en"}
+{"text": "We denote by f the function defined by un = n^2. Then f is linear.", "spans": [{"start": 39, "end": 47, "label": "MATH"}], "lang": "en"}
+{"text": "lol x^2 = 4 pretty sure", "spans": [{"start": 4, "end": 11, "label": "MATH"}], "lang": "en"}
+{"text": "From the previous course, we know that f'(x) = cos(x) in all cases.", "spans": [{"start": 39, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "idk but i won't hand in the homework before tomorrow that's it", "spans": [], "lang": "en"}
+{"text": "From the previous course, we know that int de 0 a 1 de x^2 dx = 1/3 in all cases.", "spans": [{"start": 39, "end": 67, "label": "MATH"}], "lang": "en"}
+{"text": "heron's formula gives the area of a triangle", "spans": [], "lang": "en"}
+{"text": "To finish the exercise, it remains to establish that un = q^n in this particular case.", "spans": [{"start": 53, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "This formula allows us to quickly compute x^3 - 1 = (x-1)(x^2+x+1) in practice.", "spans": [{"start": 42, "end": 66, "label": "MATH"}], "lang": "en"}
+{"text": "wait so i won't hand in the homework before tomorrow pretty sure", "spans": [], "lang": "en"}
+{"text": "thales' theorem concerns similar triangles", "spans": [], "lang": "en"}
+{"text": "The proof of this result relies on the fundamental equality (A*B)^T = B^T * A^T.", "spans": [{"start": 60, "end": 79, "label": "MATH"}], "lang": "en"}
+{"text": "The teacher emphasized that e^(x+y) = e^x * e^y is a remarkable identity.", "spans": [{"start": 28, "end": 47, "label": "MATH"}], "lang": "en"}
+{"text": "The right reflex here is to factor to obtain f(x) = 2x + 1.", "spans": [{"start": 45, "end": 58, "label": "MATH"}], "lang": "en"}
+{"text": "This formula allows us to quickly compute h(x) = 1/x in practice.", "spans": [{"start": 42, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "a right angle measures ninety degrees", "spans": [], "lang": "en"}
+{"text": "To solve this equation, let us first notice that det(A*B) = det(A)*det(B).", "spans": [{"start": 49, "end": 73, "label": "MATH"}], "lang": "en"}
+{"text": "the convergence of a sequence depends on its limit", "spans": [], "lang": "en"}
+{"text": "the exponential function grows rapidly", "spans": [], "lang": "en"}
+{"text": "the identity matrix leaves vectors unchanged", "spans": [], "lang": "en"}
+{"text": "divisibility is a partial order relation", "spans": [], "lang": "en"}
+{"text": "This formula allows us to quickly compute lim un = 0 in practice.", "spans": [{"start": 42, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "The teacher emphasized that u(n) = n^2 is a remarkable identity.", "spans": [{"start": 28, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "kinda i won't hand in the homework before tomorrow lol", "spans": [], "lang": "en"}
+{"text": "linear regression fits a line to data", "spans": [], "lang": "en"}
+{"text": "The teacher emphasized that sin^2(x) + cos^2(x) = 1 is a remarkable identity.", "spans": [{"start": 28, "end": 51, "label": "MATH"}], "lang": "en"}
+{"text": "It is easy to verify that (A*B)^T = B^T * A^T by substituting numerical values.", "spans": [{"start": 26, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "We then observe without difficulty that f(x) = x^2 - 4 and the result follows.", "spans": [{"start": 40, "end": 54, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to understand that h(x) = 1/x before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "fractals have a self-similar structure", "spans": [], "lang": "en"}
+{"text": "We notice that u(n) = n^2 by identifying terms of the same degree.", "spans": [{"start": 15, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "a prism has two parallel polygonal bases", "spans": [], "lang": "en"}
+{"text": "the graph of a function represents its variations", "spans": [], "lang": "en"}
+{"text": "We denote by f the function defined by u(n+1) = 2*un + 3. Then f is linear.", "spans": [{"start": 39, "end": 56, "label": "MATH"}], "lang": "en"}
+{"text": "We denote by f the function defined by f'(x) = 2x. Then f is linear.", "spans": [{"start": 39, "end": 49, "label": "MATH"}], "lang": "en"}
+{"text": "In the general framework, it should be noted that |z|^2 = z * z_barre for any real number.", "spans": [{"start": 50, "end": 69, "label": "MATH"}], "lang": "en"}
+{"text": "By direct substitution, the expression becomes u(n) = n^2 which is much simpler.", "spans": [{"start": 47, "end": 57, "label": "MATH"}], "lang": "en"}
+{"text": "an automorphism is an isomorphism from a set to itself", "spans": [], "lang": "en"}
+{"text": "the law of cosines generalizes the pythagorean theorem", "spans": [], "lang": "en"}
+{"text": "The proof of this result relies on the fundamental equality f'(x) = cos(x).", "spans": [{"start": 60, "end": 74, "label": "MATH"}], "lang": "en"}
+{"text": "To solve this equation, let us first notice that E(X+Y) = E(X) + E(Y).", "spans": [{"start": 49, "end": 69, "label": "MATH"}], "lang": "en"}
+{"text": "From this hypothesis, we can deduce that h(x) = 1/x in most cases.", "spans": [{"start": 41, "end": 51, "label": "MATH"}], "lang": "en"}
+{"text": "To finish the exercise, it remains to establish that P(A inter B) = P(A) * P(B) in this particular case.", "spans": [{"start": 53, "end": 79, "label": "MATH"}], "lang": "en"}
+{"text": "the kernel of a linear map is a subspace", "spans": [], "lang": "en"}
+{"text": "the mandelbrot set has an infinitely complex boundary", "spans": [], "lang": "en"}
+{"text": "conjunction is the logical and", "spans": [], "lang": "en"}
+{"text": "The calculation is relatively simple: just notice that f(x) = 2x + 1.", "spans": [{"start": 55, "end": 68, "label": "MATH"}], "lang": "en"}
+{"text": "the kernel of a linear map is a subspace", "spans": [], "lang": "en"}
+{"text": "It is crucial not to forget that cos(2x) = 2cos^2(x) - 1 when computing.", "spans": [{"start": 33, "end": 56, "label": "MATH"}], "lang": "en"}
+{"text": "a histogram represents a distribution", "spans": [], "lang": "en"}
+{"text": "pretty sure i won't hand in the homework before tomorrow pretty sure", "spans": [], "lang": "en"}
+{"text": "the inscribed circle is tangent to the three sides", "spans": [], "lang": "en"}
+{"text": "basically rac de 3 tbh", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "a vertical asymptote indicates a discontinuity", "spans": [], "lang": "en"}
+{"text": "honestly un -> 0 lol", "spans": [{"start": 9, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "an inflection point changes the concavity", "spans": [], "lang": "en"}
+{"text": "a mobius strip has only one face", "spans": [], "lang": "en"}
+{"text": "the union of two sets groups their elements", "spans": [], "lang": "en"}
+{"text": "It is important to remember that un = 1/n is a central property of the course.", "spans": [{"start": 33, "end": 41, "label": "MATH"}], "lang": "en"}
+{"text": "The right reflex here is to factor to obtain det(A*B) = det(A)*det(B).", "spans": [{"start": 45, "end": 69, "label": "MATH"}], "lang": "en"}
+{"text": "It is easy to verify that f(x) = x^2 - 4 by substituting numerical values.", "spans": [{"start": 26, "end": 40, "label": "MATH"}], "lang": "en"}
+{"text": "From this hypothesis, we can deduce that f(x) = x^2 - 4 in most cases.", "spans": [{"start": 41, "end": 55, "label": "MATH"}], "lang": "en"}
+{"text": "From this hypothesis, we can deduce that P(A inter B) = P(A) * P(B) in most cases.", "spans": [{"start": 41, "end": 67, "label": "MATH"}], "lang": "en"}
+{"text": "the law of sines relates sides and angles of a triangle", "spans": [], "lang": "en"}
+{"text": "the perpendicular bisector cuts a segment at its midpoint perpendicularly", "spans": [], "lang": "en"}
+{"text": "the inscribed circle is tangent to the three sides", "spans": [], "lang": "en"}
+{"text": "Induction allows us to establish that sin^2(x) + cos^2(x) = 1 is true at every rank.", "spans": [{"start": 38, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "complex numbers extend the real numbers", "spans": [], "lang": "en"}
+{"text": "The teacher emphasized that int de 0 a 1 de x^2 dx = 1/3 is a remarkable identity.", "spans": [{"start": 28, "end": 56, "label": "MATH"}], "lang": "en"}
+{"text": "To solve this equation, let us first notice that E(X+Y) = E(X) + E(Y).", "spans": [{"start": 49, "end": 69, "label": "MATH"}], "lang": "en"}
+{"text": "trigonometric functions are periodic", "spans": [], "lang": "en"}
+{"text": "conditional probability depends on the conditioning event", "spans": [], "lang": "en"}
+{"text": "By differentiating both sides of the equation, it follows that |z|^2 = z * z_barre.", "spans": [{"start": 63, "end": 82, "label": "MATH"}], "lang": "en"}
+{"text": "differentiability implies continuity", "spans": [], "lang": "en"}
+{"text": "We denote by f the function defined by f'(x) = cos(x). Then f is linear.", "spans": [{"start": 39, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "Applying the theorem seen in class, we immediately obtain f'(x) = 2x.", "spans": [{"start": 58, "end": 68, "label": "MATH"}], "lang": "en"}
+{"text": "thales' theorem concerns similar triangles", "spans": [], "lang": "en"}
+{"text": "the sphere is the most symmetric surface", "spans": [], "lang": "en"}
+{"text": "an inflection point changes the concavity", "spans": [], "lang": "en"}
+{"text": "the angle bisector splits an angle into two equal parts", "spans": [], "lang": "en"}
+{"text": "bruh lim fx x=0 or whatever", "spans": [{"start": 5, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "transcendental numbers are roots of no polynomial with integer coefficients", "spans": [], "lang": "en"}
+{"text": "a pyramid has a polygonal base and a vertex", "spans": [], "lang": "en"}
+{"text": "implication differs from equivalence", "spans": [], "lang": "en"}
+{"text": "From this hypothesis, we can deduce that vec u . vec v = ||u||*||v||*cos(theta) in most cases.", "spans": [{"start": 41, "end": 79, "label": "MATH"}], "lang": "en"}
+{"text": "It is easy to verify that x^3 - 1 = (x-1)(x^2+x+1) by substituting numerical values.", "spans": [{"start": 26, "end": 50, "label": "MATH"}], "lang": "en"}
+{"text": "cartesian coordinates describe a point in the plane", "spans": [], "lang": "en"}
+{"text": "the existential quantifier asserts the existence of at least one", "spans": [], "lang": "en"}
+{"text": "the empty set contains no element", "spans": [], "lang": "en"}
+{"text": "the cross product is defined in three dimensions", "spans": [], "lang": "en"}
+{"text": "honestly e^x pour x=1 or whatever", "spans": [{"start": 9, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "the fundamental theorem of arithmetic establishes the uniqueness of factorization", "spans": [], "lang": "en"}
+{"text": "lol i won't hand in the homework before tomorrow i guess", "spans": [], "lang": "en"}
+{"text": "the orthocenter is the point where altitudes meet", "spans": [], "lang": "en"}
+{"text": "proof by contradiction starts from a false hypothesis", "spans": [], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that h(x) = 1/x.", "spans": [{"start": 58, "end": 68, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to understand that v(n) = 1/n before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "We then observe without difficulty that x^2 + 2x + 1 = (x+1)^2 and the result follows.", "spans": [{"start": 40, "end": 62, "label": "MATH"}], "lang": "en"}
+{"text": "proof by contradiction starts from a false hypothesis", "spans": [], "lang": "en"}
+{"text": "Applying the theorem seen in class, we immediately obtain un = n^2.", "spans": [{"start": 58, "end": 66, "label": "MATH"}], "lang": "en"}
+{"text": "The teacher emphasized that lim un = 0 is a remarkable identity.", "spans": [{"start": 28, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "The goal of this exercise is to prove that E(X+Y) = E(X) + E(Y) is always true.", "spans": [{"start": 43, "end": 63, "label": "MATH"}], "lang": "en"}
+{"text": "differential calculus studies rates of change", "spans": [], "lang": "en"}
+{"text": "To solve this equation, let us first notice that int de 0 a 1 de x^2 dx = 1/3.", "spans": [{"start": 49, "end": 77, "label": "MATH"}], "lang": "en"}
+{"text": "the centroid is the point where medians meet", "spans": [], "lang": "en"}
+{"text": "algorithmics seeks computational efficiency", "spans": [], "lang": "en"}
+{"text": "implication differs from equivalence", "spans": [], "lang": "en"}
+{"text": "Assume by contradiction that h(x) = 1/x and see what contradiction follows.", "spans": [{"start": 29, "end": 39, "label": "MATH"}], "lang": "en"}
+{"text": "the canonical basis is simple to handle", "spans": [], "lang": "en"}
+{"text": "a prism has two parallel polygonal bases", "spans": [], "lang": "en"}
+{"text": "We then observe without difficulty that f'(x) = cos(x) and the result follows.", "spans": [{"start": 40, "end": 54, "label": "MATH"}], "lang": "en"}
+{"text": "the left limit may differ from the right limit", "spans": [], "lang": "en"}
+{"text": "At this stage of the proof, we have shown that v(n) = 1/n.", "spans": [{"start": 47, "end": 57, "label": "MATH"}], "lang": "en"}
+{"text": "kinda rac de 3 no cap", "spans": [{"start": 6, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "pretty sure i won't hand in the homework before tomorrow no cap", "spans": [], "lang": "en"}
+{"text": "fractals have a self-similar structure", "spans": [], "lang": "en"}
+{"text": "yo x in R maybe", "spans": [{"start": 3, "end": 9, "label": "MATH"}], "lang": "en"}
+{"text": "The right reflex here is to factor to obtain sin^2(x) + cos^2(x) = 1.", "spans": [{"start": 45, "end": 68, "label": "MATH"}], "lang": "en"}
+{"text": "The calculation is relatively simple: just notice that u(n) = n^2.", "spans": [{"start": 55, "end": 65, "label": "MATH"}], "lang": "en"}
+{"text": "idk but i won't hand in the homework before tomorrow i guess", "spans": [], "lang": "en"}
+{"text": "We will now look for solutions such that sin^2(x) + cos^2(x) = 1.", "spans": [{"start": 41, "end": 64, "label": "MATH"}], "lang": "en"}
+{"text": "the period of a function is its smallest repeating pattern", "spans": [], "lang": "en"}
+{"text": "We then observe without difficulty that f'(x) = cos(x) and the result follows.", "spans": [{"start": 40, "end": 54, "label": "MATH"}], "lang": "en"}
+{"text": "integration by parts is a useful technique", "spans": [], "lang": "en"}
+{"text": "tbh E(X) = 2 idk", "spans": [{"start": 4, "end": 12, "label": "MATH"}], "lang": "en"}
+{"text": "It is crucial not to forget that f'(x) = 2x when computing.", "spans": [{"start": 33, "end": 43, "label": "MATH"}], "lang": "en"}
+{"text": "conjunction is the logical and", "spans": [], "lang": "en"}
+{"text": "The teacher emphasized that un = n^2 is a remarkable identity.", "spans": [{"start": 28, "end": 36, "label": "MATH"}], "lang": "en"}
+{"text": "It is crucial not to forget that f''(x) + f(x) = 0 when computing.", "spans": [{"start": 33, "end": 50, "label": "MATH"}], "lang": "en"}
+{"text": "It is crucial not to forget that un = n^2 when computing.", "spans": [{"start": 33, "end": 41, "label": "MATH"}], "lang": "en"}
+{"text": "the median splits the population into two halves", "spans": [], "lang": "en"}
+{"text": "the concept of derivative is fundamental in analysis", "spans": [], "lang": "en"}
+{"text": "Applying the theorem seen in class, we immediately obtain det(A*B) = det(A)*det(B).", "spans": [{"start": 58, "end": 82, "label": "MATH"}], "lang": "en"}
+{"text": "wait so i won't hand in the homework before tomorrow maybe", "spans": [], "lang": "en"}
+{"text": "wait so A inter B i guess", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "Induction allows us to establish that P(A inter B) = P(A) * P(B) is true at every rank.", "spans": [{"start": 38, "end": 64, "label": "MATH"}], "lang": "en"}
+{"text": "differential calculus studies rates of change", "spans": [], "lang": "en"}
+{"text": "the complement depends on the reference set", "spans": [], "lang": "en"}
+{"text": "a vector space has an algebraic structure", "spans": [], "lang": "en"}
+{"text": "the binomial distribution counts successes in independent trials", "spans": [], "lang": "en"}
+{"text": "a cylinder has two circular bases", "spans": [], "lang": "en"}
+{"text": "Induction allows us to establish that e^(x+y) = e^x * e^y is true at every rank.", "spans": [{"start": 38, "end": 57, "label": "MATH"}], "lang": "en"}
+{"text": "conjunction is the logical and", "spans": [], "lang": "en"}
+{"text": "The calculation is relatively simple: just notice that sin^2(x) + cos^2(x) = 1.", "spans": [{"start": 55, "end": 78, "label": "MATH"}], "lang": "en"}
+{"text": "a torus has the shape of a ring", "spans": [], "lang": "en"}
+{"text": "In the general framework, it should be noted that x^2 - 4 = (x-2)(x+2) for any real number.", "spans": [{"start": 50, "end": 70, "label": "MATH"}], "lang": "en"}
+{"text": "injectivity means distinct inputs have distinct outputs", "spans": [], "lang": "en"}
+{"text": "sampling with replacement preserves initial probabilities", "spans": [], "lang": "en"}
+{"text": "an inflection point changes the concavity", "spans": [], "lang": "en"}
+{"text": "divisibility is a partial order relation", "spans": [], "lang": "en"}
+{"text": "ok then rac de 3 pretty sure", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "so like i won't hand in the homework before tomorrow that's it", "spans": [], "lang": "en"}
+{"text": "It is easy to verify that f(x) = x^2 by substituting numerical values.", "spans": [{"start": 26, "end": 36, "label": "MATH"}], "lang": "en"}
+{"text": "the kernel of a linear map is a subspace", "spans": [], "lang": "en"}
+{"text": "divisibility is a partial order relation", "spans": [], "lang": "en"}
+{"text": "quartiles divide the distribution into four", "spans": [], "lang": "en"}
+{"text": "It is crucial not to forget that un = q^n when computing.", "spans": [{"start": 33, "end": 41, "label": "MATH"}], "lang": "en"}
+{"text": "a vertical asymptote indicates a discontinuity", "spans": [], "lang": "en"}
+{"text": "To solve this equation, let us first notice that f(x) = 2x + 1.", "spans": [{"start": 49, "end": 62, "label": "MATH"}], "lang": "en"}
+{"text": "the complement depends on the reference set", "spans": [], "lang": "en"}
+{"text": "The right reflex here is to factor to obtain un = 1/n.", "spans": [{"start": 45, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "kinda f de x = x^2 that's it", "spans": [{"start": 6, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "It is easy to verify that u(n+1) = 2*un + 3 by substituting numerical values.", "spans": [{"start": 26, "end": 43, "label": "MATH"}], "lang": "en"}
+{"text": "goldbach's conjecture remains to be proven", "spans": [], "lang": "en"}
+{"text": "To solve this equation, let us first notice that v(n) = 1/n.", "spans": [{"start": 49, "end": 59, "label": "MATH"}], "lang": "en"}
+{"text": "We denote by f the function defined by x^3 - 1 = (x-1)(x^2+x+1). Then f is linear.", "spans": [{"start": 39, "end": 63, "label": "MATH"}], "lang": "en"}
+{"text": "a venn diagram represents sets", "spans": [], "lang": "en"}
+{"text": "surjectivity means every target value is reached", "spans": [], "lang": "en"}
+{"text": "tbh cos pi = -1 no cap", "spans": [{"start": 4, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "The teacher emphasized that v(n) = 1/n is a remarkable identity.", "spans": [{"start": 28, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to understand that v(n) = 1/n before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "the exponential function grows rapidly", "spans": [], "lang": "en"}
+{"text": "The calculation is relatively simple: just notice that g(x) = sqrt(x).", "spans": [{"start": 55, "end": 69, "label": "MATH"}], "lang": "en"}
+{"text": "a probability tree visualizes possible outcomes", "spans": [], "lang": "en"}
+{"text": "Let us already note that P(A inter B) = P(A) * P(B) which will be useful later.", "spans": [{"start": 25, "end": 51, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to understand that f'(x) = 2x before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "Assume by contradiction that int de 0 a 1 de x^2 dx = 1/3 and see what contradiction follows.", "spans": [{"start": 29, "end": 57, "label": "MATH"}], "lang": "en"}
+{"text": "the factorial grows faster than the exponential", "spans": [], "lang": "en"}
+{"text": "We denote by f the function defined by un = q^n. Then f is linear.", "spans": [{"start": 39, "end": 47, "label": "MATH"}], "lang": "en"}
+{"text": "the identity matrix leaves vectors unchanged", "spans": [], "lang": "en"}
+{"text": "kinda rac de 3 idk", "spans": [{"start": 6, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "so like i won't hand in the homework before tomorrow or whatever", "spans": [], "lang": "en"}
+{"text": "The first step consists in proving that g(x) = sqrt(x) then we conclude.", "spans": [{"start": 40, "end": 54, "label": "MATH"}], "lang": "en"}
+{"text": "continuity is a local property", "spans": [], "lang": "en"}
+{"text": "the zero vector is the additive identity", "spans": [], "lang": "en"}
+{"text": "wait so lim fx x=0 no cap", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "It is crucial not to forget that (A*B)^T = B^T * A^T when computing.", "spans": [{"start": 33, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "tbh i won't hand in the homework before tomorrow or whatever", "spans": [], "lang": "en"}
+{"text": "pretty sure un+1 = 2un lol", "spans": [{"start": 12, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "the determinant indicates whether a matrix is invertible", "spans": [], "lang": "en"}
+{"text": "the median connects a vertex to the midpoint of the opposite side", "spans": [], "lang": "en"}
+{"text": "the concept of derivative is fundamental in analysis", "spans": [], "lang": "en"}
+{"text": "We denote by f the function defined by cos(2x) = 2cos^2(x) - 1. Then f is linear.", "spans": [{"start": 39, "end": 62, "label": "MATH"}], "lang": "en"}
+{"text": "Applying the theorem seen in class, we immediately obtain x^2 - 4 = (x-2)(x+2).", "spans": [{"start": 58, "end": 78, "label": "MATH"}], "lang": "en"}
+{"text": "the fibonacci sequence appears in nature", "spans": [], "lang": "en"}
+{"text": "the fibonacci sequence appears in nature", "spans": [], "lang": "en"}
+{"text": "The teacher emphasized that x^2 + 2x + 1 = (x+1)^2 is a remarkable identity.", "spans": [{"start": 28, "end": 50, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to understand that v(n) = 1/n before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "linear algebra handles matrices and vectors", "spans": [], "lang": "en"}
+{"text": "the law of sines relates sides and angles of a triangle", "spans": [], "lang": "en"}
+{"text": "there are five platonic solids", "spans": [], "lang": "en"}
+{"text": "basically i won't hand in the homework before tomorrow wait", "spans": [], "lang": "en"}
+{"text": "the greatest common divisor is computed by euclid's algorithm", "spans": [], "lang": "en"}
+{"text": "tbh x^2 >= 0 wait", "spans": [{"start": 4, "end": 12, "label": "MATH"}], "lang": "en"}
+{"text": "cartesian coordinates describe a point in the plane", "spans": [], "lang": "en"}
+{"text": "By direct substitution, the expression becomes x^3 - 1 = (x-1)(x^2+x+1) which is much simpler.", "spans": [{"start": 47, "end": 71, "label": "MATH"}], "lang": "en"}
+{"text": "the kernel of a linear map is a subspace", "spans": [], "lang": "en"}
+{"text": "From this hypothesis, we can deduce that f'(x) = cos(x) in most cases.", "spans": [{"start": 41, "end": 55, "label": "MATH"}], "lang": "en"}
+{"text": "the mandelbrot set has an infinitely complex boundary", "spans": [], "lang": "en"}
+{"text": "trigonometric functions are periodic", "spans": [], "lang": "en"}
+{"text": "It is easy to verify that x^2 + 2x + 1 = (x+1)^2 by substituting numerical values.", "spans": [{"start": 26, "end": 48, "label": "MATH"}], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that vec u . vec v = ||u||*||v||*cos(theta).", "spans": [{"start": 58, "end": 96, "label": "MATH"}], "lang": "en"}
+{"text": "the koch snowflake has infinite perimeter", "spans": [], "lang": "en"}
+{"text": "the perpendicular bisector cuts a segment at its midpoint perpendicularly", "spans": [], "lang": "en"}
+{"text": "Induction allows us to establish that g(x) = sqrt(x) is true at every rank.", "spans": [{"start": 38, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "pretty sure x = 3 ou x = -3 no cap", "spans": [{"start": 12, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "a tetrahedron is a pyramid with a triangular base", "spans": [], "lang": "en"}
+{"text": "the slope coefficient is the slope of the line", "spans": [], "lang": "en"}
+{"text": "a prime number has only two divisors", "spans": [], "lang": "en"}
+{"text": "polynomial complexity is considered acceptable", "spans": [], "lang": "en"}
+{"text": "a local maximum is an extremum", "spans": [], "lang": "en"}
+{"text": "Assume by contradiction that un = q^n and see what contradiction follows.", "spans": [{"start": 29, "end": 37, "label": "MATH"}], "lang": "en"}
+{"text": "In the general framework, it should be noted that f(x) = x^2 - 4 for any real number.", "spans": [{"start": 50, "end": 64, "label": "MATH"}], "lang": "en"}
+{"text": "complex numbers extend the real numbers", "spans": [], "lang": "en"}
+{"text": "the slope coefficient is the slope of the line", "spans": [], "lang": "en"}
+{"text": "We then observe without difficulty that vec u . vec v = ||u||*||v||*cos(theta) and the result follows.", "spans": [{"start": 40, "end": 78, "label": "MATH"}], "lang": "en"}
+{"text": "idk but rac de 3 lol", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "euler's number is also transcendental", "spans": [], "lang": "en"}
+{"text": "pi is transcendental", "spans": [], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that u(n) = n^2.", "spans": [{"start": 58, "end": 68, "label": "MATH"}], "lang": "en"}
+{"text": "Assume by contradiction that (A*B)^T = B^T * A^T and see what contradiction follows.", "spans": [{"start": 29, "end": 48, "label": "MATH"}], "lang": "en"}
+{"text": "disjunction is the logical or", "spans": [], "lang": "en"}
+{"text": "honestly sqrt 2 or whatever", "spans": [{"start": 9, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "basically x^2 = 4 no cap", "spans": [{"start": 10, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "disjunction is the logical or", "spans": [], "lang": "en"}
+{"text": "honestly sqrt 2 right", "spans": [{"start": 9, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "bruh ln x = 2 wait", "spans": [{"start": 5, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "an odd function is symmetric about the origin", "spans": [], "lang": "en"}
+{"text": "surjectivity means every target value is reached", "spans": [], "lang": "en"}
+{"text": "The teacher emphasized that f'(x) = cos(x) is a remarkable identity.", "spans": [{"start": 28, "end": 42, "label": "MATH"}], "lang": "en"}
+{"text": "the perpendicular bisector cuts a segment at its midpoint perpendicularly", "spans": [], "lang": "en"}
+{"text": "The proof of this result relies on the fundamental equality f(x) = 2x + 1.", "spans": [{"start": 60, "end": 73, "label": "MATH"}], "lang": "en"}
+{"text": "It is important to remember that lim un = 0 is a central property of the course.", "spans": [{"start": 33, "end": 43, "label": "MATH"}], "lang": "en"}
+{"text": "Assume by contradiction that e^(x+y) = e^x * e^y and see what contradiction follows.", "spans": [{"start": 29, "end": 48, "label": "MATH"}], "lang": "en"}
+{"text": "the characteristic polynomial gives the eigenvalues", "spans": [], "lang": "en"}
+{"text": "the perpendicular bisector cuts a segment at its midpoint perpendicularly", "spans": [], "lang": "en"}
+{"text": "We notice that ln(x*y) = ln(x) + ln(y) by identifying terms of the same degree.", "spans": [{"start": 15, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "an automorphism is an isomorphism from a set to itself", "spans": [], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that u(n) = n^2.", "spans": [{"start": 58, "end": 68, "label": "MATH"}], "lang": "en"}
+{"text": "the least common multiple is used to add fractions", "spans": [], "lang": "en"}
+{"text": "kinda x = 3 ou x = -3 fr fr", "spans": [{"start": 6, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "the logarithmic spiral is a remarkable shape", "spans": [], "lang": "en"}
+{"text": "In what follows, we will assume that f'(x) = 2x and study its consequences.", "spans": [{"start": 37, "end": 47, "label": "MATH"}], "lang": "en"}
+{"text": "implication differs from equivalence", "spans": [], "lang": "en"}
+{"text": "the normal distribution is a continuous probability distribution", "spans": [], "lang": "en"}
+{"text": "In the general framework, it should be noted that vec u . vec v = ||u||*||v||*cos(theta) for any real number.", "spans": [{"start": 50, "end": 88, "label": "MATH"}], "lang": "en"}
+{"text": "the antiderivative is the inverse of differentiation", "spans": [], "lang": "en"}
+{"text": "implication differs from equivalence", "spans": [], "lang": "en"}
+{"text": "injectivity means distinct inputs have distinct outputs", "spans": [], "lang": "en"}
+{"text": "the existential quantifier asserts the existence of at least one", "spans": [], "lang": "en"}
+{"text": "an affine transformation preserves lines", "spans": [], "lang": "en"}
+{"text": "ok so i won't hand in the homework before tomorrow idk", "spans": [], "lang": "en"}
+{"text": "the inscribed circle is tangent to the three sides", "spans": [], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that P(A inter B) = P(A) * P(B).", "spans": [{"start": 58, "end": 84, "label": "MATH"}], "lang": "en"}
+{"text": "After calculation and simplification, we arrive at the expression det(A*B) = det(A)*det(B).", "spans": [{"start": 66, "end": 90, "label": "MATH"}], "lang": "en"}
+{"text": "It is easy to verify that f(x) = 2x + 1 by substituting numerical values.", "spans": [{"start": 26, "end": 39, "label": "MATH"}], "lang": "en"}
+{"text": "the left limit may differ from the right limit", "spans": [], "lang": "en"}
+{"text": "an isomorphism preserves algebraic structure", "spans": [], "lang": "en"}
+{"text": "a mobius strip has only one face", "spans": [], "lang": "en"}
+{"text": "injectivity means distinct inputs have distinct outputs", "spans": [], "lang": "en"}
+{"text": "The teacher emphasized that x^3 - 1 = (x-1)(x^2+x+1) is a remarkable identity.", "spans": [{"start": 28, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "differential calculus studies rates of change", "spans": [], "lang": "en"}
+{"text": "idk but sqrt 2 that's it", "spans": [{"start": 8, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "the left limit may differ from the right limit", "spans": [], "lang": "en"}
+{"text": "tbh f de x = x^2 no cap", "spans": [{"start": 4, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "euler's number is also transcendental", "spans": [], "lang": "en"}
+{"text": "fractals have a self-similar structure", "spans": [], "lang": "en"}
+{"text": "ok then A inter B wait", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "the standard deviation is the square root of the variance", "spans": [], "lang": "en"}
+{"text": "To solve this equation, let us first notice that f'(x) = cos(x).", "spans": [{"start": 49, "end": 63, "label": "MATH"}], "lang": "en"}
+{"text": "a differential equation models a physical phenomenon", "spans": [], "lang": "en"}
+{"text": "pretty sure f(x) = 2x+1 no cap", "spans": [{"start": 12, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "The proof of this result relies on the fundamental equality f'(x) = 2x.", "spans": [{"start": 60, "end": 70, "label": "MATH"}], "lang": "en"}
+{"text": "wait vec AB + vec BC lol", "spans": [{"start": 5, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "To solve this equation, let us first notice that v(n) = 1/n.", "spans": [{"start": 49, "end": 59, "label": "MATH"}], "lang": "en"}
+{"text": "pretty sure cos pi = -1 no cap", "spans": [{"start": 12, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "In what follows, we will assume that cos(2x) = 2cos^2(x) - 1 and study its consequences.", "spans": [{"start": 37, "end": 60, "label": "MATH"}], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that sin^2(x) + cos^2(x) = 1.", "spans": [{"start": 58, "end": 81, "label": "MATH"}], "lang": "en"}
+{"text": "The proof of this result relies on the fundamental equality un = q^n.", "spans": [{"start": 60, "end": 68, "label": "MATH"}], "lang": "en"}
+{"text": "the identity matrix leaves vectors unchanged", "spans": [], "lang": "en"}
+{"text": "an affine transformation preserves lines", "spans": [], "lang": "en"}
+{"text": "honestly i won't hand in the homework before tomorrow pretty sure", "spans": [], "lang": "en"}
+{"text": "Induction allows us to establish that cos(2x) = 2cos^2(x) - 1 is true at every rank.", "spans": [{"start": 38, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "cryptography protects communications", "spans": [], "lang": "en"}
+{"text": "the circumcenter is the point where perpendicular bisectors meet", "spans": [], "lang": "en"}
+{"text": "the trace is the sum of diagonal elements", "spans": [], "lang": "en"}
+{"text": "By direct substitution, the expression becomes f(x) = x^2 - 4 which is much simpler.", "spans": [{"start": 47, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "the concept of derivative is fundamental in analysis", "spans": [], "lang": "en"}
+{"text": "The right reflex here is to factor to obtain int de 0 a 1 de x^2 dx = 1/3.", "spans": [{"start": 45, "end": 73, "label": "MATH"}], "lang": "en"}
+{"text": "implication differs from equivalence", "spans": [], "lang": "en"}
+{"text": "a prism has two parallel polygonal bases", "spans": [], "lang": "en"}
+{"text": "the twin prime conjecture is still open", "spans": [], "lang": "en"}
+{"text": "the trigonometric circle has radius one", "spans": [], "lang": "en"}
+{"text": "kinda lim en +inf fr fr", "spans": [{"start": 6, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "In what follows, we will assume that un = n^2 and study its consequences.", "spans": [{"start": 37, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "We notice that un = 1/n by identifying terms of the same degree.", "spans": [{"start": 15, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "By differentiating both sides of the equation, it follows that det(A*B) = det(A)*det(B).", "spans": [{"start": 63, "end": 87, "label": "MATH"}], "lang": "en"}
+{"text": "the trace is the sum of diagonal elements", "spans": [], "lang": "en"}
+{"text": "a cube has six identical faces", "spans": [], "lang": "en"}
+{"text": "a vertical asymptote indicates a discontinuity", "spans": [], "lang": "en"}
+{"text": "bruh vec AB + vec BC honestly", "spans": [{"start": 5, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "The goal of this exercise is to prove that lim un = 0 is always true.", "spans": [{"start": 43, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "Assume by contradiction that sin^2(x) + cos^2(x) = 1 and see what contradiction follows.", "spans": [{"start": 29, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "the y intercept is where the line crosses the vertical axis", "spans": [], "lang": "en"}
+{"text": "It is important to remember that un = q^n is a central property of the course.", "spans": [{"start": 33, "end": 41, "label": "MATH"}], "lang": "en"}
+{"text": "thales' theorem concerns similar triangles", "spans": [], "lang": "en"}
+{"text": "the antiderivative is the inverse of differentiation", "spans": [], "lang": "en"}
+{"text": "By differentiating both sides of the equation, it follows that e^(x+y) = e^x * e^y.", "spans": [{"start": 63, "end": 82, "label": "MATH"}], "lang": "en"}
+{"text": "From this hypothesis, we can deduce that det(A*B) = det(A)*det(B) in most cases.", "spans": [{"start": 41, "end": 65, "label": "MATH"}], "lang": "en"}
+{"text": "By direct substitution, the expression becomes P(A inter B) = P(A) * P(B) which is much simpler.", "spans": [{"start": 47, "end": 73, "label": "MATH"}], "lang": "en"}
+{"text": "differentiability implies continuity", "spans": [], "lang": "en"}
+{"text": "bijectivity combines injectivity and surjectivity", "spans": [], "lang": "en"}
+{"text": "the kernel of a linear map is a subspace", "spans": [], "lang": "en"}
+{"text": "By direct substitution, the expression becomes vec u . vec v = ||u||*||v||*cos(theta) which is much simpler.", "spans": [{"start": 47, "end": 85, "label": "MATH"}], "lang": "en"}
+{"text": "transcendental numbers are roots of no polynomial with integer coefficients", "spans": [], "lang": "en"}
+{"text": "From this hypothesis, we can deduce that det(A*B) = det(A)*det(B) in most cases.", "spans": [{"start": 41, "end": 65, "label": "MATH"}], "lang": "en"}
+{"text": "wait so x^2 >= 0 i guess", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "the trigonometric circle has radius one", "spans": [], "lang": "en"}
+{"text": "a similarity combines rotation and homothety", "spans": [], "lang": "en"}
+{"text": "the golden ratio is related to the regular pentagon", "spans": [], "lang": "en"}
+{"text": "After calculation and simplification, we arrive at the expression x^2 + 2x + 1 = (x+1)^2.", "spans": [{"start": 66, "end": 88, "label": "MATH"}], "lang": "en"}
+{"text": "We denote by f the function defined by g(x) = sqrt(x). Then f is linear.", "spans": [{"start": 39, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "kinda vec AB + vec BC pretty sure", "spans": [{"start": 6, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "wait so P(A) = 1/2 wait", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "basically i won't hand in the homework before tomorrow maybe", "spans": [], "lang": "en"}
+{"text": "a cylinder has two circular bases", "spans": [], "lang": "en"}
+{"text": "We then observe without difficulty that P(A inter B) = P(A) * P(B) and the result follows.", "spans": [{"start": 40, "end": 66, "label": "MATH"}], "lang": "en"}
+{"text": "lossless compression preserves original information", "spans": [], "lang": "en"}
+{"text": "In the general framework, it should be noted that (A*B)^T = B^T * A^T for any real number.", "spans": [{"start": 50, "end": 69, "label": "MATH"}], "lang": "en"}
+{"text": "the standard deviation is the square root of the variance", "spans": [], "lang": "en"}
+{"text": "ok then x = 3 ou x = -3 idk", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "the centroid is the point where medians meet", "spans": [], "lang": "en"}
+{"text": "integration by parts is a useful technique", "spans": [], "lang": "en"}
+{"text": "the normal distribution is a continuous probability distribution", "spans": [], "lang": "en"}
+{"text": "bruh un -> 0 no cap", "spans": [{"start": 5, "end": 12, "label": "MATH"}], "lang": "en"}
+{"text": "The goal of this exercise is to prove that P(A inter B) = P(A) * P(B) is always true.", "spans": [{"start": 43, "end": 69, "label": "MATH"}], "lang": "en"}
+{"text": "information theory measures uncertainty", "spans": [], "lang": "en"}
+{"text": "the contrapositive is logically equivalent", "spans": [], "lang": "en"}
+{"text": "polynomial complexity is considered acceptable", "spans": [], "lang": "en"}
+{"text": "injectivity means distinct inputs have distinct outputs", "spans": [], "lang": "en"}
+{"text": "the fibonacci sequence appears in nature", "spans": [], "lang": "en"}
+{"text": "the trigonometric circle has radius one", "spans": [], "lang": "en"}
+{"text": "a translation moves each point by the same vector", "spans": [], "lang": "en"}
+{"text": "the identity matrix leaves vectors unchanged", "spans": [], "lang": "en"}
+{"text": "From the previous course, we know that f'(x) = 2x in all cases.", "spans": [{"start": 39, "end": 49, "label": "MATH"}], "lang": "en"}
+{"text": "an icosahedron has twenty triangular faces", "spans": [], "lang": "en"}
+{"text": "ok so derivee x^2 c 2x pretty sure", "spans": [{"start": 6, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "an affine transformation preserves lines", "spans": [], "lang": "en"}
+{"text": "The goal of this exercise is to prove that f''(x) + f(x) = 0 is always true.", "spans": [{"start": 43, "end": 60, "label": "MATH"}], "lang": "en"}
+{"text": "At this stage of the proof, we have shown that f(x) = x^2.", "spans": [{"start": 47, "end": 57, "label": "MATH"}], "lang": "en"}
+{"text": "the inscribed angle theorem relates central and inscribed angles", "spans": [], "lang": "en"}
+{"text": "By direct substitution, the expression becomes f'(x) = cos(x) which is much simpler.", "spans": [{"start": 47, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "graph theory studies networks", "spans": [], "lang": "en"}
+{"text": "the slope coefficient is the slope of the line", "spans": [], "lang": "en"}
+{"text": "the left limit may differ from the right limit", "spans": [], "lang": "en"}
+{"text": "Induction allows us to establish that f''(x) + f(x) = 0 is true at every rank.", "spans": [{"start": 38, "end": 55, "label": "MATH"}], "lang": "en"}
+{"text": "a local maximum is an extremum", "spans": [], "lang": "en"}
+{"text": "We denote by f the function defined by un = 1/n. Then f is linear.", "spans": [{"start": 39, "end": 47, "label": "MATH"}], "lang": "en"}
+{"text": "the union of two sets groups their elements", "spans": [], "lang": "en"}
+{"text": "a mobius strip has only one face", "spans": [], "lang": "en"}
+{"text": "yo derivee x^2 c 2x or whatever", "spans": [{"start": 3, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "asymmetric encryption uses two keys", "spans": [], "lang": "en"}
+{"text": "idk but quand n->inf lol", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "the correlation coefficient is normalized", "spans": [], "lang": "en"}
+{"text": "linear algebra handles matrices and vectors", "spans": [], "lang": "en"}
+{"text": "This formula allows us to quickly compute lim un = 0 in practice.", "spans": [{"start": 42, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "bruh un -> 0 honestly", "spans": [{"start": 5, "end": 12, "label": "MATH"}], "lang": "en"}
+{"text": "the trigonometric circle has radius one", "spans": [], "lang": "en"}
+{"text": "It is important to understand that x^3 - 1 = (x-1)(x^2+x+1) before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 59, "label": "MATH"}], "lang": "en"}
+{"text": "cartesian coordinates describe a point in the plane", "spans": [], "lang": "en"}
+{"text": "idk but i won't hand in the homework before tomorrow wait", "spans": [], "lang": "en"}
+{"text": "The teacher emphasized that x^2 - 4 = (x-2)(x+2) is a remarkable identity.", "spans": [{"start": 28, "end": 48, "label": "MATH"}], "lang": "en"}
+{"text": "honestly pour tt x > 0 that's it", "spans": [{"start": 9, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "cartesian coordinates describe a point in the plane", "spans": [], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that 1 + 2 + ... + n = n(n+1)/2.", "spans": [{"start": 58, "end": 84, "label": "MATH"}], "lang": "en"}
+{"text": "tbh pour tt x > 0 or whatever", "spans": [{"start": 4, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "the greatest common divisor is computed by euclid's algorithm", "spans": [], "lang": "en"}
+{"text": "entropy quantifies disorder", "spans": [], "lang": "en"}
+{"text": "The goal of this exercise is to prove that cos(2x) = 2cos^2(x) - 1 is always true.", "spans": [{"start": 43, "end": 66, "label": "MATH"}], "lang": "en"}
+{"text": "After calculation and simplification, we arrive at the expression un = n^2.", "spans": [{"start": 66, "end": 74, "label": "MATH"}], "lang": "en"}
+{"text": "the zero vector is the additive identity", "spans": [], "lang": "en"}
+{"text": "The proof of this result relies on the fundamental equality x^2 + 2x + 1 = (x+1)^2.", "spans": [{"start": 60, "end": 82, "label": "MATH"}], "lang": "en"}
+{"text": "implication differs from equivalence", "spans": [], "lang": "en"}
+{"text": "It is important to understand that ln(x*y) = ln(x) + ln(y) before moving to the rest of the reasoning.", "spans": [{"start": 35, "end": 58, "label": "MATH"}], "lang": "en"}
+{"text": "trigonometric functions are periodic", "spans": [], "lang": "en"}
+{"text": "the existential quantifier asserts the existence of at least one", "spans": [], "lang": "en"}
+{"text": "Applying the theorem seen in class, we immediately obtain int de 0 a 1 de x^2 dx = 1/3.", "spans": [{"start": 58, "end": 86, "label": "MATH"}], "lang": "en"}
+{"text": "kinda un -> 0 right", "spans": [{"start": 6, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "idk but A inter B idk", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "en"}

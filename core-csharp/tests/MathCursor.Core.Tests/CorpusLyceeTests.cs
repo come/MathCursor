@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Engine = MathCursor.Core.PatternEngine.PatternEngine;
+using Engine = MathCursor.Core.NotImplementedEngine;
 using Xunit;
 using Xunit.Abstractions;
 

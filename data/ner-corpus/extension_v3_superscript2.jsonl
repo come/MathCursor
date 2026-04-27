@@ -1,0 +1,150 @@
+{"text": "On a sin²(x)+cos²(x)=1.", "spans": [{"start": 5, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "The area of the disk is x²-4.", "spans": [{"start": 24, "end": 28, "label": "MATH"}], "lang": "en"}
+{"text": "En développant, on obtient σ².", "spans": [{"start": 27, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "We notice that f(x)=x²-3x+2.", "spans": [{"start": 15, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "On en déduit que 2x².", "spans": [{"start": 17, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "x²-4", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "en"}
+{"text": "pretty sure 7²=49 right", "spans": [{"start": 12, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "The teacher emphasized (a-b)².", "spans": [{"start": 23, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "franchement (a+b)² jpp", "spans": [{"start": 12, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "On étudie la fonction définie par πr².", "spans": [{"start": 34, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit sin²(x).", "spans": [{"start": 5, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "We study the function defined by f(x)=x².", "spans": [{"start": 33, "end": 40, "label": "MATH"}], "lang": "en"}
+{"text": "The discriminant is f(x)=x²+1.", "spans": [{"start": 20, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "n²-1=(n-1)(n+1)", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit que (x-1)².", "spans": [{"start": 17, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "bon πr² c bon", "spans": [{"start": 4, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "The teacher emphasized 4πr².", "spans": [{"start": 23, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "Montrer que x²+1 est positif.", "spans": [{"start": 12, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "We notice that x²+2x+1.", "spans": [{"start": 15, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "5²=25", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "tan²(x)+1=1/cos²(x)", "spans": [{"start": 0, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "For all real x, E=mc².", "spans": [{"start": 16, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "bon n²-1=(n-1)(n+1) c bon", "spans": [{"start": 4, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "cos²(x)", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x)=x²-3x+2", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Let a²+b²=c².", "spans": [{"start": 4, "end": 12, "label": "MATH"}], "lang": "en"}
+{"text": "pretty sure f(x)=x²+1 fr fr", "spans": [{"start": 12, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "3x²", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "en"}
+{"text": "We study the function defined by E(X²).", "spans": [{"start": 33, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "We study the function defined by n²-1=(n-1)(n+1).", "spans": [{"start": 33, "end": 48, "label": "MATH"}], "lang": "en"}
+{"text": "Le volume d'une sphère utilise x²-4 dans la formule.", "spans": [{"start": 31, "end": 35, "label": "MATH"}], "lang": "fr"}
+{"text": "-x²", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "en"}
+{"text": "Remember that 4πr².", "spans": [{"start": 14, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "(x-1)²", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "en"}
+{"text": "Le discriminant est (x-1)².", "spans": [{"start": 20, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "(n+1)²", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "en"}
+{"text": "pretty sure n² fr fr", "spans": [{"start": 12, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "so like V(X)=E(X²)-E(X)² tbh", "spans": [{"start": 8, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "(2x+3)²", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "en"}
+{"text": "4πr²", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "One shows that sin²(x) holds.", "spans": [{"start": 15, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "Il faut se rappeler que f(x)=x²+1.", "spans": [{"start": 24, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer (a-b)².", "spans": [{"start": 9, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "On remarque que x²+y²=r² pour tout réel.", "spans": [{"start": 16, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Factoring : 10²=100.", "spans": [{"start": 12, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "πr²", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "tbh f(x)=x² no cap", "spans": [{"start": 4, "end": 11, "label": "MATH"}], "lang": "en"}
+{"text": "La variance se calcule par 5²=25.", "spans": [{"start": 27, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "euh x²+y²=1 c bon", "spans": [{"start": 4, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "For all real x, x² > 0.", "spans": [{"start": 16, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "Variance is given by σ².", "spans": [{"start": 21, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "x²+y²=1", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit que E(X²).", "spans": [{"start": 17, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "L'aire du disque est 7²=49.", "spans": [{"start": 21, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "3x²", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "tbh V(X)=E(X²)-E(X)² idk", "spans": [{"start": 4, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "On factorise : x²>=0.", "spans": [{"start": 15, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "The area of the disk is 10²=100.", "spans": [{"start": 24, "end": 31, "label": "MATH"}], "lang": "en"}
+{"text": "bon x²+1 frr", "spans": [{"start": 4, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "x²", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "Le volume d'une sphère utilise (a-b)² dans la formule.", "spans": [{"start": 31, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "mdr c'est n²-1=(n-1)(n+1) ptdr", "spans": [{"start": 10, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Let σ².", "spans": [{"start": 4, "end": 6, "label": "MATH"}], "lang": "en"}
+{"text": "For all real x, |z|².", "spans": [{"start": 16, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "πd²/4", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "sin²(x)", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "en"}
+{"text": "lol (n+1)² fr fr", "spans": [{"start": 4, "end": 10, "label": "MATH"}], "lang": "en"}
+{"text": "(x-1)²", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "en"}
+{"text": "x²+1", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "en"}
+{"text": "Remember that -x².", "spans": [{"start": 14, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "Après simplification, x²+1.", "spans": [{"start": 22, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "5²=25", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "en"}
+{"text": "Pour tout x réel, x².", "spans": [{"start": 18, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Après simplification, (a+b)².", "spans": [{"start": 22, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "We notice that V(X)=E(X²)-E(X)².", "spans": [{"start": 15, "end": 31, "label": "MATH"}], "lang": "en"}
+{"text": "|z|²", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "jpp sin²(x)+cos²(x)=1 voila quoi", "spans": [{"start": 4, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "so like (x+1)² honestly", "spans": [{"start": 8, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "(x-1)²", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "||u||²", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "en"}
+{"text": "Let sin²(x).", "spans": [{"start": 4, "end": 11, "label": "MATH"}], "lang": "en"}
+{"text": "Let x²+y²=r².", "spans": [{"start": 4, "end": 12, "label": "MATH"}], "lang": "en"}
+{"text": "On factorise : (a+b)².", "spans": [{"start": 15, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "pretty sure πd²/4 honestly", "spans": [{"start": 12, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "f(x)=x²-3x+2", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "en"}
+{"text": "Montrer que n² est positif.", "spans": [{"start": 12, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "2x²", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "en"}
+{"text": "On a a²+b²=c².", "spans": [{"start": 5, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout x réel, E=mc².", "spans": [{"start": 18, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "2x²", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "en"}
+{"text": "For all real x, (n+1)².", "spans": [{"start": 16, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "sin²(x)+cos²(x)=1", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "jpp n² jsp trop", "spans": [{"start": 4, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Par identité remarquable, V(X)=E(X²)-E(X)².", "spans": [{"start": 26, "end": 42, "label": "MATH"}], "lang": "fr"}
+{"text": "3²=9", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit que (x+1)².", "spans": [{"start": 17, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "wait ||u||² idk", "spans": [{"start": 5, "end": 11, "label": "MATH"}], "lang": "en"}
+{"text": "Pour tout x réel, (a-b)².", "spans": [{"start": 18, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "On étudie la fonction définie par |z|².", "spans": [{"start": 34, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "L'aire du disque est (x+1)².", "spans": [{"start": 21, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "jsp si x² > 0 bref", "spans": [{"start": 7, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "3x²", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "en"}
+{"text": "x² > 0", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "en"}
+{"text": "a²+b²=c²", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "πd²/4", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "en"}
+{"text": "(a+b)²", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Variance is given by sin²(x).", "spans": [{"start": 21, "end": 28, "label": "MATH"}], "lang": "en"}
+{"text": "||u||²", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "We notice that 4πr².", "spans": [{"start": 15, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "||u||²", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "en"}
+{"text": "pretty sure x²-4 right", "spans": [{"start": 12, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "euh 3x² voila quoi", "spans": [{"start": 4, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que n² est positif.", "spans": [{"start": 12, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "E(X²)", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "en"}
+{"text": "La variance se calcule par f(x)=x².", "spans": [{"start": 27, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "(x-1)²", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "en"}
+{"text": "jsp si f(x)=x² enfin je crois", "spans": [{"start": 7, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "n²", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "en"}
+{"text": "pretty sure x²-4 no cap", "spans": [{"start": 12, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "We notice that x²-4.", "spans": [{"start": 15, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "idk but E(X²) tbh", "spans": [{"start": 8, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "Remember that f(x)=x².", "spans": [{"start": 14, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "Après simplification, v²=2as.", "spans": [{"start": 22, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "tbh 10²=100 idk", "spans": [{"start": 4, "end": 11, "label": "MATH"}], "lang": "en"}
+{"text": "ouais bah 4πr² jsp trop", "spans": [{"start": 10, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "The area of a square of side a is cos²(x).", "spans": [{"start": 34, "end": 41, "label": "MATH"}], "lang": "en"}
+{"text": "x²+y²=1", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le théorème de Pythagore, a²+b²=c².", "spans": [{"start": 34, "end": 42, "label": "MATH"}], "lang": "fr"}
+{"text": "(2x+3)²", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "4πr²", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "en"}
+{"text": "5²=25", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "en"}
+{"text": "x²+y²=1", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "10²=100", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "en"}
+{"text": "Compute 10²=100.", "spans": [{"start": 8, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "jvois pas pk E(X²) frr", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Dans cet exercice, on supposera 2x².", "spans": [{"start": 32, "end": 35, "label": "MATH"}], "lang": "fr"}
+{"text": "For all real x, 3²=9.", "spans": [{"start": 16, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "Montrer que x²+y²=r² est positif.", "spans": [{"start": 12, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "E(X²)", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "In this exercise, assume cos²(x).", "spans": [{"start": 25, "end": 32, "label": "MATH"}], "lang": "en"}
+{"text": "x²>=0", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "x²", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "en"}
+{"text": "The area of the disk is g(x)=(x+1)².", "spans": [{"start": 24, "end": 35, "label": "MATH"}], "lang": "en"}
+{"text": "2x²", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "Expanding gives n².", "spans": [{"start": 16, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "ok so V(X)=E(X²)-E(X)² honestly", "spans": [{"start": 6, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "In this exercise, assume 3²=9.", "spans": [{"start": 25, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "(n+1)²", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "frr f(x)=x²+1 bref", "spans": [{"start": 4, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "bon n² mdr", "spans": [{"start": 4, "end": 6, "label": "MATH"}], "lang": "fr"}
