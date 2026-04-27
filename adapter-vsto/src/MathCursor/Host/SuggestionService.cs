@@ -6,12 +6,16 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using MathCursor.Core;
-using MathCursor.Core.PatternEngine;
 using MathCursor.Core.Symbols;
 using MathCursor.Detection;
 using MathCursor.HostContract;
 using MathCursor.UI;
-using Engine = MathCursor.Core.PatternEngine.PatternEngine;
+// Pendant la transition PatternEngine → lattice : NotImplementedEngine est
+// un placeholder qui throw NotImplementedException sur Convert(). Tous les
+// chemins .Convert() côté SuggestionService sont déjà try/catch → l'add-in
+// se charge dans Word, mais aucune suggestion ne sera produite tant que le
+// lattice engine n'est pas branché. À remplacer par LatticeEngine en Phase 1+.
+using Engine = MathCursor.Core.NotImplementedEngine;
 using Word = Microsoft.Office.Interop.Word;
 
 namespace MathCursor.Host

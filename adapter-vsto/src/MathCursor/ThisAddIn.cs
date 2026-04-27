@@ -4,7 +4,8 @@ using System.Threading.Tasks;
 using Microsoft.Office.Core;
 using MathCursor.Detection;
 using MathCursor.Host;
-using Engine = MathCursor.Core.PatternEngine.PatternEngine;
+// Placeholder pendant le pivot lattice (cf. core ILatexEngine).
+using Engine = MathCursor.Core.NotImplementedEngine;
 
 namespace MathCursor
 {
