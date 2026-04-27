@@ -10,12 +10,9 @@ using MathCursor.Core.Symbols;
 using MathCursor.Detection;
 using MathCursor.HostContract;
 using MathCursor.UI;
-// Pendant la transition PatternEngine → lattice : NotImplementedEngine est
-// un placeholder qui throw NotImplementedException sur Convert(). Tous les
-// chemins .Convert() côté SuggestionService sont déjà try/catch → l'add-in
-// se charge dans Word, mais aucune suggestion ne sera produite tant que le
-// lattice engine n'est pas branché. À remplacer par LatticeEngine en Phase 1+.
-using Engine = MathCursor.Core.NotImplementedEngine;
+// Moteur lattice : enchaîne Lex → TopK → Parse → Render. Façade côté core
+// qui expose ILatexEngine, donc l'adapter VSTO reste agnostique de l'algo.
+using Engine = MathCursor.Core.LatticeEngine;
 using Word = Microsoft.Office.Interop.Word;
 
 namespace MathCursor.Host

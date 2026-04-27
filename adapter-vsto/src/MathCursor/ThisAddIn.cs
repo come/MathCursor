@@ -4,8 +4,8 @@ using System.Threading.Tasks;
 using Microsoft.Office.Core;
 using MathCursor.Detection;
 using MathCursor.Host;
-// Placeholder pendant le pivot lattice (cf. core ILatexEngine).
-using Engine = MathCursor.Core.NotImplementedEngine;
+// Moteur lattice : enchaîne Lex → TopK → Parse → Render (cf. Lattice/).
+using Engine = MathCursor.Core.LatticeEngine;
 
 namespace MathCursor
 {
@@ -33,8 +33,8 @@ namespace MathCursor
                 // hors thread UI pour ne pas bloquer le chargement de Word.
                 _ = _ner.WarmUpAsync();
 
-                // Moteur de patterns YAML : convertit le texte détecté par le NER
-                // en suggestions LaTeX classées par score.
+                // Moteur lattice : convertit le texte détecté par le NER en
+                // suggestions LaTeX via Lex → top-K Dijkstra → Parse → Render.
                 _engine = Engine.LoadEmbedded("fr");
 
                 _suggestions = new SuggestionService(this.Application, _ner, _engine, _store);
