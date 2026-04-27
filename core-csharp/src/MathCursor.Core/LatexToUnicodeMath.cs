@@ -198,12 +198,20 @@ namespace MathCursor.Core
                 }
 
                 // Exposant / indice avec accolades : x^{abc} → x^(abc), x_{ij} → x_(ij)
+                // Word UnicodeMath consomme les `()` autour des exposants comme
+                // délimiteurs de groupe transparents (ne sont PAS affichés après
+                // BuildUp). On garde toujours les parens, même pour les single
+                // chars : sinon `cos^2(x)` est parsé en `cos^{2(x)}` (le `(x)`
+                // est absorbé dans l'exposant). Tentatives écartées :
+                //   - 〖〗 (invisible group brackets) : non reconnus par BuildUp
+                //     dans Word desktop, rendus comme glyphes ou ignorés
+                //   - single-char sans parens : produit l'absorption ci-dessus
                 if ((src[i] == '^' || src[i] == '_') && i + 1 < src.Length && src[i + 1] == '{')
                 {
                     sb.Append(src[i]);
                     if (TryReadBracedArg(src, i + 1, out string arg, out int afterArg))
                     {
-                        sb.Append("(").Append(ConvertStructural(arg)).Append(")");
+                        sb.Append('(').Append(ConvertStructural(arg)).Append(')');
                         i = afterArg;
                         continue;
                     }

@@ -224,6 +224,38 @@ namespace MathCursor.Core.Tests.Lattice
                 "\\alpha=\\frac{1}{\\left(x+1\\right)^{2}}",
                 RenderTop("alpha=1/(x+1)^2"));
 
+        // Règle générique "Number tight après nom non-Number = exposant" :
+        // x² implicite à partir de x2, etc.
+        [Fact]
+        public void X2_renders_as_x_squared()
+            => Assert.Equal("x^{2}", RenderTop("x2"));
+
+        [Fact]
+        public void Cos2_paren_renders_with_exp_after_arg()
+            // Convention simple et compatible Word : exposant après l'expression
+            // complète, pas sur le nom de la fonction. Pas de \cos^{2}(x) qui
+            // créait un piège d'absorption "cos^{2(x)}" côté UnicodeMath.
+            => Assert.Equal("\\cos\\left(x\\right)^{2}", RenderTop("cos2(x)"));
+
+        [Fact]
+        public void Cos2x_without_paren_keeps_implicit_mult()
+            // Sans parens, on garde la convention "cos appliqué à 2x"
+            => Assert.Equal("\\cos 2x", RenderTop("cos2x"));
+
+        [Fact]
+        public void Number_first_stays_multiplication()
+        {
+            // 2x reste 2*x (Number n'est pas le primary qui prend l'exposant)
+            Assert.Equal("2x", RenderTop("2x"));
+            // 2PIR reste un produit (P-I rendu en pi greek puis R ident)
+            Assert.Equal("2\\piR", RenderTop("2PIR"));
+        }
+
+        [Fact]
+        public void Two_numbers_adjacent_not_treated_as_exponent()
+            // "23" n'est jamais "2 puissance 3" — la règle exclut Number primary
+            => Assert.Equal("23", RenderTop("23"));
+
         // ------------------ Cas non-triviaux du brief ------------------
 
         [Fact]

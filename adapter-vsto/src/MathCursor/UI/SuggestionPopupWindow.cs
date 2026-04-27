@@ -126,7 +126,18 @@ namespace MathCursor.UI
             };
         }
 
-        public int SelectedIndex => _list.SelectedIndex;
+        // Index LOGIQUE de la suggestion sélectionnée (0 = top-1 = ce que
+        // l'élève a en bas de la popup). Le ListBox affiche en ordre inversé
+        // (top-1 en dernier visuellement), donc on retraduit ici pour que
+        // SuggestionService puisse continuer à indexer _lastChoices[idx].
+        public int SelectedIndex
+        {
+            get
+            {
+                if (_list.Items.Count == 0) return 0;
+                return _list.Items.Count - 1 - _list.SelectedIndex;
+            }
+        }
 
         /// <summary>
         /// Style des ListBoxItem : fond transparent par défaut, teinte bleue
@@ -247,13 +258,17 @@ namespace MathCursor.UI
             LogPopup($"ShowSuggestions count={choices.Count} pos=({screenX:F0},{screenY:F0}) debug=\"{debugText}\"");
             _debugFooter.Text = string.IsNullOrEmpty(debugText) ? "" : "NER: \"" + debugText + "\"";
             // Pas d'ambiguïté = un seul candidat → fond vert clair pour signaler
-            // "formule reconnue, valide, l'élève peut continuer". Quand il y aura
-            // plusieurs candidats (phase 5 : ambiguïté), on gardera le fond
-            // neutre pour distinguer le mode "à choisir".
+            // "formule reconnue, valide, l'élève peut continuer". Plusieurs
+            // candidats → fond neutre pour distinguer le mode "à choisir".
             bool unambiguous = choices.Count == 1;
 
+            // Convention d'affichage phase 5a : top-1 (= choices[0]) en BAS,
+            // alternatives au-dessus. La "ligne finale" est ce que valide
+            // Enter direct par défaut. L'élève remonte avec Up pour voir les
+            // alternatives. L'index ListBox interne est donc l'inverse de
+            // l'index logique (count-1 = top-1).
             _list.Items.Clear();
-            for (int i = 0; i < choices.Count; i++)
+            for (int i = choices.Count - 1; i >= 0; i--)
             {
                 var c = choices[i];
                 var panel = new StackPanel { Orientation = Orientation.Horizontal };
@@ -273,16 +288,16 @@ namespace MathCursor.UI
                     Content = panel,
                     Padding = new Thickness(0),
                 };
-                int index = i;
-                // Hover souris : entre en mode nav + sélectionne l'item survolé
+                int listBoxIndex = choices.Count - 1 - i;
                 item.MouseEnter += (_, __) =>
                 {
-                    _list.SelectedIndex = index;
+                    _list.SelectedIndex = listBoxIndex;
                     EnterNavMode();
                 };
                 _list.Items.Add(item);
             }
-            _list.SelectedIndex = 0;
+            // Sélection par défaut = top-1 = dernier item dans le ListBox.
+            _list.SelectedIndex = _list.Items.Count - 1;
             _navMode = false; // toute mise à jour ramène en display mode
             Left = screenX;
             Top = screenY;

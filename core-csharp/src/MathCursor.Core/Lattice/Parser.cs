@@ -157,16 +157,42 @@ namespace MathCursor.Core.Lattice
             return lhs;
         }
 
-        // Postfix = Primary (^ Argument | _ Argument)*
+        // Postfix = Primary (^ Argument | _ Argument | NumberTight)*
+        //
+        // Règle "Number tight implicite = exposant" : si après un primary
+        // non-Number on voit un Number adjacent tight (sans espace), on
+        // l'interprète comme exposant (typo français : x² = x^2, cos²(x)).
+        // Ne s'applique pas si le primary EST un Number — "23" reste "23",
+        // pas "2 puissance 3".
+        // C'est cette règle qui rend les exemples user :
+        //   x2     → x²       (Atom + Number tight)
+        //   cos2(x) → cos²(x)  (Func + Number tight, l'arg (x) suit comme
+        //                       multiplication implicite tight = arg de la
+        //                       fonction sublimée par la règle "Func arg")
+        // Mais préserve :
+        //   2x     → 2*x       (Number + atom : Number n'est pas le primary)
+        //   23     → 23        (Number + Number : règle inactive)
         private AstNode? ParsePostfix()
         {
             var @base = ParsePrimary();
             if (@base == null) return null;
-            while (IsOp("^", "_"))
+            while (true)
             {
-                var op = Consume();
-                var arg = ParseArgument() ?? (AstNode)Hole(1);
-                @base = op.Value == "^" ? (AstNode)new Sup(@base, arg) : new Sub(@base, arg);
+                if (IsOp("^", "_"))
+                {
+                    var op = Consume();
+                    var arg = ParseArgument() ?? (AstNode)Hole(1);
+                    @base = op.Value == "^" ? (AstNode)new Sup(@base, arg) : new Sub(@base, arg);
+                    continue;
+                }
+                if (Peek() is { Type: EdgeType.Number } numTok && IsTightAdjacent()
+                    && !(@base is Atom a && a.Kind == "number"))
+                {
+                    Consume();
+                    @base = new Sup(@base, new Atom("number", numTok.Value));
+                    continue;
+                }
+                break;
             }
             return @base;
         }
@@ -197,6 +223,18 @@ namespace MathCursor.Core.Lattice
             {
                 Consume();
                 var arg = ParseArgument() ?? (AstNode)Hole(1);
+                // Application de la règle générique "Number tight après nom =
+                // exposant" au cas particulier d'une fonction. Le flow de
+                // ParseArgument absorbe le Number ET le Group qui suit dans
+                // un Bin(*, implicit, tight) — on remap ici en Sup(Func, Num)
+                // quand le second opérande est un Group (parens explicites).
+                // Sans parens (cos2x), on conserve la mult implicite arg-of.
+                if (arg is Bin bin && bin.Op == "*" && bin.Implicit && bin.Tight
+                    && bin.Lhs is Atom lhsAtom && lhsAtom.Kind == "number"
+                    && bin.Rhs is Group)
+                {
+                    return new Sup(new Func(t.Value, bin.Rhs), bin.Lhs);
+                }
                 return new Func(t.Value, arg);
             }
             if (t.Type == EdgeType.Number) { Consume(); return new Atom("number", t.Value); }
