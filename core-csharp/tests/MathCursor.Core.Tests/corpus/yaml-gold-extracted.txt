@@ -1,0 +1,573 @@
+# Corpus extrait des YAML PatternEngine (archive)
+# Format: input => latex_attendu
+# Source : data/yaml_domains/**/*.yaml, examples des patterns
+# Total: 276 paires sur 8 fichiers
+
+# === en/_language.yaml ===
+# [limit_en_as]
+lim f(x) as x -> 1 => \lim_{x \to 1} f(x)
+# [limit_en_as]
+limit of f(x) as x approaches 1 => \lim_{x \to 1} f(x)
+# [sqrt_en]
+sqrt(2) => \sqrt{2}
+# [forall_en]
+for all x in R => \forall x \in \mathbb{R}
+# [exists_en]
+there exists alpha st alpha > 0 => \exists \alpha \mid \alpha > 0
+
+# === fr/_language.yaml ===
+# [limit_only]
+lim x -> inf => \lim_{x \to \infty}
+# [limit_only]
+lim quand x tend vers 0 => \lim_{x \to 0}
+# [limit_only]
+limite x -> +inf => \lim_{x \to +\infty}
+# [limit_only]
+lim x tends vers 1 => \lim_{x \to 1}
+# [limit_post_function]
+lim x -> 1 f(x) => \lim_{x \to 1} f(x)
+# [limit_post_function]
+lim x tend vers 0 f(x) => \lim_{x \to 0} f(x)
+# [limit_with_expr_function]
+lim x->0 (2x+1)/(3x+3)^2 => \lim_{x \to 0} \frac{2x+1}{(3x+3)^2}
+# [limit_with_expr_function]
+lim x->0 x^2 => \lim_{x \to 0} x^2
+# [limit_one_sided_with_f]
+lim x->0+ f(x) => \lim_{x \to 0^+} f(x)
+# [limit_one_sided_with_f]
+lim x->0- f(x) => \lim_{x \to 0^-} f(x)
+# [limit_one_sided_with_f]
+lim x -> 0+ 1/x => \lim_{x \to 0^+} \frac{1}{x}
+# [limit_one_sided_only]
+lim x -> 0 + => \lim_{x \to 0^+}
+# [limsup_expr]
+limsup x -> inf f(x) => \limsup_{x \to \infty} f(x)
+# [liminf_expr]
+liminf n -> inf u_n => \liminf_{n \to \infty} u_n
+# [limit_fr_qd]
+lim f(x) qd x -> 1 => \lim_{x \to 1} f(x)
+# [limit_fr_qd]
+lim f(x) quand x tend vers 1 => \lim_{x \to 1} f(x)
+# [limit_fr_qd]
+limite f(x) x -> +inf => \lim_{x \to +\infty} f(x)
+# [limit_fr_en_point]
+limite de f en 0 => \lim_{0} f
+# [number_times_sqrt]
+3 sqrt(4) => 3 \sqrt{4}
+# [number_times_sqrt]
+3sqrt(4) => 3 \sqrt{4}
+# [nth_root_prefix]
+3sqrt(4) => \sqrt[3]{4}
+# [nth_root_bracket]
+sqrt[3](4) => \sqrt[3]{4}
+# [sqrt_fr]
+sqrt(2) => \sqrt{2}
+# [sqrt_fr]
+rac(x+1) => \sqrt{x+1}
+# [sqrt_fr]
+racine de 2 => \sqrt{2}
+# [vector_fr]
+vec AB => \vec{AB}
+# [vector_fr]
+vec(u) => \vec{u}
+# [vector_fr]
+vecteur AB => \vec{AB}
+# [integral_fr_bounds]
+int de 0 a 1 de x^2 dx => \int_{0}^{1} x^2 \, dx
+# [integral_fr_bounds]
+integrale de 0 a pi de sin(x) dx => \int_{0}^{\pi} \sin(x) \, dx
+# [integral_fr_bounds]
+int de 0 a 1 x^2 => \int_{0}^{1} x^2 \, dx
+# [integral_fr_bounds]
+int 0 a 1 x^2 => \int_{0}^{1} x^2 \, dx
+# [integral_fr_indef]
+int x^2 dx => \int x^2 \, dx
+# [integral_fr_indef]
+int x^2 => \int x^2 \, dx
+# [integral_fr_indef]
+integrale de sin(x) => \int \sin(x) \, dx
+# [forall_fr]
+pour tout x in R => \forall x \in \mathbb{R}
+# [forall_fr]
+qq x dans R => \forall x \in \mathbb{R}
+# [forall_shorthand_V]
+Vx(R => \forall x \in \mathbb{R}
+# [forall_shorthand_V]
+Vx(R* => \forall x \in \mathbb{R}^*
+# [forall_shorthand_V]
+Vx C R => \forall x \in \mathbb{R}
+# [forall_shorthand_Vxy_compact]
+Vx,y(R => \forall x, y \in \mathbb{R}
+# [forall_shorthand_Vxy_compact]
+Vx,y(R* => \forall x, y \in \mathbb{R}^*
+# [forall_shorthand_Vxy_compact]
+Vx,y C R => \forall x, y \in \mathbb{R}
+# [forall_shorthand_unified_spaced]
+V x ( R => \forall x \in \mathbb{R}
+# [forall_shorthand_unified_spaced]
+V x(R => \forall x \in \mathbb{R}
+# [forall_shorthand_unified_spaced]
+V x C R => \forall x \in \mathbb{R}
+# [forall_shorthand_unified_spaced]
+V n ( N => \forall n \in \mathbb{N}
+# [forall_shorthand_unified_spaced]
+V x ( R* => \forall x \in \mathbb{R}^*
+# [forall_shorthand_unified_spaced]
+V x ( R-{0} => \forall x \in \mathbb{R} \setminus \{0\}
+# [forall_shorthand_unified_spaced]
+V x,y ( R => \forall x, y \in \mathbb{R}
+# [forall_shorthand_unified_spaced]
+V x, y ( R+ => \forall x, y \in \mathbb{R}^+
+# [forall_shorthand_unified_spaced]
+V x,y,z ( R => \forall x, y, z \in \mathbb{R}
+# [forall_shorthand_unified_spaced]
+V x,y C R => \forall x, y \in \mathbb{R}
+# [forall_shorthand_unified_spaced]
+V x ( [0;1] => \forall x \in [0, 1]
+# [forall_shorthand_unified_spaced]
+V x ( [0;1]U[3;4] => \forall x \in [0, 1] \cup [3, 4]
+# [forall_only_V_spaced]
+V x => \forall x
+# [curve_shorthand]
+Cf => \mathcal{C}_{f}
+# [curve_shorthand]
+Cg => \mathcal{C}_{g}
+# [domain_shorthand]
+Df => D_{f}
+# [domain_shorthand]
+Dg => D_{g}
+# [belongs_shorthand_unified]
+x ( R => x \in \mathbb{R}
+# [belongs_shorthand_unified]
+x(R => x \in \mathbb{R}
+# [belongs_shorthand_unified]
+x C R => x \in \mathbb{R}
+# [belongs_shorthand_unified]
+x ( R* => x \in \mathbb{R}^*
+# [belongs_shorthand_unified]
+x ( R-{0} => x \in \mathbb{R} \setminus \{0\}
+# [belongs_shorthand_unified]
+x,y ( R => x, y \in \mathbb{R}
+# [belongs_shorthand_unified]
+x, y ( R* => x, y \in \mathbb{R}^*
+# [belongs_shorthand_unified]
+x,y C R => x, y \in \mathbb{R}
+# [belongs_shorthand_unified]
+x ( [0;1] => x \in [0, 1]
+# [belongs_shorthand_unified]
+x ( [0;1]U[3;4] => x \in [0, 1] \cup [3, 4]
+# [exists_fr]
+il existe alpha tq alpha > 0 => \exists \alpha \mid \alpha > 0
+# [belongs_to_fr]
+x in R => x \in \mathbb{R}
+# [belongs_to_fr]
+x dans R => x \in \mathbb{R}
+# [system_fr]
+syst x+y=5 ; 2x-y=1 => \begin{cases} x+y=5 \\ 2x-y=1 \end{cases}
+# [system_fr]
+systeme x+y=5, 2x-y=1 => \begin{cases} x+y=5 \\ 2x-y=1 \end{cases}
+
+# === fr/algebra.yaml ===
+# [equation_simple]
+x + y = 5 => x + y = 5
+# [equation_simple]
+2x - 3 = 0 => 2x - 3 = 0
+# [inequality]
+x^2 >= 0 => x^2 \geq 0
+# [inequality]
+x < 2 => x < 2
+# [factored_quadratic]
+(x-1)(x+2) => (x-1)(x+2)
+
+# === fr/analysis.yaml ===
+# [derivative_leibniz]
+df/dx => \frac{df}{dx}
+# [derivative_leibniz]
+dy/dt => \frac{dy}{dt}
+# [derivative_second_prime]
+f''(x) => f''(x)
+# [derivative_second_prime]
+f"(x) => f''(x)
+# [ode_first_order]
+y' = ky => y' = ky
+# [ode_first_order]
+f'(x) = 2x => f'(x) = 2x
+# [sum_eq_to_summand]
+Sum k=1 to 10 f(k) => \sum_{k=1}^{10} f(k)
+# [sum_eq_to_summand]
+sum k=1 a n f(k) => \sum_{k=1}^{n} f(k)
+# [sum_eq_cmp_summand]
+Sum k=1 k<10 f(k)+1 => \sum_{k=1}^{10} f(k)+1
+# [sum_paren_3args]
+Sum(k,1,10) f(k) => \sum_{k=1}^{10} f(k)
+# [sum_space_separated]
+Sum k 1 n f(k) => \sum_{k=1}^{n} f(k)
+# [sum_space_separated]
+somme k 1 10 k^2 => \sum_{k=1}^{10} k^2
+# [product_eq_to_factor]
+prod k=1 to n f(k) => \prod_{k=1}^{n} f(k)
+# [product_eq_to_factor]
+produit k=1 a 10 k => \prod_{k=1}^{10} k
+# [product_paren_3args]
+prod(k,1,n) k => \prod_{k=1}^{n} k
+# [product_space_separated]
+prod k 1 n k => \prod_{k=1}^{n} k
+# [integral_eq_to]
+int 0 to 1 x^2 dx => \int_{0}^{1} x^2 \, dx
+# [integral_eq_to]
+integrale 0 a pi sin(x) => \int_{0}^{\pi} \sin(x) \, dx
+# [integral_paren_3args]
+int(x,0,1) x^2 => \int_{0}^{1} x^2 \, dx
+# [integral_space_separated]
+int 0 1 x^2 dx => \int_{0}^{1} x^2 \, dx
+# [integral_space_separated]
+integrale 0 pi sin(x) => \int_{0}^{\pi} \sin(x) \, dx
+# [limit_paren_2args]
+Lim(x,0) f(x) => \lim_{x \to 0} f(x)
+# [limit_paren_2args]
+lim(n,+inf) 1/n => \lim_{n \to +\infty} \frac{1}{n}
+
+# === fr/geometry.yaml ===
+# [vector_addition]
+vec AB + vec BC => \vec{AB} + \vec{BC}
+# [dot_product]
+vec u . vec v => \vec{u} \cdot \vec{v}
+# [segment_length]
+AB = 5 => AB = 5
+# [unit_literal]
+AB => AB
+# [unit_vector]
+AB => \vec{AB}
+# [unit_norm]
+AB => \|AB\|
+# [unit_angle]
+ABC => \widehat{ABC}
+# [chasles_vectors]
+AB+BC=AC => \vec{AB} + \vec{BC} = \vec{AC}
+# [chasles_norms]
+AB+BC=AC => \|AB\| + \|BC\| = \|AC\|
+# [dot_product_atomic]
+AB.BC => \vec{AB} \cdot \vec{BC}
+# [cross_product_atomic]
+AB^BC => \vec{AB} \wedge \vec{BC}
+# [vector_components_2d]
+u(x,y) => \vec{u} \binom{x}{y}
+# [vector_components_2d]
+u(x y) => \vec{u} \binom{x}{y}
+# [vector_components_2d_upper]
+AB(x,y) => \vec{AB} \binom{x}{y}
+# [vector_components_2d_upper]
+AB(x y) => \vec{AB} \binom{x}{y}
+# [vector_components_3d]
+u(x,y,z) => \vec{u} \binom{x}{\binom{y}{z}}
+# [vector_components_3d]
+u(x y z) => \vec{u} \binom{x}{\binom{y}{z}}
+# [vector_components_3d_upper]
+AB(x y z) => \vec{AB} \binom{x}{\binom{y}{z}}
+# [scalar_times_vector]
+λu => \lambda \vec{u}
+# [scalar_times_vector]
+2u => 2 \vec{u}
+# [determinant_2vec]
+det(u, v) => \det(\vec{u}, \vec{v})
+# [determinant_2vec]
+Det(u ; v) => \det(\vec{u}, \vec{v})
+# [determinant_2vec_upper]
+Det(AM ; u) => \det(\vec{AM}, \vec{u})
+
+# === fr/probability.yaml ===
+# [probability_event]
+P(A) => P(A)
+# [probability_event]
+proba(A) => P(A)
+# [probability_intersection]
+P(A inter B) => P(A \cap B)
+# [conditional_probability]
+P(A|B) => P(A \mid B)
+# [expectation]
+E(X) => E(X)
+# [expectation]
+esperance(X) => E(X)
+# [variance]
+V(X) => V(X)
+# [sqrt_as_V]
+V(x+1) => \sqrt{x+1}
+
+# === fr/sequences.yaml ===
+# [sequence_un_compact]
+un => u_n
+# [sequence_un_compact]
+vn => v_n
+# [sequence_with_parens]
+(un) => (u_n)
+# [recurrence]
+u(n+1) = 2*un + 3 => u_{n+1} = 2 \cdot u_n + 3
+# [sequence_limit]
+(un) converge vers 0 => (u_n) \to 0
+
+# === shared/symbolic.yaml ===
+# [additive_expression]
+AB(u v) + AC(d x) => AB(u v) + AC(d x)
+# [subtractive_expression]
+f(x) - g(x) => f(x) - g(x)
+# [power_star]
+A^* => A^*
+# [power_simple]
+x^2 => x^2
+# [power_simple]
+x**2 => x^2
+# [power_simple]
+(x+1)^3 => (x+1)^3
+# [power_simple]
+x² => x^2
+# [power_simple]
+(x+1)² => (x+1)^2
+# [subscript_simple]
+u_n => u_n
+# [subscript_simple]
+x_0 => x_0
+# [fraction_inline]
+1/2 => \frac{1}{2}
+# [fraction_inline]
+(x+1)/(x-1) => \frac{x+1}{x-1}
+# [function_call]
+f(x) => f(x)
+# [function_call]
+g(x,y) => g(x,y)
+# [derivative_prime]
+f'(x) => f'(x)
+# [derivative_prime]
+g'(t) => g'(t)
+# [named_function_cos]
+cos(x) => \cos(x)
+# [named_function_cos]
+cos x => \cos(x)
+# [named_function_sin]
+sin(x) => \sin(x)
+# [named_function_tan]
+tan(x) => \tan(x)
+# [named_function_tan]
+tg(x) => \tan(x)
+# [named_function_ln]
+ln(x) => \ln(x)
+# [named_function_log]
+log(x) => \log(x)
+# [named_function_exp]
+exp(x) => e^{x}
+# [named_function_exp]
+exp(2x+1) => e^{2x+1}
+# [named_function_arccos]
+arccos(x) => \arccos(x)
+# [named_function_arccos]
+acos(x) => \arccos(x)
+# [named_function_arcsin]
+arcsin(x) => \arcsin(x)
+# [named_function_arcsin]
+asin(x) => \arcsin(x)
+# [named_function_arctan]
+arctan(x) => \arctan(x)
+# [named_function_arctan]
+atan(x) => \arctan(x)
+# [absolute_value]
+|x| => |x|
+# [absolute_value]
+|x-1| => |x-1|
+# [vector_norm]
+||u|| => \|u\|
+# [set_reals]
+R => \mathbb{R}
+# [set_star]
+R* => \mathbb{R}^*
+# [set_star]
+N* => \mathbb{N}^*
+# [set_plus]
+R+ => \mathbb{R}^+
+# [set_minus]
+R- => \mathbb{R}^-
+# [set_strict_positive_a]
+R*+ => \mathbb{R}^{*+}
+# [set_strict_positive_b]
+R+* => \mathbb{R}^{*+}
+# [set_strict_negative_a]
+R*- => \mathbb{R}^{*-}
+# [set_strict_negative_b]
+R-* => \mathbb{R}^{*-}
+# [set_minus_singleton_dash]
+R-{0} => \mathbb{R} \setminus \{0\}
+# [set_minus_singleton_dash]
+R-{-1} => \mathbb{R} \setminus \{-1\}
+# [set_minus_singleton_slash]
+R/{2} => \mathbb{R} \setminus \{2\}
+# [interval_closed_closed]
+[0;1] => [0, 1]
+# [interval_closed_closed]
+[0,1] => [0, 1]
+# [interval_closed_closed]
+[0 1] => [0, 1]
+# [interval_closed_closed]
+[-2;5] => [-2, 5]
+# [interval_closed_open]
+[0;+inf[ => [0, +\infty[
+# [interval_closed_open]
+[0,+inf[ => [0, +\infty[
+# [interval_closed_open]
+[0 +inf[ => [0, +\infty[
+# [interval_open_closed]
+]0;1] => ]0, 1]
+# [interval_open_closed]
+]-inf;5] => ]-\infty, 5]
+# [interval_open_closed]
+]0,1] => ]0, 1]
+# [interval_open_open]
+]0;1[ => ]0, 1[
+# [interval_open_open]
+]-inf;+inf[ => ]-\infty, +\infty[
+# [interval_open_open]
+]-inf,+inf[ => ]-\infty, +\infty[
+# [interval_closed_closed_space]
+[0 1] => [0, 1]
+# [interval_closed_open_space]
+[0 +inf[ => [0, +\infty[
+# [interval_open_closed_space]
+]0 1] => ]0, 1]
+# [interval_open_open_space]
+]0 1[ => ]0, 1[
+# [union_expr]
+[0;12]U[16;20[ => [0, 12] \cup [16, 20[
+# [intersection_expr]
+[0;10] inter [5;15] => [0, 10] \cap [5, 15]
+# [named_function_sinh]
+sinh(x) => \sinh(x)
+# [named_function_sinh]
+sh(x) => \sinh(x)
+# [named_function_cosh]
+cosh(x) => \cosh(x)
+# [named_function_cosh]
+ch(x) => \cosh(x)
+# [named_function_tanh]
+tanh(x) => \tanh(x)
+# [named_function_tanh]
+th(x) => \tanh(x)
+# [named_function_argsh]
+argsh(x) => \operatorname{argsh}(x)
+# [named_function_argch]
+argch(x) => \operatorname{argch}(x)
+# [named_function_argth]
+argth(x) => \operatorname{argth}(x)
+# [named_function_cot]
+cot(x) => \cot(x)
+# [trig_power_explicit]
+sin^2(x) => \sin^2(x)
+# [trig_power_explicit]
+cos^3 x => \cos^3(x)
+# [trig_power_explicit]
+ln^2(x) => \ln^2(x)
+# [trig_power_explicit]
+tan^2 x => \tan^2(x)
+# [trig_power_glued]
+sin2x => \sin^2(x)
+# [trig_power_glued]
+cos3(x) => \cos^3(x)
+# [factorial]
+n! => n!
+# [factorial]
+5! => 5!
+# [factorial]
+(n+1)! => (n+1)!
+# [binomial_paren]
+C(n,k) => \binom{n}{k}
+# [binomial_paren]
+C(5,2) => \binom{5}{2}
+# [binomial_indexed]
+C_n^k => \binom{n}{k}
+# [binomial_indexed]
+C_5^2 => \binom{5}{2}
+# [binomial_kw]
+binom(n,k) => \binom{n}{k}
+# [binomial_kw]
+comb(10,3) => \binom{10}{3}
+# [landau_theta]
+Theta(n) => \Theta(n)
+# [landau_omega]
+Omega(n) => \Omega(n)
+# [function_composition]
+f°g => f \circ g
+# [function_composition]
+f ∘ g => f \circ g
+# [mean_overline_glued]
+xbarre => \overline{x}
+# [mean_overline_glued]
+ybarre => \overline{y}
+# [mean_overline_glued]
+xbar => \overline{x}
+# [mean_overline_spaced]
+x barre => \overline{x}
+# [mean_overline_spaced]
+y bar => \overline{y}
+# [percent_number]
+30% => 30\%
+# [percent_number]
+75% => 75\%
+# [coord_point]
+xA => x_A
+# [coord_point]
+yB => y_B
+# [coord_point]
+xa => x_A
+# [coord_point]
+ym => y_M
+# [function_mapsto]
+f : x ↦ x^2 => f : x \mapsto x^2
+# [function_mapsto]
+f : x |-> x^2 => f : x \mapsto x^2
+# [function_mapsto]
+g : t ↦ 2t+3 => g : t \mapsto 2t+3
+# [segment_bracketed]
+[AB] => [AB]
+# [segment_bracketed]
+[CD] => [CD]
+# [line_parenthesized]
+(AB) => (AB)
+# [half_line_right_open]
+[AB) => [AB)
+# [half_line_left_open]
+(AB] => (AB]
+# [dot_newton]
+dot x => \dot{x}
+# [ddot_newton]
+ddot x => \ddot{x}
+# [partial_derivative]
+∂f/∂x => \frac{\partial f}{\partial x}
+# [partial_derivative]
+partial f / partial x => \frac{\partial f}{\partial x}
+# [double_integral]
+iint f dx dy => \iint f \, dx \, dy
+# [contour_integral]
+oint f dl => \oint f \, dl
+# [named_operator_call]
+det(A) => \det(A)
+# [named_operator_call]
+tr(A) => \operatorname{tr}(A)
+# [named_operator_call]
+rg(A) => \operatorname{rg}(A)
+# [named_operator_call]
+Vect(u,v) => \operatorname{Vect}(u,v)
+# [named_operator_call]
+Ker f => \ker(f)
+# [named_operator_call]
+card(A) => \operatorname{card}(A)
+# [named_operator_call]
+diag(1,2,3) => \operatorname{diag}(1,2,3)
+# [named_operator_call]
+cov(X,Y) => \operatorname{Cov}(X,Y)
+# [named_operator_call]
+pgcd(m,n) => \gcd(m,n)
+# [named_operator_call]
+gcd(m,n) => \gcd(m,n)
+# [named_operator_call]
+ppcm(m,n) => \operatorname{ppcm}(m,n)
+# [named_operator_call]
+dim E => \dim(E)
+# [named_operator_call]
+Dom(f) => \operatorname{Dom}(f)
+
