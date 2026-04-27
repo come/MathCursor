@@ -65,6 +65,18 @@ namespace MathCursor.UI
             foreach (var (from, to) in LiteralSubs)
                 s = s.Replace(from, to);
 
+            // 6) Holes (① ② ③ …) émis par le renderer lattice. WpfMath fail
+            //    silencieusement à les rendre — même via \text{} car la font
+            //    par défaut (Arial) ne contient pas U+2460–U+2468 et ça plante
+            //    le rendu COMPLET de la formule (pas juste le hole), résultat
+            //    boîte 2×2 invisible. \text[font]{...} pas supporté non plus.
+            //    On bascule sur \square (carré vide standard, universellement
+            //    rendu). Perd la numérotation visuelle ① vs ② mais l'élève voit
+            //    bien qu'un slot manque. Côté Word OMath, le LaTeX original
+            //    conserve les ronds (substitution popup-only).
+            foreach (var hole in HoleGlyphs)
+                s = s.Replace(hole, "\\square ");
+
             return s;
         }
 
@@ -98,6 +110,13 @@ namespace MathCursor.UI
                 { "P", "ℙ" }, // ℙ
                 { "H", "ℍ" }, // ℍ
             };
+
+        // Glyphes Hole émis par le renderer lattice (cf. LatexRenderer).
+        // ⓪ pas utilisé (les holes sont indexés à partir de 1).
+        private static readonly string[] HoleGlyphs =
+        {
+            "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨",
+        };
 
         // Substitutions simples (ordre important : remplacements longs d'abord).
         private static readonly (string from, string to)[] LiteralSubs = new[]

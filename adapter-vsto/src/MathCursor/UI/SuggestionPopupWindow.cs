@@ -180,6 +180,21 @@ namespace MathCursor.UI
                 return container;
             }
 
+            // Parse explicite via TexFormulaParser : si le LaTeX a un problème
+            // (commande inconnue, syntaxe non supportée), Parse jette une
+            // exception ici — alors que FormulaControl.Formula = ... avale les
+            // erreurs en silence et affiche du vide.
+            string parseError = null;
+            try
+            {
+                var parser = WpfMath.Parsers.WpfTeXFormulaParser.Instance;
+                parser.Parse(adapted);
+            }
+            catch (Exception ex)
+            {
+                parseError = ex.GetType().Name + ": " + ex.Message;
+            }
+
             try
             {
                 var formula = new FormulaControl
@@ -189,9 +204,32 @@ namespace MathCursor.UI
                     VerticalAlignment = VerticalAlignment.Center,
                 };
                 container.Children.Add(formula);
+
+                // Diagnostic : on mesure le FormulaControl avec une largeur
+                // infinie (comme un layout WPF "naturel") pour comparer à ce
+                // que la popup obtient réellement après contraintes parent.
+                string adaptedSnapshot = adapted;
+                formula.SizeChanged += (_, args) =>
+                {
+                    formula.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                    string errors = "";
+                    try
+                    {
+                        if (formula.Errors != null && formula.Errors.Count > 0)
+                            errors = " errors=[" + string.Join(" | ", System.Linq.Enumerable.Select(formula.Errors, e => e?.ToString() ?? "null")) + "]";
+                    }
+                    catch (Exception exErr) { errors = " errors_read_failed=" + exErr.Message; }
+                    LogPopup($"render measured formula=\"{adaptedSnapshot}\" newW={args.NewSize.Width:F1} newH={args.NewSize.Height:F1} desiredW={formula.DesiredSize.Width:F1} desiredH={formula.DesiredSize.Height:F1}{errors}");
+                };
+
+                if (parseError != null)
+                    LogPopup($"render PARSE_ERROR formula=\"{adapted}\" ex={parseError}");
+                else
+                    LogPopup($"render OK formula=\"{adapted}\"");
             }
-            catch
+            catch (Exception ex)
             {
+                LogPopup($"render CTRL_FAILED formula=\"{adapted}\" ex={ex.Message}");
                 container.Children.Add(new TextBlock
                 {
                     Text = adapted,
@@ -206,6 +244,7 @@ namespace MathCursor.UI
 
         public void ShowSuggestions(IReadOnlyList<SymbolChoice> choices, double screenX, double screenY, string debugText = "")
         {
+            LogPopup($"ShowSuggestions count={choices.Count} pos=({screenX:F0},{screenY:F0}) debug=\"{debugText}\"");
             _debugFooter.Text = string.IsNullOrEmpty(debugText) ? "" : "NER: \"" + debugText + "\"";
             _list.Items.Clear();
             for (int i = 0; i < choices.Count; i++)
@@ -282,6 +321,23 @@ namespace MathCursor.UI
                 }
             };
             BeginAnimation(OpacityProperty, anim);
+        }
+
+        // Log dédié popup, partagé avec mathcursor.log (préfixe "popup").
+        // Utilisé pendant le debug du rendu — garde un témoin si plus tard on
+        // a besoin de tracer un autre symptôme visuel.
+        private static void LogPopup(string message)
+        {
+            try
+            {
+                var dir = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "MathCursor", "logs");
+                System.IO.Directory.CreateDirectory(dir);
+                System.IO.File.AppendAllText(System.IO.Path.Combine(dir, "mathcursor.log"),
+                    $"{DateTime.UtcNow:o} popup {message}{Environment.NewLine}");
+            }
+            catch { }
         }
 
         // --- Win32 pour WS_EX_NOACTIVATE / WS_EX_TOOLWINDOW ---
