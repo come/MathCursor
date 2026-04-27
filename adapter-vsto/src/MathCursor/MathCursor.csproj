@@ -151,11 +151,12 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <!-- NER : ONNX Runtime + Google.Protobuf (lecture du fichier sentencepiece.bpe.model).
-         Le tokenizer Unigram est implémenté en interne (cf. Detection/Sp/),
-         pas de dépendance native externe (pas de BlingFire / Microsoft.ML.Tokenizers). -->
+    <!-- NER : ONNX Runtime pour l'inférence DistilBERT-multilingual quantizé
+         int8. Le tokenizer WordPiece est implémenté en C# pur dans
+         Detection/WordPiece/ (charge directement vocab.txt), pas de dépendance
+         native ni NuGet additionnel (Microsoft.ML.Tokenizers évité pour rester
+         compatible .NET Framework 4.8 sans surprise). -->
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
-    <PackageReference Include="Google.Protobuf" Version="3.28.3" />
     <!-- Rendu LaTeX popup : WpfMath 2.1 + substitutions ciblées dans
          WpfMathAdapter pour les 8 macros non couvertes (\mathbb, \setminus,
          \mapsto, \widehat, \iint/\oint, \limsup/\liminf, \overline).
@@ -261,9 +262,7 @@
     <Compile Include="UI\FeedbackDialog.cs" />
     <Compile Include="Detection\DetectedZone.cs" />
     <Compile Include="Detection\MathNerDetector.cs" />
-    <Compile Include="Detection\Sp\SentencePieceModel.cs" />
-    <Compile Include="Detection\Sp\PieceTrie.cs" />
-    <Compile Include="Detection\Sp\SentencePieceTokenizer.cs" />
+    <Compile Include="Detection\WordPiece\WordPieceTokenizer.cs" />
     <Compile Include="RibbonCallback.cs" />
     <EmbeddedResource Include="Ribbon.xml" />
     <AppDesigner Include="Properties\" />

@@ -3,19 +3,23 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using MathCursor.Detection.WordPiece;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
-using MathCursor.Detection.Sp;
 
 namespace MathCursor.Detection
 {
     /// <summary>
-    /// Détecteur de zones math via modèle NER (XLM-RoBERTa fine-tuné).
+    /// Détecteur de zones math via modèle NER DistilBERT-multilingual fine-tuné.
     /// 3 labels BIO : O=0, B-MATH=1, I-MATH=2.
     ///
-    /// Tokenizer : implémentation pure C# de SentencePiece Unigram (cf. Sp/),
-    /// charge directement sentencepiece.bpe.model, aucune dépendance native.
-    /// Inférence : ONNX Runtime sur model_quantized.onnx.
+    /// Tokenizer : implémentation pure C# de WordPiece (cf. <c>WordPiece/</c>),
+    /// charge directement <c>vocab.txt</c>, aucune dépendance native ni NuGet
+    /// supplémentaire. Inférence : ONNX Runtime sur model_quantized.onnx (~129 Mo
+    /// vs 265 Mo pour XLM-R, latence ~25 ms vs 50 ms).
+    ///
+    /// API publique inchangée par rapport à l'historique XLM-R — seuls
+    /// l'implémentation interne et le format des fichiers modèle ont évolué.
     /// </summary>
     public sealed class MathNerDetector : IDisposable
     {
@@ -26,7 +30,7 @@ namespace MathCursor.Detection
         private const int LabelIMath = 2;
 
         private readonly InferenceSession _session;
-        private readonly SentencePieceTokenizer _tokenizer;
+        private readonly WordPieceTokenizer _tokenizer;
         private readonly double _threshold;
         private bool _disposed;
 
@@ -36,12 +40,12 @@ namespace MathCursor.Detection
                 throw new DirectoryNotFoundException("Modèle NER introuvable : " + modelDir);
 
             var onnxPath = Path.Combine(modelDir, "model_quantized.onnx");
-            var spPath = Path.Combine(modelDir, "sentencepiece.bpe.model");
+            var vocabPath = Path.Combine(modelDir, "vocab.txt");
 
             if (!File.Exists(onnxPath))
                 throw new FileNotFoundException("model_quantized.onnx manquant dans " + modelDir);
-            if (!File.Exists(spPath))
-                throw new FileNotFoundException("sentencepiece.bpe.model manquant dans " + modelDir);
+            if (!File.Exists(vocabPath))
+                throw new FileNotFoundException("vocab.txt manquant dans " + modelDir);
 
             var sessionOptions = new SessionOptions
             {
@@ -49,10 +53,7 @@ namespace MathCursor.Detection
                 IntraOpNumThreads = 2,
             };
             _session = new InferenceSession(onnxPath, sessionOptions);
-
-            var spModel = SentencePieceModel.LoadFromFile(spPath);
-            _tokenizer = new SentencePieceTokenizer(spModel);
-
+            _tokenizer = WordPieceTokenizer.LoadFromVocab(vocabPath);
             _threshold = threshold;
         }
 
@@ -66,7 +67,7 @@ namespace MathCursor.Detection
             if (string.IsNullOrEmpty(text)) return Array.Empty<DetectedZone>();
 
             // 1. Tokenization (avec offsets)
-            IReadOnlyList<SentencePieceTokenizer.Token> tokens;
+            IReadOnlyList<WordPieceTokenizer.Token> tokens;
             try { tokens = _tokenizer.Encode(text); }
             catch { return Array.Empty<DetectedZone>(); }
             if (tokens.Count == 0) return Array.Empty<DetectedZone>();
@@ -130,7 +131,7 @@ namespace MathCursor.Detection
 
         private IReadOnlyList<DetectedZone> DecodeBio(
             string text,
-            IReadOnlyList<SentencePieceTokenizer.Token> tokens,
+            IReadOnlyList<WordPieceTokenizer.Token> tokens,
             int[] labels, double[] confidences, int n)
         {
             var spans = new List<DetectedZone>();
@@ -142,8 +143,14 @@ namespace MathCursor.Detection
             for (int i = 0; i < n; i++)
             {
                 int id = tokens[i].Id;
-                // Skip special tokens HF (<s>=0, <pad>=1, </s>=2, <unk>=3)
-                if (id <= 3) continue;
+                // Skip special tokens DistilBERT : [PAD]=0, [UNK]=100, [CLS]=101,
+                // [SEP]=102, [MASK]=103. [UNK] est laissé passer car peut faire
+                // partie d'un span MATH (ex : caractère exotique).
+                if (id == WordPieceTokenizer.PadId
+                    || id == WordPieceTokenizer.ClsId
+                    || id == WordPieceTokenizer.SepId
+                    || id == WordPieceTokenizer.MaskId)
+                    continue;
 
                 int label = labels[i];
                 int tokStart = tokens[i].CharStart;

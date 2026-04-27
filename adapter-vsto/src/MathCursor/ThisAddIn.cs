@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Office.Core;
@@ -79,23 +80,37 @@ namespace MathCursor
         /// </summary>
         private static string FindModelDir()
         {
-            var candidates = new[]
+            // On préfère le sous-dossier `distilmult-v4` quand il existe (cf.
+            // ADR 2026-04-27 adoption distilmult). Si non trouvé, fallback sur
+            // les emplacements historiques (dossier racine `models`) — pour
+            // continuer à charger une ancienne installation XLM-R en attendant
+            // que l'utilisateur déploie distilmult-v4.
+            var roots = new[]
             {
                 Environment.GetEnvironmentVariable("MATHCURSOR_MODEL_DIR"),
                 Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "MathCursor", "models"),
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "models"),
-                @"D:\Software\DocMath\models", // dev fallback
+                @"D:\Software\DocMath\models",
             };
+            var candidates = new List<string>();
+            foreach (var root in roots)
+            {
+                if (string.IsNullOrEmpty(root)) continue;
+                candidates.Add(Path.Combine(root, "distilmult-v4"));
+                candidates.Add(root);
+            }
             foreach (var p in candidates)
             {
-                if (string.IsNullOrEmpty(p)) continue;
-                if (Directory.Exists(p) && File.Exists(Path.Combine(p, "model_quantized.onnx")))
+                if (Directory.Exists(p)
+                    && File.Exists(Path.Combine(p, "model_quantized.onnx"))
+                    && File.Exists(Path.Combine(p, "vocab.txt")))
                     return p;
             }
             throw new DirectoryNotFoundException(
-                "Modèle NER introuvable. Chemins testés :\n" + string.Join("\n", candidates));
+                "Modèle NER introuvable (cherche model_quantized.onnx + vocab.txt). "
+                + "Chemins testés :\n" + string.Join("\n", candidates));
         }
 
         // Ctrl+Espace : trigger explicite — force la popup sur la span
