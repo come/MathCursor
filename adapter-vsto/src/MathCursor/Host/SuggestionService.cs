@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using MathCursor.Core;
+using MathCursor.Core.Lattice;
 using MathCursor.Core.Symbols;
 using MathCursor.Detection;
 using MathCursor.HostContract;
@@ -62,7 +63,6 @@ namespace MathCursor.Host
         private int _lastZoneAbsStart = -1;
         private int _lastZoneAbsEnd = -1;
         private string _lastZoneSource = "";
-        private IReadOnlyList<SymbolChoice> _lastChoices = Array.Empty<SymbolChoice>();
 
         // État mode édition : popup alimentée par la source d'un OMath existant.
         // Commit dans ce mode → REMPLACE l'OMath (pas d'insertion nouvelle).
@@ -126,9 +126,9 @@ namespace MathCursor.Host
 
         public bool IsPopupVisible => _popup != null && _popup.IsVisible;
         public bool IsNavMode => _popup != null && _popup.IsNavMode;
-        public int SelectedIndex => _popup?.SelectedIndex ?? 0;
 
         public void MoveSelection(int delta) => _popup?.MoveSelection(delta);
+        public bool MoveSelectionHorizontal(int delta) => _popup?.MoveSelectionHorizontal(delta) == true;
         public void EnterNavMode() => _popup?.EnterNavMode();
         public void HidePopup() => _popup?.HidePopup();
 
@@ -355,49 +355,32 @@ namespace MathCursor.Host
             target = ExtendZoneBackwardWithKeyword(_lastParagraph, target);
             LogDiag($"extended target={target}");
 
-            // Le texte détecté par le NER est envoyé au moteur de patterns,
-            // qui renvoie une liste de candidats LaTeX triés par score.
-            IReadOnlyList<LatexSuggestion> suggestions;
-            try { suggestions = _engine.Convert(target.Text); }
-            catch (Exception ex) { LogDiag("engine_error: " + ex.Message); suggestions = Array.Empty<LatexSuggestion>(); }
-
-            LogDiag($"engine zone=\"{target.Text}\" suggestions={suggestions.Count}");
-
-            // Conversion offsets paragraphe → positions absolues document.
-            // Indispensable pour que CommitSelected sache où remplacer sans se
-            // re-synchroniser (l'utilisateur a pu bouger le caret entre temps).
-            int absStart = paragraphAbsStart + target.Start;
-            int absEnd = paragraphAbsStart + target.End;
-
-            if (suggestions.Count == 0)
+            // Pipeline lattice avec détection d'ambiguïté la plus à droite
+            // (phase 5b2). Renvoie TopLatex + AmbiguitySpot? avec position.
+            AmbiguityResult result;
+            try { result = _engine.ConvertWithAmbiguity(target.Text); }
+            catch (Exception ex)
             {
-                // Aucun pattern ne matche → on affiche quand même le texte brut
-                // détecté (avec son score de confiance NER) pour éviter la frustration.
-                var fallback = new List<SymbolChoice>
-                {
-                    new SymbolChoice
-                    {
-                        Display = target.Text,
-                        Replacement = target.Text,
-                        Label = $"{target.Confidence:P0}",
-                    }
-                };
-                ShowPopup(fallback, absStart, absEnd, target.Text?.Length ?? 0, target.Text ?? "");
+                LogDiag("engine_error: " + ex.Message);
+                HidePopup();
                 return;
             }
 
-            // Top N suggestions LaTeX (cf. brief : popup affiche top 3-5).
-            var choices = suggestions.Take(5).Select(s => new SymbolChoice
+            LogDiag($"engine zone=\"{target.Text}\" top=\"{result.TopLatex}\" ambig={(result.Spot == null ? "no" : $"{result.Spot.Alternatives.Count} alts")}");
+
+            // Conversion offsets paragraphe → positions absolues document.
+            int absStart = paragraphAbsStart + target.Start;
+            int absEnd = paragraphAbsStart + target.End;
+
+            if (string.IsNullOrEmpty(result.TopLatex))
             {
-                Display = s.Latex,
-                Replacement = s.Latex,
-                Label = s.IsPartial ? "…" : $"{s.Score:F0}",
-                IsPartial = s.IsPartial,
-            }).ToList();
+                HidePopup();
+                return;
+            }
 
             int rawLen = target.Text?.Length ?? 0;
             _lastZoneSource = target.Text ?? "";
-            ShowPopup(choices, absStart, absEnd, rawLen, target.Text ?? "");
+            ShowPopup(result, absStart, absEnd, rawLen, target.Text ?? "");
         }
 
         /// <summary>
@@ -420,25 +403,18 @@ namespace MathCursor.Host
             }
 
             string source = stored.Source;
-            IReadOnlyList<LatexSuggestion> suggestions;
-            try { suggestions = _engine.Convert(source); }
+            AmbiguityResult result;
+            try { result = _engine.ConvertWithAmbiguity(source); }
             catch (Exception ex) { LogDiag("edit_engine_error: " + ex.Message); return false; }
-            if (suggestions.Count == 0) return false;
+            if (string.IsNullOrEmpty(result.TopLatex)) return false;
 
             int omStart = om.Range.Start;
             int omEnd = om.Range.End;
-            var choices = suggestions.Take(5).Select(s => new SymbolChoice
-            {
-                Display = s.Latex,
-                Replacement = s.Latex,
-                Label = s.IsPartial ? "…" : $"{s.Score:F0}",
-                IsPartial = s.IsPartial,
-            }).ToList();
 
             _editHandle = new EquationHandle(handleId);
             _lastZoneSource = source;
-            ShowPopup(choices, omStart, omEnd, source.Length, "édit: " + source);
-            LogDiag($"edit mode: handle={handleId} source=\"{source}\" → {suggestions.Count} candidats");
+            ShowPopup(result, omStart, omEnd, source.Length, "édit: " + source);
+            LogDiag($"edit mode: handle={handleId} source=\"{source}\" topLatex=\"{result.TopLatex}\"");
             return true;
         }
 
@@ -500,9 +476,9 @@ namespace MathCursor.Host
                 string span = text.Substring(spanStart, spanEnd - spanStart);
                 LogDiag($"manual trigger span=[{spanStart},{spanEnd}] → \"{Preview(span)}\"");
 
-                IReadOnlyList<LatexSuggestion> suggestions;
-                try { suggestions = _engine.Convert(span); }
-                catch (Exception ex) { LogDiag("manual_engine_error: " + ex.Message); suggestions = Array.Empty<LatexSuggestion>(); }
+                AmbiguityResult result;
+                try { result = _engine.ConvertWithAmbiguity(span); }
+                catch (Exception ex) { LogDiag("manual_engine_error: " + ex.Message); return; }
 
                 int absStart = paragraphAbsStart + spanStart;
                 int absEnd = paragraphAbsStart + spanEnd;
@@ -510,30 +486,10 @@ namespace MathCursor.Host
                 _lastZoneSource = span;
                 _editHandle = null;
 
-                if (suggestions.Count == 0)
-                {
-                    // Pas de match engine : on montre quand même la source comme
-                    // candidat unique pour que l'utilisateur voie ce qu'on a pris
-                    // comme span, et puisse au besoin ajuster (Esc + retaper).
-                    var fallback = new List<SymbolChoice>
-                    {
-                        new SymbolChoice { Display = span, Replacement = span, Label = "∅" },
-                    };
-                    ShowPopup(fallback, absStart, absEnd, span.Length, "manuel: " + span);
-                    return;
-                }
-
-                var choices = suggestions.Take(5).Select(s => new SymbolChoice
-                {
-                    Display = s.Latex,
-                    Replacement = s.Latex,
-                    Label = s.IsPartial ? "…" : $"{s.Score:F0}",
-                    IsPartial = s.IsPartial,
-                }).ToList();
-                ShowPopup(choices, absStart, absEnd, span.Length, "manuel: " + span);
+                if (string.IsNullOrEmpty(result.TopLatex)) return;
+                ShowPopup(result, absStart, absEnd, span.Length, "manuel: " + span);
                 // Entre direct en mode nav : l'utilisateur a demandé explicitement
-                // la conversion, il n'a pas besoin de la flèche bas pour signifier
-                // "oui je veux commit".
+                // la conversion.
                 _popup?.EnterNavMode();
             }
             catch (Exception ex)
@@ -731,16 +687,7 @@ namespace MathCursor.Host
         private Feedback.FeedbackReport BuildFeedbackReport()
         {
             string recognized = "";
-            try
-            {
-                if (_lastChoices != null && _lastChoices.Count > 0)
-                {
-                    int idx = _popup?.SelectedIndex ?? 0;
-                    if (idx < 0 || idx >= _lastChoices.Count) idx = 0;
-                    var c = _lastChoices[idx];
-                    recognized = c.Replacement ?? c.Display ?? "";
-                }
-            }
+            try { recognized = _popup?.CurrentFinalLatex ?? ""; }
             catch { }
 
             string wordVersion = "?";
@@ -792,25 +739,19 @@ namespace MathCursor.Host
             catch { return ""; }
         }
 
-        private void ShowPopup(IReadOnlyList<SymbolChoice> choices, int absStart, int absEnd, int rawZoneLength, string debugText = "")
+        private void ShowPopup(AmbiguityResult result, int absStart, int absEnd, int rawZoneLength, string debugText = "")
         {
             if (_popup == null)
             {
                 _popup = new SuggestionPopupWindow();
-                // Le lien "Signaler une erreur" de la popup lève ReportRequested.
-                // On le branche une seule fois à la création, puis pour chaque click
-                // on construit le FeedbackReport avec le contexte courant
-                // (_lastZoneSource + candidat sélectionné + logs).
                 _popup.ReportRequested += OnReportRequested;
             }
 
-            // Repositionnement : UNIQUEMENT si la popup n'est pas déjà visible,
-            // OU si la zone a changé (nouveau span détecté). Sinon on garde la
-            // position actuelle — quand l'utilisateur clique DANS la popup,
-            // Word perd le focus, GetCaretPos rate et renvoie un fallback
-            // (200, 200) qui ferait sauter la popup en haut-gauche de l'écran.
+            // Repositionnement : seulement si nouvelle zone, sinon on garde la
+            // position actuelle (clic dans la popup → Word perd focus, GetCaretPos
+            // rate et renverrait fallback 200,200).
             bool shouldReposition =
-                _popup == null || !_popup.IsVisible
+                !_popup.IsVisible
                 || absStart != _lastZoneAbsStart || absEnd != _lastZoneAbsEnd;
 
             double popupX, popupY;
@@ -825,15 +766,18 @@ namespace MathCursor.Host
             }
             else
             {
-                // Popup déjà visible sur la même zone : on garde sa position.
                 popupX = _popup.Left;
                 popupY = _popup.Top;
             }
 
             _lastZoneAbsStart = absStart;
             _lastZoneAbsEnd = absEnd;
-            _lastChoices = choices;
-            _popup.ShowSuggestions(choices, popupX, popupY, debugText);
+
+            var alts = result.Spot?.Alternatives ?? Array.Empty<string>();
+            string ruleId = result.Spot?.RuleId ?? "";
+            int spotStart = result.SpotStart ?? -1;
+            int spotEnd = result.SpotEnd ?? -1;
+            _popup.Show(result.TopLatex, ruleId, alts, spotStart, spotEnd, popupX, popupY, debugText);
         }
 
         /// <summary>
@@ -848,22 +792,19 @@ namespace MathCursor.Host
         {
             if (_popup == null || !_popup.IsVisible || !_popup.IsNavMode) return false;
             if (_lastZoneAbsStart < 0 || _lastZoneAbsEnd <= _lastZoneAbsStart) return false;
-            if (_lastChoices == null || _lastChoices.Count == 0) return false;
-            int idx = _popup.SelectedIndex;
-            if (idx < 0 || idx >= _lastChoices.Count) return false;
-            var choice = _lastChoices[idx];
-            var latex = choice.Replacement ?? choice.Display ?? "";
-            if (string.IsNullOrWhiteSpace(latex)) return false;
 
-            // Partiels NON commitables : les "\ldots" sont des placeholders qui
-            // signalent "il reste à taper ça". Les commit enverrait "..." dans
-            // Word — incomplet pour l'utilisateur. On laisse Enter pass-through
-            // (newline normale) et l'utilisateur continue à taper pour compléter.
-            if (choice.IsPartial)
+            // Si l'utilisateur a Enter sur une alternative (focus alts), on
+            // résout localement et on garde la popup ouverte. Le commit Word
+            // se fera au prochain Enter (focus passe automatiquement sur final).
+            if (!_popup.IsFocusOnFinal)
             {
-                LogDiag($"commit refused: choice idx={idx} est partiel (\\ldots présents), Enter laissé à Word");
-                return false;
+                if (_popup.ResolveCurrentAltIfFocused()) return true;
             }
+
+            // Sinon : commit la formule finale (intègre les éventuelles
+            // résolutions d'alternatives faites avant).
+            var latex = _popup.CurrentFinalLatex ?? "";
+            if (string.IsNullOrWhiteSpace(latex)) return false;
 
             var editing = _editHandle;
             var source = _lastZoneSource ?? "";
@@ -877,14 +818,14 @@ namespace MathCursor.Host
                 bool insertionSucceeded = newEnd > newStart;
                 if (!insertionSucceeded)
                 {
-                    LogDiag($"commit ABORTED idx={idx} latex=\"{latex}\" — OMath build failed, rollback effectué dans InsertOMathAt");
+                    LogDiag($"commit ABORTED latex=\"{latex}\" — OMath build failed, rollback effectué dans InsertOMathAt");
                 }
                 else if (editing != null)
                 {
                     // Le bookmark préexistant couvre encore l'OMath (Word le
                     // réadapte lors du remplacement). On ne touche à rien côté
                     // store : la source d'origine reste valable.
-                    LogDiag($"edit commit idx={idx} handle={editing.Id} latex=\"{latex}\"");
+                    LogDiag($"edit commit handle={editing.Id} latex=\"{latex}\"");
                 }
                 else
                 {
@@ -899,7 +840,7 @@ namespace MathCursor.Host
                         }).GetAwaiter().GetResult();
                     }
                     catch (Exception ex) { LogDiag("store_save_error: " + ex.Message); }
-                    LogDiag($"insert commit idx={idx} handle={handle.Id} range=[{newStart},{newEnd}] latex=\"{latex}\" source=\"{source}\"");
+                    LogDiag($"insert commit handle={handle.Id} range=[{newStart},{newEnd}] latex=\"{latex}\" source=\"{source}\"");
                 }
             }
             catch (Exception ex)
@@ -910,7 +851,6 @@ namespace MathCursor.Host
             // Reset état
             _lastZoneAbsStart = -1;
             _lastZoneAbsEnd = -1;
-            _lastChoices = Array.Empty<SymbolChoice>();
             _lastZoneSource = "";
             _editHandle = null;
             _editingOMathStart = -1;

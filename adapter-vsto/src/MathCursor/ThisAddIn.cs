@@ -48,6 +48,8 @@ namespace MathCursor
                     OnEnterPressed = HandleEnterPressed,
                     OnUpPressed = HandleUpPressed,
                     OnDownPressed = HandleDownPressed,
+                    OnLeftPressed = HandleLeftPressed,
+                    OnRightPressed = HandleRightPressed,
                     OnEscapePressed = HandleEscapePressed,
                     OnCtrlSpacePressed = HandleCtrlSpacePressed,
                 };
@@ -133,6 +135,24 @@ namespace MathCursor
             if (!_suggestions.IsNavMode) return false;
             _suggestions.MoveSelection(-1);
             return true;
+        }
+
+        // Left/Right : navigation horizontale entre alternatives en mode
+        // ambiguïté. N'a d'effet que si la popup est visible + en nav mode +
+        // focus sur la zone alts. Sinon pass-through (Word déplace le caret
+        // dans le texte normalement).
+        private bool HandleLeftPressed()
+        {
+            if (_suggestions?.IsPopupVisible != true) return false;
+            if (!_suggestions.IsNavMode) return false;
+            return _suggestions.MoveSelectionHorizontal(-1);
+        }
+
+        private bool HandleRightPressed()
+        {
+            if (_suggestions?.IsPopupVisible != true) return false;
+            if (!_suggestions.IsNavMode) return false;
+            return _suggestions.MoveSelectionHorizontal(+1);
         }
 
         // Enter : si popup visible + NavMode → commit du candidat sélectionné,

@@ -26,13 +26,17 @@ namespace MathCursor.Host
         private const int VK_CONTROL = 0x11;
         private const int VK_ESCAPE = 0x1B;
         private const int VK_SPACE = 0x20;
+        private const int VK_LEFT = 0x25;
         private const int VK_UP = 0x26;
+        private const int VK_RIGHT = 0x27;
         private const int VK_DOWN = 0x28;
 
         public Func<bool> OnTabPressed { get; set; }
         public Func<bool> OnEnterPressed { get; set; }
         public Func<bool> OnUpPressed { get; set; }
         public Func<bool> OnDownPressed { get; set; }
+        public Func<bool> OnLeftPressed { get; set; }
+        public Func<bool> OnRightPressed { get; set; }
         public Func<bool> OnEscapePressed { get; set; }
         public Func<bool> OnCtrlSpacePressed { get; set; }
 
@@ -73,6 +77,8 @@ namespace MathCursor.Host
                     else if (vkCode == VK_RETURN && !shiftDown) handler = OnEnterPressed;
                     else if (vkCode == VK_UP) handler = OnUpPressed;
                     else if (vkCode == VK_DOWN) handler = OnDownPressed;
+                    else if (vkCode == VK_LEFT) handler = OnLeftPressed;
+                    else if (vkCode == VK_RIGHT) handler = OnRightPressed;
                     else if (vkCode == VK_ESCAPE) handler = OnEscapePressed;
 
                     if (handler != null)

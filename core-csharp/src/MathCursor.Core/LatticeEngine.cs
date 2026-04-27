@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using MathCursor.Core.Lattice;
+using MathCursor.Core.Lattice.Ast;
 
 namespace MathCursor.Core
 {
@@ -51,6 +52,7 @@ namespace MathCursor.Core
 
             var seenLatex = new HashSet<string>();
             var suggestions = new List<LatexSuggestion>();
+            AstNode? topAst = null;
             foreach (var p in paths)
             {
                 // Le top-1 entre toujours. Les alternatives doivent être à
@@ -60,6 +62,8 @@ namespace MathCursor.Core
                 var ast = new Parser(p.Edges).Parse();
                 var latex = LatexRenderer.Render(ast);
                 if (!seenLatex.Add(latex)) continue; // dédupe sur LaTeX
+
+                if (topAst == null) topAst = ast; // mémorise pour AlternativeGenerator
 
                 double score = System.Math.Max(0, 100 - p.Cost);
                 suggestions.Add(new LatexSuggestion(
@@ -71,7 +75,52 @@ namespace MathCursor.Core
                     isPartial: false));
                 if (suggestions.Count >= MaxSuggestions) break;
             }
+
+            // Alternatives sémantiques (vec, droite, segment, indice…) à partir
+            // de l'AST top-1. Ces alternatives ne sont PAS classées par coût
+            // Dijkstra (elles n'en ont pas) — score arbitraire bas pour qu'elles
+            // figurent en bas de la liste de candidats sous le top-1, mais
+            // au-dessus de potentielles alternatives lattice de coût égal.
+            if (topAst != null && suggestions.Count < MaxSuggestions)
+            {
+                var semanticAlts = AlternativeGenerator.Generate(topAst);
+                foreach (var altLatex in semanticAlts)
+                {
+                    if (!seenLatex.Add(altLatex)) continue;
+                    suggestions.Add(new LatexSuggestion(
+                        latex: altLatex,
+                        patternId: "alt-semantic",
+                        score: System.Math.Max(0, 100 - topCost - 1),
+                        consumedTokens: trimmed.Length,
+                        totalTokens: trimmed.Length,
+                        isPartial: false));
+                    if (suggestions.Count >= MaxSuggestions) break;
+                }
+            }
+
             return suggestions;
+        }
+
+        /// <summary>
+        /// API phase 5b2 : retourne le top-1 LaTeX et l'ambiguïté la plus à
+        /// droite (s'il y en a une) avec sa position pour permettre la
+        /// recompose dans la popup. À utiliser à la place de <see cref="Convert"/>
+        /// quand on veut le modèle « formule finale + ambiguïté courante ».
+        /// </summary>
+        public AmbiguityResult ConvertWithAmbiguity(string rawSpan)
+        {
+            if (string.IsNullOrWhiteSpace(rawSpan))
+                return new AmbiguityResult(string.Empty, null, null, null);
+
+            var trimmed = rawSpan.Trim();
+            var edges = Lexer.Lex(trimmed);
+            var paths = LatticePathFinder.TopK(edges, trimmed.Length, TopKWidth);
+            if (paths.Count == 0)
+                return new AmbiguityResult(string.Empty, null, null, null);
+
+            var topAst = new Parser(paths[0].Edges).Parse();
+            var topLatex = LatexRenderer.Render(topAst);
+            return AlternativeGenerator.FindRightmost(topAst, topLatex);
         }
 
         /// <summary>

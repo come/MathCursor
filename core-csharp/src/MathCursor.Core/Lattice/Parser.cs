@@ -112,6 +112,7 @@ namespace MathCursor.Core.Lattice
                 case ">=":
                 case "!=":
                 case "<>":
+                case "//":  // \parallel (∥) entre deux droites/vecteurs
                     return true;
                 default:
                     return false;
@@ -408,7 +409,12 @@ namespace MathCursor.Core.Lattice
                     return new Const("\\exists");
                 case "in":
                 case "appartient":
-                    return new Const("\\in");
+                    // Relation : espaces dans la valeur pour qu'au render
+                    // (Bin implicit concat) on ait "x \in R" et pas "x\inR".
+                    return new Const(" \\in ");
+                case "perp":
+                case "perpendiculaire":
+                    return new Const(" \\perp ");
             }
 
             // Fallback : keyword inconnu, on l'expose comme atome inconnu

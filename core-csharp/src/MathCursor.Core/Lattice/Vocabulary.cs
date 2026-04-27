@@ -36,6 +36,8 @@ namespace MathCursor.Core.Lattice
             { "exists",    "exists" },
             { "in",        "in" },
             { "appartient", "in" },
+            { "perp",      "perp" },
+            { "perpendiculaire", "perp" },
         };
 
         /// <summary>Fonctions nommées qui prennent un argument (sin x, cos(2x)).</summary>
@@ -65,6 +67,10 @@ namespace MathCursor.Core.Lattice
             { "<>", "neq" },
             { "->", "to" },
             { "=>", "Rightarrow" },
+            // // = parallèle (∥) entre deux droites/vecteurs. Évite que la
+            // saisie clavier fluide "AB//CD" soit interprétée comme une
+            // fraction imbriquée AB/(CD) ou similaire.
+            { "//", "parallel" },
         };
 
         /// <summary>Opérateurs mono-caractère reconnus. Inclut les relations

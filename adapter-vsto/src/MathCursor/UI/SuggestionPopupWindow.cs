@@ -6,37 +6,67 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using MathCursor.Core.Symbols;
 using WpfMath.Controls;
 
 namespace MathCursor.UI
 {
     /// <summary>
-    /// Petite fenêtre WPF affichée sous le caret pour montrer les candidats
-    /// de conversion. TopMost, sans focus (Word reste actif pour la frappe).
+    /// Popup WPF affichée sous le caret. Modèle phase 5b2 :
+    ///
+    /// <list type="bullet">
+    /// <item>Si pas d'ambiguïté → une seule ligne : la formule finale (fond
+    ///   vert clair, signal "formule reconnue").</item>
+    /// <item>Si ambiguïté → alternatives en colonnes en haut, formule finale
+    ///   en bas, séparées par un trait. Up/Down navigue entre la zone alts
+    ///   et la zone finale ; Enter sur alt résout localement (recompose la
+    ///   formule finale, popup reste ouverte) ; Enter sur finale commit.</item>
+    /// </list>
+    ///
     /// Construite en code (pas de XAML) pour minimiser le set-up VSTO.
     /// </summary>
     public sealed class SuggestionPopupWindow : Window
     {
-        // Brief ergo : popup discrète, fondu in/out 150ms.
-        // Display mode (popup informative) = 0.5
-        // Nav mode (utilisateur a pressé Down et navigue dans les choix) = 0.7
         private const double DisplayOpacity = 0.5;
         private const double NavOpacity = 0.9;
         private const int FadeMs = 150;
 
-        private readonly ListBox _list;
+        private readonly StackPanel _altsRow;
+        private readonly Border _altsRowBorder;
+        private readonly Grid _finalContainer;
+
+        private string _topLatex = "";
+        private string _currentRuleId = "";
+        private IReadOnlyList<string> _alternatives = Array.Empty<string>();
+        private int _spotStart = -1, _spotEnd = -1;
+        private string _resolvedLatex = "";
+        private bool _focusOnFinal = true;
+        private int _altIndex;
+
+        // Cache des résolutions par STRING (defaultLatex → altLatex). Appliqué
+        // à chaque update du polling NER pour préserver les choix précis de
+        // l'utilisateur (ex: "AB" → "\\vec{AB}" exactement, même si on retape).
+        private readonly Dictionary<string, string> _resolvedSubstitutions
+            = new Dictionary<string, string>();
+
+        // Cache des préférences par TYPE de pattern (ruleId → altIndex). Si
+        // l'utilisateur a résolu un "two-uppercase" en choisissant l'alt #0
+        // (\vec), tous les "two-uppercase" suivants de la session se résolvent
+        // auto en \vec sans avoir à reproposer l'ambig. Reset au HidePopup.
+        private readonly Dictionary<string, int> _rulePreferences
+            = new Dictionary<string, int>();
+
         private readonly TextBlock _debugFooter;
         private readonly TextBlock _reportLink;
         private bool _navMode;
 
         public bool IsNavMode => _navMode;
+        public bool IsFocusOnFinal => _focusOnFinal;
 
-        /// <summary>
-        /// Déclenché quand l'utilisateur clique sur "Signaler une erreur".
-        /// <see cref="SuggestionService"/> y abonne son handler pour construire
-        /// le FeedbackReport avec le contexte et ouvrir le dialog.
-        /// </summary>
+        /// <summary>LaTeX qui sera commité dans Word à l'Enter sur la formule
+        /// finale. Intègre les éventuelles résolutions d'alternatives faites
+        /// par l'utilisateur en navigant + Enter sur les alts.</summary>
+        public string CurrentFinalLatex => _resolvedLatex;
+
         public event Action ReportRequested;
 
         public SuggestionPopupWindow()
@@ -44,13 +74,13 @@ namespace MathCursor.UI
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.NoResize;
             ShowInTaskbar = false;
-            ShowActivated = false; // ne prend pas le focus
+            ShowActivated = false;
             Topmost = true;
-            Width = 280;
+            Width = 320;
             SizeToContent = SizeToContent.Height;
             Background = Brushes.White;
-            AllowsTransparency = true; // requis pour Opacity < 1 sur Window borderless
-            Opacity = 0; // démarrer invisible, on fade in à Show
+            AllowsTransparency = true;
+            Opacity = 0;
 
             var border = new Border
             {
@@ -59,16 +89,28 @@ namespace MathCursor.UI
                 Background = Brushes.White,
             };
 
-            _list = new ListBox
+            // Ligne d'alternatives en colonnes
+            _altsRow = new StackPanel
             {
-                BorderThickness = new Thickness(0),
-                Background = Brushes.White,
-                Focusable = false, // ne prend pas le focus clavier
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(4, 4, 4, 4),
             };
-            _list.ItemContainerStyle = BuildItemContainerStyle();
+            _altsRowBorder = new Border
+            {
+                BorderBrush = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
+                BorderThickness = new Thickness(0, 0, 0, 1),
+                Background = Brushes.White,
+                Visibility = Visibility.Collapsed,
+                Child = _altsRow,
+            };
 
-            // Footer debug : affiche le texte NER extrait, aide à vérifier qu'on
-            // analyse bien la zone attendue. Petite taille, gris discret.
+            // Conteneur de la formule finale (toujours présent en mode actif)
+            _finalContainer = new Grid
+            {
+                Margin = new Thickness(0),
+                Background = Brushes.White,
+            };
+
             _debugFooter = new TextBlock
             {
                 Text = "",
@@ -79,7 +121,6 @@ namespace MathCursor.UI
                 Padding = new Thickness(0),
                 TextWrapping = TextWrapping.Wrap,
             };
-
             var topSeparator = new Border
             {
                 BorderBrush = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
@@ -88,9 +129,6 @@ namespace MathCursor.UI
                 Child = _debugFooter,
             };
 
-            // Lien "Signaler une erreur" — dernière ligne, petit, discret.
-            // Click → événement ReportRequested que SuggestionService écoute pour
-            // ouvrir le FeedbackDialog.
             _reportLink = new TextBlock
             {
                 Text = "Signaler une erreur",
@@ -102,7 +140,6 @@ namespace MathCursor.UI
                 HorizontalAlignment = HorizontalAlignment.Right,
             };
             _reportLink.MouseLeftButtonUp += (_, __) => ReportRequested?.Invoke();
-
             var reportLinkBorder = new Border
             {
                 BorderBrush = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
@@ -111,13 +148,13 @@ namespace MathCursor.UI
             };
 
             var stack = new StackPanel();
-            stack.Children.Add(_list);
+            stack.Children.Add(_altsRowBorder);
+            stack.Children.Add(_finalContainer);
             stack.Children.Add(topSeparator);
             stack.Children.Add(reportLinkBorder);
             border.Child = stack;
             Content = border;
 
-            // Renforce le no-focus via WS_EX_NOACTIVATE en plus de ShowActivated=false
             SourceInitialized += (_, _) =>
             {
                 var hwnd = new WindowInteropHelper(this).Handle;
@@ -126,86 +163,19 @@ namespace MathCursor.UI
             };
         }
 
-        // Index LOGIQUE de la suggestion sélectionnée (0 = top-1 = ce que
-        // l'élève a en bas de la popup). Le ListBox affiche en ordre inversé
-        // (top-1 en dernier visuellement), donc on retraduit ici pour que
-        // SuggestionService puisse continuer à indexer _lastChoices[idx].
-        public int SelectedIndex
-        {
-            get
-            {
-                if (_list.Items.Count == 0) return 0;
-                return _list.Items.Count - 1 - _list.SelectedIndex;
-            }
-        }
-
         /// <summary>
-        /// Style des ListBoxItem : fond transparent par défaut, teinte bleue
-        /// claire au hover et à la sélection. Override la sélection système pour
-        /// rester cohérent avec la popup transparente.
+        /// Rendu LaTeX → UIElement via WpfMath. Substitutions cosmétiques
+        /// (mathbb, widehat, cases…) via WpfMathAdapter.
         /// </summary>
-        private static Style BuildItemContainerStyle()
-        {
-            var style = new Style(typeof(ListBoxItem));
-            style.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
-            style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
-            style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
-
-            var hoverColor = new SolidColorBrush(Color.FromRgb(220, 235, 255));
-            var selectColor = new SolidColorBrush(Color.FromRgb(190, 215, 250));
-
-            var hoverTrigger = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
-            hoverTrigger.Setters.Add(new Setter(Control.BackgroundProperty, hoverColor));
-            style.Triggers.Add(hoverTrigger);
-
-            var selectedTrigger = new Trigger { Property = ListBoxItem.IsSelectedProperty, Value = true };
-            selectedTrigger.Setters.Add(new Setter(Control.BackgroundProperty, selectColor));
-            style.Triggers.Add(selectedTrigger);
-
-            return style;
-        }
-
-        /// <summary>
-        /// Rendu LaTeX → UIElement via WpfMath <see cref="FormulaControl"/>,
-        /// après passage par <see cref="WpfMathAdapter"/> qui substitue les
-        /// macros non couvertes (\mathbb, \widehat, \begin{cases}, etc.) par
-        /// leurs équivalents Unicode/macros supportées.
-        ///
-        /// Si le parse WpfMath échoue (formule trop exotique ou inattendue),
-        /// fallback sur un TextBlock unicode lisible — pas de superposition
-        /// double rendu/texte (qui donnerait l'impression de LaTeX "barré").
-        /// Cf. ADR 2026-04-24-Feat-popup-revert-wpfmath.
-        /// </summary>
-        private UIElement RenderMath(string latex, bool isPartial = false)
+        private UIElement RenderMath(string latex)
         {
             string adapted = WpfMathAdapter.Adapt(latex ?? "");
-            // Mode partiel : colorier \ldots en rouge si WpfMath le supporte ;
-            // sinon on laisse \ldots tel quel (reste lisible).
-            if (isPartial)
-                adapted = adapted.Replace("\\ldots", "\\color{red}{\\ldots}");
-
             var container = new Grid { Margin = new Thickness(8, 4, 12, 4) };
             if (string.IsNullOrWhiteSpace(adapted))
             {
                 container.Children.Add(new TextBlock { Text = "", FontSize = 14 });
                 return container;
             }
-
-            // Parse explicite via TexFormulaParser : si le LaTeX a un problème
-            // (commande inconnue, syntaxe non supportée), Parse jette une
-            // exception ici — alors que FormulaControl.Formula = ... avale les
-            // erreurs en silence et affiche du vide.
-            string parseError = null;
-            try
-            {
-                var parser = WpfMath.Parsers.WpfTeXFormulaParser.Instance;
-                parser.Parse(adapted);
-            }
-            catch (Exception ex)
-            {
-                parseError = ex.GetType().Name + ": " + ex.Message;
-            }
-
             try
             {
                 var formula = new FormulaControl
@@ -215,32 +185,9 @@ namespace MathCursor.UI
                     VerticalAlignment = VerticalAlignment.Center,
                 };
                 container.Children.Add(formula);
-
-                // Diagnostic : on mesure le FormulaControl avec une largeur
-                // infinie (comme un layout WPF "naturel") pour comparer à ce
-                // que la popup obtient réellement après contraintes parent.
-                string adaptedSnapshot = adapted;
-                formula.SizeChanged += (_, args) =>
-                {
-                    formula.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                    string errors = "";
-                    try
-                    {
-                        if (formula.Errors != null && formula.Errors.Count > 0)
-                            errors = " errors=[" + string.Join(" | ", System.Linq.Enumerable.Select(formula.Errors, e => e?.ToString() ?? "null")) + "]";
-                    }
-                    catch (Exception exErr) { errors = " errors_read_failed=" + exErr.Message; }
-                    LogPopup($"render measured formula=\"{adaptedSnapshot}\" newW={args.NewSize.Width:F1} newH={args.NewSize.Height:F1} desiredW={formula.DesiredSize.Width:F1} desiredH={formula.DesiredSize.Height:F1}{errors}");
-                };
-
-                if (parseError != null)
-                    LogPopup($"render PARSE_ERROR formula=\"{adapted}\" ex={parseError}");
-                else
-                    LogPopup($"render OK formula=\"{adapted}\"");
             }
-            catch (Exception ex)
+            catch
             {
-                LogPopup($"render CTRL_FAILED formula=\"{adapted}\" ex={ex.Message}");
                 container.Children.Add(new TextBlock
                 {
                     Text = adapted,
@@ -253,89 +200,307 @@ namespace MathCursor.UI
             return container;
         }
 
-        public void ShowSuggestions(IReadOnlyList<SymbolChoice> choices, double screenX, double screenY, string debugText = "")
+        /// <summary>
+        /// Affiche la popup. Si <paramref name="alternatives"/> est non-vide
+        /// ET qu'aucune préférence n'est mémorisée pour <paramref name="ruleId"/>,
+        /// la zone d'ambiguïté apparaît en haut. Sinon (pas d'alts, ou pref
+        /// déjà mémorisée), juste la formule finale (fond vert clair).
+        /// </summary>
+        public void Show(
+            string topLatex,
+            string ruleId,
+            IReadOnlyList<string> alternatives,
+            int spotStart,
+            int spotEnd,
+            double screenX,
+            double screenY,
+            string debugText = "")
         {
-            LogPopup($"ShowSuggestions count={choices.Count} pos=({screenX:F0},{screenY:F0}) debug=\"{debugText}\"");
-            _debugFooter.Text = string.IsNullOrEmpty(debugText) ? "" : "NER: \"" + debugText + "\"";
-            // Pas d'ambiguïté = un seul candidat → fond vert clair pour signaler
-            // "formule reconnue, valide, l'élève peut continuer". Plusieurs
-            // candidats → fond neutre pour distinguer le mode "à choisir".
-            bool unambiguous = choices.Count == 1;
+            LogPopup($"Show top=\"{topLatex}\" rule=\"{ruleId}\" alts={(alternatives?.Count ?? 0)} pos=({screenX:F0},{screenY:F0})");
 
-            // Convention d'affichage phase 5a : top-1 (= choices[0]) en BAS,
-            // alternatives au-dessus. La "ligne finale" est ce que valide
-            // Enter direct par défaut. L'élève remonte avec Up pour voir les
-            // alternatives. L'index ListBox interne est donc l'inverse de
-            // l'index logique (count-1 = top-1).
-            _list.Items.Clear();
-            for (int i = choices.Count - 1; i >= 0; i--)
+            // 1) Si l'utilisateur a déjà choisi cette règle dans la session,
+            //    on applique sa préférence en silence : la résolution est
+            //    intégrée à la substitutions string et on n'affiche pas la
+            //    zone d'alts.
+            if (!string.IsNullOrEmpty(ruleId)
+                && alternatives != null && alternatives.Count > 0
+                && _rulePreferences.TryGetValue(ruleId, out int preferredIdx)
+                && preferredIdx >= 0 && preferredIdx < alternatives.Count
+                && spotStart >= 0 && spotEnd > spotStart && spotEnd <= (topLatex?.Length ?? 0))
             {
-                var c = choices[i];
-                var panel = new StackPanel { Orientation = Orientation.Horizontal };
-                if (unambiguous)
-                    panel.Background = new SolidColorBrush(Color.FromArgb(48, 80, 200, 120)); // vert clair discret
-                panel.Children.Add(RenderMath(c.Display, c.IsPartial));
-                panel.Children.Add(new TextBlock
-                {
-                    Text = c.Label,
-                    FontSize = 11,
-                    Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 120)),
-                    Margin = new Thickness(0, 4, 8, 4),
-                    VerticalAlignment = VerticalAlignment.Center,
-                });
-                var item = new ListBoxItem
-                {
-                    Content = panel,
-                    Padding = new Thickness(0),
-                };
-                int listBoxIndex = choices.Count - 1 - i;
-                item.MouseEnter += (_, __) =>
-                {
-                    _list.SelectedIndex = listBoxIndex;
-                    EnterNavMode();
-                };
-                _list.Items.Add(item);
+                string defaultLatex = topLatex!.Substring(spotStart, spotEnd - spotStart);
+                _resolvedSubstitutions[defaultLatex] = alternatives[preferredIdx];
+                LogPopup($"auto-applied pref rule=\"{ruleId}\" altIdx={preferredIdx} → \"{alternatives[preferredIdx]}\"");
+                alternatives = Array.Empty<string>();
             }
-            // Sélection par défaut = top-1 = dernier item dans le ListBox.
-            _list.SelectedIndex = _list.Items.Count - 1;
-            _navMode = false; // toute mise à jour ramène en display mode
+
+            // 2) Applique les résolutions d'ambiguïté précédemment validées
+            //    (par string ou par règle ci-dessus).
+            string substitutedTop = topLatex ?? "";
+            foreach (var kv in _resolvedSubstitutions)
+                substitutedTop = substitutedTop.Replace(kv.Key, kv.Value);
+
+            // 3) Recalculer la position du spot APRÈS substitutions.
+            int newSpotStart = -1, newSpotEnd = -1;
+            if (alternatives != null && alternatives.Count > 0
+                && spotStart >= 0 && spotEnd > spotStart && spotEnd <= (topLatex?.Length ?? 0))
+            {
+                string defaultLatex = topLatex!.Substring(spotStart, spotEnd - spotStart);
+                int newIdx = substitutedTop.LastIndexOf(defaultLatex, StringComparison.Ordinal);
+                if (newIdx >= 0)
+                {
+                    newSpotStart = newIdx;
+                    newSpotEnd = newIdx + defaultLatex.Length;
+                }
+            }
+
+            _topLatex = substitutedTop;
+            _currentRuleId = ruleId ?? "";
+            _alternatives = (newSpotStart >= 0 && alternatives != null)
+                ? alternatives
+                : Array.Empty<string>();
+            _spotStart = newSpotStart;
+            _spotEnd = newSpotEnd;
+            _resolvedLatex = substitutedTop;
+            _focusOnFinal = true;
+            _altIndex = 0;
+
+            _debugFooter.Text = string.IsNullOrEmpty(debugText) ? "" : "NER: \"" + debugText + "\"";
+
+            // Zone alternatives
+            _altsRow.Children.Clear();
+            if (_alternatives.Count > 0)
+            {
+                for (int i = 0; i < _alternatives.Count; i++)
+                {
+                    var altLatex = _alternatives[i];
+                    var cell = new Border
+                    {
+                        BorderBrush = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
+                        BorderThickness = new Thickness(0, 0, 1, 0),
+                        Padding = new Thickness(2),
+                    };
+                    cell.Child = RenderMath(altLatex);
+                    int idx = i;
+                    cell.MouseEnter += (_, __) =>
+                    {
+                        _altIndex = idx;
+                        _focusOnFinal = false;
+                        EnterNavMode();
+                        UpdateHighlight();
+                    };
+                    _altsRow.Children.Add(cell);
+                }
+                _altsRowBorder.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                _altsRowBorder.Visibility = Visibility.Collapsed;
+            }
+
+            // Zone formule finale
+            _finalContainer.Children.Clear();
+            _finalContainer.Children.Add(BuildFinalRow(_resolvedLatex));
+
+            UpdateHighlight();
+            _navMode = false;
             Left = screenX;
             Top = screenY;
-            if (!IsVisible) Show();
-
-            // Fade vers DisplayOpacity. DoubleAnimation à 1 paramètre anime
-            // depuis la valeur courante. Si on était en cours de fade-out,
-            // ça interrompt et repart en sens inverse.
+            if (!IsVisible) base.Show();
             BeginAnimation(OpacityProperty,
                 new DoubleAnimation(DisplayOpacity, TimeSpan.FromMilliseconds(FadeMs)));
         }
 
-        /// <summary>L'utilisateur a pressé Down — on entre en mode navigation
-        /// (opacité augmentée, sélection mise en avant). Up/Down navigueront
-        /// désormais dans les choix, Enter validera le sélectionné.</summary>
+        private UIElement BuildFinalRow(string latex)
+        {
+            var panel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(0),
+                Background = _alternatives.Count == 0
+                    ? new SolidColorBrush(Color.FromArgb(48, 80, 200, 120))
+                    : Brushes.White,
+            };
+            panel.Children.Add(RenderMath(latex));
+            panel.Children.Add(new TextBlock
+            {
+                Text = "★",
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Color.FromRgb(180, 180, 180)),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(4, 0, 8, 0),
+            });
+            panel.MouseEnter += (_, __) =>
+            {
+                _focusOnFinal = true;
+                EnterNavMode();
+                UpdateHighlight();
+            };
+            return panel;
+        }
+
+        private void UpdateHighlight()
+        {
+            for (int i = 0; i < _altsRow.Children.Count; i++)
+            {
+                if (_altsRow.Children[i] is Border cell)
+                {
+                    cell.Background = (!_focusOnFinal && i == _altIndex)
+                        ? new SolidColorBrush(Color.FromRgb(190, 215, 250))
+                        : Brushes.Transparent;
+                }
+            }
+            if (_finalContainer.Children.Count > 0 && _finalContainer.Children[0] is StackPanel finalPanel)
+            {
+                finalPanel.Background = _focusOnFinal && _alternatives.Count > 0
+                    ? new SolidColorBrush(Color.FromRgb(190, 215, 250))
+                    : (_alternatives.Count == 0
+                        ? new SolidColorBrush(Color.FromArgb(48, 80, 200, 120))
+                        : Brushes.White);
+            }
+        }
+
+        /// <summary>
+        /// Si l'utilisateur a Enter sur une alternative (focus alts), résout
+        /// localement : remplace la zone ambiguë dans la formule finale par
+        /// l'alt sélectionnée, FERME la zone d'ambiguïté (la rangée d'alts
+        /// disparaît), passe focus sur la formule finale qui devient le seul
+        /// élément actif. Retourne true si une résolution a été faite.
+        /// </summary>
+        public bool ResolveCurrentAltIfFocused()
+        {
+            if (_focusOnFinal) return false;
+            if (_alternatives.Count == 0) return false;
+            if (_altIndex < 0 || _altIndex >= _alternatives.Count) return false;
+            if (_spotStart < 0 || _spotEnd <= _spotStart) return false;
+
+            var alt = _alternatives[_altIndex];
+            // Mémorise la résolution par STRING (pour préserver lors des
+            // updates si l'utilisateur retape la même chose).
+            string defaultLatex = _topLatex.Substring(_spotStart, _spotEnd - _spotStart);
+            _resolvedSubstitutions[defaultLatex] = alt;
+            // Mémorise la pref par RÈGLE pour appliquer auto aux ambiguïtés
+            // suivantes du même type (ex: AB → \vec → CD futurs aussi en \vec).
+            if (!string.IsNullOrEmpty(_currentRuleId))
+                _rulePreferences[_currentRuleId] = _altIndex;
+
+            _resolvedLatex = _topLatex.Substring(0, _spotStart)
+                           + alt
+                           + _topLatex.Substring(_spotEnd);
+
+            // Ferme la zone d'ambiguïté : la résolution est validée, l'alt
+            // sélectionnée est intégrée dans la formule finale, plus rien à
+            // choisir. La popup montre juste la formule finale (fond vert
+            // clair pour signaler "OK, prête à commiter").
+            _alternatives = Array.Empty<string>();
+            _altsRow.Children.Clear();
+            _altsRowBorder.Visibility = Visibility.Collapsed;
+            _spotStart = _spotEnd = -1;
+            _topLatex = _resolvedLatex; // pour la cohérence des futures substitutions
+
+            _finalContainer.Children.Clear();
+            _finalContainer.Children.Add(BuildFinalRow(_resolvedLatex));
+
+            _focusOnFinal = true;
+            UpdateHighlight();
+            LogPopup($"Resolved alt[{_altIndex}]=\"{alt}\" → resolved=\"{_resolvedLatex}\" (ambig zone closed)");
+            return true;
+        }
+
         public void EnterNavMode()
         {
             if (_navMode) return;
             _navMode = true;
+            // À l'entrée en nav (Down depuis Word), focus sur le premier choix
+            // d'ambiguïté s'il y en a, sinon sur la formule finale.
+            if (_alternatives.Count > 0)
+            {
+                _focusOnFinal = false;
+                _altIndex = 0;
+            }
+            else
+            {
+                _focusOnFinal = true;
+            }
+            UpdateHighlight();
             BeginAnimation(OpacityProperty,
                 new DoubleAnimation(NavOpacity, TimeSpan.FromMilliseconds(FadeMs / 2)));
         }
 
-        public void MoveSelection(int delta)
+        /// <summary>
+        /// Up/Down navigue ENTRE les zones (alts ↔ finale). Aux bords (Up
+        /// depuis les alts, Down depuis la finale), on sort du nav mode et
+        /// on retourne false → la touche pass-through à Word, le curseur
+        /// texte bouge normalement. Permet de quitter la popup en navigant
+        /// "au-delà".
+        /// </summary>
+        public bool MoveSelection(int delta)
         {
-            if (_list.Items.Count == 0) return;
-            var n = _list.Items.Count;
-            _list.SelectedIndex = (_list.SelectedIndex + delta + n) % n;
+            if (_alternatives.Count == 0) return false;
+            if (delta > 0)
+            {
+                // Down
+                if (!_focusOnFinal)
+                {
+                    _focusOnFinal = true;
+                    UpdateHighlight();
+                    return true;
+                }
+                // Down depuis finale → pass-through Word
+                ExitNavMode();
+                return false;
+            }
+            else
+            {
+                // Up
+                if (_focusOnFinal)
+                {
+                    _focusOnFinal = false;
+                    UpdateHighlight();
+                    return true;
+                }
+                // Up depuis alts → sortir et pass-through Word
+                ExitNavMode();
+                return false;
+            }
+        }
+
+        private void ExitNavMode()
+        {
+            if (!_navMode) return;
+            _navMode = false;
+            BeginAnimation(OpacityProperty,
+                new DoubleAnimation(DisplayOpacity, TimeSpan.FromMilliseconds(FadeMs / 2)));
+        }
+
+        /// <summary>
+        /// Left/Right navigue HORIZONTALEMENT dans les alternatives. N'a
+        /// d'effet que si focus est sur la zone alts (sinon ignoré, retourne
+        /// false). Retourne true si la touche est consommée par la popup.
+        /// </summary>
+        public bool MoveSelectionHorizontal(int delta)
+        {
+            if (_alternatives.Count == 0) return false;
+            if (_focusOnFinal) return false;
+            int next = _altIndex + delta;
+            if (next < 0) next = 0;
+            if (next >= _alternatives.Count) next = _alternatives.Count - 1;
+            _altIndex = next;
+            UpdateHighlight();
+            return true;
         }
 
         public void HidePopup()
         {
+            // Reset des résolutions et préférences de la session : la popup se
+            // ferme (commit, Esc, ou caret quitte la zone), nouveau span =
+            // nouvelles ambiguïtés à proposer fraîches.
+            _resolvedSubstitutions.Clear();
+            _rulePreferences.Clear();
             if (!IsVisible) return;
             var anim = new DoubleAnimation(0, TimeSpan.FromMilliseconds(FadeMs));
             anim.Completed += (_, __) =>
             {
-                // Si l'opacité est revenue à ~0 (pas interrompue par un Show
-                // entre temps), on cache vraiment la fenêtre.
                 if (Opacity <= 0.01)
                 {
                     Hide();
@@ -346,9 +511,6 @@ namespace MathCursor.UI
             BeginAnimation(OpacityProperty, anim);
         }
 
-        // Log dédié popup, partagé avec mathcursor.log (préfixe "popup").
-        // Utilisé pendant le debug du rendu — garde un témoin si plus tard on
-        // a besoin de tracer un autre symptôme visuel.
         private static void LogPopup(string message)
         {
             try

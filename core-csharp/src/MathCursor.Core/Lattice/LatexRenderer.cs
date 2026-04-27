@@ -71,6 +71,7 @@ namespace MathCursor.Core.Lattice
             if (b.Op == "<=") return $"{lhs} \\leq {rhs}";
             if (b.Op == ">=") return $"{lhs} \\geq {rhs}";
             if (b.Op == "!=" || b.Op == "<>") return $"{lhs} \\neq {rhs}";
+            if (b.Op == "//") return $"{lhs} \\parallel {rhs}";
             return $"{lhs}{b.Op}{rhs}";
         }
 
