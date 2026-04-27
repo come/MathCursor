@@ -64,9 +64,11 @@ namespace MathCursor.Host
         private int _lastZoneAbsEnd = -1;
         private string _lastZoneSource = "";
 
-        // État mode édition : popup alimentée par la source d'un OMath existant.
-        // Commit dans ce mode → REMPLACE l'OMath (pas d'insertion nouvelle).
+        // État mode édition : la popup _editPopup est affichée pour proposer
+        // « Revenir à la saisie initiale » sur l'OMath au caret. _editHandle
+        // identifie l'OMath en cours d'édition pour le revert action.
         private EquationHandle _editHandle;
+        private EditModePopupWindow _editPopup;
 
         // Position absolue de l'OMath actuellement en mode édition. Utilisé pour
         // ne PAS re-entrer en mode édition à chaque tick (5 Hz) tant que le caret
@@ -119,7 +121,9 @@ namespace MathCursor.Host
             try { if (_installed) _app.WindowActivate -= OnWindowActivate; } catch { }
             try { _pollTimer?.Stop(); } catch { }
             try { _popup?.Close(); } catch { }
+            try { _editPopup?.Close(); } catch { }
             _popup = null;
+            _editPopup = null;
             _pollTimer = null;
             _installed = false;
         }
@@ -130,7 +134,11 @@ namespace MathCursor.Host
         public void MoveSelection(int delta) => _popup?.MoveSelection(delta);
         public bool MoveSelectionHorizontal(int delta) => _popup?.MoveSelectionHorizontal(delta) == true;
         public void EnterNavMode() => _popup?.EnterNavMode();
-        public void HidePopup() => _popup?.HidePopup();
+        public void HidePopup()
+        {
+            _popup?.HidePopup();
+            _editPopup?.HidePopup();
+        }
 
         private void OnSelectionChange(Word.Selection sel) => CheckAndUpdate();
 
@@ -272,6 +280,7 @@ namespace MathCursor.Host
                 // Sortie propre du mode édition quand on quitte l'OMath
                 _editHandle = null;
                 _editingOMathStart = -1;
+                _editPopup?.HidePopup();
 
                 ParagraphRead paragraph;
                 int caretPos;
@@ -384,38 +393,98 @@ namespace MathCursor.Host
         }
 
         /// <summary>
-        /// Si l'OMath au caret est à nous (bookmark mcEq_...), on récupère la
-        /// source depuis la store et on repasse l'engine dessus pour présenter
-        /// les variantes. Popup déjà ouverte quand ça renvoie true.
+        /// Si l'OMath au caret est à nous (bookmark mcEq_...), on ouvre la
+        /// popup d'édition qui propose « Revenir à la saisie initiale ».
+        /// Cf. brief docs/dev/briefs/2026-04-27-edit-mode-revert-to-source.md.
+        /// Retourne true si la popup edit a été (ou était déjà) affichée pour
+        /// cet OMath, false si l'OMath n'est pas à nous.
         /// </summary>
         private bool TryEnterEditMode(Word.OMath om)
         {
             var handleId = FindOurHandleForOMath(om);
             if (handleId == null) return false;
 
-            StoredEquation stored;
-            try { stored = _store.RetrieveAsync(new EquationHandle(handleId)).GetAwaiter().GetResult(); }
-            catch (Exception ex) { LogDiag("store_retrieve_error: " + ex.Message); return false; }
-            if (stored == null || string.IsNullOrWhiteSpace(stored.Source))
+            // Cache la popup de suggestion si elle était ouverte — les deux
+            // popups ne doivent pas cohabiter.
+            HidePopup();
+
+            _editHandle = new EquationHandle(handleId);
+
+            if (_editPopup == null)
             {
-                LogDiag($"edit: bookmark {handleId} mais source introuvable en store");
-                return false;
+                _editPopup = new EditModePopupWindow();
+                _editPopup.RevertRequested += OnRevertRequested;
+            }
+
+            var pos = GetCaretScreenPosition();
+            _editPopup.ShowAt(pos.x, pos.y);
+            LogDiag($"edit mode: handle={handleId} popup shown at ({pos.x:F0},{pos.y:F0})");
+            return true;
+        }
+
+        /// <summary>
+        /// Action OUI de la popup edit : remplace l'OMath au caret par le
+        /// texte source brut, supprime l'entrée du store, repositionne le caret
+        /// en fin du texte inséré.
+        /// </summary>
+        private void OnRevertRequested()
+        {
+            var handle = _editHandle;
+            if (handle == null) { LogDiag("revert: no _editHandle, abort"); return; }
+
+            // Retrouver l'OMath au caret (peut avoir bougé entre l'ouverture
+            // de la popup et le clic).
+            var om = FindOMathAtCaret();
+            if (om == null) { LogDiag("revert: no OMath at caret, abort"); return; }
+
+            // Lire le source
+            StoredEquation stored;
+            try { stored = _store.RetrieveAsync(handle).GetAwaiter().GetResult(); }
+            catch (Exception ex) { LogDiag("revert_retrieve_error: " + ex.Message); return; }
+            if (stored == null || string.IsNullOrEmpty(stored.Source))
+            {
+                LogDiag($"revert: source introuvable pour handle {handle.Id}");
+                return;
             }
 
             string source = stored.Source;
-            AmbiguityResult result;
-            try { result = _engine.ConvertWithAmbiguity(source); }
-            catch (Exception ex) { LogDiag("edit_engine_error: " + ex.Message); return false; }
-            if (string.IsNullOrEmpty(result.TopLatex)) return false;
+            int omStart, omEnd;
+            try { omStart = om.Range.Start; omEnd = om.Range.End; }
+            catch (Exception ex) { LogDiag("revert_range_error: " + ex.Message); return; }
 
-            int omStart = om.Range.Start;
-            int omEnd = om.Range.End;
+            try
+            {
+                var doc = _app.ActiveDocument;
+                // Étendre le range pour inclure le bookmark mcEq_ s'il existe :
+                // le bookmark couvre l'OMath, on supprime tout d'un coup.
+                string bmName = BookmarkPrefix + handle.Id;
+                if (doc.Bookmarks.Exists(bmName))
+                {
+                    var bm = doc.Bookmarks[bmName];
+                    var bmRange = bm.Range;
+                    omStart = Math.Min(omStart, bmRange.Start);
+                    omEnd = Math.Max(omEnd, bmRange.End);
+                    try { bm.Delete(); } catch { }
+                }
 
-            _editHandle = new EquationHandle(handleId);
-            _lastZoneSource = source;
-            ShowPopup(result, omStart, omEnd, source.Length, "édit: " + source);
-            LogDiag($"edit mode: handle={handleId} source=\"{source}\" topLatex=\"{result.TopLatex}\"");
-            return true;
+                var range = doc.Range(omStart, omEnd);
+                range.Text = source;
+
+                // Caret en fin du texte inséré, exit math edit
+                int newEnd = omStart + source.Length;
+                _app.Selection.SetRange(newEnd, newEnd);
+            }
+            catch (Exception ex) { LogDiag("revert_replace_error: " + ex.Message); return; }
+
+            // Cleanup store
+            try { _store.RemoveAsync(handle).GetAwaiter().GetResult(); }
+            catch (Exception ex) { LogDiag("revert_store_remove_error: " + ex.Message); }
+
+            // Reset état édition
+            _editHandle = null;
+            _editingOMathStart = -1;
+            _editPopup?.HidePopup();
+            LogDiag($"revert: handle={handle.Id} OMath remplacé par source=\"{source}\"");
         }
 
         // Stopwords courts FR qui bornent la span du trigger manuel (Ctrl+Espace).

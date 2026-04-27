@@ -259,6 +259,7 @@
     <Compile Include="Host\Feedback\FeedbackSenderFactory.cs" />
     <Compile Include="UI\WpfMathAdapter.cs" />
     <Compile Include="UI\SuggestionPopupWindow.cs" />
+    <Compile Include="UI\EditModePopupWindow.cs" />
     <Compile Include="UI\FeedbackDialog.cs" />
     <Compile Include="Detection\DetectedZone.cs" />
     <Compile Include="Detection\MathNerDetector.cs" />
