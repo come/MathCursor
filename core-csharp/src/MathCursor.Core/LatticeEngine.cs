@@ -156,6 +156,11 @@ namespace MathCursor.Core
             {
                 switch (c)
                 {
+                    // Superscripts Unicode → ^N (EXPLICITE). L'utilisateur a
+                    // tapé un caractère superscript dédié, c'est un choix
+                    // typographique fort : pas d'ambiguïté avec un subscript.
+                    // Le Sup créé par le parser sera IsImplicit=false (^ explicit),
+                    // donc AlternativeGenerator ne proposera pas x_N comme alt.
                     case '⁰': sb.Append("^0"); break;
                     case '¹': sb.Append("^1"); break;
                     case '²': sb.Append("^2"); break;

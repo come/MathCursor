@@ -13,12 +13,17 @@ namespace MathCursor.Core.Tests.Lattice
 
         // ---- Pattern AB : 2 majuscules adjacentes en mult implicite ----
 
+        // Note : les tests AB / ABC passent par ConvertWithAmbiguity car les
+        // règles "séquence de majuscules" sont scannées sur le topLatex rendu
+        // (ScanUppercaseSequences), pas sur l'AST. Construire un AST à la main
+        // et appeler Generate ne déclenche plus ces règles.
+
         [Fact]
-        public void Two_uppercase_letters_yields_vec_droite_segment()
+        public void Two_uppercase_letters_yields_vec_droite_segment_via_engine()
         {
-            var ast = new Bin("*", true, true,
-                new Atom("ident", "A"), new Atom("ident", "B"));
-            var alts = AlternativeGenerator.Generate(ast);
+            var r = _engine.ConvertWithAmbiguity("AB");
+            Assert.NotNull(r.Spot);
+            var alts = r.Spot!.Alternatives;
             Assert.Equal(3, alts.Count);
             Assert.Contains("\\vec{AB}", alts);
             Assert.Contains("\\left(AB\\right)", alts);
@@ -26,49 +31,38 @@ namespace MathCursor.Core.Tests.Lattice
         }
 
         [Fact]
-        public void Two_lowercase_letters_yields_no_alternatives()
+        public void Two_lowercase_letters_yields_no_alternatives_via_engine()
         {
-            // ab n'est pas un objet géométrique nommé : pas d'alternative
-            var ast = new Bin("*", true, true,
-                new Atom("ident", "a"), new Atom("ident", "b"));
-            Assert.Empty(AlternativeGenerator.Generate(ast));
-        }
-
-        [Fact]
-        public void Mixed_case_yields_no_alternatives()
-        {
-            // Aa n'est pas un cas géométrique standard
-            var ast = new Bin("*", true, true,
-                new Atom("ident", "A"), new Atom("ident", "b"));
-            Assert.Empty(AlternativeGenerator.Generate(ast));
-        }
-
-        [Fact]
-        public void Multi_char_first_yields_no_alternatives()
-        {
-            // "ABC" ou "Ab" ne match pas (longueur > 1)
-            var ast = new Bin("*", true, true,
-                new Atom("ident", "AB"), new Atom("ident", "C"));
-            Assert.Empty(AlternativeGenerator.Generate(ast));
+            var r = _engine.ConvertWithAmbiguity("ab");
+            Assert.Null(r.Spot);
         }
 
         // ---- Pattern x2 → Sup → indice alternatif ----
 
         [Fact]
-        public void Sup_letter_number_yields_subscript_alternative()
+        public void Sup_implicit_letter_number_yields_subscript_alternative()
         {
-            // x² → alternative x_2
-            var ast = new Sup(new Atom("ident", "x"), new Atom("number", "2"));
+            // Sup IMPLICITE (issu de la règle Number-tight, ex: x2) → ambig x_2
+            var ast = new Sup(new Atom("ident", "x"), new Atom("number", "2"), isImplicit: true);
             var alts = AlternativeGenerator.Generate(ast);
             Assert.Single(alts);
             Assert.Equal("x_{2}", alts[0]);
         }
 
         [Fact]
+        public void Sup_explicit_no_ambig()
+        {
+            // Sup EXPLICIT (^ tapé par l'utilisateur, ex: x^2) → PAS d'ambig.
+            // L'utilisateur a déjà tranché en mettant le ^.
+            var ast = new Sup(new Atom("ident", "x"), new Atom("number", "2"), isImplicit: false);
+            Assert.Empty(AlternativeGenerator.Generate(ast));
+        }
+
+        [Fact]
         public void Sup_multichar_letter_no_alternative()
         {
             // "abc²" n'a pas de version en indice (pas une variable indexée)
-            var ast = new Sup(new Atom("ident", "abc"), new Atom("number", "2"));
+            var ast = new Sup(new Atom("ident", "abc"), new Atom("number", "2"), isImplicit: true);
             Assert.Empty(AlternativeGenerator.Generate(ast));
         }
 
@@ -76,33 +70,47 @@ namespace MathCursor.Core.Tests.Lattice
         public void Sup_letter_non_number_no_alternative()
         {
             // x^n n'est pas un cas indice (l'exposant n'est pas un chiffre)
-            var ast = new Sup(new Atom("ident", "x"), new Atom("ident", "n"));
+            var ast = new Sup(new Atom("ident", "x"), new Atom("ident", "n"), isImplicit: true);
             Assert.Empty(AlternativeGenerator.Generate(ast));
         }
 
         // ---- Intégration avec LatticeEngine ----
 
         [Fact]
-        public void Engine_returns_AB_with_3_alternatives()
+        public void Engine_returns_AB_with_3_alternatives_via_ambiguity()
         {
+            // L'API legacy `Convert` (IReadOnlyList<LatexSuggestion>) ne reçoit
+            // plus les alts AB depuis que la détection est string-based dans
+            // ConvertWithAmbiguity. Test équivalent via la nouvelle API.
             var engine = new MathCursor.Core.LatticeEngine();
-            var s = engine.Convert("AB");
-            Assert.Equal(4, s.Count);
-            Assert.Equal("AB", s[0].Latex); // top-1
-            var alts = s.Skip(1).Select(x => x.Latex).ToList();
-            Assert.Contains("\\vec{AB}", alts);
-            Assert.Contains("\\left(AB\\right)", alts);
-            Assert.Contains("\\left[AB\\right]", alts);
+            var r = engine.ConvertWithAmbiguity("AB");
+            Assert.NotNull(r.Spot);
+            Assert.Equal("AB", r.TopLatex);
+            Assert.Equal(3, r.Spot!.Alternatives.Count);
+            Assert.Contains("\\vec{AB}", r.Spot.Alternatives);
+            Assert.Contains("\\left(AB\\right)", r.Spot.Alternatives);
+            Assert.Contains("\\left[AB\\right]", r.Spot.Alternatives);
         }
 
         [Fact]
-        public void Engine_returns_x2_with_subscript_alternative()
+        public void Engine_returns_x2_with_subscript_alternative_via_ambiguity()
         {
+            // x2 = Sup IMPLICIT (Number-tight) → ambig x_2 proposée
             var engine = new MathCursor.Core.LatticeEngine();
-            var s = engine.Convert("x2");
-            Assert.Equal(2, s.Count);
-            Assert.Equal("x^{2}", s[0].Latex);
-            Assert.Equal("x_{2}", s[1].Latex);
+            var r = engine.ConvertWithAmbiguity("x2");
+            Assert.Equal("x^{2}", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Contains("x_{2}", r.Spot!.Alternatives);
+        }
+
+        [Fact]
+        public void Engine_x_caret_2_explicit_no_ambiguity()
+        {
+            // x^2 = Sup EXPLICIT → PAS d'ambig (régression user 2026-04-28).
+            var engine = new MathCursor.Core.LatticeEngine();
+            var r = engine.ConvertWithAmbiguity("x^2");
+            Assert.Equal("x^{2}", r.TopLatex);
+            Assert.Null(r.Spot);
         }
 
         // ---- FindRightmost : ambiguïté la plus à droite (phase 5b2) ----
@@ -259,13 +267,13 @@ namespace MathCursor.Core.Tests.Lattice
         }
 
         [Fact]
-        public void Unicode_superscript_normalized_then_ambig()
+        public void Unicode_superscript_is_explicit_no_ambig()
         {
-            // x² (Unicode) → normalisé en x^2 → même comportement
+            // x² (Unicode super-2) = EXPLICITE typographique. Préprocess en
+            // x^2 → Sup explicit → PAS d'ambig avec x_2 (cf. user 2026-04-28).
             var r = _engine.ConvertWithAmbiguity("x²");
             Assert.Equal("x^{2}", r.TopLatex);
-            Assert.NotNull(r.Spot);
-            Assert.Contains("x_{2}", r.Spot!.Alternatives);
+            Assert.Null(r.Spot);
         }
 
         [Fact]

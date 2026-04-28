@@ -114,17 +114,15 @@ namespace MathCursor.Core.Lattice
         {
             if (topAst == null) return new AmbiguityResult(topLatex, null, null, null);
 
-            var (subAst, spot) = TraverseRightmost(topAst);
-            // Collecte aussi TOUS les matches pour permettre la résolution en
-            // cascade côté popup (cf. AmbiguityMatch).
+            // Walk pré-ordre right-first qui collecte TOUS les matches valides
+            // (= entourés de word boundaries dans topLatex). Le rightmost est
+            // le PREMIER ajouté (parcours right-first), retourné comme Spot
+            // principal. Les autres servent à la cascade côté popup.
             var allMatches = CollectAllMatches(topAst, topLatex);
-
-            if (spot == null) return new AmbiguityResult(topLatex, null, null, null, allMatches);
-
-            int idx = topLatex.LastIndexOf(spot.DefaultLatex, System.StringComparison.Ordinal);
-            if (idx < 0)
-                return new AmbiguityResult(topLatex, spot, null, null, allMatches);
-            return new AmbiguityResult(topLatex, spot, idx, idx + spot.DefaultLatex.Length, allMatches);
+            if (allMatches.Count == 0)
+                return new AmbiguityResult(topLatex, null, null, null, allMatches);
+            var rightmost = allMatches[0];
+            return new AmbiguityResult(topLatex, rightmost.Spot, rightmost.Start, rightmost.End, allMatches);
         }
 
         /// <summary>
@@ -136,11 +134,79 @@ namespace MathCursor.Core.Lattice
         private static IReadOnlyList<AmbiguityMatch> CollectAllMatches(AstNode topAst, string topLatex)
         {
             var matches = new List<AmbiguityMatch>();
-            // On parcourt en s'assurant de ne pas substituer 2x le même range :
-            // chaque match consomme sa portion via TrackingFromRight.
             var consumed = new bool[topLatex.Length];
+            // 1) Patterns AST-based (Sup d'une lettre par un nombre, etc.)
             CollectAllMatchesRec(topAst, topLatex, matches, consumed);
+            // 2) Patterns STRING-based : séquences de majuscules adjacentes dans
+            //    topLatex. On scanne en passant par-dessus l'AST parce que
+            //    l'arbre gauche-associatif ne regroupe pas toujours C et D
+            //    ensemble (ex: AB*CD donne ((A*B)*C)*D, donc CD n'est jamais
+            //    un sous-Bin direct). Le scan string capture toutes les
+            //    séquences majuscules quelle que soit leur structure AST.
+            ScanUppercaseSequences(topLatex, matches, consumed);
+            // Tri par position décroissante : le rightmost reste matches[0].
+            matches.Sort((a, b) => b.Start.CompareTo(a.Start));
             return matches;
+        }
+
+        /// <summary>
+        /// Parcourt <paramref name="topLatex"/> et émet un match pour chaque
+        /// séquence de 2 ou 3 majuscules consécutives entourées de non-lettres
+        /// (word boundary). Évite les positions déjà consommées par d'autres
+        /// matches AST-based.
+        /// </summary>
+        private static void ScanUppercaseSequences(string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            int i = 0;
+            while (i < topLatex.Length)
+            {
+                if (!char.IsUpper(topLatex[i]) || consumed[i]) { i++; continue; }
+                // Word boundary left
+                if (i > 0 && char.IsLetter(topLatex[i - 1])) { i++; continue; }
+                int j = i;
+                while (j < topLatex.Length && char.IsUpper(topLatex[j]) && !consumed[j]) j++;
+                int len = j - i;
+                // Word boundary right (if more letters follow, c'est un mot plus
+                // long, on n'émet aucun match — ex: ABCD ne propose ni AB ni ABC)
+                if (j < topLatex.Length && char.IsLetter(topLatex[j])) { i = j; continue; }
+
+                AmbiguitySpot? spot = null;
+                if (len == 2)
+                {
+                    var pair = topLatex.Substring(i, 2);
+                    spot = new AmbiguitySpot(
+                        ruleId: RuleTwoUppercase,
+                        defaultLatex: pair,
+                        alternatives: new[]
+                        {
+                            $"\\vec{{{pair}}}",
+                            $"\\left({pair}\\right)",
+                            $"\\left[{pair}\\right]",
+                        });
+                }
+                else if (len == 3)
+                {
+                    var triplet = topLatex.Substring(i, 3);
+                    spot = new AmbiguitySpot(
+                        ruleId: RuleThreeUppercase,
+                        defaultLatex: triplet,
+                        alternatives: new[]
+                        {
+                            $"\\widehat{{{triplet}}}",
+                            $"\\triangle {triplet}",
+                        });
+                }
+                // 4+ majuscules : on n'émet rien (pas de pattern géométrique
+                // standard pour 4 lettres, et l'utilisateur n'a probablement
+                // pas tapé ça sciemment).
+                if (spot != null)
+                {
+                    for (int k = i; k < j; k++) consumed[k] = true;
+                    output.Add(new AmbiguityMatch(spot, i, j));
+                }
+                i = j;
+            }
         }
 
         private static void CollectAllMatchesRec(AstNode node, string topLatex,
@@ -149,23 +215,41 @@ namespace MathCursor.Core.Lattice
             var spot = MatchAmbiguity(node);
             if (spot != null)
             {
-                // Cherche la POSITION DROITE non-consommée pour éviter qu'un
-                // match avale la position d'un autre. Ex: pour AB+BC on veut
-                // BC trouvé à pos[3..5], pas à pos[0..2] = AB.
-                int idx = LastIndexOfFree(topLatex, spot.DefaultLatex, consumed);
+                // Cherche la position du defaultLatex dans topLatex avec :
+                //  - Position non-consommée par un match précédent (sinon AB
+                //    et BC dans "AB+BC" pointeraient au même endroit).
+                //  - Word boundary : entouré de non-lettres (ou bord de
+                //    string). Sans ça, "ABC" matcherait dans "ABCD" et
+                //    "AB" matcherait dans "ABC" — le pattern serait juste
+                //    un sous-string d'un mot plus long, pas un objet
+                //    géométrique distinct.
+                int idx = LastIndexOfWordBoundary(topLatex, spot.DefaultLatex, consumed);
                 if (idx >= 0)
                 {
                     int end = idx + spot.DefaultLatex.Length;
                     for (int i = idx; i < end; i++) consumed[i] = true;
                     output.Add(new AmbiguityMatch(spot, idx, end));
+                    return; // match validé, on ne descend pas plus profond
                 }
-                return; // pattern parent prioritaire, ne descend pas dans enfants
+                // Pas de boundary trouvée : ce match parent est rejeté
+                // (probablement sub-string d'un mot plus long). On descend
+                // QUAND MÊME pour voir si un sous-AST plus petit matche
+                // ailleurs dans la formule.
             }
             foreach (var child in GetChildrenRightFirst(node))
                 CollectAllMatchesRec(child, topLatex, output, consumed);
         }
 
-        private static int LastIndexOfFree(string text, string needle, bool[] consumed)
+        /// <summary>
+        /// Cherche la dernière occurrence de <paramref name="needle"/> dans
+        /// <paramref name="text"/> qui satisfait :
+        ///  1) toutes ses positions [idx..idx+len) sont libres dans consumed
+        ///  2) word boundary : le caractère AVANT et APRÈS n'est pas une lettre
+        ///     (ou bord de chaîne). Empêche le match d'un sub-string de mot
+        ///     plus long (ex: AB dans ABCD).
+        /// Retourne -1 si aucune occurrence valide.
+        /// </summary>
+        private static int LastIndexOfWordBoundary(string text, string needle, bool[] consumed)
         {
             int idx = text.LastIndexOf(needle, System.StringComparison.Ordinal);
             while (idx >= 0)
@@ -173,7 +257,13 @@ namespace MathCursor.Core.Lattice
                 bool free = true;
                 for (int i = idx; i < idx + needle.Length; i++)
                     if (consumed[i]) { free = false; break; }
-                if (free) return idx;
+                if (free)
+                {
+                    bool boundLeft = idx == 0 || !char.IsLetter(text[idx - 1]);
+                    bool boundRight = idx + needle.Length == text.Length
+                                   || !char.IsLetter(text[idx + needle.Length]);
+                    if (boundLeft && boundRight) return idx;
+                }
                 if (idx == 0) return -1;
                 idx = text.LastIndexOf(needle, idx - 1, System.StringComparison.Ordinal);
             }
@@ -217,53 +307,20 @@ namespace MathCursor.Core.Lattice
         // ----------------- Règles de matching -----------------
 
         /// <summary>
-        /// Teste si un nœud est ambigu et renvoie ses alternatives + le LaTeX
-        /// par défaut tel qu'il apparaîtra dans le top-1 (= le rendu standard).
+        /// Teste si un nœud AST est ambigu (patterns structurels uniquement).
+        /// Les patterns string-based (séquences de majuscules AB/ABC pour les
+        /// objets géométriques) sont gérés par <see cref="ScanUppercaseSequences"/>
+        /// qui scanne directement le topLatex rendu — l'AST gauche-associatif
+        /// ne regroupe pas toujours les lettres ensemble (ex: AB*CD donne
+        /// ((A*B)*C)*D, donc CD n'est jamais un sous-Bin direct).
         /// </summary>
         private static AmbiguitySpot? MatchAmbiguity(AstNode node)
         {
-            // Règle 1a : trois majuscules 1-char en mult implicite tight (ABC)
-            // → objet géométrique à 3 sommets. AST = Bin(*, Bin(*, A, B), C)
-            // (gauche-associatif). Testée AVANT la règle 2-uppercase pour
-            // éviter qu'on propose l'ambig partielle sur AB seul.
-            if (node is Bin outer && outer.Op == "*" && outer.Implicit && outer.Tight
-                && outer.Lhs is Bin inner && inner.Op == "*" && inner.Implicit && inner.Tight
-                && inner.Lhs is Atom a1 && a1.Kind == "ident" && a1.Value.Length == 1 && char.IsUpper(a1.Value[0])
-                && inner.Rhs is Atom a2 && a2.Kind == "ident" && a2.Value.Length == 1 && char.IsUpper(a2.Value[0])
-                && outer.Rhs is Atom a3 && a3.Kind == "ident" && a3.Value.Length == 1 && char.IsUpper(a3.Value[0]))
-            {
-                var triplet = a1.Value + a2.Value + a3.Value;
-                return new AmbiguitySpot(
-                    ruleId: RuleThreeUppercase,
-                    defaultLatex: triplet,
-                    alternatives: new[]
-                    {
-                        $"\\widehat{{{triplet}}}",   // angle ABC (sommet B)
-                        $"\\triangle {triplet}",     // triangle ABC
-                    });
-            }
-
-            // Règle 1 : deux majuscules 1-char en mult implicite tight → objet
-            // géométrique nommé.
-            if (node is Bin b && b.Op == "*" && b.Implicit && b.Tight
-                && b.Lhs is Atom lhs && lhs.Kind == "ident" && lhs.Value.Length == 1
-                && b.Rhs is Atom rhs && rhs.Kind == "ident" && rhs.Value.Length == 1
-                && char.IsUpper(lhs.Value[0]) && char.IsUpper(rhs.Value[0]))
-            {
-                var pair = lhs.Value + rhs.Value;
-                return new AmbiguitySpot(
-                    ruleId: RuleTwoUppercase,
-                    defaultLatex: pair,
-                    alternatives: new[]
-                    {
-                        $"\\vec{{{pair}}}",
-                        $"\\left({pair}\\right)",
-                        $"\\left[{pair}\\right]",
-                    });
-            }
-
-            // Règle 2 : Sup d'une lettre 1-char par un Number → alternative subscript.
-            if (node is Sup s
+            // Règle 2 : Sup d'une lettre 1-char par un Number, MAIS seulement
+            // si le Sup est IMPLICITE (issu de la règle Number-tight, ex: x2).
+            // Si l'utilisateur a tapé `x^2` explicitement, IsImplicit=false →
+            // pas d'ambig (l'utilisateur a déjà tranché en mettant le ^).
+            if (node is Sup s && s.IsImplicit
                 && s.Base is Atom sb && sb.Kind == "ident" && sb.Value.Length == 1
                 && s.Exp is Atom se && se.Kind == "number")
             {

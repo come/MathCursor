@@ -53,12 +53,22 @@ namespace MathCursor.Core.Lattice.Ast
         }
     }
 
-    /// <summary>Exposant : base^exp.</summary>
+    /// <summary>Exposant : base^exp.
+    /// <para><see cref="IsImplicit"/> = true quand le Sup est issu d'une règle
+    /// auto (x2 → x², cos2(x) → cos²(x), 0+ → 0⁺). false quand l'utilisateur
+    /// a tapé `^` explicitement. Sert à distinguer côté AlternativeGenerator :
+    /// l'ambiguïté x² vs x_2 ne se pose QUE pour x2 implicite, pas pour x^2
+    /// où l'utilisateur a déjà tranché.</para>
+    /// </summary>
     public sealed class Sup : AstNode
     {
         public AstNode Base { get; }
         public AstNode Exp { get; }
-        public Sup(AstNode @base, AstNode exp) { Base = @base; Exp = exp; }
+        public bool IsImplicit { get; }
+        public Sup(AstNode @base, AstNode exp, bool isImplicit = false)
+        {
+            Base = @base; Exp = exp; IsImplicit = isImplicit;
+        }
     }
 
     /// <summary>Indice : base_idx.</summary>

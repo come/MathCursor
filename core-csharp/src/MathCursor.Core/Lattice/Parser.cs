@@ -190,7 +190,10 @@ namespace MathCursor.Core.Lattice
                     && !(@base is Atom a && a.Kind == "number"))
                 {
                     Consume();
-                    @base = new Sup(@base, new Atom("number", numTok.Value));
+                    // isImplicit: true → la règle Number-tight a déclenché ce
+                    // Sup, l'utilisateur n'a pas tapé `^` explicit. L'ambiguïté
+                    // x² vs x_2 sera proposée par AlternativeGenerator.
+                    @base = new Sup(@base, new Atom("number", numTok.Value), isImplicit: true);
                     continue;
                 }
                 // Notation limite à droite/gauche : "0+", "0-" collés au number,
@@ -205,7 +208,7 @@ namespace MathCursor.Core.Lattice
                     && @base is Atom bA && bA.Kind == "number")
                 {
                     Consume();
-                    @base = new Sup(@base, new Atom("ident", sigTok.Value));
+                    @base = new Sup(@base, new Atom("ident", sigTok.Value), isImplicit: true);
                     continue;
                 }
                 break;
@@ -249,7 +252,7 @@ namespace MathCursor.Core.Lattice
                     && bin.Lhs is Atom lhsAtom && lhsAtom.Kind == "number"
                     && bin.Rhs is Group)
                 {
-                    return new Sup(new Func(t.Value, bin.Rhs), bin.Lhs);
+                    return new Sup(new Func(t.Value, bin.Rhs), bin.Lhs, isImplicit: true);
                 }
                 return new Func(t.Value, arg);
             }
