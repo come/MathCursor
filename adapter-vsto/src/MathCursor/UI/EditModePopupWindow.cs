@@ -9,26 +9,19 @@ using System.Windows.Media.Animation;
 namespace MathCursor.UI
 {
     /// <summary>
-    /// Popup d'édition affichée quand le caret entre dans un OMath produit
-    /// par MathCursor (bookmark mcEq_… présent + handle dans l'EquationStore).
-    /// Propose une seule action utile : « Revenir à la saisie initiale », qui
-    /// remplace l'OMath par le texte source brut. L'élève peut alors corriger
-    /// et reconvertir.
+    /// Popup affichée sous un OMath produit par MathCursor (bookmark mcEq_… +
+    /// handle dans l'EquationStore). Une seule action utile :
+    /// « Revenir à la saisie initiale ».
     ///
-    /// Si l'utilisateur veut éditer l'OMath caractère par caractère (édition
-    /// math native Word), il ferme la popup (Esc / Annuler) et utilise les
-    /// contrôles natifs Word — la popup est une option, pas une obligation.
-    ///
-    /// Cf. brief docs/dev/briefs/2026-04-27-edit-mode-revert-to-source.md.
+    /// Click souris UNIQUEMENT (pas de nav clavier) — les flèches et Enter
+    /// restent interceptées par Word pour naviguer dans l'OMath natif. Esc
+    /// ferme la popup. Style cohérent avec <see cref="SuggestionPopupWindow"/>.
     /// </summary>
     public sealed class EditModePopupWindow : Window
     {
-        private const double DisplayOpacity = 0.95;
+        private const double DisplayOpacity = 0.92;
         private const int FadeMs = 150;
 
-        /// <summary>Déclenché quand l'utilisateur clique « Revenir à la saisie
-        /// initiale ». L'abonné (SuggestionService) fait le remplacement Word
-        /// + cleanup du store.</summary>
         public event Action RevertRequested;
 
         public EditModePopupWindow()
@@ -36,9 +29,9 @@ namespace MathCursor.UI
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.NoResize;
             ShowInTaskbar = false;
-            ShowActivated = false; // ne prend pas le focus, Word reste actif
+            ShowActivated = false;
             Topmost = true;
-            Width = 260;
+            Width = 220;
             SizeToContent = SizeToContent.Height;
             Background = Brushes.White;
             AllowsTransparency = true;
@@ -51,46 +44,26 @@ namespace MathCursor.UI
                 Background = Brushes.White,
             };
 
-            var stack = new StackPanel { Margin = new Thickness(12, 10, 12, 10) };
-
-            stack.Children.Add(new TextBlock
+            var actionRow = new Border
             {
-                Text = "Modifier cette formule ?",
+                Padding = new Thickness(10, 8, 10, 8),
+                Background = Brushes.White,
+                Cursor = System.Windows.Input.Cursors.Hand,
+            };
+            actionRow.Child = new TextBlock
+            {
+                Text = "Revenir à la saisie initiale",
                 FontSize = 13,
-                FontWeight = FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(Color.FromRgb(40, 40, 40)),
-                Margin = new Thickness(0, 0, 0, 8),
-            });
-
-            var revertBtn = new Button
-            {
-                Content = "Revenir à la saisie initiale",
-                Padding = new Thickness(10, 5, 10, 5),
-                Margin = new Thickness(0, 0, 0, 4),
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                Background = new SolidColorBrush(Color.FromRgb(80, 130, 200)),
-                Foreground = Brushes.White,
-                BorderThickness = new Thickness(0),
-                Cursor = System.Windows.Input.Cursors.Hand,
+                VerticalAlignment = VerticalAlignment.Center,
             };
-            revertBtn.Click += (_, __) => RevertRequested?.Invoke();
-            stack.Children.Add(revertBtn);
+            actionRow.MouseEnter += (_, __) =>
+                actionRow.Background = new SolidColorBrush(Color.FromRgb(220, 235, 255));
+            actionRow.MouseLeave += (_, __) =>
+                actionRow.Background = Brushes.White;
+            actionRow.MouseLeftButtonUp += (_, __) => RevertRequested?.Invoke();
 
-            var cancelBtn = new Button
-            {
-                Content = "Annuler",
-                Padding = new Thickness(10, 4, 10, 4),
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                Background = Brushes.Transparent,
-                Foreground = new SolidColorBrush(Color.FromRgb(100, 100, 100)),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(200, 200, 200)),
-                BorderThickness = new Thickness(1),
-                Cursor = System.Windows.Input.Cursors.Hand,
-            };
-            cancelBtn.Click += (_, __) => HidePopup();
-            stack.Children.Add(cancelBtn);
-
-            border.Child = stack;
+            border.Child = actionRow;
             Content = border;
 
             SourceInitialized += (_, _) =>
@@ -101,11 +74,22 @@ namespace MathCursor.UI
             };
         }
 
-        public void ShowAt(double screenX, double screenY)
+        /// <summary>
+        /// Affiche à la position (X, Y) en DIP. <paramref name="alignRight"/>
+        /// signifie : X est la coord du bord DROIT de la popup (alignée avec
+        /// la droite de la boîte OMath par exemple), pas le bord gauche.
+        /// </summary>
+        public void ShowAt(double x, double y, bool alignRight)
         {
-            Left = screenX;
-            Top = screenY;
+            // SizeToContent rend ActualWidth disponible après Show ; on calcule
+            // la position après show pour avoir la vraie largeur si on aligne
+            // à droite.
             if (!IsVisible) Show();
+            UpdateLayout();
+            double left = alignRight ? x - ActualWidth : x;
+            if (left < 0) left = 0;
+            Left = left;
+            Top = y;
             BeginAnimation(OpacityProperty,
                 new DoubleAnimation(DisplayOpacity, TimeSpan.FromMilliseconds(FadeMs)));
         }
@@ -126,7 +110,7 @@ namespace MathCursor.UI
             BeginAnimation(OpacityProperty, anim);
         }
 
-        // --- Win32 pour WS_EX_NOACTIVATE / WS_EX_TOOLWINDOW ---
+        // --- Win32 ---
         private const int GWL_EXSTYLE = -20;
         private const int WS_EX_NOACTIVATE = 0x08000000;
         private const int WS_EX_TOOLWINDOW = 0x00000080;

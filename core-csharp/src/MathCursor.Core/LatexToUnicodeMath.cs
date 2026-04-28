@@ -297,6 +297,12 @@ namespace MathCursor.Core
                 // Holes (slots manquants). Word OMath BuildUp ne reconnaît pas
                 // \square en commande, mais affiche □ (U+25A1) en glyphe direct.
                 new KeyValuePair<string, string>("\\square", "□"),
+                // // (parallèle oblique en notation française) : Word interprète
+                // deux slashes successifs comme deux divisions consécutives →
+                // fractions imbriquées vides. On bascule sur le caractère
+                // Unicode ⫽ (U+2AFD DOUBLE SOLIDUS OPERATOR) qui est un opérateur
+                // math reconnu et rendu en barres obliques.
+                new KeyValuePair<string, string>("//", "⫽"),
                 new KeyValuePair<string, string>("\\parallel", "∥"),
                 new KeyValuePair<string, string>("\\coloneqq", "≔"),
                 new KeyValuePair<string, string>("\\subseteq", "⊆"),

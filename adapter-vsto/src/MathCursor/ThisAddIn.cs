@@ -123,10 +123,12 @@ namespace MathCursor
             return true; // consomme la touche, évite l'IME/compose de Word
         }
 
-        // Esc : cache la popup. Seul handler clavier actif en mode validation.
+        // Esc : cache la popup (suggestion OU édition). En mode édition d'OMath,
+        // les flèches restent à Word pour la nav math native — seul Esc est
+        // intercepté pour fermer la popup edit.
         private bool HandleEscapePressed()
         {
-            if (_suggestions?.IsPopupVisible == true)
+            if (_suggestions?.IsAnyPopupVisible == true)
             {
                 _suggestions.HidePopup();
                 return true;

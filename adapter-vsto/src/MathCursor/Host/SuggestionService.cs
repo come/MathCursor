@@ -70,10 +70,22 @@ namespace MathCursor.Host
         private EquationHandle _editHandle;
         private EditModePopupWindow _editPopup;
 
-        // Position absolue de l'OMath actuellement en mode édition. Utilisé pour
-        // ne PAS re-entrer en mode édition à chaque tick (5 Hz) tant que le caret
-        // reste dans le même OMath. -1 = pas en édition.
+        // ANTI-SPAM POPUP — modèle commun aux 2 popups (suggestion et édition) :
+        // une fois qu'une popup a été affichée pour une zone donnée, on retient
+        // l'identifiant de cette zone. Tant que le caret reste dans la MÊME
+        // zone, on ne re-spawn pas la popup au tick suivant (200 ms = 5 Hz).
+        // Le flag est reset uniquement quand le caret QUITTE la zone — Esc
+        // n'efface pas le flag, donc la popup ne réapparaît pas tant qu'on
+        // n'est pas sorti et revenu.
+        //
+        //  - _editingOMathStart : start position de l'OMath sous le caret
+        //    (mode édition). -1 = pas dans un OMath traité.
+        //  - _dismissedZoneStart/End : zone NER pour laquelle on a déjà
+        //    affiché (ou que l'utilisateur a fermée par Esc) la popup
+        //    suggestion. -1 = aucune zone bloquée.
         private int _editingOMathStart = -1;
+        private int _dismissedZoneStart = -1;
+        private int _dismissedZoneEnd = -1;
 
         // Cooldown post-commit : après une insertion, le caret peut rester
         // momentanément DANS l'OMath créé (NudgeCursorOutOfMath n'est pas
@@ -128,15 +140,38 @@ namespace MathCursor.Host
             _installed = false;
         }
 
-        public bool IsPopupVisible => _popup != null && _popup.IsVisible;
-        public bool IsNavMode => _popup != null && _popup.IsNavMode;
+        // IsPopupVisible ne couvre QUE la popup de suggestion (clavier
+        // intercepté pour nav). En mode édition d'OMath, les flèches et Enter
+        // sont laissées à Word pour la nav math native — la popup edit se
+        // contente d'un click souris pour valider l'action revert.
+        public bool IsPopupVisible => (_popup?.IsVisible == true);
+        public bool IsEditPopupVisible => (_editPopup?.IsVisible == true);
+        // Pour Esc : ferme l'une ou l'autre.
+        public bool IsAnyPopupVisible => IsPopupVisible || IsEditPopupVisible;
+        public bool IsNavMode => (_popup?.IsNavMode == true);
 
         public void MoveSelection(int delta) => _popup?.MoveSelection(delta);
-        public bool MoveSelectionHorizontal(int delta) => _popup?.MoveSelectionHorizontal(delta) == true;
+        public bool MoveSelectionHorizontal(int delta)
+            => _popup?.MoveSelectionHorizontal(delta) == true;
         public void EnterNavMode() => _popup?.EnterNavMode();
         public void HidePopup()
         {
-            _popup?.HidePopup();
+            // Hide explicite (Esc / commit / sortie zone) → reset des caches
+            // de résolution et de préférences de règles dans la popup.
+            _popup?.HidePopup(resetCaches: true);
+            _editPopup?.HidePopup();
+        }
+
+        /// <summary>
+        /// Hide « transient » : NER ne détecte temporairement pas la zone
+        /// (ex: pendant la frappe entre deux caractères), mais on ne veut pas
+        /// reset les choix d'ambiguïté de l'utilisateur. Au prochain tick où
+        /// la zone redevient détectable, les substitutions précédemment
+        /// validées s'appliqueront à nouveau.
+        /// </summary>
+        private void HidePopupTransient()
+        {
+            _popup?.HidePopup(resetCaches: false);
             _editPopup?.HidePopup();
         }
 
@@ -265,16 +300,18 @@ namespace MathCursor.Host
                         HidePopup();
                         return;
                     }
-                    // Si on est déjà en mode édition pour CET OMath, ne pas
-                    // re-relancer l'engine à chaque tick (sinon spam 5 Hz).
+                    // Si on a DÉJÀ géré cet OMath (popup affichée OU dismissée
+                    // par l'utilisateur via Esc), on ne re-spawn pas. Le flag
+                    // _editingOMathStart marque "OMath traité" — il ne sera
+                    // remis à -1 que quand le caret QUITTE cet OMath.
                     int omStart = -1;
                     try { omStart = omAtCaret.Range.Start; } catch { }
-                    if (_editingOMathStart == omStart && IsPopupVisible)
-                        return;
+                    if (_editingOMathStart == omStart) return;
 
                     var ok = TryEnterEditMode(omAtCaret);
-                    if (ok) _editingOMathStart = omStart;
-                    else HidePopup();
+                    // On marque l'OMath comme traité dès qu'on a tenté d'ouvrir,
+                    // même en cas d'échec (pas d'OMath à nous → pas de re-tentative).
+                    _editingOMathStart = omStart;
                     return;
                 }
                 // Sortie propre du mode édition quand on quitte l'OMath
@@ -305,7 +342,7 @@ namespace MathCursor.Host
 
                 if (string.IsNullOrWhiteSpace(paragraphText))
                 {
-                    HidePopup();
+                    HidePopupTransient();
                     return;
                 }
 
@@ -343,26 +380,42 @@ namespace MathCursor.Host
         {
             if (zones == null || zones.Count == 0)
             {
-                HidePopup();
+                HidePopupTransient();
                 return;
             }
 
-            // On n'affiche que la zone la plus proche du curseur, et uniquement
-            // si le curseur est DANS la zone ou directement collé à un bord
-            // (touche la frontière). Sinon → rien.
+            // On n'affiche que la zone la plus proche du curseur. Tolérance :
+            // si le caret est juste après la zone NER avec uniquement du
+            // whitespace entre, on étend la zone jusqu'au caret — mais
+            // SEULEMENT si la zone le justifie (cf. ShouldExtendZoneForward).
+            // Sinon (formule complète sans slot vacant, dernière partie pas
+            // un opérateur en attente d'opérande), on ferme.
             var target = PickNearestZone(zones, caretInParagraph, out int dist);
             LogDiag($"pick caret={caretInParagraph} target={(target == null ? "null" : target.ToString())} dist={dist}");
-            if (target == null || dist > 0)
+            if (target == null) { HidePopupTransient(); return; }
+            if (dist > 0)
             {
-                HidePopup();
-                return;
+                if (!ShouldExtendZoneForward(target))
+                {
+                    LogDiag($"hide_reason=zone_complete_no_extend (target end='{target.Text}')");
+                    HidePopupTransient();
+                    return;
+                }
+                target = TryExtendForwardWhitespace(_lastParagraph, target, caretInParagraph);
+                if (target == null || (caretInParagraph - target.End) > 0)
+                {
+                    LogDiag("hide_reason=caret_still_outside_after_forward_extend");
+                    HidePopupTransient();
+                    return;
+                }
+                LogDiag($"forward_extended target={target}");
             }
 
             // Le NER rate parfois des mots-clés math en début de zone (lim, sqrt, etc.)
             // On tente une extension arrière : si le mot immédiatement avant la zone est
             // un keyword math connu, on l'absorbe.
             target = ExtendZoneBackwardWithKeyword(_lastParagraph, target);
-            LogDiag($"extended target={target}");
+            LogDiag($"backward_extended target={target}");
 
             // Pipeline lattice avec détection d'ambiguïté la plus à droite
             // (phase 5b2). Renvoie TopLatex + AmbiguitySpot? avec position.
@@ -371,7 +424,7 @@ namespace MathCursor.Host
             catch (Exception ex)
             {
                 LogDiag("engine_error: " + ex.Message);
-                HidePopup();
+                HidePopupTransient();
                 return;
             }
 
@@ -383,9 +436,18 @@ namespace MathCursor.Host
 
             if (string.IsNullOrEmpty(result.TopLatex))
             {
-                HidePopup();
+                HidePopupTransient();
                 return;
             }
+
+            // Anti-spam Esc : si l'utilisateur a déjà fermé la popup pour
+            // CETTE zone exacte, on ne re-spawn pas. Le flag est reset dès
+            // que la zone change (la condition ci-dessous tombe naturellement).
+            if (absStart == _dismissedZoneStart && absEnd == _dismissedZoneEnd)
+                return;
+            // Nouvelle zone → on libère le flag dismissed
+            _dismissedZoneStart = -1;
+            _dismissedZoneEnd = -1;
 
             int rawLen = target.Text?.Length ?? 0;
             _lastZoneSource = target.Text ?? "";
@@ -416,11 +478,24 @@ namespace MathCursor.Host
                 _editPopup.RevertRequested += OnRevertRequested;
             }
 
-            var pos = GetCaretScreenPosition();
-            _editPopup.ShowAt(pos.x, pos.y);
-            LogDiag($"edit mode: handle={handleId} popup shown at ({pos.x:F0},{pos.y:F0})");
+            // Position : on prend la position du caret (déjà fiable via Win32
+            // GetGUIThreadInfo) puis on décale en Y pour passer sous la boîte
+            // OMath. Bord droit de la popup aligné avec la position du caret —
+            // le caret est dans l'OMath, donc la popup vient se coller à
+            // gauche du caret, ne dépasse pas la droite de la zone math.
+            //
+            // Tentative précédente via Range.Information(wdHorizontalPosition…)
+            // sur le END de l'OMath retournait une coordonnée trop à droite
+            // (capture user 2026-04-28) — probablement à cause du dropdown
+            // handle Word ou du wrapping de la zone OMath. Caret position est
+            // plus fiable.
+            const double OMathExtraHeightDip = 18.0;
+            var caretPos = GetCaretScreenPosition();
+            _editPopup.ShowAt(caretPos.x, caretPos.y + OMathExtraHeightDip, alignRight: true);
+            LogDiag($"edit mode: handle={handleId} popup at caret-rightaligned ({caretPos.x:F0},{caretPos.y + OMathExtraHeightDip:F0})");
             return true;
         }
+
 
         /// <summary>
         /// Action OUI de la popup edit : remplace l'OMath au caret par le
@@ -455,8 +530,8 @@ namespace MathCursor.Host
             try
             {
                 var doc = _app.ActiveDocument;
-                // Étendre le range pour inclure le bookmark mcEq_ s'il existe :
-                // le bookmark couvre l'OMath, on supprime tout d'un coup.
+
+                // Étendre au bookmark mcEq_ si présent
                 string bmName = BookmarkPrefix + handle.Id;
                 if (doc.Bookmarks.Exists(bmName))
                 {
@@ -467,12 +542,42 @@ namespace MathCursor.Host
                     try { bm.Delete(); } catch { }
                 }
 
-                var range = doc.Range(omStart, omEnd);
+                // Étendre au ContentControl wrapper si Word en a posé un
+                // autour de l'OMath (cas display-mode notamment). Suppression
+                // explicite du CC pour éviter de laisser un wrapper vide.
+                try
+                {
+                    foreach (Word.ContentControl cc in doc.ContentControls)
+                    {
+                        var ccRange = cc.Range;
+                        if (ccRange.Start <= omStart && ccRange.End >= omEnd)
+                        {
+                            omStart = Math.Min(omStart, ccRange.Start);
+                            omEnd = Math.Max(omEnd, ccRange.End);
+                            try { cc.Delete(true); } catch { } // delete avec contenu
+                            break;
+                        }
+                    }
+                }
+                catch (Exception ex) { LogDiag("revert_cc_scan_error: " + ex.Message); }
+
+                // Supprime explicitement l'OMath (sinon Word peut garder
+                // l'enveloppe math autour du nouveau texte). Puis remplace
+                // le range par le texte source brut.
+                try { om.Range.Delete(); } catch { }
+
+                var range = doc.Range(omStart, Math.Min(omEnd, doc.Content.End));
                 range.Text = source;
 
-                // Caret en fin du texte inséré, exit math edit
+                // Caret en fin du texte inséré
                 int newEnd = omStart + source.Length;
-                _app.Selection.SetRange(newEnd, newEnd);
+                try { _app.Selection.SetRange(newEnd, newEnd); } catch { }
+
+                // Click sur la popup WPF a volé le focus à Word. Sans ça, le
+                // tick polling qui suivra ne trouvera pas le caret via Win32
+                // GetGUIThreadInfo et la popup de conversion s'affichera en
+                // (200,200) = haut-gauche du document. On rebascule le focus.
+                try { _app.Activate(); } catch { }
             }
             catch (Exception ex) { LogDiag("revert_replace_error: " + ex.Message); return; }
 
@@ -650,6 +755,61 @@ namespace MathCursor.Host
             "exists", "existe",
             "vec", "vect", "vecteur",
         };
+
+        // Caractères opérateurs binaires qui justifient une extension forward
+        // automatique : si la zone NER finit par un de ces caractères (modulo
+        // whitespace), c'est qu'on attend l'opérande suivante.
+        private const string ForwardExtendOperatorChars = "+-*/=<>^_,";
+
+        /// <summary>
+        /// Décide si une zone NER mérite d'être étendue à droite quand le caret
+        /// est plus loin avec whitespace entre. Deux raisons valides :
+        ///  (a) la zone se termine par un opérateur binaire (+, =, …) →
+        ///      l'utilisateur est en train d'écrire l'opérande suivante.
+        ///  (b) la formule parsée contient un Hole non rempli (rendu en
+        ///      \\square par le renderer lattice) → un slot reste à remplir
+        ///      (ex: "sum k 1 n " attend encore le body).
+        /// Sinon (formule complète, dernier élément non-opérateur), on
+        /// considère que l'espace est intentionnel = fin de la zone math.
+        /// </summary>
+        private bool ShouldExtendZoneForward(DetectedZone zone)
+        {
+            if (zone == null || string.IsNullOrEmpty(zone.Text)) return false;
+
+            // (a) Dernier caractère non-whitespace = opérateur binaire
+            int i = zone.Text.Length - 1;
+            while (i >= 0 && char.IsWhiteSpace(zone.Text[i])) i--;
+            if (i >= 0 && ForwardExtendOperatorChars.IndexOf(zone.Text[i]) >= 0)
+                return true;
+
+            // (b) AST top-1 contient un Hole (= \square) → slot vacant
+            AmbiguityResult result;
+            try { result = _engine.ConvertWithAmbiguity(zone.Text); }
+            catch { return false; }
+            if (string.IsNullOrEmpty(result.TopLatex)) return false;
+            return result.TopLatex.Contains("\\square");
+        }
+
+        /// <summary>
+        /// Si le caret est juste après la zone NER avec UNIQUEMENT du whitespace
+        /// entre (l'utilisateur a tapé un espace pour étendre la formule), on
+        /// pousse l'end de la zone jusqu'au caret. Sinon retourne la zone telle
+        /// quelle. Évite la fermeture clignotante de la popup à chaque espace
+        /// tapé pendant la saisie continue (somme[espace]k[espace]…).
+        /// </summary>
+        private static DetectedZone TryExtendForwardWhitespace(string paragraph, DetectedZone zone, int caret)
+        {
+            if (zone == null || string.IsNullOrEmpty(paragraph)) return zone;
+            if (caret <= zone.End) return zone; // déjà dans/avant l'end
+            int gap = caret - zone.End;
+            if (gap > 5) return zone; // trop loin pour étendre
+            for (int i = zone.End; i < caret && i < paragraph.Length; i++)
+                if (!char.IsWhiteSpace(paragraph[i])) return zone; // non-whitespace → pas notre zone
+            // Tout whitespace entre zone.End et caret → on étend
+            int newEnd = Math.Min(caret, paragraph.Length);
+            string newText = paragraph.Substring(zone.Start, newEnd - zone.Start);
+            return new DetectedZone(zone.Start, newEnd, newText, zone.Confidence);
+        }
 
         private static DetectedZone ExtendZoneBackwardWithKeyword(string paragraph, DetectedZone zone)
         {
@@ -859,6 +1019,8 @@ namespace MathCursor.Host
         /// </summary>
         public bool CommitSelected()
         {
+            // Mode édition : Enter passe à Word (édition math native). Le
+            // revert se fait par click souris sur la popup edit, pas Enter.
             if (_popup == null || !_popup.IsVisible || !_popup.IsNavMode) return false;
             if (_lastZoneAbsStart < 0 || _lastZoneAbsEnd <= _lastZoneAbsStart) return false;
 

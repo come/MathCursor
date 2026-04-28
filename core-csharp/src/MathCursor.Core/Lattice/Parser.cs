@@ -193,6 +193,21 @@ namespace MathCursor.Core.Lattice
                     @base = new Sup(@base, new Atom("number", numTok.Value));
                     continue;
                 }
+                // Notation limite à droite/gauche : "0+", "0-" collés au number,
+                // mais SUIVIS d'un espace ou EOF (= pas d'opérande tight derrière).
+                // Distinction critique avec "0+1" (addition tight) :
+                //   IsTightAdjacent() : le signe est collé à @base (pas d'espace avant)
+                //   sigTok.Tight == false : il y a un espace ou EOF après le signe
+                // Permet `lim x 0+ f(x)` → \lim_{x → 0^+} f(x).
+                if (Peek() is { Type: EdgeType.Op } sigTok
+                    && (sigTok.Value == "+" || sigTok.Value == "-")
+                    && IsTightAdjacent() && sigTok.Tight == false
+                    && @base is Atom bA && bA.Kind == "number")
+                {
+                    Consume();
+                    @base = new Sup(@base, new Atom("ident", sigTok.Value));
+                    continue;
+                }
                 break;
             }
             return @base;

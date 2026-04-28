@@ -41,7 +41,7 @@ namespace MathCursor.Core
             if (string.IsNullOrWhiteSpace(rawSpan))
                 return System.Array.Empty<LatexSuggestion>();
 
-            var trimmed = rawSpan.Trim();
+            var trimmed = NormalizeUnicodeSubSup(rawSpan.Trim());
             var edges = Lexer.Lex(trimmed);
             var paths = LatticePathFinder.TopK(edges, trimmed.Length, TopKWidth);
             if (paths.Count == 0)
@@ -112,7 +112,7 @@ namespace MathCursor.Core
             if (string.IsNullOrWhiteSpace(rawSpan))
                 return new AmbiguityResult(string.Empty, null, null, null);
 
-            var trimmed = rawSpan.Trim();
+            var trimmed = NormalizeUnicodeSubSup(rawSpan.Trim());
             var edges = Lexer.Lex(trimmed);
             var paths = LatticePathFinder.TopK(edges, trimmed.Length, TopKWidth);
             if (paths.Count == 0)
@@ -131,5 +131,55 @@ namespace MathCursor.Core
         /// </summary>
         public static LatticeEngine LoadEmbedded(string language = "fr")
             => new LatticeEngine();
+
+        /// <summary>
+        /// Normalise les caractères Unicode de superscript/subscript en notation
+        /// caret/underscore avant l'analyse : `x²` → `x^2`, `n₃` → `n_3`. Permet
+        /// au lexer (qui ne connaît que ^ et _) de reconnaître les conventions
+        /// typographiques tapées via le clavier français étendu.
+        /// </summary>
+        private static string NormalizeUnicodeSubSup(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return input ?? string.Empty;
+            // Test rapide avant allocation : pas de char concerné → return tel quel
+            bool needs = false;
+            foreach (var c in input)
+            {
+                if ((c >= '⁰' && c <= '⁹') || c == '¹' || c == '²' || c == '³'
+                    || (c >= '₀' && c <= '₉'))
+                { needs = true; break; }
+            }
+            if (!needs) return input;
+
+            var sb = new System.Text.StringBuilder(input.Length + 4);
+            foreach (var c in input)
+            {
+                switch (c)
+                {
+                    case '⁰': sb.Append("^0"); break;
+                    case '¹': sb.Append("^1"); break;
+                    case '²': sb.Append("^2"); break;
+                    case '³': sb.Append("^3"); break;
+                    case '⁴': sb.Append("^4"); break;
+                    case '⁵': sb.Append("^5"); break;
+                    case '⁶': sb.Append("^6"); break;
+                    case '⁷': sb.Append("^7"); break;
+                    case '⁸': sb.Append("^8"); break;
+                    case '⁹': sb.Append("^9"); break;
+                    case '₀': sb.Append("_0"); break;
+                    case '₁': sb.Append("_1"); break;
+                    case '₂': sb.Append("_2"); break;
+                    case '₃': sb.Append("_3"); break;
+                    case '₄': sb.Append("_4"); break;
+                    case '₅': sb.Append("_5"); break;
+                    case '₆': sb.Append("_6"); break;
+                    case '₇': sb.Append("_7"); break;
+                    case '₈': sb.Append("_8"); break;
+                    case '₉': sb.Append("_9"); break;
+                    default: sb.Append(c); break;
+                }
+            }
+            return sb.ToString();
+        }
     }
 }

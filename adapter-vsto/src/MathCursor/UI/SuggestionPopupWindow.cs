@@ -302,8 +302,11 @@ namespace MathCursor.UI
             _finalContainer.Children.Clear();
             _finalContainer.Children.Add(BuildFinalRow(_resolvedLatex));
 
-            UpdateHighlight();
+            // Reset navMode AVANT UpdateHighlight, sinon une popup réouverte
+            // après un commit garde l'ancien _navMode=true et apparaît déjà
+            // surlignée (l'élève croit qu'Enter va valider direct).
             _navMode = false;
+            UpdateHighlight();
             Left = screenX;
             Top = screenY;
             if (!IsVisible) base.Show();
@@ -341,22 +344,27 @@ namespace MathCursor.UI
 
         private void UpdateHighlight()
         {
+            // Highlight bleu uniquement en nav mode actif (l'utilisateur a
+            // touché une flèche). Avant ça, AUCUN fond colorisé sur les
+            // items — sinon l'élève croit qu'Enter va valider la ligne
+            // visuellement mise en avant.
             for (int i = 0; i < _altsRow.Children.Count; i++)
             {
                 if (_altsRow.Children[i] is Border cell)
                 {
-                    cell.Background = (!_focusOnFinal && i == _altIndex)
+                    cell.Background = (_navMode && !_focusOnFinal && i == _altIndex)
                         ? new SolidColorBrush(Color.FromRgb(190, 215, 250))
                         : Brushes.Transparent;
                 }
             }
             if (_finalContainer.Children.Count > 0 && _finalContainer.Children[0] is StackPanel finalPanel)
             {
-                finalPanel.Background = _focusOnFinal && _alternatives.Count > 0
-                    ? new SolidColorBrush(Color.FromRgb(190, 215, 250))
-                    : (_alternatives.Count == 0
-                        ? new SolidColorBrush(Color.FromArgb(48, 80, 200, 120))
-                        : Brushes.White);
+                if (_navMode && _focusOnFinal && _alternatives.Count > 0)
+                    finalPanel.Background = new SolidColorBrush(Color.FromRgb(190, 215, 250));
+                else if (_alternatives.Count == 0)
+                    finalPanel.Background = new SolidColorBrush(Color.FromArgb(48, 80, 200, 120));
+                else
+                    finalPanel.Background = Brushes.White;
             }
         }
 
@@ -469,6 +477,7 @@ namespace MathCursor.UI
         {
             if (!_navMode) return;
             _navMode = false;
+            UpdateHighlight(); // retire le fond bleu sélection
             BeginAnimation(OpacityProperty,
                 new DoubleAnimation(DisplayOpacity, TimeSpan.FromMilliseconds(FadeMs / 2)));
         }
@@ -490,13 +499,18 @@ namespace MathCursor.UI
             return true;
         }
 
-        public void HidePopup()
+        public void HidePopup(bool resetCaches = true)
         {
-            // Reset des résolutions et préférences de la session : la popup se
-            // ferme (commit, Esc, ou caret quitte la zone), nouveau span =
-            // nouvelles ambiguïtés à proposer fraîches.
-            _resolvedSubstitutions.Clear();
-            _rulePreferences.Clear();
+            // Les caches de résolutions / préférences ne sont reset QUE quand
+            // l'utilisateur ferme explicitement la session popup (Esc, commit,
+            // sortie de zone). Ils sont préservés sur les hide transients
+            // (NER ne détecte temporairement pas pendant la frappe), pour ne
+            // pas perdre les choix au prochain tick.
+            if (resetCaches)
+            {
+                _resolvedSubstitutions.Clear();
+                _rulePreferences.Clear();
+            }
             if (!IsVisible) return;
             var anim = new DoubleAnimation(0, TimeSpan.FromMilliseconds(FadeMs));
             anim.Completed += (_, __) =>

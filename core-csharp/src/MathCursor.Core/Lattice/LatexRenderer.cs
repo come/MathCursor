@@ -71,12 +71,23 @@ namespace MathCursor.Core.Lattice
             if (b.Op == "<=") return $"{lhs} \\leq {rhs}";
             if (b.Op == ">=") return $"{lhs} \\geq {rhs}";
             if (b.Op == "!=" || b.Op == "<>") return $"{lhs} \\neq {rhs}";
-            if (b.Op == "//") return $"{lhs} \\parallel {rhs}";
+            // Convention française : parallèle = deux barres OBLIQUES (//),
+            // pas verticales (\parallel = ∥). On émet les slashes ASCII bruts,
+            // WpfMath et Word OMath les rendent comme tels (visuellement
+            // obliques, conformes à la notation lycée FR).
+            if (b.Op == "//") return $"{lhs} // {rhs}";
             return $"{lhs}{b.Op}{rhs}";
         }
 
         private static string RenderFunc(Func fn)
         {
+            // Convention typographique française : exp(x), exp(x+1) sont
+            // rendus en notation puissance e^{x}, e^{x+1}. Le Group autour
+            // de l'arg est unwrappé (la barre d'exposant joue le rôle de
+            // regroupement visuel comme pour Frac/Sup).
+            if (fn.Name == "exp")
+                return $"e^{{{Render(Unwrap(fn.Arg))}}}";
+
             var a = fn.Arg;
             // Atome / greek / hole : un seul espace entre la fonction et l'argument.
             if (a is Atom || a is Hole) return $"\\{fn.Name} {Render(a)}";
