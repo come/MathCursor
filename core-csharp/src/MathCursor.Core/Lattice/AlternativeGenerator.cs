@@ -107,16 +107,20 @@ namespace MathCursor.Core.Lattice
 
         private static (AstNode? sub, AmbiguitySpot? spot) TraverseRightmost(AstNode node)
         {
-            // Récursion en post-ordre right-first : chaque enfant est inspecté
-            // de droite à gauche, et on retourne dès qu'une ambiguïté est trouvée.
+            // PRÉ-ORDRE right-first : on teste le node COURANT avant de descendre
+            // dans les enfants. Ça favorise les patterns les plus LARGES (= les
+            // plus contextuels). Ex: pour ABC (Bin(*, Bin(*, A, B), C)) on veut
+            // exposer l'ambig sur ABC entier (angle/triangle), pas l'ambig
+            // partielle sur AB qui n'a aucun sens dans ce contexte.
+            var spot = MatchAmbiguity(node);
+            if (spot != null) return (node, spot);
+
             foreach (var child in GetChildrenRightFirst(node))
             {
                 var result = TraverseRightmost(child);
                 if (result.spot != null) return result;
             }
-            // Aucun enfant ambigu : on teste ce nœud lui-même.
-            var spot = MatchAmbiguity(node);
-            return spot != null ? (node, spot) : (null, null);
+            return (null, null);
         }
 
         private static IEnumerable<AstNode> GetChildrenRightFirst(AstNode node) => node switch
@@ -143,6 +147,27 @@ namespace MathCursor.Core.Lattice
         /// </summary>
         private static AmbiguitySpot? MatchAmbiguity(AstNode node)
         {
+            // Règle 1a : trois majuscules 1-char en mult implicite tight (ABC)
+            // → objet géométrique à 3 sommets. AST = Bin(*, Bin(*, A, B), C)
+            // (gauche-associatif). Testée AVANT la règle 2-uppercase pour
+            // éviter qu'on propose l'ambig partielle sur AB seul.
+            if (node is Bin outer && outer.Op == "*" && outer.Implicit && outer.Tight
+                && outer.Lhs is Bin inner && inner.Op == "*" && inner.Implicit && inner.Tight
+                && inner.Lhs is Atom a1 && a1.Kind == "ident" && a1.Value.Length == 1 && char.IsUpper(a1.Value[0])
+                && inner.Rhs is Atom a2 && a2.Kind == "ident" && a2.Value.Length == 1 && char.IsUpper(a2.Value[0])
+                && outer.Rhs is Atom a3 && a3.Kind == "ident" && a3.Value.Length == 1 && char.IsUpper(a3.Value[0]))
+            {
+                var triplet = a1.Value + a2.Value + a3.Value;
+                return new AmbiguitySpot(
+                    ruleId: RuleThreeUppercase,
+                    defaultLatex: triplet,
+                    alternatives: new[]
+                    {
+                        $"\\widehat{{{triplet}}}",   // angle ABC (sommet B)
+                        $"\\triangle {triplet}",     // triangle ABC
+                    });
+            }
+
             // Règle 1 : deux majuscules 1-char en mult implicite tight → objet
             // géométrique nommé.
             if (node is Bin b && b.Op == "*" && b.Implicit && b.Tight
@@ -180,6 +205,7 @@ namespace MathCursor.Core.Lattice
         // mémoriser les préférences utilisateur par TYPE de pattern (et non
         // par instance string).
         public const string RuleTwoUppercase = "two-uppercase";
+        public const string RuleThreeUppercase = "three-uppercase";
         public const string RuleLetterSupNumber = "letter-sup-number";
     }
 }

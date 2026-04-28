@@ -160,5 +160,121 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.Equal("", r.TopLatex);
             Assert.Null(r.Spot);
         }
+
+        // ========================================================
+        //   Cas d'ambiguïté de bout en bout (regression suite)
+        //   Une ligne par cas user pour ne plus casser à chaque
+        //   refactor du moteur ou du générateur d'alternatives.
+        // ========================================================
+
+        // ---- AB (deux majuscules) ----
+
+        [Fact]
+        public void AB_yields_vec_droite_segment()
+        {
+            var r = _engine.ConvertWithAmbiguity("AB");
+            Assert.Equal("AB", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleTwoUppercase, r.Spot!.RuleId);
+            Assert.Contains("\\vec{AB}", r.Spot.Alternatives);
+            Assert.Contains("\\left(AB\\right)", r.Spot.Alternatives);
+            Assert.Contains("\\left[AB\\right]", r.Spot.Alternatives);
+        }
+
+        [Fact]
+        public void Lowercase_pair_yields_no_ambig()
+        {
+            var r = _engine.ConvertWithAmbiguity("ab");
+            Assert.Equal("ab", r.TopLatex);
+            Assert.Null(r.Spot);
+        }
+
+        [Fact]
+        public void AB_in_subexpression_detected()
+        {
+            // f(AB) doit proposer l'ambig sur AB en sous-AST
+            var r = _engine.ConvertWithAmbiguity("f(AB)");
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleTwoUppercase, r.Spot!.RuleId);
+            Assert.Equal("AB", r.Spot.DefaultLatex);
+        }
+
+        // ---- ABC (trois majuscules) — règle plus large prioritaire ----
+
+        [Fact]
+        public void ABC_yields_widehat_and_triangle_not_partial_AB()
+        {
+            // Régression : ABC ne doit PAS proposer l'ambig partielle sur AB
+            // (pattern le plus large prioritaire dans TraverseRightmost).
+            var r = _engine.ConvertWithAmbiguity("ABC");
+            Assert.Equal("ABC", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleThreeUppercase, r.Spot!.RuleId);
+            Assert.Equal("ABC", r.Spot.DefaultLatex);
+            Assert.Contains("\\widehat{ABC}", r.Spot.Alternatives);
+            Assert.Contains("\\triangle ABC", r.Spot.Alternatives);
+            // Et SURTOUT pas d'ambig two-uppercase sur AB
+            Assert.DoesNotContain("\\vec{AB}", r.Spot.Alternatives);
+        }
+
+        [Fact]
+        public void ABC_in_subexpression_detected()
+        {
+            var r = _engine.ConvertWithAmbiguity("f(ABC)");
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleThreeUppercase, r.Spot!.RuleId);
+            Assert.Equal("ABC", r.Spot.DefaultLatex);
+        }
+
+        // ---- Rightmost rule ----
+
+        [Fact]
+        public void Two_pairs_keep_only_rightmost()
+        {
+            var r = _engine.ConvertWithAmbiguity("AB+CD");
+            Assert.NotNull(r.Spot);
+            Assert.Equal("CD", r.Spot!.DefaultLatex);
+            Assert.Equal(AlternativeGenerator.RuleTwoUppercase, r.Spot.RuleId);
+        }
+
+        [Fact]
+        public void Two_triplets_keep_only_rightmost()
+        {
+            var r = _engine.ConvertWithAmbiguity("ABC+DEF");
+            Assert.NotNull(r.Spot);
+            Assert.Equal("DEF", r.Spot!.DefaultLatex);
+            Assert.Equal(AlternativeGenerator.RuleThreeUppercase, r.Spot.RuleId);
+        }
+
+        // ---- x2 / x_2 / x² ----
+
+        [Fact]
+        public void X2_yields_subscript_alternative()
+        {
+            var r = _engine.ConvertWithAmbiguity("x2");
+            Assert.Equal("x^{2}", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleLetterSupNumber, r.Spot!.RuleId);
+            Assert.Contains("x_{2}", r.Spot.Alternatives);
+        }
+
+        [Fact]
+        public void Unicode_superscript_normalized_then_ambig()
+        {
+            // x² (Unicode) → normalisé en x^2 → même comportement
+            var r = _engine.ConvertWithAmbiguity("x²");
+            Assert.Equal("x^{2}", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Contains("x_{2}", r.Spot!.Alternatives);
+        }
+
+        [Fact]
+        public void X2_in_subexpression_detected()
+        {
+            var r = _engine.ConvertWithAmbiguity("f(x2)");
+            Assert.Equal("f\\left(x^{2}\\right)", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleLetterSupNumber, r.Spot!.RuleId);
+        }
     }
 }
