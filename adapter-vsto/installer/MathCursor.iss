@@ -14,7 +14,7 @@
 ;   - Visual Studio Tools for Office Runtime (livré avec Office 2016+)
 
 #define MyAppName "MathCursor"
-#define MyAppVersion "0.3.2"
+#define MyAppVersion "0.4.0"
 #define MyAppPublisher "MathCursor"
 #define MyAppExeName "MathCursor.dll"
 #define MyAppId "{{6E4B3A1E-7F2D-4B8C-9A0E-2C5D6F7A8B90}"
@@ -74,7 +74,24 @@ Source: "payload\models\*";                               DestDir: "{app}\models
 ; une fois l'installation terminée.
 Source: "payload\mathcursor.cer";                         DestDir: "{tmp}"; Flags: deleteafterinstall
 
+; Visual C++ Redistributable x64 — requis par le DLL natif onnxruntime.dll.
+; `skipifsourcedoesntexist` : si build.ps1 n'a pas pu télécharger, on skippe
+; sans casser le build (l'installer fonctionnera mais l'utilisateur devra
+; avoir VC++ Redist 2015-2022 installé manuellement).
+Source: "payload\vc_redist.x64.exe";                      DestDir: "{tmp}"; Flags: deleteafterinstall skipifsourcedoesntexist
+
 [Run]
+; Installation conditionnelle du VC++ Redistributable. /install /quiet
+; /norestart : install silencieuse + pas de redémarrage forcé. Le redist
+; détecte une version >= déjà installée et skippe ; sinon UAC apparaîtra
+; UNE FOIS pour autoriser l'install machine-wide.
+; skipifdoesntexist : si le fichier n'a pas été inclus (DL échoué), on
+; n'essaie pas de l'exécuter.
+Filename: "{tmp}\vc_redist.x64.exe"; \
+    Parameters: "/install /quiet /norestart"; \
+    Flags: waituntilterminated skipifdoesntexist; \
+    StatusMsg: "Vérification du runtime Visual C++..."
+
 ; Import du certificat auto-signé UNIQUEMENT dans TrustedPublisher.
 ; - Pas de Root : l'import dans Cert:\CurrentUser\Root déclenche un popup UAC-like
 ;   forcé par Windows ("Voulez-vous installer ce certificat ?"), non-skippable

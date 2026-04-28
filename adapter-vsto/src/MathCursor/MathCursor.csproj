@@ -156,7 +156,12 @@
          Detection/WordPiece/ (charge directement vocab.txt), pas de dépendance
          native ni NuGet additionnel (Microsoft.ML.Tokenizers évité pour rester
          compatible .NET Framework 4.8 sans surprise). -->
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
+    <!-- ORT pinned à 1.16.3 pour compat CPUs SSE4.2-only sans AVX/AVX2
+         (Bay Trail 2014, Apollo Lake, etc.). À partir de 1.17, le DLL natif
+         a durci ses requirements CPU et crashe en TypeInitializationException
+         au DllMain sur ces machines. Cf. ADR 2026-04-28-Fix-ort-version-bay-trail-compat.
+         Ne pas bumper sans plan dual-runtime / fallback NER conditionnel. -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.16.3" />
     <!-- Rendu LaTeX popup : WpfMath 2.1 + substitutions ciblées dans
          WpfMathAdapter pour les 8 macros non couvertes (\mathbb, \setminus,
          \mapsto, \widehat, \iint/\oint, \limsup/\liminf, \overline).

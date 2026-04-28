@@ -113,6 +113,30 @@ if (Test-Path $CertSrc) {
     Write-Warning "Certificat introuvable ($CertSrc) — l'installer ne pourra pas l'importer automatiquement."
 }
 
+# 2c) Visual C++ Redistributable x64 (requis par ONNX Runtime native DLL).
+# Téléchargement depuis aka.ms si pas déjà présent localement. URL stable
+# qui suit la dernière version VS2015-2022 (toutes binary-compat).
+$VcRedistDst = Join-Path $PayloadDir 'vc_redist.x64.exe'
+$VcRedistCache = Join-Path $InstallerDir 'vc_redist.x64.exe' # cache au niveau dossier installer
+if (Test-Path $VcRedistCache) {
+    Copy-Item $VcRedistCache -Destination $VcRedistDst -Force
+    Write-Host "  VC++ Redist depuis cache : $VcRedistCache"
+} elseif (Test-Path $VcRedistDst) {
+    Write-Host "  VC++ Redist déjà présent dans payload/"
+} else {
+    Write-Host "  Téléchargement VC++ Redist x64 depuis aka.ms/vs/17/release/vc_redist.x64.exe..."
+    try {
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -Uri 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile $VcRedistDst -UseBasicParsing
+        # Cache pour les builds suivants
+        Copy-Item $VcRedistDst -Destination $VcRedistCache -Force
+        Write-Host "  VC++ Redist téléchargé ($([math]::Round((Get-Item $VcRedistDst).Length / 1MB, 1)) Mo)"
+    } catch {
+        Write-Warning "Téléchargement VC++ Redist échoué : $_"
+        Write-Warning "L'installer fonctionnera mais sans bundling VC++ — l'utilisateur devra l'avoir installé."
+    }
+}
+
 # 3) Modèle NER
 Write-Host "[3/4] Modèle NER..." -ForegroundColor Yellow
 if (-not (Test-Path $ModelDstDir)) {
