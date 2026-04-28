@@ -54,6 +54,18 @@ namespace MathCursor.Core.Lattice
             return false;
         }
 
+        // Matche un keyword par sa valeur CANONIQUE (post-lookup dans Vocabulary).
+        // Le Lexer émet la clé brute du dict (ex: "somme", "dans"), pas la
+        // valeur canonique ("sum", "in"). Pour les sites où on veut tous les
+        // alias d'un keyword (ex: `in` matché par "in", "appartient", "dans"),
+        // on passe par cette méthode plutôt que d'énumérer chaque alias.
+        private bool IsKwCanon(string canonical)
+        {
+            var t = Peek();
+            if (t == null || t.Type != EdgeType.Keyword) return false;
+            return Vocabulary.Keywords.TryGetValue(t.Value, out var c) && c == canonical;
+        }
+
         private bool IsTightAdjacent()
         {
             var t = Peek();
@@ -422,11 +434,22 @@ namespace MathCursor.Core.Lattice
                 case "infinity":
                     return new Const("\\infty");
                 case "forall":
-                    return new Const("\\forall");
                 case "exists":
-                    return new Const("\\exists");
+                {
+                    // Symétrique à `somme k 0 n …` : on retourne TOUJOURS un
+                    // Quant, args manquants matérialisés par des Holes (rendus
+                    // en \square). L'utilisateur voit `\forall \square \in \square`
+                    // et les carrés se remplissent au fur et à mesure de la frappe.
+                    var symbol = kw.Value == "forall" ? "\\forall" : "\\exists";
+                    var v = ParseAtomOnly() ?? (AstNode)Hole(1);
+                    // `in` / `appartient` / `dans` est un keyword optionnel entre var et set.
+                    if (IsKwCanon("in")) Consume();
+                    var set = ParseArgument() ?? (AstNode)Hole(2);
+                    return new Quant(symbol, v, set);
+                }
                 case "in":
                 case "appartient":
+                case "dans":
                     // Relation : espaces dans la valeur pour qu'au render
                     // (Bin implicit concat) on ait "x \in R" et pas "x\inR".
                     return new Const(" \\in ");

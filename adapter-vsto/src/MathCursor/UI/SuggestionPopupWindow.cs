@@ -36,7 +36,8 @@ namespace MathCursor.UI
 
         private string _topLatex = "";
         private string _currentRuleId = "";
-        private IReadOnlyList<string> _alternatives = Array.Empty<string>();
+        private IReadOnlyList<MathCursor.Core.Lattice.AmbiguityAlternative> _alternatives
+            = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
         // Tous les matches d'ambiguïté de la formule courante (pas juste le
         // current spot). Permet la résolution en cascade : quand l'utilisateur
         // valide vec pour BC, on applique vec aussi à AB et AC qui sont des
@@ -74,6 +75,19 @@ namespace MathCursor.UI
         public string CurrentFinalLatex => _resolvedLatex;
 
         public event Action ReportRequested;
+
+        /// <summary>
+        /// Levé quand l'utilisateur résout une alt dont la mutation source
+        /// est non null (ex: V→forall). Le service hôte mémorise la
+        /// préférence (ruleId, altIdx) et relance le pipeline. La popup
+        /// elle-même n'a pas accès à la source brute — c'est l'hôte qui
+        /// maintient la source dans Word.
+        ///
+        /// Args : `(ruleId, altIdx, mutation)`. ruleId+altIdx servent à
+        /// mémoriser la pref par règle (V→forall pour la session). mutation
+        /// est l'instance précise pour le V courant.
+        /// </summary>
+        public event Action<string, int, MathCursor.Core.Lattice.SourceMutation> SourceMutationRequested;
 
         public SuggestionPopupWindow()
         {
@@ -215,7 +229,7 @@ namespace MathCursor.UI
         public void Show(
             string topLatex,
             string ruleId,
-            IReadOnlyList<string> alternatives,
+            IReadOnlyList<MathCursor.Core.Lattice.AmbiguityAlternative> alternatives,
             int spotStart,
             int spotEnd,
             IReadOnlyList<MathCursor.Core.Lattice.AmbiguityMatch> allMatches,
@@ -236,9 +250,10 @@ namespace MathCursor.UI
                 && spotStart >= 0 && spotEnd > spotStart && spotEnd <= (topLatex?.Length ?? 0))
             {
                 string defaultLatex = topLatex!.Substring(spotStart, spotEnd - spotStart);
-                _resolvedSubstitutions[defaultLatex] = alternatives[preferredIdx];
-                LogPopup($"auto-applied pref rule=\"{ruleId}\" altIdx={preferredIdx} → \"{alternatives[preferredIdx]}\"");
-                alternatives = Array.Empty<string>();
+                var preferredAlt = alternatives[preferredIdx];
+                _resolvedSubstitutions[defaultLatex] = preferredAlt.Latex;
+                LogPopup($"auto-applied pref rule=\"{ruleId}\" altIdx={preferredIdx} → \"{preferredAlt.Latex}\"");
+                alternatives = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
             }
 
             // 2) Applique les résolutions d'ambiguïté précédemment validées
@@ -266,7 +281,7 @@ namespace MathCursor.UI
             _allMatches = allMatches ?? Array.Empty<MathCursor.Core.Lattice.AmbiguityMatch>();
             _alternatives = (newSpotStart >= 0 && alternatives != null)
                 ? alternatives
-                : Array.Empty<string>();
+                : Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
             _spotStart = newSpotStart;
             _spotEnd = newSpotEnd;
             _resolvedLatex = substitutedTop;
@@ -281,7 +296,7 @@ namespace MathCursor.UI
             {
                 for (int i = 0; i < _alternatives.Count; i++)
                 {
-                    var altLatex = _alternatives[i];
+                    var altLatex = _alternatives[i].Latex;
                     var cell = new Border
                     {
                         BorderBrush = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
@@ -328,9 +343,7 @@ namespace MathCursor.UI
             {
                 Orientation = Orientation.Horizontal,
                 Margin = new Thickness(0),
-                Background = _alternatives.Count == 0
-                    ? new SolidColorBrush(Color.FromArgb(48, 80, 200, 120))
-                    : Brushes.White,
+                Background = Brushes.White,
             };
             panel.Children.Add(RenderMath(latex));
             panel.Children.Add(new TextBlock
@@ -367,12 +380,12 @@ namespace MathCursor.UI
             }
             if (_finalContainer.Children.Count > 0 && _finalContainer.Children[0] is StackPanel finalPanel)
             {
-                if (_navMode && _focusOnFinal && _alternatives.Count > 0)
-                    finalPanel.Background = new SolidColorBrush(Color.FromRgb(190, 215, 250));
-                else if (_alternatives.Count == 0)
-                    finalPanel.Background = new SolidColorBrush(Color.FromArgb(48, 80, 200, 120));
-                else
-                    finalPanel.Background = Brushes.White;
+                // Fond bleu UNIQUEMENT en nav mode + focus sur final. Sinon
+                // blanc — pas de fond vert "formule complète" (se confondait
+                // avec le highlight de nav, retiré sur demande user).
+                finalPanel.Background = (_navMode && _focusOnFinal)
+                    ? new SolidColorBrush(Color.FromRgb(190, 215, 250))
+                    : Brushes.White;
             }
         }
 
@@ -390,7 +403,37 @@ namespace MathCursor.UI
             if (_altIndex < 0 || _altIndex >= _alternatives.Count) return false;
             if (_spotStart < 0 || _spotEnd <= _spotStart) return false;
 
-            var alt = _alternatives[_altIndex];
+            var selectedAlt = _alternatives[_altIndex];
+
+            // Branche source-mutation : la résolution n'est plus une sub
+            // LaTeX locale, c'est une mutation de la source brute. On délègue
+            // à l'hôte (qui détient la source) via l'event ; il appliquera la
+            // mutation, relancera le pipeline et appellera Show() à nouveau
+            // avec le nouveau résultat. La popup elle-même ne fait rien de
+            // plus que propager.
+            if (selectedAlt.Mutation != null)
+            {
+                LogPopup($"Resolved via SourceMutation rule=\"{_currentRuleId}\" altIdx={_altIndex} replacement=\"{selectedAlt.Mutation.Replacement}\"");
+                SourceMutationRequested?.Invoke(_currentRuleId, _altIndex, selectedAlt.Mutation);
+                return true;
+            }
+
+            // Mutation null = identity (ex: V garde V) → on ferme juste la
+            // popup zone d'ambig, source inchangée. L'utilisateur peut
+            // continuer à taper, V reste son interprétation.
+            if (string.Equals(selectedAlt.Latex, _topLatex, StringComparison.Ordinal))
+            {
+                LogPopup($"Resolved as identity (alt[{_altIndex}] = current) — no change");
+                _alternatives = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
+                _altsRow.Children.Clear();
+                _altsRowBorder.Visibility = Visibility.Collapsed;
+                _spotStart = _spotEnd = -1;
+                _focusOnFinal = true;
+                UpdateHighlight();
+                return true;
+            }
+
+            var alt = selectedAlt.Latex;
             int chosenAltIdx = _altIndex;
             string ruleId = _currentRuleId;
 
@@ -408,7 +451,7 @@ namespace MathCursor.UI
                 if (match.Spot.RuleId == ruleId
                     && chosenAltIdx >= 0 && chosenAltIdx < match.Spot.Alternatives.Count)
                 {
-                    _resolvedSubstitutions[match.Spot.DefaultLatex] = match.Spot.Alternatives[chosenAltIdx];
+                    _resolvedSubstitutions[match.Spot.DefaultLatex] = match.Spot.Alternatives[chosenAltIdx].Latex;
                 }
             }
 
@@ -423,7 +466,7 @@ namespace MathCursor.UI
             // sélectionnée est intégrée dans la formule finale, plus rien à
             // choisir. La popup montre juste la formule finale (fond vert
             // clair pour signaler "OK, prête à commiter").
-            _alternatives = Array.Empty<string>();
+            _alternatives = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
             _altsRow.Children.Clear();
             _altsRowBorder.Visibility = Visibility.Collapsed;
             _spotStart = _spotEnd = -1;

@@ -265,5 +265,49 @@ namespace MathCursor.Core.Tests.Lattice
         [Fact]
         public void Int_with_frac_body()
             => Assert.Equal("\\int_{0}^{1} \\frac{x}{x+1}", RenderTop("int 0 1 frac x x+1"));
+
+        // ------------------ Quantificateurs ------------------
+
+        [Fact]
+        public void Forall_x_in_R_via_pipeline()
+            => Assert.Equal("\\forall x \\in R", RenderTop("forall x R"));
+
+        [Fact]
+        public void Forall_x_dans_R_renders_with_in()
+            // `dans` keyword → `in` (alias) consommé par le scope, le `\in` est
+            // généré par le renderer du Quant. L'utilisateur n'a jamais à taper
+            // `\in` ni à connaître le LaTeX.
+            => Assert.Equal("\\forall x \\in R", RenderTop("forall x dans R"));
+
+        [Fact]
+        public void Forall_var_only_renders_with_hole_set()
+            // forall x sans set → Set=Hole, render = `\forall x \in \square `
+            // (le \in est toujours là, symétrique avec somme qui montre toujours
+            // les rails du scope même avec des carrés vides).
+            => Assert.Equal("\\forall x \\in \\square ", RenderTop("forall x"));
+
+        [Fact]
+        public void Forall_alone_renders_two_squares()
+            // `forall` seul : Quant(Hole, Hole), jamais juste \forall.
+            // L'utilisateur voit immédiatement `\forall \square \in \square`
+            // après mutation V→forall, prêt à recevoir var et set au clavier.
+            => Assert.Equal("\\forall \\square  \\in \\square ", RenderTop("forall"));
+
+        [Fact]
+        public void Exists_y_in_N_via_pipeline()
+            => Assert.Equal("\\exists y \\in N", RenderTop("exists y N"));
+
+        [Fact]
+        public void Forall_with_holes_renders_squares()
+        {
+            // AST construit à la main : forall ⬜ ⬜ → \forall \square  \in \square
+            // C'est l'état que voit l'utilisateur juste après mutation V→forall
+            // avant qu'il tape var et set.
+            var ast = new Quant("\\forall", new Hole(1), new Hole(2));
+            var rendered = LatexRenderer.Render(ast);
+            Assert.Contains("\\forall", rendered);
+            Assert.Contains("\\square", rendered);
+            Assert.Contains("\\in", rendered);
+        }
     }
 }

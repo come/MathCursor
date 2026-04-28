@@ -39,6 +39,7 @@ namespace MathCursor.Host
         private readonly WordContextReader _contextReader;
         private readonly MathNerDetector _ner;
         private readonly Engine _engine;
+        private readonly ZoneResolver _resolver;
         private readonly IEquationStore _store;
 
         private SuggestionPopupWindow _popup;
@@ -106,6 +107,7 @@ namespace MathCursor.Host
             _app = app ?? throw new ArgumentNullException(nameof(app));
             _ner = ner ?? throw new ArgumentNullException(nameof(ner));
             _engine = engine ?? throw new ArgumentNullException(nameof(engine));
+            _resolver = new ZoneResolver(_engine);
             _store = store ?? throw new ArgumentNullException(nameof(store));
             _contextReader = new WordContextReader(_app);
         }
@@ -157,9 +159,12 @@ namespace MathCursor.Host
         public void HidePopup()
         {
             // Hide explicite (Esc / commit / sortie zone) → reset des caches
-            // de résolution et de préférences de règles dans la popup.
+            // de résolution et de préférences de règles dans la popup, ET
+            // des préférences source-mutation dans le résolveur (V→forall, etc.).
+            // Au prochain trigger l'utilisateur repart d'une page blanche.
             _popup?.HidePopup(resetCaches: true);
             _editPopup?.HidePopup();
+            _resolver?.Clear();
         }
 
         /// <summary>
@@ -417,10 +422,11 @@ namespace MathCursor.Host
             target = ExtendZoneBackwardWithKeyword(_lastParagraph, target);
             LogDiag($"backward_extended target={target}");
 
-            // Pipeline lattice avec détection d'ambiguïté la plus à droite
-            // (phase 5b2). Renvoie TopLatex + AmbiguitySpot? avec position.
-            AmbiguityResult result;
-            try { result = _engine.ConvertWithAmbiguity(target.Text); }
+            // Pipeline lattice via le ZoneResolver : applique les prefs
+            // source-mutation accumulées (V→forall, etc.) avant le pipeline
+            // pour que les ambig déjà résolues ne se re-déclenchent pas.
+            ResolvedZone resolved;
+            try { resolved = _resolver.Resolve(target.Text ?? ""); }
             catch (Exception ex)
             {
                 LogDiag("engine_error: " + ex.Message);
@@ -428,13 +434,13 @@ namespace MathCursor.Host
                 return;
             }
 
-            LogDiag($"engine zone=\"{target.Text}\" top=\"{result.TopLatex}\" ambig={(result.Spot == null ? "no" : $"{result.Spot.Alternatives.Count} alts")}");
+            LogDiag($"engine zone=\"{target.Text}\" muted=\"{resolved.MutedSource}\" top=\"{resolved.TopLatex}\" ambig={(resolved.Spot == null ? "no" : $"{resolved.Spot.Alternatives.Count} alts")}");
 
             // Conversion offsets paragraphe → positions absolues document.
             int absStart = paragraphAbsStart + target.Start;
             int absEnd = paragraphAbsStart + target.End;
 
-            if (string.IsNullOrEmpty(result.TopLatex))
+            if (string.IsNullOrEmpty(resolved.TopLatex))
             {
                 HidePopupTransient();
                 return;
@@ -450,8 +456,10 @@ namespace MathCursor.Host
             _dismissedZoneEnd = -1;
 
             int rawLen = target.Text?.Length ?? 0;
+            // _lastZoneSource = source brute telle que dans Word (pas mutée).
+            // Les mutations sont gérées à la volée par le résolveur.
             _lastZoneSource = target.Text ?? "";
-            ShowPopup(result, absStart, absEnd, rawLen, target.Text ?? "");
+            ShowPopup(resolved, absStart, absEnd, rawLen, target.Text ?? "");
         }
 
         /// <summary>
@@ -650,8 +658,8 @@ namespace MathCursor.Host
                 string span = text.Substring(spanStart, spanEnd - spanStart);
                 LogDiag($"manual trigger span=[{spanStart},{spanEnd}] → \"{Preview(span)}\"");
 
-                AmbiguityResult result;
-                try { result = _engine.ConvertWithAmbiguity(span); }
+                ResolvedZone resolved;
+                try { resolved = _resolver.Resolve(span); }
                 catch (Exception ex) { LogDiag("manual_engine_error: " + ex.Message); return; }
 
                 int absStart = paragraphAbsStart + spanStart;
@@ -660,8 +668,8 @@ namespace MathCursor.Host
                 _lastZoneSource = span;
                 _editHandle = null;
 
-                if (string.IsNullOrEmpty(result.TopLatex)) return;
-                ShowPopup(result, absStart, absEnd, span.Length, "manuel: " + span);
+                if (string.IsNullOrEmpty(resolved.TopLatex)) return;
+                ShowPopup(resolved, absStart, absEnd, span.Length, "manuel: " + span);
                 // Entre direct en mode nav : l'utilisateur a demandé explicitement
                 // la conversion.
                 _popup?.EnterNavMode();
@@ -756,38 +764,18 @@ namespace MathCursor.Host
             "vec", "vect", "vecteur",
         };
 
-        // Caractères opérateurs binaires qui justifient une extension forward
-        // automatique : si la zone NER finit par un de ces caractères (modulo
-        // whitespace), c'est qu'on attend l'opérande suivante.
-        private const string ForwardExtendOperatorChars = "+-*/=<>^_,";
-
         /// <summary>
         /// Décide si une zone NER mérite d'être étendue à droite quand le caret
-        /// est plus loin avec whitespace entre. Deux raisons valides :
-        ///  (a) la zone se termine par un opérateur binaire (+, =, …) →
-        ///      l'utilisateur est en train d'écrire l'opérande suivante.
-        ///  (b) la formule parsée contient un Hole non rempli (rendu en
-        ///      \\square par le renderer lattice) → un slot reste à remplir
-        ///      (ex: "sum k 1 n " attend encore le body).
-        /// Sinon (formule complète, dernier élément non-opérateur), on
-        /// considère que l'espace est intentionnel = fin de la zone math.
+        /// est plus loin avec whitespace entre. Délégué au <see cref="ZoneResolver"/>
+        /// via <see cref="ResolvedZone.IsIncomplete"/> : la zone est incomplète
+        /// (donc à étendre) si le rendu contient un Hole non rempli OU si le
+        /// dernier char non-whitespace de la source est un opérateur binaire.
         /// </summary>
         private bool ShouldExtendZoneForward(DetectedZone zone)
         {
             if (zone == null || string.IsNullOrEmpty(zone.Text)) return false;
-
-            // (a) Dernier caractère non-whitespace = opérateur binaire
-            int i = zone.Text.Length - 1;
-            while (i >= 0 && char.IsWhiteSpace(zone.Text[i])) i--;
-            if (i >= 0 && ForwardExtendOperatorChars.IndexOf(zone.Text[i]) >= 0)
-                return true;
-
-            // (b) AST top-1 contient un Hole (= \square) → slot vacant
-            AmbiguityResult result;
-            try { result = _engine.ConvertWithAmbiguity(zone.Text); }
+            try { return _resolver.Resolve(zone.Text).IsIncomplete; }
             catch { return false; }
-            if (string.IsNullOrEmpty(result.TopLatex)) return false;
-            return result.TopLatex.Contains("\\square");
         }
 
         /// <summary>
@@ -968,12 +956,13 @@ namespace MathCursor.Host
             catch { return ""; }
         }
 
-        private void ShowPopup(AmbiguityResult result, int absStart, int absEnd, int rawZoneLength, string debugText = "")
+        private void ShowPopup(ResolvedZone resolved, int absStart, int absEnd, int rawZoneLength, string debugText = "")
         {
             if (_popup == null)
             {
                 _popup = new SuggestionPopupWindow();
                 _popup.ReportRequested += OnReportRequested;
+                _popup.SourceMutationRequested += OnSourceMutationRequested;
             }
 
             // Repositionnement : seulement si nouvelle zone, sinon on garde la
@@ -1002,12 +991,58 @@ namespace MathCursor.Host
             _lastZoneAbsStart = absStart;
             _lastZoneAbsEnd = absEnd;
 
-            var alts = result.Spot?.Alternatives ?? Array.Empty<string>();
-            string ruleId = result.Spot?.RuleId ?? "";
-            int spotStart = result.SpotStart ?? -1;
-            int spotEnd = result.SpotEnd ?? -1;
-            _popup.Show(result.TopLatex, ruleId, alts, spotStart, spotEnd,
-                result.AllMatches, popupX, popupY, debugText);
+            var alts = resolved.Spot?.Alternatives
+                ?? (IReadOnlyList<MathCursor.Core.Lattice.AmbiguityAlternative>)Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
+            string ruleId = resolved.Spot?.RuleId ?? "";
+            int spotStart = resolved.SpotStart ?? -1;
+            int spotEnd = resolved.SpotEnd ?? -1;
+            _popup.Show(resolved.TopLatex, ruleId, alts, spotStart, spotEnd,
+                resolved.AllMatches, popupX, popupY, debugText);
+        }
+
+        /// <summary>
+        /// Appelé quand l'utilisateur résout une alt avec
+        /// <see cref="MathCursor.Core.Lattice.SourceMutation"/> (ex: V→forall).
+        /// On délègue tout au <see cref="ZoneResolver"/> : il mémorise la
+        /// préférence et la prochaine résolution applique la mutation.
+        ///
+        /// Invariant clé : le ContentControl Word garde le source brut tapé
+        /// par l'utilisateur (`V x R`) jusqu'au commit Enter final qui crée
+        /// l'OMath. Les mutations sont une couche mémoire dans le résolveur,
+        /// pas une réécriture du document.
+        /// </summary>
+        private void OnSourceMutationRequested(string ruleId, int altIdx,
+            MathCursor.Core.Lattice.SourceMutation mutation)
+        {
+            try
+            {
+                if (mutation == null || string.IsNullOrEmpty(ruleId)) return;
+                _resolver.AddPreference(ruleId, altIdx);
+
+                var src = _lastZoneSource ?? string.Empty;
+                var resolved = _resolver.Resolve(src);
+                LogDiag($"pref applied rule=\"{ruleId}\" altIdx={altIdx} src=\"{src}\" → muted=\"{resolved.MutedSource}\" incomplete={resolved.IsIncomplete}");
+
+                // Auto-commit : si la mutation rend la formule complète
+                // (pas de Hole, pas d'opérateur final), on insère l'OMath
+                // direct sans attendre flèche bas + Enter. Cas type : `V x R`
+                // → `\forall x \in R` n'a rien d'autre à recevoir, l'utilisateur
+                // a fini sa désambig. Pour les alts identity ou sub LaTeX
+                // (vec AB), on ne passe jamais par ici (mutation null), donc
+                // le flow popup → final → Enter reste pour ces cas.
+                if (!resolved.IsIncomplete)
+                {
+                    LogDiag($"auto-commit on alt resolution latex=\"{resolved.TopLatex}\"");
+                    CommitLatexAndOMath(resolved.TopLatex, src);
+                    return;
+                }
+
+                ShowPopup(resolved, _lastZoneAbsStart, _lastZoneAbsEnd, src.Length, debugText: resolved.MutedSource);
+            }
+            catch (Exception ex)
+            {
+                LogDiag("source_mutation_error: " + ex.Message);
+            }
         }
 
         /// <summary>
@@ -1038,15 +1073,24 @@ namespace MathCursor.Host
             var latex = _popup.CurrentFinalLatex ?? "";
             if (string.IsNullOrWhiteSpace(latex)) return false;
 
+            return CommitLatexAndOMath(latex, _lastZoneSource ?? "");
+        }
+
+        /// <summary>
+        /// Insère un OMath au niveau de la zone courante avec le LaTeX donné,
+        /// crée le bookmark et persiste la source dans le store, reset l'état
+        /// et cache la popup. Utilisé par <see cref="CommitSelected"/> (Enter
+        /// final) ET par <see cref="OnSourceMutationRequested"/> en mode
+        /// auto-commit (résolution d'une alt source-mutation qui ferme la
+        /// formule, ex: V x R → \forall x \in R, plus rien à attendre).
+        /// </summary>
+        private bool CommitLatexAndOMath(string latex, string source)
+        {
+            if (string.IsNullOrWhiteSpace(latex)) return false;
             var editing = _editHandle;
-            var source = _lastZoneSource ?? "";
             try
             {
                 var (newStart, newEnd) = InsertOMathAt(_lastZoneAbsStart, _lastZoneAbsEnd, latex);
-
-                // InsertOMathAt rollback si BuildUp a échoué : il renvoie alors
-                // (absStart, absStart) = zone vide. Dans ce cas pas de bookmark,
-                // pas de store — l'utilisateur a son texte original intact.
                 bool insertionSucceeded = newEnd > newStart;
                 if (!insertionSucceeded)
                 {
@@ -1054,9 +1098,6 @@ namespace MathCursor.Host
                 }
                 else if (editing != null)
                 {
-                    // Le bookmark préexistant couvre encore l'OMath (Word le
-                    // réadapte lors du remplacement). On ne touche à rien côté
-                    // store : la source d'origine reste valable.
                     LogDiag($"edit commit handle={editing.Id} latex=\"{latex}\"");
                 }
                 else
@@ -1086,7 +1127,7 @@ namespace MathCursor.Host
             _lastZoneSource = "";
             _editHandle = null;
             _editingOMathStart = -1;
-            _lastCommitUtc = DateTime.UtcNow; // arme le cooldown anti-respam
+            _lastCommitUtc = DateTime.UtcNow;
             HidePopup();
             return true;
         }

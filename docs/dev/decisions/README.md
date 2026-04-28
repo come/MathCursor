@@ -19,6 +19,13 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-04-28
+- `[forte]` Meta — [Refactor : ZoneResolver, point d'entrée unique pour la résolution de zone](2026-04-28-Meta-zone-resolver-refactor.md)
+- `[forte]` Feat — [Quantificateur ∀/∃ via scope clavier + désambiguïsation par mutation source](2026-04-28-Feat-forall-scope-source-mutation.md)
+
+### 2026-04-27
+- `[molle]` Feat — [Corpus NER v4 (keywords math en début de zone)](2026-04-27-Feat-ner-corpus-v4-keywords.md)
+
 ### 2026-04-24
 - `[molle]` Feat — [Corpus NER v3 (fixtures projet + `²` + anti-FP) & challenge modèle](2026-04-24-Feat-ner-corpus-v3-and-model-challenge.md)
 - `[molle]` UX — [Popup silencieuse jusqu'à la première interaction utilisateur](2026-04-24-UX-popup-silent-until-interaction.md)

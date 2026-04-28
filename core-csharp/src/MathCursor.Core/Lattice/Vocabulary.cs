@@ -36,6 +36,7 @@ namespace MathCursor.Core.Lattice
             { "exists",    "exists" },
             { "in",        "in" },
             { "appartient", "in" },
+            { "dans",      "in" },
             { "perp",      "perp" },
             { "perpendiculaire", "perp" },
         };

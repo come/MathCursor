@@ -5,19 +5,69 @@ using MathCursor.Core.Lattice.Ast;
 namespace MathCursor.Core.Lattice
 {
     /// <summary>
+    /// Mutation à appliquer sur la SOURCE d'entrée (la chaîne tapée par
+    /// l'utilisateur, pas le LaTeX rendu) pour résoudre une ambiguïté. Quand
+    /// <see cref="AmbiguitySpot.Mutation"/> est non null, l'adapter doit
+    /// remplacer source[Offset..Offset+Length] par <see cref="Replacement"/>
+    /// puis re-déclencher le pipeline complet (Lex → TopK → Parse → Render)
+    /// au lieu de faire une sub-string sur le LaTeX rendu.
+    ///
+    /// Modèle plus robuste que la sub LaTeX : la source reste la vérité, le
+    /// rendu est une projection. Permet aux règles comme V→forall de
+    /// déclencher un re-parsing en mode scope où les espaces deviennent
+    /// séparateurs d'arguments.
+    /// </summary>
+    public sealed class SourceMutation
+    {
+        public int Offset { get; }
+        public int Length { get; }
+        public string Replacement { get; }
+        public SourceMutation(int offset, int length, string replacement)
+        {
+            Offset = offset;
+            Length = length;
+            Replacement = replacement;
+        }
+    }
+
+    /// <summary>
+    /// Une alternative dans une ambiguïté : son aperçu LaTeX et sa mutation
+    /// source optionnelle. Si <see cref="Mutation"/> est null, l'alternative
+    /// est appliquée par sub LaTeX (mode legacy AB/ABC/x2). Si non null,
+    /// l'adapter doit muter la source brute et relancer le pipeline.
+    /// Permet d'avoir des alts hétérogènes dans le même Spot (ex: V → [V
+    /// identity sans mutation, ∀ avec mutation forall, √ avec mutation racine]).
+    /// </summary>
+    public sealed class AmbiguityAlternative
+    {
+        public string Latex { get; }
+        public SourceMutation? Mutation { get; }
+        public AmbiguityAlternative(string latex, SourceMutation? mutation = null)
+        {
+            Latex = latex;
+            Mutation = mutation;
+        }
+    }
+
+    /// <summary>
     /// Une ambiguïté détectée localement dans l'AST top-1 : un sous-AST qui a
     /// une lecture par défaut (le LaTeX intégré dans top-1) et N alternatives.
     /// <see cref="RuleId"/> identifie la RÈGLE qui a généré cette ambiguïté
     /// (ex: "two-uppercase") — utilisé par la popup pour appliquer une
     /// préférence apprise (l'utilisateur a déjà choisi vec pour AB → on
     /// applique vec automatiquement aux CD, EF, … de la session).
+    ///
+    /// Chaque alternative porte sa propre mutation source via
+    /// <see cref="AmbiguityAlternative.Mutation"/>. Permet à un même Spot de
+    /// proposer des choix hétérogènes (V → V identity / ∀ scope / √ scope).
     /// </summary>
     public sealed class AmbiguitySpot
     {
         public string RuleId { get; }
         public string DefaultLatex { get; }
-        public IReadOnlyList<string> Alternatives { get; }
-        public AmbiguitySpot(string ruleId, string defaultLatex, IReadOnlyList<string> alternatives)
+        public IReadOnlyList<AmbiguityAlternative> Alternatives { get; }
+        public AmbiguitySpot(string ruleId, string defaultLatex,
+            IReadOnlyList<AmbiguityAlternative> alternatives)
         {
             RuleId = ruleId;
             DefaultLatex = defaultLatex;
@@ -98,7 +148,10 @@ namespace MathCursor.Core.Lattice
         {
             if (topAst == null) return System.Array.Empty<string>();
             var spot = MatchAmbiguity(topAst);
-            return spot?.Alternatives ?? System.Array.Empty<string>();
+            if (spot == null) return System.Array.Empty<string>();
+            var list = new string[spot.Alternatives.Count];
+            for (int i = 0; i < list.Length; i++) list[i] = spot.Alternatives[i].Latex;
+            return list;
         }
 
         /// <summary>
@@ -106,19 +159,30 @@ namespace MathCursor.Core.Lattice
         /// Renvoie le LaTeX du segment ambigu (default + alternatives) et sa
         /// position dans <paramref name="topLatex"/> via LastIndexOf.
         ///
+        /// <paramref name="source"/> = chaîne d'entrée brute (avant rendu LaTeX).
+        /// Sert aux règles « source-mutation » (V→forall, futurs intervalles)
+        /// qui scannent le source plutôt que le LaTeX rendu et émettent une
+        /// <see cref="SourceMutation"/> au lieu d'une sub LaTeX.
+        ///
         /// Si plusieurs ambiguïtés existent dans la formule, seule la plus à
         /// droite est exposée — convention « validation molle » : l'élève a
         /// implicitement validé les ambiguïtés gauches en tapant le reste.
         /// </summary>
-        public static AmbiguityResult FindRightmost(AstNode? topAst, string topLatex)
+        public static AmbiguityResult FindRightmost(AstNode? topAst, string topLatex, string source = "")
         {
             if (topAst == null) return new AmbiguityResult(topLatex, null, null, null);
+
+            // Fallback historique : pour le code legacy qui n'a pas de source à
+            // passer (tests, anciens tests d'engine), on prend topLatex comme
+            // source. Approximation acceptable pour les règles AB/ABC/x2 dont
+            // le rendu LaTeX coïncide avec la source.
+            if (source.Length == 0) source = topLatex;
 
             // Walk pré-ordre right-first qui collecte TOUS les matches valides
             // (= entourés de word boundaries dans topLatex). Le rightmost est
             // le PREMIER ajouté (parcours right-first), retourné comme Spot
             // principal. Les autres servent à la cascade côté popup.
-            var allMatches = CollectAllMatches(topAst, topLatex);
+            var allMatches = CollectAllMatches(topAst, topLatex, source);
             if (allMatches.Count == 0)
                 return new AmbiguityResult(topLatex, null, null, null, allMatches);
             var rightmost = allMatches[0];
@@ -131,19 +195,24 @@ namespace MathCursor.Core.Lattice
         /// Stoppe la descente dès qu'un node match (= cohérent avec
         /// TraverseRightmost qui favorise le pattern le plus large).
         /// </summary>
-        private static IReadOnlyList<AmbiguityMatch> CollectAllMatches(AstNode topAst, string topLatex)
+        private static IReadOnlyList<AmbiguityMatch> CollectAllMatches(AstNode topAst, string topLatex, string source)
         {
             var matches = new List<AmbiguityMatch>();
             var consumed = new bool[topLatex.Length];
             // 1) Patterns AST-based (Sup d'une lettre par un nombre, etc.)
             CollectAllMatchesRec(topAst, topLatex, matches, consumed);
-            // 2) Patterns STRING-based : séquences de majuscules adjacentes dans
-            //    topLatex. On scanne en passant par-dessus l'AST parce que
-            //    l'arbre gauche-associatif ne regroupe pas toujours C et D
-            //    ensemble (ex: AB*CD donne ((A*B)*C)*D, donc CD n'est jamais
-            //    un sous-Bin direct). Le scan string capture toutes les
-            //    séquences majuscules quelle que soit leur structure AST.
+            // 2) Patterns STRING-based sur le LaTeX rendu : séquences de
+            //    majuscules adjacentes. On scanne en passant par-dessus l'AST
+            //    parce que l'arbre gauche-associatif ne regroupe pas toujours
+            //    C et D ensemble (ex: AB*CD donne ((A*B)*C)*D, donc CD n'est
+            //    jamais un sous-Bin direct). Le scan string capture toutes
+            //    les séquences majuscules quelle que soit leur structure AST.
             ScanUppercaseSequences(topLatex, matches, consumed);
+            // 3) Patterns SOURCE-mutation : règles qui ré-écrivent la source et
+            //    relancent le pipeline (V→forall, à venir : intervalles, U, etc.).
+            //    Scannent la source brute (pas le LaTeX rendu) pour avoir les
+            //    positions exactes à muter.
+            ScanVAsForallEAsExists(source, topLatex, matches, consumed);
             // Tri par position décroissante : le rightmost reste matches[0].
             matches.Sort((a, b) => b.Start.CompareTo(a.Start));
             return matches;
@@ -180,9 +249,9 @@ namespace MathCursor.Core.Lattice
                         defaultLatex: pair,
                         alternatives: new[]
                         {
-                            $"\\vec{{{pair}}}",
-                            $"\\left({pair}\\right)",
-                            $"\\left[{pair}\\right]",
+                            new AmbiguityAlternative($"\\vec{{{pair}}}"),
+                            new AmbiguityAlternative($"\\left({pair}\\right)"),
+                            new AmbiguityAlternative($"\\left[{pair}\\right]"),
                         });
                 }
                 else if (len == 3)
@@ -193,8 +262,8 @@ namespace MathCursor.Core.Lattice
                         defaultLatex: triplet,
                         alternatives: new[]
                         {
-                            $"\\widehat{{{triplet}}}",
-                            $"\\triangle {triplet}",
+                            new AmbiguityAlternative($"\\widehat{{{triplet}}}"),
+                            new AmbiguityAlternative($"\\triangle {triplet}"),
                         });
                 }
                 // 4+ majuscules : on n'émet rien (pas de pattern géométrique
@@ -206,6 +275,81 @@ namespace MathCursor.Core.Lattice
                     output.Add(new AmbiguityMatch(spot, i, j));
                 }
                 i = j;
+            }
+        }
+
+        /// <summary>
+        /// Scan SOURCE (pas LaTeX rendu) : `V ` (V suivi d'un espace ou EOF)
+        /// déclenche un Spot avec 3 alternatives :
+        /// <list type="number">
+        /// <item>V (identity) — pas de mutation, garde V comme variable. C'est
+        ///   le choix par défaut si l'utilisateur continue à taper sans
+        ///   sélectionner explicitement une alt.</item>
+        /// <item>∀ (forall scope) — mutation `V` → `forall`, le pipeline rend
+        ///   `\forall x \in R` (avec Holes pour les args manquants).</item>
+        /// <item>√ (racine scope) — mutation `V` → `racine`, le pipeline rend
+        ///   `\sqrt{x}` (avec Hole si pas d'arg).</item>
+        /// </list>
+        /// Idem E : 2 alts (E identity / ∃).
+        ///
+        /// Convention typographique : ∀ ressemble à un V à l'envers, ∃ à un E
+        /// miroir, √ à un V étiré — l'utilisateur tape V/E et choisit dans la
+        /// popup ce qu'il voulait dire.
+        ///
+        /// Trigger strict « V suivi d'un espace ou EOF » : les autres cas
+        /// (V*x, V+x, Vx, V), V_x) ne déclenchent PAS l'ambig (V garde sa
+        /// sémantique de variable / multiplicateur).
+        /// </summary>
+        private static void ScanVAsForallEAsExists(string source, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            for (int i = 0; i < source.Length; i++)
+            {
+                char c = source[i];
+                if (c != 'V' && c != 'E') continue;
+                if (i > 0 && char.IsLetter(source[i - 1])) continue;
+                bool followedByDelim = i + 1 == source.Length || source[i + 1] == ' ';
+                if (!followedByDelim) continue;
+
+                int topPos = i < topLatex.Length && topLatex[i] == c ? i : topLatex.IndexOf(c, 0);
+                if (topPos < 0 || topPos >= topLatex.Length || consumed[topPos]) continue;
+
+                var ruleId = c == 'V' ? RuleVAsForall : RuleEAsExists;
+
+                // Alt 0 : identity (pas de mutation). Aperçu = la source telle
+                // qu'elle, rendue par le pipeline normal. Sélectionner cette
+                // alt = "garder V" (popup se ferme, source inchangée).
+                var identityPreview = RenderAfterMutation(source, i, 1, c.ToString()); // no-op mutation
+                var alts = new List<AmbiguityAlternative>
+                {
+                    new AmbiguityAlternative(identityPreview, mutation: null),
+                };
+
+                if (c == 'V')
+                {
+                    // Alt 1 : ∀ — mutation V→forall
+                    var forallPreview = RenderAfterMutation(source, i, 1, "forall");
+                    alts.Add(new AmbiguityAlternative(
+                        forallPreview,
+                        new SourceMutation(i, 1, "forall")));
+
+                    // Alt 2 : √ — mutation V→racine
+                    var racinePreview = RenderAfterMutation(source, i, 1, "racine");
+                    alts.Add(new AmbiguityAlternative(
+                        racinePreview,
+                        new SourceMutation(i, 1, "racine")));
+                }
+                else // E → ∃
+                {
+                    var existsPreview = RenderAfterMutation(source, i, 1, "exists");
+                    alts.Add(new AmbiguityAlternative(
+                        existsPreview,
+                        new SourceMutation(i, 1, "exists")));
+                }
+
+                var spot = new AmbiguitySpot(ruleId, c.ToString(), alts);
+                consumed[topPos] = true;
+                output.Add(new AmbiguityMatch(spot, topPos, topPos + 1));
             }
         }
 
@@ -327,7 +471,10 @@ namespace MathCursor.Core.Lattice
                 return new AmbiguitySpot(
                     ruleId: RuleLetterSupNumber,
                     defaultLatex: $"{sb.Value}^{{{se.Value}}}",
-                    alternatives: new[] { $"{sb.Value}_{{{se.Value}}}" });
+                    alternatives: new[]
+                    {
+                        new AmbiguityAlternative($"{sb.Value}_{{{se.Value}}}"),
+                    });
             }
 
             return null;
@@ -339,5 +486,25 @@ namespace MathCursor.Core.Lattice
         public const string RuleTwoUppercase = "two-uppercase";
         public const string RuleThreeUppercase = "three-uppercase";
         public const string RuleLetterSupNumber = "letter-sup-number";
+        public const string RuleVAsForall = "v-as-forall";
+        public const string RuleEAsExists = "e-as-exists";
+
+        /// <summary>
+        /// Simule l'application d'une <see cref="SourceMutation"/> sur la
+        /// source brute et renvoie le LaTeX rendu post-mutation. Utilisé pour
+        /// produire un aperçu fidèle de ce que l'utilisateur verra s'il
+        /// accepte l'alternative — sans ça, l'aperçu serait toujours générique
+        /// (carrés vides) même quand la source contient déjà var/set.
+        /// </summary>
+        private static string RenderAfterMutation(string source, int offset, int length, string replacement)
+        {
+            if (offset < 0 || offset + length > source.Length) return replacement;
+            var muted = source.Substring(0, offset) + replacement + source.Substring(offset + length);
+            var edges = Lexer.Lex(muted);
+            var paths = LatticePathFinder.TopK(edges, muted.Length, 1);
+            if (paths.Count == 0) return replacement;
+            var ast = new Parser(paths[0].Edges).Parse();
+            return LatexRenderer.Render(ast);
+        }
     }
 }

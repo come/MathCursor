@@ -155,4 +155,18 @@ namespace MathCursor.Core.Lattice.Ast
             Low = low; High = high; Body = body;
         }
     }
+
+    /// <summary>Quantificateur : ∀ x ∈ R, ∃ x ∈ R. <see cref="Symbol"/> = "\\forall" ou "\\exists".
+    /// Args manquants matérialisés par des <see cref="Hole"/> (jamais null) — symétrique
+    /// avec <see cref="Sum"/> et <see cref="Lim"/>. Le `\in` est toujours rendu.</summary>
+    public sealed class Quant : AstNode
+    {
+        public string Symbol { get; }
+        public AstNode Var { get; }
+        public AstNode Set { get; }
+        public Quant(string symbol, AstNode var, AstNode set)
+        {
+            Symbol = symbol; Var = var; Set = set;
+        }
+    }
 }

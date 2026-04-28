@@ -120,7 +120,9 @@ namespace MathCursor.Core
 
             var topAst = new Parser(paths[0].Edges).Parse();
             var topLatex = LatexRenderer.Render(topAst);
-            return AlternativeGenerator.FindRightmost(topAst, topLatex);
+            // On passe `trimmed` (la source post-NormalizeUnicode) pour que les
+            // règles source-mutation (V→forall, etc.) scannent la bonne chaîne.
+            return AlternativeGenerator.FindRightmost(topAst, topLatex, trimmed);
         }
 
         /// <summary>

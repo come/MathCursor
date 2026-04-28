@@ -345,12 +345,73 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.Equal("\\infty", c.Value);
         }
 
+        // ------------------ Quantificateurs (scope, symétrique à somme/lim) ------------------
+
         [Fact]
-        public void Forall_yields_const()
+        public void Forall_alone_yields_quant_with_holes()
         {
+            // `forall` seul (analogue à `somme` seul) → Quant(Hole, Hole),
+            // jamais Const. L'utilisateur voit `\forall \square \in \square`
+            // au render. Les carrés se remplissent au fur et à mesure.
             var ast = ParseTop("forall");
-            var c = Assert.IsType<Const>(ast);
-            Assert.Equal("\\forall", c.Value);
+            var q = Assert.IsType<Quant>(ast);
+            Assert.Equal("\\forall", q.Symbol);
+            Assert.IsType<Hole>(q.Var);
+            Assert.IsType<Hole>(q.Set);
+        }
+
+        [Fact]
+        public void Forall_with_var_and_set_yields_quant()
+        {
+            // forall x R : scope `var = ParseAtomOnly`, set = ParseArgument
+            var ast = ParseTop("forall x R");
+            var q = Assert.IsType<Quant>(ast);
+            Assert.Equal("\\forall", q.Symbol);
+            var v = Assert.IsType<Atom>(q.Var);
+            Assert.Equal("x", v.Value);
+            var s = Assert.IsType<Atom>(q.Set);
+            Assert.Equal("R", s.Value);
+        }
+
+        [Fact]
+        public void Forall_with_in_keyword_yields_quant()
+        {
+            // forall x in R : `in` keyword consommé entre var et set, mais pas
+            // émis dans l'AST (le \in est généré par le renderer du Quant)
+            var ast = ParseTop("forall x in R");
+            var q = Assert.IsType<Quant>(ast);
+            Assert.Equal("\\forall", q.Symbol);
+            Assert.IsType<Atom>(q.Var);
+            Assert.IsType<Atom>(q.Set);
+        }
+
+        [Fact]
+        public void Forall_with_dans_keyword_yields_quant()
+        {
+            // `dans` est un alias de `in` dans Vocabulary.Keywords
+            var ast = ParseTop("forall x dans R");
+            var q = Assert.IsType<Quant>(ast);
+            Assert.Equal("\\forall", q.Symbol);
+        }
+
+        [Fact]
+        public void Forall_with_var_only_yields_hole_set()
+        {
+            // forall x : pas de set tapé → Set=Hole, render = `\forall x \in \square`
+            // (cohérent avec somme qui rend `\sum_{k=\square}^{\square} \square`
+            // quand seule la var est tapée).
+            var ast = ParseTop("forall x");
+            var q = Assert.IsType<Quant>(ast);
+            Assert.IsType<Atom>(q.Var);
+            Assert.IsType<Hole>(q.Set);
+        }
+
+        [Fact]
+        public void Exists_with_var_and_set_yields_quant()
+        {
+            var ast = ParseTop("exists y N");
+            var q = Assert.IsType<Quant>(ast);
+            Assert.Equal("\\exists", q.Symbol);
         }
 
         // ------------------ Relations (=, <, >, <=, ...) ------------------

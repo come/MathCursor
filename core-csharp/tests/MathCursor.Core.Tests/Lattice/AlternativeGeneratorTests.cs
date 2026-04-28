@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using MathCursor.Core.Lattice;
 using MathCursor.Core.Lattice.Ast;
@@ -7,6 +8,12 @@ namespace MathCursor.Core.Tests.Lattice
 {
     public sealed class AlternativeGeneratorTests
     {
+        // Helper : projette les alternatives en liste de Latex pour simplifier
+        // les Assert.Contains. Le refactor en `AmbiguityAlternative` ajoute
+        // une indirection sur .Latex, ce helper la masque dans les tests.
+        private static IReadOnlyList<string> Lat(IReadOnlyList<AmbiguityAlternative> alts)
+            => alts.Select(a => a.Latex).ToList();
+
         [Fact]
         public void Null_ast_returns_empty()
             => Assert.Empty(AlternativeGenerator.Generate(null));
@@ -23,7 +30,7 @@ namespace MathCursor.Core.Tests.Lattice
         {
             var r = _engine.ConvertWithAmbiguity("AB");
             Assert.NotNull(r.Spot);
-            var alts = r.Spot!.Alternatives;
+            var alts = Lat(r.Spot!.Alternatives);
             Assert.Equal(3, alts.Count);
             Assert.Contains("\\vec{AB}", alts);
             Assert.Contains("\\left(AB\\right)", alts);
@@ -86,10 +93,10 @@ namespace MathCursor.Core.Tests.Lattice
             var r = engine.ConvertWithAmbiguity("AB");
             Assert.NotNull(r.Spot);
             Assert.Equal("AB", r.TopLatex);
-            Assert.Equal(3, r.Spot!.Alternatives.Count);
-            Assert.Contains("\\vec{AB}", r.Spot.Alternatives);
-            Assert.Contains("\\left(AB\\right)", r.Spot.Alternatives);
-            Assert.Contains("\\left[AB\\right]", r.Spot.Alternatives);
+            Assert.Equal(3, Lat(r.Spot!.Alternatives).Count);
+            Assert.Contains("\\vec{AB}", Lat(r.Spot.Alternatives));
+            Assert.Contains("\\left(AB\\right)", Lat(r.Spot.Alternatives));
+            Assert.Contains("\\left[AB\\right]", Lat(r.Spot.Alternatives));
         }
 
         [Fact]
@@ -100,7 +107,7 @@ namespace MathCursor.Core.Tests.Lattice
             var r = engine.ConvertWithAmbiguity("x2");
             Assert.Equal("x^{2}", r.TopLatex);
             Assert.NotNull(r.Spot);
-            Assert.Contains("x_{2}", r.Spot!.Alternatives);
+            Assert.Contains("x_{2}", Lat(r.Spot!.Alternatives));
         }
 
         [Fact]
@@ -127,7 +134,7 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.Equal("CD", r.Spot!.DefaultLatex);
             Assert.Equal(3, r.SpotStart);
             Assert.Equal(5, r.SpotEnd);
-            Assert.Contains("\\vec{CD}", r.Spot.Alternatives);
+            Assert.Contains("\\vec{CD}", Lat(r.Spot.Alternatives));
         }
 
         [Fact]
@@ -137,7 +144,7 @@ namespace MathCursor.Core.Tests.Lattice
             var r = _engine.ConvertWithAmbiguity("f(x2)");
             Assert.NotNull(r.Spot);
             Assert.Equal("x^{2}", r.Spot!.DefaultLatex);
-            Assert.Contains("x_{2}", r.Spot.Alternatives);
+            Assert.Contains("x_{2}", Lat(r.Spot.Alternatives));
         }
 
         [Fact]
@@ -184,9 +191,9 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.Equal("AB", r.TopLatex);
             Assert.NotNull(r.Spot);
             Assert.Equal(AlternativeGenerator.RuleTwoUppercase, r.Spot!.RuleId);
-            Assert.Contains("\\vec{AB}", r.Spot.Alternatives);
-            Assert.Contains("\\left(AB\\right)", r.Spot.Alternatives);
-            Assert.Contains("\\left[AB\\right]", r.Spot.Alternatives);
+            Assert.Contains("\\vec{AB}", Lat(r.Spot.Alternatives));
+            Assert.Contains("\\left(AB\\right)", Lat(r.Spot.Alternatives));
+            Assert.Contains("\\left[AB\\right]", Lat(r.Spot.Alternatives));
         }
 
         [Fact]
@@ -219,10 +226,10 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.NotNull(r.Spot);
             Assert.Equal(AlternativeGenerator.RuleThreeUppercase, r.Spot!.RuleId);
             Assert.Equal("ABC", r.Spot.DefaultLatex);
-            Assert.Contains("\\widehat{ABC}", r.Spot.Alternatives);
-            Assert.Contains("\\triangle ABC", r.Spot.Alternatives);
+            Assert.Contains("\\widehat{ABC}", Lat(r.Spot.Alternatives));
+            Assert.Contains("\\triangle ABC", Lat(r.Spot.Alternatives));
             // Et SURTOUT pas d'ambig two-uppercase sur AB
-            Assert.DoesNotContain("\\vec{AB}", r.Spot.Alternatives);
+            Assert.DoesNotContain("\\vec{AB}", Lat(r.Spot.Alternatives));
         }
 
         [Fact]
@@ -263,7 +270,7 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.Equal("x^{2}", r.TopLatex);
             Assert.NotNull(r.Spot);
             Assert.Equal(AlternativeGenerator.RuleLetterSupNumber, r.Spot!.RuleId);
-            Assert.Contains("x_{2}", r.Spot.Alternatives);
+            Assert.Contains("x_{2}", Lat(r.Spot.Alternatives));
         }
 
         [Fact]
@@ -283,6 +290,123 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.Equal("f\\left(x^{2}\\right)", r.TopLatex);
             Assert.NotNull(r.Spot);
             Assert.Equal(AlternativeGenerator.RuleLetterSupNumber, r.Spot!.RuleId);
+        }
+
+        // ---- V → forall / racine (3 alts : V identity / ∀ / √) ----
+
+        [Fact]
+        public void V_yields_three_alternatives()
+        {
+            // V suivi d'espace → 3 alts : V identity (no mutation), ∀ (mutation
+            // V→forall), √ (mutation V→racine). L'utilisateur choisit dans la popup.
+            var r = _engine.ConvertWithAmbiguity("V x R");
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleVAsForall, r.Spot!.RuleId);
+            Assert.Equal(3, r.Spot.Alternatives.Count);
+
+            // Alt 0 : V identity (pas de mutation)
+            Assert.Null(r.Spot.Alternatives[0].Mutation);
+
+            // Alt 1 : ∀ (mutation V → forall)
+            var forallAlt = r.Spot.Alternatives[1];
+            Assert.NotNull(forallAlt.Mutation);
+            Assert.Equal(0, forallAlt.Mutation!.Offset);
+            Assert.Equal(1, forallAlt.Mutation.Length);
+            Assert.Equal("forall", forallAlt.Mutation.Replacement);
+
+            // Alt 2 : √ (mutation V → racine)
+            var racineAlt = r.Spot.Alternatives[2];
+            Assert.NotNull(racineAlt.Mutation);
+            Assert.Equal("racine", racineAlt.Mutation!.Replacement);
+        }
+
+        [Fact]
+        public void V_alone_yields_three_alternatives()
+        {
+            // V seul (suivi d'EOF) déclenche aussi : EOF est analogue à un
+            // espace pour le pattern scope.
+            var r = _engine.ConvertWithAmbiguity("V");
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleVAsForall, r.Spot!.RuleId);
+            Assert.Equal(3, r.Spot.Alternatives.Count);
+            Assert.Null(r.Spot.Alternatives[0].Mutation);
+            Assert.Equal("forall", r.Spot.Alternatives[1].Mutation!.Replacement);
+            Assert.Equal("racine", r.Spot.Alternatives[2].Mutation!.Replacement);
+        }
+
+        [Fact]
+        public void V_alt_previews_render_real_post_mutation()
+        {
+            // L'aperçu LaTeX de chaque alt = rendu RÉEL post-mutation. Pour
+            // `V x R` avec mutation V→forall, le preview doit être
+            // `\forall x \in R` (var et set remplis), pas `\forall \square \in \square`.
+            var r = _engine.ConvertWithAmbiguity("V x R");
+            Assert.NotNull(r.Spot);
+            // Alt 0 (V identity) : rendu source telle quelle = "VxR" (concat sans espaces)
+            Assert.Contains("V", r.Spot!.Alternatives[0].Latex);
+            // Alt 1 (∀) : rendu post-mutation V→forall = "\forall x \in R"
+            Assert.Equal("\\forall x \\in R", r.Spot.Alternatives[1].Latex);
+            // Alt 2 (√) : rendu post-mutation V→racine = "\sqrt{x}R" (racine consomme x, R en suite)
+            Assert.Contains("\\sqrt", r.Spot.Alternatives[2].Latex);
+        }
+
+        [Fact]
+        public void Vx_collé_no_ambig()
+        {
+            // Vx (collé) = variable composée, pas un quantificateur
+            var r = _engine.ConvertWithAmbiguity("Vx");
+            Assert.Null(r.Spot);
+        }
+
+        [Fact]
+        public void V_times_x_no_ambig()
+        {
+            // V*x = produit V·x, pas un quantificateur (pas d'espace après V)
+            var r = _engine.ConvertWithAmbiguity("V*x");
+            Assert.Null(r.Spot);
+        }
+
+        [Fact]
+        public void Volume_no_ambig()
+        {
+            // Volume = mot, V suivi d'autre chose qu'un espace
+            var r = _engine.ConvertWithAmbiguity("Volume");
+            Assert.Null(r.Spot);
+        }
+
+        [Fact]
+        public void Forall_x_R_after_mutation_renders_full_scope()
+        {
+            // Simule l'état post-mutation : la source est devenue `forall x R`
+            // (V remplacé par forall). Le pipeline doit produire le scope.
+            var r = _engine.ConvertWithAmbiguity("forall x R");
+            Assert.Equal("\\forall x \\in R", r.TopLatex);
+            // Pas d'ambig sur ce résultat (forall scope est résolu)
+            Assert.Null(r.Spot);
+        }
+
+        [Fact]
+        public void Forall_alone_after_mutation_renders_squares()
+        {
+            // Après mutation `V` → `forall` mais avant que l'utilisateur tape
+            // var et set : source = `forall`, render = `\forall \square \in \square`.
+            // L'utilisateur voit immédiatement les boîtes à remplir.
+            var r = _engine.ConvertWithAmbiguity("forall");
+            Assert.Contains("\\forall", r.TopLatex);
+            Assert.Contains("\\square", r.TopLatex);
+            Assert.Contains("\\in", r.TopLatex);
+        }
+
+        [Fact]
+        public void E_yields_two_alternatives()
+        {
+            // E : 2 alts (E identity / ∃). Pas de "racine" pour E (uniquement V).
+            var r = _engine.ConvertWithAmbiguity("E y N");
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleEAsExists, r.Spot!.RuleId);
+            Assert.Equal(2, r.Spot.Alternatives.Count);
+            Assert.Null(r.Spot.Alternatives[0].Mutation);
+            Assert.Equal("exists", r.Spot.Alternatives[1].Mutation!.Replacement);
         }
     }
 }

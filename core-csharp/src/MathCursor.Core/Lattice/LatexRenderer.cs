@@ -38,6 +38,7 @@ namespace MathCursor.Core.Lattice
             Sum sum => RenderSum(sum),
             Lim lim => $"\\lim_{{{Render(lim.Var)} \\to {Render(Unwrap(lim.Target))}}} {Render(lim.Body)}",
             Int it => $"\\int_{{{Render(Unwrap(it.Low))}}}^{{{Render(Unwrap(it.High))}}} {Render(it.Body)}",
+            Quant q => RenderQuant(q),
             _ => string.Empty,
         };
 
@@ -105,5 +106,11 @@ namespace MathCursor.Core.Lattice
             return $"{sym}_{{{Render(sum.Var)}={Render(Unwrap(sum.Start))}}}^{{{Render(Unwrap(sum.End))}}} {Render(sum.Body)}";
         }
 
+        // Quant : `\forall x \in R`. Le `\in` est généré par le scope, pas tapé
+        // par l'utilisateur — c'est l'analogue du `_` / `^` de \sum_{k=…}^{…}
+        // qui matérialise les rails du scope. Args manquants = Holes rendus
+        // en \square, l'utilisateur voit `\forall \square \in \square` post-mutation.
+        private static string RenderQuant(Quant q)
+            => $"{q.Symbol} {Render(Unwrap(q.Var))} \\in {Render(Unwrap(q.Set))}";
     }
 }
