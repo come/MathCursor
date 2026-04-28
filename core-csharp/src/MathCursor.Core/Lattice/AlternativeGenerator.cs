@@ -26,10 +26,29 @@ namespace MathCursor.Core.Lattice
     }
 
     /// <summary>
+    /// Une occurrence d'ambiguïté dans l'AST top-1 avec sa position dans le
+    /// LaTeX rendu. Permet à la popup d'appliquer en cascade une préférence
+    /// validée : « si l'utilisateur a choisi vec pour BC, on applique vec à
+    /// tous les autres matches two-uppercase de la formule (AB, AC…) ».
+    /// </summary>
+    public sealed class AmbiguityMatch
+    {
+        public AmbiguitySpot Spot { get; }
+        public int Start { get; }
+        public int End { get; }
+        public AmbiguityMatch(AmbiguitySpot spot, int start, int end)
+        {
+            Spot = spot;
+            Start = start;
+            End = end;
+        }
+    }
+
+    /// <summary>
     /// Résultat de <see cref="AlternativeGenerator.FindRightmost"/> : le top-1
-    /// LaTeX complet, et éventuellement le segment ambigu le plus à droite avec
-    /// sa position dans le top-1 (pour permettre la recompose dans la popup).
-    /// Position null si aucune ambiguïté détectée.
+    /// LaTeX complet, le segment ambigu le plus à droite (pour la popup), et
+    /// la liste de TOUS les matches dans la formule (pour la résolution en
+    /// cascade des autres patterns du même RuleId).
     /// </summary>
     public sealed class AmbiguityResult
     {
@@ -37,12 +56,16 @@ namespace MathCursor.Core.Lattice
         public AmbiguitySpot? Spot { get; }
         public int? SpotStart { get; }
         public int? SpotEnd { get; }
-        public AmbiguityResult(string topLatex, AmbiguitySpot? spot, int? spotStart, int? spotEnd)
+        public IReadOnlyList<AmbiguityMatch> AllMatches { get; }
+
+        public AmbiguityResult(string topLatex, AmbiguitySpot? spot, int? spotStart, int? spotEnd,
+            IReadOnlyList<AmbiguityMatch>? allMatches = null)
         {
             TopLatex = topLatex;
             Spot = spot;
             SpotStart = spotStart;
             SpotEnd = spotEnd;
+            AllMatches = allMatches ?? System.Array.Empty<AmbiguityMatch>();
         }
     }
 
@@ -92,17 +115,69 @@ namespace MathCursor.Core.Lattice
             if (topAst == null) return new AmbiguityResult(topLatex, null, null, null);
 
             var (subAst, spot) = TraverseRightmost(topAst);
-            if (spot == null) return new AmbiguityResult(topLatex, null, null, null);
+            // Collecte aussi TOUS les matches pour permettre la résolution en
+            // cascade côté popup (cf. AmbiguityMatch).
+            var allMatches = CollectAllMatches(topAst, topLatex);
 
-            // Position dans topLatex : LastIndexOf du LaTeX par défaut. Si
-            // plusieurs occurrences existent, on prend la dernière (cohérent
-            // avec « le plus à droite »). Si introuvable (le rendu intégré
-            // diverge du rendu isolé), on n'expose pas la position — la popup
-            // affichera quand même les alternatives en mode legacy.
+            if (spot == null) return new AmbiguityResult(topLatex, null, null, null, allMatches);
+
             int idx = topLatex.LastIndexOf(spot.DefaultLatex, System.StringComparison.Ordinal);
             if (idx < 0)
-                return new AmbiguityResult(topLatex, spot, null, null);
-            return new AmbiguityResult(topLatex, spot, idx, idx + spot.DefaultLatex.Length);
+                return new AmbiguityResult(topLatex, spot, null, null, allMatches);
+            return new AmbiguityResult(topLatex, spot, idx, idx + spot.DefaultLatex.Length, allMatches);
+        }
+
+        /// <summary>
+        /// Parcourt l'AST top-1 et retourne TOUS les sous-AST qui matchent une
+        /// règle d'ambiguïté, avec leur position dans <paramref name="topLatex"/>.
+        /// Stoppe la descente dès qu'un node match (= cohérent avec
+        /// TraverseRightmost qui favorise le pattern le plus large).
+        /// </summary>
+        private static IReadOnlyList<AmbiguityMatch> CollectAllMatches(AstNode topAst, string topLatex)
+        {
+            var matches = new List<AmbiguityMatch>();
+            // On parcourt en s'assurant de ne pas substituer 2x le même range :
+            // chaque match consomme sa portion via TrackingFromRight.
+            var consumed = new bool[topLatex.Length];
+            CollectAllMatchesRec(topAst, topLatex, matches, consumed);
+            return matches;
+        }
+
+        private static void CollectAllMatchesRec(AstNode node, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            var spot = MatchAmbiguity(node);
+            if (spot != null)
+            {
+                // Cherche la POSITION DROITE non-consommée pour éviter qu'un
+                // match avale la position d'un autre. Ex: pour AB+BC on veut
+                // BC trouvé à pos[3..5], pas à pos[0..2] = AB.
+                int idx = LastIndexOfFree(topLatex, spot.DefaultLatex, consumed);
+                if (idx >= 0)
+                {
+                    int end = idx + spot.DefaultLatex.Length;
+                    for (int i = idx; i < end; i++) consumed[i] = true;
+                    output.Add(new AmbiguityMatch(spot, idx, end));
+                }
+                return; // pattern parent prioritaire, ne descend pas dans enfants
+            }
+            foreach (var child in GetChildrenRightFirst(node))
+                CollectAllMatchesRec(child, topLatex, output, consumed);
+        }
+
+        private static int LastIndexOfFree(string text, string needle, bool[] consumed)
+        {
+            int idx = text.LastIndexOf(needle, System.StringComparison.Ordinal);
+            while (idx >= 0)
+            {
+                bool free = true;
+                for (int i = idx; i < idx + needle.Length; i++)
+                    if (consumed[i]) { free = false; break; }
+                if (free) return idx;
+                if (idx == 0) return -1;
+                idx = text.LastIndexOf(needle, idx - 1, System.StringComparison.Ordinal);
+            }
+            return -1;
         }
 
         private static (AstNode? sub, AmbiguitySpot? spot) TraverseRightmost(AstNode node)

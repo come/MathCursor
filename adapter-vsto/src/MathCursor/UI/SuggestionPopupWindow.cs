@@ -37,6 +37,12 @@ namespace MathCursor.UI
         private string _topLatex = "";
         private string _currentRuleId = "";
         private IReadOnlyList<string> _alternatives = Array.Empty<string>();
+        // Tous les matches d'ambiguïté de la formule courante (pas juste le
+        // current spot). Permet la résolution en cascade : quand l'utilisateur
+        // valide vec pour BC, on applique vec aussi à AB et AC qui sont des
+        // patterns du même RuleId déjà présents dans la zone.
+        private IReadOnlyList<MathCursor.Core.Lattice.AmbiguityMatch> _allMatches
+            = Array.Empty<MathCursor.Core.Lattice.AmbiguityMatch>();
         private int _spotStart = -1, _spotEnd = -1;
         private string _resolvedLatex = "";
         private bool _focusOnFinal = true;
@@ -212,6 +218,7 @@ namespace MathCursor.UI
             IReadOnlyList<string> alternatives,
             int spotStart,
             int spotEnd,
+            IReadOnlyList<MathCursor.Core.Lattice.AmbiguityMatch> allMatches,
             double screenX,
             double screenY,
             string debugText = "")
@@ -256,6 +263,7 @@ namespace MathCursor.UI
 
             _topLatex = substitutedTop;
             _currentRuleId = ruleId ?? "";
+            _allMatches = allMatches ?? Array.Empty<MathCursor.Core.Lattice.AmbiguityMatch>();
             _alternatives = (newSpotStart >= 0 && alternatives != null)
                 ? alternatives
                 : Array.Empty<string>();
@@ -383,18 +391,33 @@ namespace MathCursor.UI
             if (_spotStart < 0 || _spotEnd <= _spotStart) return false;
 
             var alt = _alternatives[_altIndex];
-            // Mémorise la résolution par STRING (pour préserver lors des
-            // updates si l'utilisateur retape la même chose).
-            string defaultLatex = _topLatex.Substring(_spotStart, _spotEnd - _spotStart);
-            _resolvedSubstitutions[defaultLatex] = alt;
-            // Mémorise la pref par RÈGLE pour appliquer auto aux ambiguïtés
-            // suivantes du même type (ex: AB → \vec → CD futurs aussi en \vec).
-            if (!string.IsNullOrEmpty(_currentRuleId))
-                _rulePreferences[_currentRuleId] = _altIndex;
+            int chosenAltIdx = _altIndex;
+            string ruleId = _currentRuleId;
 
-            _resolvedLatex = _topLatex.Substring(0, _spotStart)
-                           + alt
-                           + _topLatex.Substring(_spotEnd);
+            // 1) Mémorise la pref par RÈGLE (pour les futures ambiguïtés du
+            //    même type qui apparaîtront pendant que l'élève continue à
+            //    taper).
+            if (!string.IsNullOrEmpty(ruleId))
+                _rulePreferences[ruleId] = chosenAltIdx;
+
+            // 2) Cascade IMMÉDIATE : applique le même choix à TOUS les autres
+            //    matches du même RuleId déjà présents dans la formule courante
+            //    (ex: résoudre BC en vec → AB et AC deviennent aussi vec).
+            foreach (var match in _allMatches)
+            {
+                if (match.Spot.RuleId == ruleId
+                    && chosenAltIdx >= 0 && chosenAltIdx < match.Spot.Alternatives.Count)
+                {
+                    _resolvedSubstitutions[match.Spot.DefaultLatex] = match.Spot.Alternatives[chosenAltIdx];
+                }
+            }
+
+            // 3) Recompose _resolvedLatex en applicant TOUTES les substitutions
+            //    accumulées (cascade incluse).
+            string newResolved = _topLatex;
+            foreach (var kv in _resolvedSubstitutions)
+                newResolved = newResolved.Replace(kv.Key, kv.Value);
+            _resolvedLatex = newResolved;
 
             // Ferme la zone d'ambiguïté : la résolution est validée, l'alt
             // sélectionnée est intégrée dans la formule finale, plus rien à

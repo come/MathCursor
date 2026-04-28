@@ -1006,7 +1006,8 @@ namespace MathCursor.Host
             string ruleId = result.Spot?.RuleId ?? "";
             int spotStart = result.SpotStart ?? -1;
             int spotEnd = result.SpotEnd ?? -1;
-            _popup.Show(result.TopLatex, ruleId, alts, spotStart, spotEnd, popupX, popupY, debugText);
+            _popup.Show(result.TopLatex, ruleId, alts, spotStart, spotEnd,
+                result.AllMatches, popupX, popupY, debugText);
         }
 
         /// <summary>
