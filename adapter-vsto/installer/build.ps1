@@ -138,24 +138,25 @@ if (Test-Path $VcRedistCache) {
 }
 
 # 3) Modèle NER
-Write-Host "[3/4] Modèle NER..." -ForegroundColor Yellow
-if (-not (Test-Path $ModelDstDir)) {
-    New-Item -ItemType Directory -Force -Path $ModelDstDir | Out-Null
-}
+# On déploie UNIQUEMENT distilmult-v4 (le NER actif depuis 2026-04-27).
+# L'ancien XLM-R laissé à la racine de models/ en dev est ignoré ici —
+# il ferait ~265 Mo de poids mort dans l'installer et ne sert plus
+# (FindModelDir priorise distilmult-v4 et tombe sur celui-ci).
+Write-Host "[3/4] Modèle NER (distilmult-v4)..." -ForegroundColor Yellow
+if (Test-Path $ModelDstDir) { Remove-Item -Recurse -Force $ModelDstDir }
+$DistilSrc = Join-Path $ModelSrcDir 'distilmult-v4'
+$DistilDst = Join-Path $ModelDstDir 'distilmult-v4'
 $modelOk = $false
-if (Test-Path (Join-Path $ModelDstDir 'model_quantized.onnx')) {
-    Write-Host "  modèle déjà présent dans payload/models/"
-    $modelOk = $true
-}
-elseif (Test-Path (Join-Path $ModelSrcDir 'model_quantized.onnx')) {
-    Write-Host "  copie depuis $ModelSrcDir → $ModelDstDir"
-    Copy-Item -Path "$ModelSrcDir\*" -Destination $ModelDstDir -Force -Recurse
+if (Test-Path (Join-Path $DistilSrc 'model_quantized.onnx')) {
+    Write-Host "  copie depuis $DistilSrc → $DistilDst"
+    New-Item -ItemType Directory -Force -Path $DistilDst | Out-Null
+    Copy-Item -Path "$DistilSrc\*" -Destination $DistilDst -Force -Recurse
     $modelOk = $true
 }
 else {
-    Write-Warning "Modèle NER introuvable. Copier les fichiers dans :"
-    Write-Warning "  $ModelDstDir"
-    Write-Warning "Fichiers requis : model_quantized.onnx, sentencepiece.bpe.model, config.json, ort_config.json, special_tokens_map.json"
+    Write-Warning "Modèle distilmult-v4 introuvable. Copier les fichiers dans :"
+    Write-Warning "  $DistilSrc"
+    Write-Warning "Fichiers requis : model_quantized.onnx, vocab.txt, tokenizer.json, config.json, special_tokens_map.json, tokenizer_config.json, ort_config.json"
 }
 
 # 4) Info fichier post-install
