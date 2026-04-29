@@ -80,10 +80,13 @@ namespace MathCursor.Core.Tests.Lattice
         [Fact]
         public void Multichar_op_preferred_over_two_singles()
         {
-            // "<=" coût 0 vs "<" + "=" séparés (qui coûtent 0 aussi mais en 2 arêtes — Dijkstra prend le 0 le plus court)
+            // "<=" coût négatif (-length = -2) garantit qu'il bat `<` (0) +
+            // `=` (0) = 0. Cf. ADR 29-04 implication-equivalence-arrows qui
+            // a introduit ce schéma de coût pour résoudre les ambiguïtés
+            // multi-char (notamment `<=>` vs `<=` + `>`).
             var edges = Lexer.Lex("<=");
             var paths = LatticePathFinder.TopK(edges, 2, 3);
-            Assert.Equal(0, paths[0].Cost);
+            Assert.Equal(-2, paths[0].Cost);
             // Top-1 : 1 seule arête multi-char
             Assert.Single(paths[0].Edges);
             Assert.Equal("<=", paths[0].Edges[0].Value);

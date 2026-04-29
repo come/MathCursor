@@ -39,6 +39,7 @@ namespace MathCursor.Core.Lattice
             Lim lim => $"\\lim_{{{Render(lim.Var)} \\to {Render(Unwrap(lim.Target))}}} {Render(lim.Body)}",
             Int it => $"\\int_{{{Render(Unwrap(it.Low))}}}^{{{Render(Unwrap(it.High))}}} {Render(it.Body)}",
             Interval iv => RenderInterval(iv),
+            FuncDef fd => RenderFuncDef(fd),
             _ => string.Empty,
         };
 
@@ -80,6 +81,14 @@ namespace MathCursor.Core.Lattice
             // Composition d'intervalles / ensembles
             if (b.Op == "union") return $"{lhs} \\cup {rhs}";
             if (b.Op == "inter") return $"{lhs} \\cap {rhs}";
+            // Liste de variables / arguments (forall x,y, f(a,b)…)
+            if (b.Op == ",") return $"{lhs},{rhs}";
+            // Implication / équivalence (ADR 29-04). Toutes variantes ASCII et
+            // Unicode (incl. Word AutoCorrect ↔ ⟺ ⟹ ⟸) mappées vers les
+            // macros standards \Rightarrow, \Leftarrow, \Leftrightarrow.
+            if (b.Op == "=>" || b.Op == "==>" || b.Op == "⇒" || b.Op == "⟹") return $"{lhs} \\Rightarrow {rhs}";
+            if (b.Op == "<=>" || b.Op == "<==>" || b.Op == "⇔" || b.Op == "↔" || b.Op == "⟺") return $"{lhs} \\Leftrightarrow {rhs}";
+            if (b.Op == "<==" || b.Op == "⇐" || b.Op == "⟸") return $"{lhs} \\Leftarrow {rhs}";
             return $"{lhs}{b.Op}{rhs}";
         }
 
@@ -107,6 +116,19 @@ namespace MathCursor.Core.Lattice
         {
             var sym = sum.Symbol == "sum" ? "\\sum" : "\\prod";
             return $"{sym}_{{{Render(sum.Var)}={Render(Unwrap(sum.Start))}}}^{{{Render(Unwrap(sum.End))}}} {Render(sum.Body)}";
+        }
+
+        // Définition de fonction : f: x ↦ expr (1 var) ou f: (x,y) ↦ expr
+        // (n-uplet auto-parenthésé). Convention lycée FR avec \mapsto distinct
+        // de = (égalité simple). Espacement serré : pas d'espace avant `:`.
+        private static string RenderFuncDef(FuncDef fd)
+        {
+            var body = Render(Unwrap(fd.Body));
+            if (fd.Vars.Count == 1)
+                return $"{fd.Name}: {Render(fd.Vars[0])} \\mapsto {body}";
+            var parts = new System.Collections.Generic.List<string>();
+            foreach (var v in fd.Vars) parts.Add(Render(v));
+            return $"{fd.Name}: ({string.Join(",", parts)}) \\mapsto {body}";
         }
 
         // Intervalle français : brackets bruts (pas \left/\right) parce que

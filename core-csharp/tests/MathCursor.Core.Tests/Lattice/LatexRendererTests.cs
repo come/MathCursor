@@ -431,5 +431,68 @@ namespace MathCursor.Core.Tests.Lattice
             // forall x dans bbR → \forall x \in \mathbb{R}
             // Décomposition modulaire : keyword `dans` explicite.
             => Assert.Equal("\\forall x \\in \\mathbb{R}", RenderTop("forall x dans bbR"));
+
+        // ------------------ ADR 29-04 implication / équivalence flèches ------------------
+
+        [Fact]
+        public void Implies_arrow_renders_Rightarrow()
+            => Assert.Equal("A \\Rightarrow B", RenderTop("A => B"));
+
+        [Fact]
+        public void Iff_arrow_renders_Leftrightarrow()
+            => Assert.Equal("P \\Leftrightarrow Q", RenderTop("P <=> Q"));
+
+        [Fact]
+        public void Long_iff_arrow_renders_Leftrightarrow()
+            // <==> 4 chars : doit gagner sur <=> + = grâce au coût négatif greedy
+            => Assert.Equal("A \\Leftrightarrow B", RenderTop("A <==> B"));
+
+        [Fact]
+        public void Double_implies_arrow_renders_Rightarrow()
+            => Assert.Equal("A \\Rightarrow B", RenderTop("A ==> B"));
+
+        [Fact]
+        public void Left_arrow_renders_Leftarrow()
+            => Assert.Equal("A \\Leftarrow B", RenderTop("A <== B"));
+
+        [Fact]
+        public void Unicode_implies_renders()
+            => Assert.Equal("A \\Rightarrow B", RenderTop("A ⇒ B"));
+
+        [Fact]
+        public void Unicode_iff_renders()
+            => Assert.Equal("A \\Leftrightarrow B", RenderTop("A ⇔ B"));
+
+        // Anti-régression : <=, >= ne doivent PAS être cassés par l'ajout
+
+        [Fact]
+        public void Leq_unchanged_after_arrows()
+            => Assert.Equal("x \\leq 5", RenderTop("x <= 5"));
+
+        [Fact]
+        public void Geq_unchanged_after_arrows()
+            => Assert.Equal("x \\geq 5", RenderTop("x >= 5"));
+
+        // ------------------ FuncDef (ADR 29-04 function-definition) ------------------
+
+        [Fact]
+        public void FuncDef_single_var_renders_with_mapsto()
+            => Assert.Equal("f: x \\mapsto 2x+1", RenderTop("f:x->2x+1"));
+
+        [Fact]
+        public void FuncDef_multi_vars_renders_with_parens()
+            => Assert.Equal("f: (x,y) \\mapsto x+y", RenderTop("f:x,y->x+y"));
+
+        [Fact]
+        public void FuncDef_with_cos_in_body()
+            // \cos garde ses parens autour de l'arg (rendu standard LaTeX)
+            => Assert.Equal("g: t \\mapsto \\cos\\left(t\\right)+1", RenderTop("g:t->cos(t)+1"));
+
+        [Fact]
+        public void FuncDef_with_space_before_colon()
+            // f :x->x+1 (espace avant :) doit aussi marcher (les espaces sont
+            // filtrés par le parser). Régression : voir logs où top="" pour
+            // "f :x->x+1" alors que "f:x->x+1" rend correctement.
+            => Assert.Equal("f: x \\mapsto x+1", RenderTop("f :x->x+1"));
     }
 }

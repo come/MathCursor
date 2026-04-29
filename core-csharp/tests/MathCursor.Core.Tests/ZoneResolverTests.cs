@@ -171,6 +171,17 @@ namespace MathCursor.Core.Tests
         }
 
         [Fact]
+        public void Resolve_funcdef_with_space_before_colon()
+        {
+            // Régression : Word logs montrent top="" pour "f :x->x+1" alors
+            // que RenderTop direct produit le bon rendu. Bug suspect dans
+            // ZoneResolver.Resolve / le préprocesseur canonical sets ?
+            var resolver = MakeResolver();
+            var r = resolver.Resolve("f :x->x+1");
+            Assert.Equal("f: x \\mapsto x+1", r.TopLatex);
+        }
+
+        [Fact]
         public void HasPreference_reflects_state()
         {
             var resolver = MakeResolver();

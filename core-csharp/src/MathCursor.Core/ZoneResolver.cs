@@ -122,7 +122,13 @@ namespace MathCursor.Core
         public ResolvedZone Resolve(string rawSource)
         {
             rawSource = rawSource ?? string.Empty;
-            var muted = ApplyPreferences(rawSource);
+            // Préprocesseur : `R*`/`N+`/`Z*-` etc. (lettre canonique + 1 ou 2
+            // signes modificateurs avec délim derrière) → `bbR*`/`bbN+`/`bbZ*-`.
+            // Aliasing direct car la présence d'un modificateur exclut
+            // l'interprétation "lettre variable" (pi*R*x ne veut rien dire).
+            // Pas de désambig nécessaire, transformation silencieuse.
+            var preprocessed = PreprocessCanonicalSetModifiers(rawSource);
+            var muted = ApplyPreferences(preprocessed);
             var ambig = _engine.ConvertWithAmbiguity(muted);
             bool incomplete = ComputeIsIncomplete(rawSource, ambig.TopLatex);
             return new ResolvedZone(
@@ -134,6 +140,55 @@ namespace MathCursor.Core
                 spotEnd: ambig.SpotEnd,
                 allMatches: ambig.AllMatches,
                 isIncomplete: incomplete);
+        }
+
+        /// <summary>
+        /// Détecte les patterns `[RNZQC][*+-]{1,2}` suivis d'un délim et les
+        /// remplace par `bb<L><modifs>`. Ex: `R*` → `bbR*`, `N+*` → `bbN+*`.
+        /// Pas de mutation si la lettre est précédée d'une autre lettre
+        /// (= elle fait partie d'un mot, ex `volume*x`).
+        /// </summary>
+        private static string PreprocessCanonicalSetModifiers(string source)
+        {
+            if (string.IsNullOrEmpty(source)) return source;
+            var sb = new System.Text.StringBuilder(source.Length + 16);
+            int i = 0;
+            while (i < source.Length)
+            {
+                char c = source[i];
+                bool isCanonical = (c == 'R' || c == 'N' || c == 'Z' || c == 'Q' || c == 'C');
+                bool wordBoundaryLeft = i == 0 || !char.IsLetter(source[i - 1]);
+                if (isCanonical && wordBoundaryLeft)
+                {
+                    // Compte 1 ou 2 modificateurs tight juste après la lettre
+                    int j = i + 1;
+                    while (j < source.Length && (j - (i + 1)) < 2
+                           && (source[j] == '*' || source[j] == '+' || source[j] == '-'))
+                        j++;
+                    int modifierCount = j - (i + 1);
+                    if (modifierCount > 0)
+                    {
+                        // Vérifier que ce qui suit n'est PAS une opérande math
+                        // (chiffre, lettre, paren ouvrante) — sinon c'est une
+                        // expression arithmétique normale (R*x, R+5, etc.)
+                        char afterMod = j < source.Length ? source[j] : '\0';
+                        bool isTerminal = afterMod == '\0'
+                            || char.IsWhiteSpace(afterMod)
+                            || afterMod == ',' || afterMod == ';' || afterMod == '.'
+                            || afterMod == ')' || afterMod == ']' || afterMod == '}';
+                        if (isTerminal)
+                        {
+                            sb.Append("bb").Append(c);
+                            sb.Append(source, i + 1, modifierCount);
+                            i = j;
+                            continue;
+                        }
+                    }
+                }
+                sb.Append(c);
+                i++;
+            }
+            return sb.ToString();
         }
 
         /// <summary>

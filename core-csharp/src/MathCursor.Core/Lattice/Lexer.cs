@@ -33,22 +33,28 @@ namespace MathCursor.Core.Lattice
             {
                 char c = input[i];
 
-                // Espace / tab : token séparateur
-                if (c == ' ' || c == '\t')
+                // Espace / tab / NBSP : token séparateur. NBSP (U+00A0) inclus
+                // car Word AutoCorrect insère une espace insécable avant les
+                // ponctuations doubles françaises (`:`, `;`, `?`, `!`). Sans
+                // ce traitement, le DAG du Lexer est cassé sur ces chars
+                // → ConvertWithAmbiguity retourne empty.
+                if (c == ' ' || c == '\t' || c == ' ')
                 {
                     edges.Add(new LatticeEdge(i, i + 1, EdgeType.Space, " ", 0));
                     continue;
                 }
 
-                // Op multi-caractères (greedy : on émet TOUTES les variantes
-                // qui matchent ; Dijkstra choisira la plus courte = plus lourde
-                // = celle qu'on veut éviter — il faudra checker en pratique)
+                // Op multi-caractères : on émet TOUTES les variantes qui matchent
+                // à cette position. Coût NÉGATIF proportionnel à la longueur
+                // (-length) pour garantir le greedy : le Dijkstra préfère
+                // toujours la variante la plus longue. Sans ce signe, `<=>` et
+                // `<=` + `>` ont le même coût total 0 → choix indéterministe.
                 foreach (var kv in Vocabulary.MultiCharOps)
                 {
                     var op = kv.Key;
                     if (i + op.Length <= n && input.Substring(i, op.Length) == op)
                     {
-                        edges.Add(new LatticeEdge(i, i + op.Length, EdgeType.Op, op, 0));
+                        edges.Add(new LatticeEdge(i, i + op.Length, EdgeType.Op, op, -op.Length));
                     }
                 }
 

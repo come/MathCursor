@@ -89,6 +89,12 @@ namespace MathCursor.UI
         /// </summary>
         public event Action<string, int, MathCursor.Core.Lattice.SourceMutation> SourceMutationRequested;
 
+        /// <summary>
+        /// Levé quand l'utilisateur clique sur la formule finale dans la popup
+        /// (équivalent d'un Enter sur la finale). L'hôte fait le commit OMath.
+        /// </summary>
+        public event Action CommitRequested;
+
         public SuggestionPopupWindow()
         {
             WindowStyle = WindowStyle.None;
@@ -312,6 +318,16 @@ namespace MathCursor.UI
                         EnterNavMode();
                         UpdateHighlight();
                     };
+                    // Clic sur alt = résout cette alt direct (équivalent
+                    // navigation + Enter). UX : moins de friction.
+                    cell.MouseLeftButtonUp += (_, __) =>
+                    {
+                        _altIndex = idx;
+                        _focusOnFinal = false;
+                        EnterNavMode();
+                        UpdateHighlight();
+                        ResolveCurrentAltIfFocused();
+                    };
                     _altsRow.Children.Add(cell);
                 }
                 _altsRowBorder.Visibility = Visibility.Visible;
@@ -359,6 +375,15 @@ namespace MathCursor.UI
                 _focusOnFinal = true;
                 EnterNavMode();
                 UpdateHighlight();
+            };
+            // Clic sur la formule finale = commit OMath direct (équivalent
+            // Enter). Délégué à l'hôte qui détient la logique d'insertion.
+            panel.MouseLeftButtonUp += (_, __) =>
+            {
+                _focusOnFinal = true;
+                EnterNavMode();
+                UpdateHighlight();
+                CommitRequested?.Invoke();
             };
             return panel;
         }

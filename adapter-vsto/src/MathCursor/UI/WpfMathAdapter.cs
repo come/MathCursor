@@ -24,17 +24,16 @@ namespace MathCursor.UI
 
             string s = latex;
 
-            // 1) \mathbb{X} → \mathrm{X} pour la popup. WpfMath ne supporte
-            //    NI \mathbb NI \mathbf NI le caractère Unicode `ℝ` (testés :
-            //    tous rendent un point placeholder). \mathrm est natively
-            //    supporté et donne un X en romain droit, distinctif visuellement
-            //    de la variable italique.
+            // 1) \mathbb{X} → |X pour la popup. Préfixe `|` qui simule la
+            //    double barre du blackboard : `|R`, `|N`, `|Z`. Distinctif
+            //    visuellement de la variable italique R/N/Z, et clair pour
+            //    l'utilisateur que c'est l'ensemble. Compromis temporaire en
+            //    attendant une vraie font math compatible blackboard.
             //
-            //    Compromis assumé : on perd la double barre dans la popup,
-            //    mais la conversion finale Word OMath reste \mathbb{X} (path
-            //    SuggestionService.InsertOMathAt qui ne passe pas par Adapt,
-            //    Word OMath gère `\mathbb` natively → vrai ℝ avec barre).
-            s = MathbbRegex.Replace(s, "\\mathrm{$1}");
+            //    Conversion finale Word OMath garde \mathbb{X} (vrai ℝ avec
+            //    double barre) — le path SuggestionService.InsertOMathAt ne
+            //    passe pas par Adapt.
+            s = MathbbRegex.Replace(s, "|$1");
 
             // 2) \widehat{X} → \hat{X}. Perd le chapeau étendu pour multi-char,
             //    acceptable visuellement.
@@ -91,8 +90,11 @@ namespace MathCursor.UI
         {
             // Différence d'ensembles
             ("\\setminus", "\\backslash"),
-            // Flèche fonction
-            ("\\mapsto", "↦"), // ↦
+            // Flèche fonction : \mapsto (↦ U+21A6) n'est pas dans la font math
+            // de WpfMath (rend un point placeholder, idem \mathbb). On dégrade
+            // en \to (flèche simple →) qui est supporté natively. La conversion
+            // finale Word OMath garde \mapsto (vrai ↦ avec barre verticale).
+            ("\\mapsto", "\\to"),
             // Intégrales doubled / contour
             ("\\iint",  "∬"), // ∬
             ("\\iiint", "∭"), // ∭

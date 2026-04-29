@@ -215,10 +215,33 @@ namespace MathCursor.Core.Lattice
             ScanVAsForallEAsExists(source, topLatex, matches, consumed);
             // 4) Lettres canoniques R/N/Z/Q/C isolées : popup ensemble vs lettre.
             ScanCanonicalSetLetters(source, topLatex, matches, consumed);
-            // Tri par position décroissante : le rightmost reste matches[0].
-            matches.Sort((a, b) => b.Start.CompareTo(a.Start));
+            // Tri : priorité aux règles structurantes (V→∀, E→∃ qui changent
+            // la sémantique globale) puis aux règles locales (canonical-set,
+            // AB→vec, x²→x_2). En cas d'égalité de priorité, rightmost first
+            // (= la plus proche du caret).
+            matches.Sort((a, b) =>
+            {
+                int prioA = GetRulePriority(a.Spot.RuleId);
+                int prioB = GetRulePriority(b.Spot.RuleId);
+                if (prioA != prioB) return prioA.CompareTo(prioB);
+                return b.Start.CompareTo(a.Start);
+            });
             return matches;
         }
+
+        // Priorité des règles d'ambig (1 = haute, traité en premier).
+        // Rules structurantes (changent la sémantique globale, ex V→∀ vs V
+        // variable) sortent avant les locales (modifient juste un atome).
+        private static int GetRulePriority(string ruleId) => ruleId switch
+        {
+            RuleVAsForall => 1,
+            RuleEAsExists => 1,
+            RuleCanonicalSet => 2,
+            RuleTwoUppercase => 3,
+            RuleThreeUppercase => 3,
+            RuleLetterSupNumber => 3,
+            _ => 99,
+        };
 
         /// <summary>
         /// Scan SOURCE : R/N/Z/Q/C isolées (précédées de non-lettre, suivies

@@ -106,8 +106,43 @@ namespace MathCursor.Core.Lattice
 
         public AstNode Parse()
         {
+            // Tente d'abord de reconnaître une définition de fonction au pattern
+            // `Ident ':' Ident (',' Ident)* '->' body` (ADR 29-04). Si match,
+            // on consomme et retourne FuncDef. Si pas match (échec à n'importe
+            // quelle étape), _i est restauré et ParseRelation prend le relais.
+            var fd = TryParseFuncDef();
+            if (fd != null) return fd;
             var e = ParseRelation();
             return e ?? Hole(1);
+        }
+
+        /// <summary>
+        /// Tente de reconnaître `Ident ':' Ident (',' Ident)* '->' body`.
+        /// Stratégie spéculative : sauvegarde `_i` et restaure à null si le
+        /// pattern ne matche pas, pour laisser ParseRelation traiter normalement.
+        /// </summary>
+        private AstNode? TryParseFuncDef()
+        {
+            int save = _i;
+            if (Peek() is not { Type: EdgeType.Ident } nameTok) return null;
+            Consume();
+            if (!IsOp(":")) { _i = save; return null; }
+            Consume();
+            var vars = new List<AstNode>();
+            if (Peek() is not { Type: EdgeType.Ident } v0) { _i = save; return null; }
+            Consume();
+            vars.Add(new Atom("ident", v0.Value));
+            while (IsOp(","))
+            {
+                Consume();
+                if (Peek() is not { Type: EdgeType.Ident } v) { _i = save; return null; }
+                Consume();
+                vars.Add(new Atom("ident", v.Value));
+            }
+            if (!IsOp("->")) { _i = save; return null; }
+            Consume();
+            var body = ParseTightChain() ?? (AstNode)Hole(1);
+            return new FuncDef(nameTok.Value, vars, body);
         }
 
         // ---------------- Relation / Expr / Term / Postfix ----------------
@@ -143,6 +178,19 @@ namespace MathCursor.Core.Lattice
                 case "!=":
                 case "<>":
                 case "//":  // \parallel (∥) entre deux droites/vecteurs
+                // Implication / équivalence (ADR 29-04)
+                case "=>":
+                case "==>":
+                case "<=>":
+                case "<==>":
+                case "<==":
+                case "⇒":
+                case "⇔":
+                case "⇐":
+                case "↔":   // Word AutoCorrect FR pour <=>
+                case "⟺":
+                case "⟹":
+                case "⟸":
                     return true;
                 default:
                     return false;
@@ -164,6 +212,18 @@ namespace MathCursor.Core.Lattice
                     var op = Consume();
                     var rhs = ParseTerm() ?? (AstNode)Hole(1);
                     lhs = new Bin(op.Value, op.Tight ?? false, false, lhs, rhs);
+                    continue;
+                }
+                // Virgule au top-level (pas dans un intervalle) : opérateur
+                // binaire qui rend littéralement `a,b`. Permet `V x,y (- R*`
+                // → `\forall x,y \in \mathbb{R}^*`. À l'intérieur d'un
+                // intervalle, la virgule reste séparatrice low/high (gérée
+                // par ParsePrimary intervalle).
+                if (IsOp(",") && _intervalDepth == 0)
+                {
+                    var op = Consume();
+                    var rhs = ParseTerm() ?? (AstNode)Hole(1);
+                    lhs = new Bin(",", false, false, lhs, rhs);
                     continue;
                 }
                 // Keyword union/inter en infix entre deux opérandes

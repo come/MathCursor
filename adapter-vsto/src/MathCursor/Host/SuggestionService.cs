@@ -88,6 +88,21 @@ namespace MathCursor.Host
         private int _dismissedZoneStart = -1;
         private int _dismissedZoneEnd = -1;
 
+        // État d'extension itérative (ADR 29-04). Activé au 1er Ctrl+Espace
+        // qui ouvre la popup ; chaque appui suivant tant que la popup est
+        // ouverte étend la zone d'un cran vers la gauche.
+        // Reset à HidePopup ou OnSelectionChange.
+        //  - _iterativeParagraph : snapshot du texte du paragraphe
+        //  - _iterativeParaAbsStart : start absolu du paragraphe dans le doc
+        //  - _iterativeSpanStart : offset paragraph du début de la span courante
+        //  - _iterativeSpanEnd : offset paragraph de la fin (= caret au 1er trigger)
+        //  - _iterativeOMaths : snapshot des regions OMath du paragraphe
+        private string _iterativeParagraph;
+        private int _iterativeParaAbsStart = -1;
+        private int _iterativeSpanStart = -1;
+        private int _iterativeSpanEnd = -1;
+        private IReadOnlyList<(int start, int end)> _iterativeOMaths;
+
         // Cooldown post-commit : après une insertion, le caret peut rester
         // momentanément DANS l'OMath créé (NudgeCursorOutOfMath n'est pas
         // toujours capable de le faire sortir, surtout en display-mode).
@@ -165,6 +180,7 @@ namespace MathCursor.Host
             _popup?.HidePopup(resetCaches: true);
             _editPopup?.HidePopup();
             _resolver?.Clear();
+            ResetIterativeExpansion();
         }
 
         /// <summary>
@@ -180,7 +196,24 @@ namespace MathCursor.Host
             _editPopup?.HidePopup();
         }
 
-        private void OnSelectionChange(Word.Selection sel) => CheckAndUpdate();
+        private void OnSelectionChange(Word.Selection sel)
+        {
+            // Try-catch défensif : Word désactive l'add-in après une exception
+            // non-gérée dans un event handler. CheckAndUpdate fait beaucoup de
+            // travail (lecture paragraphe, NER, etc.) et peut échouer.
+            try
+            {
+                // Caret bougé volontairement → reset l'état d'extension itérative
+                // (cf. ADR 29-04) : le prochain Ctrl+Espace repart d'une détection
+                // neuve. Le polling CheckAndUpdate continue normalement.
+                ResetIterativeExpansion();
+                CheckAndUpdate();
+            }
+            catch (Exception ex)
+            {
+                LogDiag("on_selection_change_error: " + ex.Message);
+            }
+        }
 
         /// <summary>
         /// OMath dans lequel se trouve strictement le caret (pas seulement au
@@ -368,9 +401,10 @@ namespace MathCursor.Host
                     LogDiag($"zones={zones.Count} → filtered={filteredZones.Count} (omath_overlap dropped={zones.Count - filteredZones.Count})");
 
                     // Retour sur le thread UI pour mettre à jour la popup
+                    var capturedOmaths = omathRegions; // closure capture
                     _pollTimer?.Dispatcher.BeginInvoke(new Action(() =>
                     {
-                        try { ApplyZones(filteredZones, caretInParagraph, paragraphAbsStart); }
+                        try { ApplyZones(filteredZones, caretInParagraph, paragraphAbsStart, capturedOmaths); }
                         finally { _inferenceInFlight = false; }
                     }));
                 });
@@ -381,7 +415,7 @@ namespace MathCursor.Host
             }
         }
 
-        private void ApplyZones(IReadOnlyList<DetectedZone> zones, int caretInParagraph, int paragraphAbsStart)
+        private void ApplyZones(IReadOnlyList<DetectedZone> zones, int caretInParagraph, int paragraphAbsStart, IReadOnlyList<(int start, int end)> omathRegions)
         {
             if (zones == null || zones.Count == 0)
             {
@@ -426,6 +460,13 @@ namespace MathCursor.Host
             // source-mutation accumulées (V→forall, etc.) avant le pipeline
             // pour que les ambig déjà résolues ne se re-déclenchent pas.
             ResolvedZone resolved;
+            // DEBUG : dump chars hex pour détecter chars invisibles Word
+            if (target.Text != null && target.Text.Length > 0)
+            {
+                var hex = new System.Text.StringBuilder();
+                foreach (var ch in target.Text) hex.Append($"{(int)ch:X4} ");
+                LogDiag($"engine zone hex=\"{hex.ToString().TrimEnd()}\" len={target.Text.Length}");
+            }
             try { resolved = _resolver.Resolve(target.Text ?? ""); }
             catch (Exception ex)
             {
@@ -460,6 +501,17 @@ namespace MathCursor.Host
             // Les mutations sont gérées à la volée par le résolveur.
             _lastZoneSource = target.Text ?? "";
             ShowPopup(resolved, absStart, absEnd, rawLen, target.Text ?? "");
+
+            // Initialise l'état d'extension itérative depuis la zone NER
+            // courante. Permet à Ctrl+Espace suivants d'étendre cette zone
+            // (cf. ADR 29-04 iterative-zone-expansion). Sans ce hook,
+            // l'extension itérative ne marche que pour les popups venues
+            // du manual trigger (TriggerManual), pas du polling NER.
+            _iterativeParagraph = _lastParagraph ?? "";
+            _iterativeParaAbsStart = paragraphAbsStart;
+            _iterativeSpanStart = target.Start;
+            _iterativeSpanEnd = target.End;
+            _iterativeOMaths = omathRegions;
         }
 
         /// <summary>
@@ -618,8 +670,14 @@ namespace MathCursor.Host
         // Ctrl+Espace, il veut convertir le membre droit "(1+x)/V(x+1)", pas
         // la span entière qui commencerait par un `=` (engine produit alors du
         // bruit : "= (1+x)" dropping le reste, etc.).
+        // `,` retiré : depuis ADR 29-04 (virgule comme opérateur Bin(",")),
+        // la virgule fait partie d'expressions math légitimes (`Vx,y`,
+        // `f(x,y)`, `forall x,y dans R`). Plus de coupure manuelle dessus.
+        // `:` retiré : depuis ADR 29-04 function-definition, `:` est
+        // l'opérateur de définition de fonction (`f:x->expr`). Plus de
+        // coupure manuelle dessus.
         private static readonly char[] ManualTriggerDelimiters =
-            { '.', ',', ';', ':', '!', '?', '=', '<', '>', '\n', '\r' };
+            { '.', ';', '!', '?', '=', '<', '>', '\n', '\r' };
 
         /// <summary>
         /// Trigger explicite (Ctrl+Espace) : bypass NER, calcule la span
@@ -639,6 +697,15 @@ namespace MathCursor.Host
 
                 // Si on est dans un OMath, laisser le flux édition habituel tourner.
                 if (FindOMathAtCaret() != null) { CheckAndUpdate(); return; }
+
+                // Extension itérative (ADR 29-04) : si la popup est ouverte
+                // ET qu'on a un état d'extension actif, ce Ctrl+Espace étend
+                // la zone d'un cran vers la gauche au lieu de re-détecter.
+                if (_popup != null && _popup.IsVisible && _iterativeSpanStart >= 0)
+                {
+                    ExtendOneStop();
+                    return;
+                }
 
                 var paragraph = _contextReader.ReadCurrentParagraph();
                 int caretInParagraph = paragraph.CaretOffset;
@@ -673,6 +740,14 @@ namespace MathCursor.Host
                 // Entre direct en mode nav : l'utilisateur a demandé explicitement
                 // la conversion.
                 _popup?.EnterNavMode();
+
+                // Initialise l'état d'extension itérative : chaque Ctrl+Espace
+                // suivant tant que la popup est ouverte étendra la zone d'un cran.
+                _iterativeParagraph = text;
+                _iterativeParaAbsStart = paragraphAbsStart;
+                _iterativeSpanStart = spanStart;
+                _iterativeSpanEnd = spanEnd;
+                _iterativeOMaths = paragraph.OMathRegions;
             }
             catch (Exception ex)
             {
@@ -692,6 +767,93 @@ namespace MathCursor.Host
         /// des ruptures de phrase. Sans ce check, <c>[0;+inf[</c> serait coupé
         /// sur le <c>;</c> et la span ne capturerait que <c>+inf[</c>.
         /// </summary>
+        /// <summary>
+        /// Extension itérative (ADR 29-04) : étend la span vers la gauche
+        /// d'un cran. Passe OUTRE la borne actuelle (délim/stopword qui
+        /// bloquait le span précédent) et cherche la borne suivante en amont.
+        /// Si la borne est un OMath, STOP FINAL : on n'étend pas au-delà.
+        /// </summary>
+        private void ExtendOneStop()
+        {
+            if (string.IsNullOrEmpty(_iterativeParagraph))
+            {
+                LogDiag("iterative extend: empty paragraph, no-op");
+                return;
+            }
+            if (_iterativeSpanStart <= 0)
+            {
+                LogDiag($"iterative extend: at paragraph start (spanStart=0), no-op");
+                return;
+            }
+
+            // Recule d'un cran au-delà de la borne courante : on saute le
+            // whitespace puis le caractère qui bloquait. Sinon
+            // ComputeManualSpanStart trouve la même borne et retourne la
+            // même position → no-op.
+            int boundary = _iterativeSpanStart - 1;
+            while (boundary >= 0 && char.IsWhiteSpace(_iterativeParagraph[boundary])) boundary--;
+            if (boundary < 0)
+            {
+                LogDiag($"iterative extend: at paragraph start, no-op");
+                return;
+            }
+
+            // Si la borne est DANS un OMath, c'est un stop final : on n'étend
+            // pas au-delà (l'OMath précédent est une formule autonome qui ne
+            // doit pas être absorbée par l'extension texte).
+            if (_iterativeOMaths != null)
+            {
+                foreach (var (s, e) in _iterativeOMaths)
+                {
+                    if (s <= boundary && boundary < e)
+                    {
+                        LogDiag($"iterative extend: blocked by OMath at [{s},{e}], no-op (stop final)");
+                        return;
+                    }
+                }
+            }
+
+            // Cherche la borne suivante en amont, en partant de `boundary` (=
+            // un cran avant l'ancienne borne, donc strictement plus à gauche).
+            int newStart = ComputeManualSpanStart(_iterativeParagraph, boundary, _iterativeOMaths);
+            // Trim whitespace en début de la nouvelle zone
+            while (newStart < _iterativeSpanEnd && char.IsWhiteSpace(_iterativeParagraph[newStart])) newStart++;
+
+            if (newStart >= _iterativeSpanStart)
+            {
+                // Vraiment pas d'extension possible.
+                LogDiag($"iterative extend no-op: spanStart={_iterativeSpanStart} unchanged (newStart={newStart}, boundary={boundary})");
+                return;
+            }
+
+            _iterativeSpanStart = newStart;
+            string span = _iterativeParagraph.Substring(_iterativeSpanStart, _iterativeSpanEnd - _iterativeSpanStart);
+            LogDiag($"iterative extend: span=[{_iterativeSpanStart},{_iterativeSpanEnd}] → \"{Preview(span)}\"");
+
+            ResolvedZone resolved;
+            try { resolved = _resolver.Resolve(span); }
+            catch (Exception ex) { LogDiag("iterative_extend_error: " + ex.Message); return; }
+            if (string.IsNullOrEmpty(resolved.TopLatex)) return;
+
+            int absStart = _iterativeParaAbsStart + _iterativeSpanStart;
+            int absEnd = _iterativeParaAbsStart + _iterativeSpanEnd;
+            _lastZoneSource = span;
+            _editHandle = null;
+            ShowPopup(resolved, absStart, absEnd, span.Length, "iterative: " + span);
+            _popup?.EnterNavMode();
+        }
+
+        /// <summary>Reset l'état d'extension itérative (HidePopup, déplacement caret, etc.).</summary>
+        private void ResetIterativeExpansion()
+        {
+            if (_iterativeSpanStart < 0) return; // already reset, skip log
+            _iterativeParagraph = null;
+            _iterativeParaAbsStart = -1;
+            _iterativeSpanStart = -1;
+            _iterativeSpanEnd = -1;
+            _iterativeOMaths = null;
+        }
+
         private static int ComputeManualSpanStart(string text, int caret, IReadOnlyList<(int start, int end)> omathRegions)
         {
             int start = 0;
@@ -882,6 +1044,24 @@ namespace MathCursor.Host
         /// l'envoi. Non-bloquant vis-à-vis du polling popup (Word reprend la main
         /// après fermeture du dialog).
         /// </summary>
+        /// <summary>
+        /// Appelé quand l'utilisateur clique sur la formule finale dans la
+        /// popup (équivalent d'un Enter sur la finale). Appelle la même
+        /// logique de commit que CommitSelected.
+        /// </summary>
+        private void OnPopupCommitRequested()
+        {
+            try
+            {
+                if (_popup == null || !_popup.IsVisible) return;
+                if (_lastZoneAbsStart < 0 || _lastZoneAbsEnd <= _lastZoneAbsStart) return;
+                var latex = _popup.CurrentFinalLatex ?? "";
+                if (string.IsNullOrWhiteSpace(latex)) return;
+                CommitLatexAndOMath(latex, _lastZoneSource ?? "");
+            }
+            catch (Exception ex) { LogDiag("popup_click_commit_error: " + ex.Message); }
+        }
+
         private void OnReportRequested()
         {
             try
@@ -963,6 +1143,7 @@ namespace MathCursor.Host
                 _popup = new SuggestionPopupWindow();
                 _popup.ReportRequested += OnReportRequested;
                 _popup.SourceMutationRequested += OnSourceMutationRequested;
+                _popup.CommitRequested += OnPopupCommitRequested;
             }
 
             // Repositionnement : seulement si nouvelle zone, sinon on garde la
@@ -1023,20 +1204,12 @@ namespace MathCursor.Host
                 var resolved = _resolver.Resolve(src);
                 LogDiag($"pref applied rule=\"{ruleId}\" altIdx={altIdx} src=\"{src}\" → muted=\"{resolved.MutedSource}\" incomplete={resolved.IsIncomplete}");
 
-                // Auto-commit : si la mutation rend la formule complète
-                // (pas de Hole, pas d'opérateur final), on insère l'OMath
-                // direct sans attendre flèche bas + Enter. Cas type : `V x R`
-                // → `\forall x \in R` n'a rien d'autre à recevoir, l'utilisateur
-                // a fini sa désambig. Pour les alts identity ou sub LaTeX
-                // (vec AB), on ne passe jamais par ici (mutation null), donc
-                // le flow popup → final → Enter reste pour ces cas.
-                if (!resolved.IsIncomplete)
-                {
-                    LogDiag($"auto-commit on alt resolution latex=\"{resolved.TopLatex}\"");
-                    CommitLatexAndOMath(resolved.TopLatex, src);
-                    return;
-                }
-
+                // Auto-commit retiré (29-04). Avec la décomposition modulaire
+                // de forall (Const " \forall " seul), la mutation V→forall sur
+                // `V` produit `\forall ` qui a IsIncomplete=false alors que
+                // sémantiquement il manque var et ensemble. L'auto-commit
+                // "volait" la frappe de l'utilisateur. Désormais l'utilisateur
+                // commit toujours via flèche bas + Enter, comportement prévisible.
                 ShowPopup(resolved, _lastZoneAbsStart, _lastZoneAbsEnd, src.Length, debugText: resolved.MutedSource);
             }
             catch (Exception ex)
@@ -1088,6 +1261,48 @@ namespace MathCursor.Host
         {
             if (string.IsNullOrWhiteSpace(latex)) return false;
             var editing = _editHandle;
+
+            // Merge avec OMaths adjacents (ADR 29-04). Pas en mode édition
+            // (le mode revert remplace l'OMath en cours, pas de fusion).
+            if (editing == null)
+            {
+                var merged = TryMergeWithAdjacentOMaths(_lastZoneAbsStart, _lastZoneAbsEnd, source);
+                if (merged != null)
+                {
+                    _lastZoneAbsStart = merged.AbsStart;
+                    _lastZoneAbsEnd = merged.AbsEnd;
+                    source = merged.MergedSource;
+                    // Recalcule le LaTeX sur le source mergé via le pipeline
+                    try
+                    {
+                        var resolved = _resolver.Resolve(source);
+                        if (!string.IsNullOrEmpty(resolved.TopLatex)) latex = resolved.TopLatex;
+                    }
+                    catch (Exception ex) { LogDiag("merge_resolve_error: " + ex.Message); }
+                    // Supprime les anciens handles du store ET les bookmarks
+                    // Word `mcEq_<handleId>` (sinon FindOurHandleForOMath
+                    // retrouve l'ancien handle fantôme au prochain merge tentative
+                    // → store retourne null/empty → log "stored null or empty source").
+                    foreach (var h in merged.RemovedHandles)
+                    {
+                        try { _store.RemoveAsync(new EquationHandle(h)).GetAwaiter().GetResult(); }
+                        catch (Exception ex) { LogDiag($"merge_remove_error handle={h}: {ex.Message}"); }
+                        try { DeleteBookmarkByHandle(h); }
+                        catch (Exception ex) { LogDiag($"merge_bookmark_delete_error handle={h}: {ex.Message}"); }
+                    }
+
+                    // Supprime explicitement les OMaths qui chevauchent le range
+                    // mergé : Word refuse d'écraser un OMath via Range.Text =
+                    // "..." (lève "The range cannot be deleted"). Doit être fait
+                    // AVANT InsertOMathAt. On itère en sens descendant pour que
+                    // les suppressions n'invalident pas les positions précédentes.
+                    int rangeShrink = DeleteOMathsInRange(_lastZoneAbsStart, _lastZoneAbsEnd);
+                    _lastZoneAbsEnd -= rangeShrink;
+
+                    LogDiag($"merge: {merged.RemovedHandles.Count} OMath(s) absorbés range=[{_lastZoneAbsStart},{_lastZoneAbsEnd}] (shrunk by {rangeShrink}) mergedSource=\"{source}\" latex=\"{latex}\"");
+                }
+            }
+
             try
             {
                 var (newStart, newEnd) = InsertOMathAt(_lastZoneAbsStart, _lastZoneAbsEnd, latex);
@@ -1262,6 +1477,179 @@ namespace MathCursor.Host
             catch { return false; }
         }
 
+        // Strict : un seul caractère espace UNIQUEMENT. Pour la fusion d'OMaths :
+        // on accepte 0 ou 1 espace entre eux. Pas de tab, pas d'espaces multiples,
+        // pas de newline. Spec utilisateur 29-04 (révision du brief original).
+        private static bool IsSingleSpaceAt(Word.Document doc, int pos)
+        {
+            try
+            {
+                var t = doc.Range(pos, pos + 1).Text ?? "";
+                return t.Length > 0 && t[0] == ' ';
+            }
+            catch { return false; }
+        }
+
+        /// <summary>
+        /// Résultat d'une tentative de merge : nouvelles positions absolues
+        /// englobant les OMaths fusionnés, source mergé, handles à supprimer
+        /// du store. Null si pas de fusion possible.
+        /// </summary>
+        private sealed class MergeResult
+        {
+            public int AbsStart { get; set; }
+            public int AbsEnd { get; set; }
+            public string MergedSource { get; set; }
+            public List<string> RemovedHandles { get; set; }
+        }
+
+        /// <summary>
+        /// Cherche des OMaths adjacents à la zone à insérer (avant et/ou après,
+        /// avec uniquement espaces/tabs entre). Pour chaque OMath trouvé qui a
+        /// un handle MathCursor connu, fusionne son source dans le source mergé.
+        /// OMaths sans handle (insertion native Word ou collés depuis ailleurs)
+        /// ne sont pas fusionnés — fallback comportement actuel (OMaths séparés).
+        /// </summary>
+        private MergeResult TryMergeWithAdjacentOMaths(int absStart, int absEnd, string middleSource)
+        {
+            try
+            {
+                var doc = _app.ActiveDocument;
+                if (doc == null) { LogDiag("merge: skip (no active document)"); return null; }
+
+                LogDiag($"merge: try absStart={absStart} absEnd={absEnd} middle=\"{Preview(middleSource)}\"");
+
+                Word.OMath leftOMath = null;
+                string leftSource = null;
+                string leftHandle = null;
+                Word.OMath rightOMath = null;
+                string rightSource = null;
+                string rightHandle = null;
+
+                // GAUCHE : on accepte 0 ou 1 espace simple entre absStart et
+                // l'OMath gauche. Spec utilisateur : direct adjacence ou un
+                // espace, sinon pas de merge (pas de tab, pas d'espaces multiples).
+                int leftScan = absStart - 1;
+                bool leftHadSpace = false;
+                if (leftScan >= 0 && IsSingleSpaceAt(doc, leftScan))
+                {
+                    leftScan--;
+                    leftHadSpace = true;
+                }
+                LogDiag($"merge left: scan={leftScan} hadSpace={leftHadSpace} (looking for OMath ending at {leftScan + 1})");
+                // À leftScan il doit y avoir un OMath qui finit à leftScan+1.
+                if (leftScan >= 0)
+                {
+                    int omathCount = 0;
+                    foreach (Word.OMath om in doc.OMaths)
+                    {
+                        omathCount++;
+                        var omEnd = om.Range.End;
+                        var omStart = om.Range.Start;
+                        if (omEnd == leftScan + 1)
+                        {
+                            LogDiag($"merge left: candidate OMath range=[{omStart},{omEnd}]");
+                            var h = FindOurHandleForOMath(om);
+                            LogDiag($"merge left: handle={(h ?? "null")}");
+                            if (h != null)
+                            {
+                                try
+                                {
+                                    var stored = _store.RetrieveAsync(new EquationHandle(h)).GetAwaiter().GetResult();
+                                    if (stored != null && !string.IsNullOrEmpty(stored.Source))
+                                    {
+                                        leftOMath = om;
+                                        leftHandle = h;
+                                        leftSource = stored.Source;
+                                        LogDiag($"merge left: source=\"{Preview(stored.Source)}\"");
+                                    }
+                                    else { LogDiag("merge left: stored null or empty source"); }
+                                }
+                                catch (Exception ex) { LogDiag($"merge_retrieve_left_error: {ex.Message}"); }
+                            }
+                            break;
+                        }
+                    }
+                    LogDiag($"merge left: scanned {omathCount} OMaths total, leftOMath={(leftOMath != null ? "found" : "null")}");
+                }
+                else { LogDiag("merge left: leftScan < 0, skip"); }
+
+                // DROITE : 0 ou 1 espace entre absEnd et l'OMath droit (idem gauche).
+                int rightScan = absEnd;
+                int docEnd = doc.Content.End;
+                bool rightHadSpace = false;
+                if (rightScan < docEnd && IsSingleSpaceAt(doc, rightScan))
+                {
+                    rightScan++;
+                    rightHadSpace = true;
+                }
+                LogDiag($"merge right: scan={rightScan} hadSpace={rightHadSpace} docEnd={docEnd} (looking for OMath starting at {rightScan})");
+                if (rightScan < docEnd)
+                {
+                    foreach (Word.OMath om in doc.OMaths)
+                    {
+                        if (om.Range.Start == rightScan)
+                        {
+                            var omEnd = om.Range.End;
+                            LogDiag($"merge right: candidate OMath range=[{rightScan},{omEnd}]");
+                            var h = FindOurHandleForOMath(om);
+                            LogDiag($"merge right: handle={(h ?? "null")}");
+                            if (h != null)
+                            {
+                                try
+                                {
+                                    var stored = _store.RetrieveAsync(new EquationHandle(h)).GetAwaiter().GetResult();
+                                    if (stored != null && !string.IsNullOrEmpty(stored.Source))
+                                    {
+                                        rightOMath = om;
+                                        rightHandle = h;
+                                        rightSource = stored.Source;
+                                        LogDiag($"merge right: source=\"{Preview(stored.Source)}\"");
+                                    }
+                                    else { LogDiag("merge right: stored null or empty source"); }
+                                }
+                                catch (Exception ex) { LogDiag($"merge_retrieve_right_error: {ex.Message}"); }
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                if (leftOMath == null && rightOMath == null)
+                {
+                    LogDiag("merge: no adjacent OMath found, skip merge");
+                    return null;
+                }
+
+                // Construit le source mergé avec un espace simple comme jointure
+                // (les espaces tapés par l'utilisateur sont collapsés à un seul).
+                var sb = new System.Text.StringBuilder();
+                if (leftSource != null) { sb.Append(leftSource); sb.Append(' '); }
+                sb.Append(middleSource ?? string.Empty);
+                if (rightSource != null) { sb.Append(' '); sb.Append(rightSource); }
+
+                int newStart = leftOMath != null ? leftOMath.Range.Start : absStart;
+                int newEnd = rightOMath != null ? rightOMath.Range.End : absEnd;
+
+                var removed = new List<string>();
+                if (leftHandle != null) removed.Add(leftHandle);
+                if (rightHandle != null) removed.Add(rightHandle);
+
+                return new MergeResult
+                {
+                    AbsStart = newStart,
+                    AbsEnd = newEnd,
+                    MergedSource = sb.ToString(),
+                    RemovedHandles = removed,
+                };
+            }
+            catch (Exception ex)
+            {
+                LogDiag("try_merge_error: " + ex.Message);
+                return null;
+            }
+        }
+
         private static string NewHandleId()
         {
             // 16 premiers hex du Guid — assez unique pour notre usage, compatible
@@ -1273,6 +1661,62 @@ namespace MathCursor.Host
         /// Crée un bookmark "mcEq_{id}" couvrant [absStart, absEnd]. Si un bookmark
         /// de même nom existe déjà on l'écrase (cas improbable avec guid).
         /// </summary>
+        /// <summary>
+        /// Supprime tous les OMaths du document qui sont entièrement contenus
+        /// dans [absStart, absEnd). Word.Range.Text = "..." refuse d'écraser
+        /// un OMath et lève "The range cannot be deleted" — il faut les
+        /// supprimer explicitement avant. Itère en ordre descendant pour que
+        /// les suppressions n'invalident pas les positions des OMaths
+        /// précédents. Retourne le nombre TOTAL de chars supprimés (= shrink
+        /// du range global).
+        /// </summary>
+        private int DeleteOMathsInRange(int absStart, int absEnd)
+        {
+            int totalShrink = 0;
+            try
+            {
+                var doc = _app.ActiveDocument;
+                if (doc == null) return 0;
+                var inRange = new List<Word.OMath>();
+                foreach (Word.OMath om in doc.OMaths)
+                {
+                    var omStart = om.Range.Start;
+                    var omEnd = om.Range.End;
+                    if (omStart >= absStart && omEnd <= absEnd) inRange.Add(om);
+                }
+                inRange.Sort((a, b) => b.Range.Start.CompareTo(a.Range.Start));
+                foreach (var om in inRange)
+                {
+                    try
+                    {
+                        int delLen = om.Range.End - om.Range.Start;
+                        om.Range.Delete();
+                        totalShrink += delLen;
+                        LogDiag($"merge_pre_delete_omath: deleted len={delLen} totalShrink={totalShrink}");
+                    }
+                    catch (Exception ex) { LogDiag("merge_pre_delete_omath_error: " + ex.Message); }
+                }
+            }
+            catch (Exception ex) { LogDiag("merge_pre_delete_scan_error: " + ex.Message); }
+            return totalShrink;
+        }
+
+        /// <summary>
+        /// Supprime le bookmark Word `mcEq_<handleId>` s'il existe. Utilisé
+        /// quand un handle est retiré du store (ex: merge OMath qui fusionne
+        /// l'OMath dans un nouveau bloc) — sans ce nettoyage, le bookmark
+        /// fantôme reste dans le doc et `FindOurHandleForOMath` retrouve
+        /// l'ancien handle, créant des merge corrompus au prochain trigger.
+        /// </summary>
+        private void DeleteBookmarkByHandle(string handleId)
+        {
+            var doc = _app.ActiveDocument;
+            if (doc == null) return;
+            string name = BookmarkPrefix + handleId;
+            if (doc.Bookmarks.Exists(name)) doc.Bookmarks[name].Delete();
+            LogDiag($"bookmark deleted: {name}");
+        }
+
         private void CreateBookmarkForRange(string handleId, int absStart, int absEnd)
         {
             try

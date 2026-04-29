@@ -75,15 +75,35 @@ namespace MathCursor.Core.Lattice
             "phi", "chi", "psi", "omega",
         };
 
-        /// <summary>Opérateurs multi-caractères (≥ 2 chars) à matcher en greedy.</summary>
+        /// <summary>Opérateurs multi-caractères (≥ 2 chars) à matcher en greedy.
+        /// Le lexer émet ces ops avec coût négatif (-length) pour garantir
+        /// que le Dijkstra préfère la variante la plus longue (ex: `<=>` plutôt
+        /// que `<=` + `>`).</summary>
         public static readonly Dictionary<string, string> MultiCharOps = new Dictionary<string, string>
         {
+            // Implication / équivalence (ADR 29-04). À déclarer AVANT `<=` pour
+            // que les variantes longues gagnent visuellement le tri à coût égal,
+            // bien que le coût négatif rend l'ordre non-critique.
+            { "<==>", "Leftrightarrow" },
+            { "<=>",  "Leftrightarrow" },
+            { "==>",  "Rightarrow" },
+            { "<==",  "Leftarrow" },
             { "<=", "leq" },
             { ">=", "geq" },
             { "!=", "neq" },
             { "<>", "neq" },
             { "->", "to" },
             { "=>", "Rightarrow" },
+            // Unicode arrows (copier-coller depuis sources externes OU
+            // Word AutoCorrect qui remplace `=>`/`<=>` par ces variantes
+            // selon la version d'Office et la langue).
+            { "⇒", "Rightarrow" },
+            { "⇔", "Leftrightarrow" },
+            { "⇐", "Leftarrow" },
+            { "↔", "Leftrightarrow" }, // U+2194 flèche simple bidirectionnelle (Word AutoCorrect FR pour <=>)
+            { "⟺", "Leftrightarrow" }, // U+27FA flèche longue
+            { "⟹", "Rightarrow" },     // U+27F9 flèche longue à droite
+            { "⟸", "Leftarrow" },      // U+27F8 flèche longue à gauche
             // Notation clavier `(-` pour `\in` (alias de `dans`/`in`/`appartient`).
             // Visuellement le `(` ouvert + `-` rappelle ∈.
             { "(-", "in_op" },
@@ -97,7 +117,7 @@ namespace MathCursor.Core.Lattice
         /// `=`, `&lt;`, `&gt;` qui sont consommées par <c>parseRelation</c> au
         /// top-level (sinon des inputs comme "a &lt; b" produisent un résultat
         /// vide car `&lt;` n'est pas tokenisé).</summary>
-        public const string SingleOps = "+-*/^_=<>()[]{},|;";
+        public const string SingleOps = "+-*/^_=<>()[]{},|;:";
 
         /// <summary>Opérateurs binaires pour lesquels on calcule le drapeau Tight.</summary>
         public const string TightOpChars = "+-*/^";

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace MathCursor.Core.Lattice.Ast
 {
     /// <summary>Atome terminal : nombre, identifiant, lettre grecque.</summary>
@@ -153,6 +155,20 @@ namespace MathCursor.Core.Lattice.Ast
         public Int(AstNode low, AstNode high, AstNode body)
         {
             Low = low; High = high; Body = body;
+        }
+    }
+
+    /// <summary>Définition de fonction : f : x ↦ expr (ou f : (x,y) ↦ expr).
+    /// Pattern lycée FR. <see cref="Vars"/> contient ≥ 1 variable ; le rendu
+    /// ajoute des parens automatiquement quand <c>Vars.Count > 1</c>.</summary>
+    public sealed class FuncDef : AstNode
+    {
+        public string Name { get; }
+        public IReadOnlyList<AstNode> Vars { get; }
+        public AstNode Body { get; }
+        public FuncDef(string name, IReadOnlyList<AstNode> vars, AstNode body)
+        {
+            Name = name; Vars = vars; Body = body;
         }
     }
 

@@ -377,6 +377,44 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.Equal(" \\in ", c.Value);
         }
 
+        // ------------------ FuncDef (ADR 29-04 function-definition) ------------------
+
+        [Fact]
+        public void FuncDef_single_var_yields_funcdef()
+        {
+            var ast = ParseTop("f:x->2x+1");
+            var fd = Assert.IsType<FuncDef>(ast);
+            Assert.Equal("f", fd.Name);
+            Assert.Single(fd.Vars);
+            Assert.Equal("x", Assert.IsType<Atom>(fd.Vars[0]).Value);
+        }
+
+        [Fact]
+        public void FuncDef_multi_vars_yields_funcdef()
+        {
+            var ast = ParseTop("f:x,y->x+y");
+            var fd = Assert.IsType<FuncDef>(ast);
+            Assert.Equal("f", fd.Name);
+            Assert.Equal(2, fd.Vars.Count);
+            Assert.Equal("x", Assert.IsType<Atom>(fd.Vars[0]).Value);
+            Assert.Equal("y", Assert.IsType<Atom>(fd.Vars[1]).Value);
+        }
+
+        [Fact]
+        public void FuncDef_no_arrow_falls_back_to_relation()
+        {
+            // Sans `->`, le pattern n'est pas reconnu : fallback sur ParseRelation
+            var ast = ParseTop("f:x");
+            Assert.IsNotType<FuncDef>(ast);
+        }
+
+        [Fact]
+        public void FuncDef_no_colon_falls_back()
+        {
+            var ast = ParseTop("2x+1");
+            Assert.IsNotType<FuncDef>(ast);
+        }
+
         // ------------------ Intervalles français ------------------
 
         [Fact]
