@@ -363,7 +363,6 @@ namespace MathCursor.Core
                 new KeyValuePair<string, string>("\\geq", "≥"),
                 new KeyValuePair<string, string>("\\neq", "≠"),
                 new KeyValuePair<string, string>("\\sim", "∼"),
-                new KeyValuePair<string, string>("\\in", "∈"),
                 new KeyValuePair<string, string>("\\notin", "∉"),
                 new KeyValuePair<string, string>("\\cup", "∪"),
                 new KeyValuePair<string, string>("\\cap", "∩"),
@@ -402,6 +401,13 @@ namespace MathCursor.Core
                 new KeyValuePair<string, string>("\\ ", " "),
                 new KeyValuePair<string, string>("\\{", "{"),
                 new KeyValuePair<string, string>("\\}", "}"),
+                // \in EN DERNIER : "\in" est préfixe de "\int", "\infty",
+                // "\intersection"... La boucle Replace ci-dessous applique
+                // chaque entrée séquentiellement, donc tout préfixe traité
+                // avant mange ses extensions ("\int" → "∈t"). Régression
+                // critique 29-04. Garder \in en queue pour que tous les
+                // \in* aient déjà été remplacés.
+                new KeyValuePair<string, string>("\\in", "∈"),
             };
 
         private static readonly Dictionary<string, string> SetLetterMap =
