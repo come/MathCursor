@@ -250,6 +250,7 @@
     <Compile Include="ThisAddIn.Designer.cs">
       <DependentUpon>ThisAddIn.Designer.xml</DependentUpon>
     </Compile>
+    <Compile Include="Strings.cs" />
     <Compile Include="Host\VstoEquationStore.cs" />
     <Compile Include="Host\KeyboardInterceptor.cs" />
     <Compile Include="Host\SuggestionService.cs" />

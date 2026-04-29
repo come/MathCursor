@@ -66,29 +66,32 @@ namespace MathCursor
             _ribbon = ribbon;
         }
 
+        // ---------- getLabel / getScreentip callbacks (i18n + version) ----------
+
+        /// <summary>Lit l'AssemblyVersion et formate "Major.Minor.Patch".</summary>
+        private static string CurrentVersion()
+            => Strings.FormatVersion(Assembly.GetExecutingAssembly().GetName().Version);
+
+        public string OnGetGroupLabel(IRibbonControl control)
+            => Strings.GroupLabel(CurrentVersion());
+
+        public string OnGetReportButtonLabel(IRibbonControl control)
+            => Strings.ReportButtonLabel;
+
+        public string OnGetReportButtonScreentip(IRibbonControl control)
+            => Strings.ReportButtonScreentip;
+
+        public string OnGetAboutButtonLabel(IRibbonControl control)
+            => Strings.AboutButtonLabel;
+
+        public string OnGetAboutButtonScreentip(IRibbonControl control)
+            => Strings.AboutButtonScreentip;
+
         public void OnAboutClicked(IRibbonControl control)
         {
             MessageBox.Show(
-                "MathCursor — Notation math au clavier pour Word\n" +
-                "Version 0.3.2 — beta\n\n" +
-                "COMMENT ÇA MARCHE\n" +
-                "  Tape simplement ton expression en texte (ex: f(x)=1/x, somme de k=1 à n, lim x→0).\n" +
-                "  Quand MathCursor détecte de la math, une petite popup apparaît avec des propositions.\n\n" +
-                "RACCOURCIS\n" +
-                "  Ctrl+Espace  → forcer la popup sur ce que tu viens de taper\n" +
-                "                 (utile si rien ne s'est ouvert tout seul)\n" +
-                "  Flèche bas   → entrer dans la popup et naviguer\n" +
-                "  Flèche haut  → remonter dans la liste\n" +
-                "  Entrée       → valider la proposition sélectionnée (en mode nav)\n" +
-                "  Échap        → masquer la popup\n\n" +
-                "REVENIR SUR UNE ÉQUATION\n" +
-                "  Replace ton curseur DANS une équation déjà insérée : la popup se rouvre avec\n" +
-                "  les variantes. Valide pour remplacer, ou clique ailleurs pour garder.\n\n" +
-                "UN SOUCI ? UNE IDÉE ?\n" +
-                "  Bouton \"Signaler un souci\" à gauche → génère un rapport prêt à envoyer\n" +
-                "  (WhatsApp ou email). Ton feedback fait avancer le produit !\n\n" +
-                "Logs techniques : %AppData%\\MathCursor\\logs\\mathcursor.log",
-                "MathCursor — Aide",
+                Strings.HelpDialogBody(CurrentVersion()),
+                Strings.HelpDialogTitle,
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
         }
@@ -117,10 +120,8 @@ namespace MathCursor
             if (string.IsNullOrEmpty(zipPath) || !File.Exists(zipPath))
             {
                 MessageBox.Show(
-                    "Impossible de créer le rapport.\n" +
-                    "Envoie-nous un message à " + FeedbackBundle.ContactEmail + " " +
-                    "en décrivant ce qui s'est passé.",
-                    "MathCursor — Signaler un souci",
+                    Strings.ReportFailedBody(FeedbackBundle.ContactEmail),
+                    Strings.ReportFailedTitle,
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -129,14 +130,8 @@ namespace MathCursor
             FeedbackBundle.CopyToClipboardAsFile(zipPath);
 
             var result = MessageBox.Show(
-                "Le rapport est prêt !\n\n" +
-                "Fichier copié dans le presse-papier — colle-le (Ctrl+V) dans :\n" +
-                "  • Le groupe WhatsApp beta-testeurs :\n    " + FeedbackBundle.WhatsAppGroupUrl + "\n" +
-                "  • Ou un email à " + FeedbackBundle.ContactEmail + "\n\n" +
-                "Ajoute un petit mot : ce que tu voulais faire, ce que l'add-in a fait à la place.\n\n" +
-                "Chemin du fichier : " + zipPath + "\n\n" +
-                "Ouvrir le groupe WhatsApp dans le navigateur ?",
-                "MathCursor — Rapport prêt",
+                Strings.ReportReadyBody(FeedbackBundle.WhatsAppGroupUrl, FeedbackBundle.ContactEmail, zipPath),
+                Strings.ReportReadyTitle,
                 MessageBoxButton.YesNoCancel,
                 MessageBoxImage.Information);
 

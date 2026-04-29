@@ -3,16 +3,16 @@
   <ribbon>
     <tabs>
       <tab idMso="TabHome">
-        <group id="MathCursorGroup" label="MathCursor">
+        <group id="MathCursorGroup" getLabel="OnGetGroupLabel">
           <button id="ReportIssueButton"
-                  label="Signaler un souci"
-                  screentip="Prépare un rapport (log + screenshot + contexte) prêt à envoyer"
+                  getLabel="OnGetReportButtonLabel"
+                  getScreentip="OnGetReportButtonScreentip"
                   size="large"
-                  imageMso="ReviewComments"
+                  imageMso="WarningOriginal"
                   onAction="OnReportIssueClicked" />
           <button id="AboutButton"
-                  label="Aide"
-                  screentip="Guide rapide MathCursor"
+                  getLabel="OnGetAboutButtonLabel"
+                  getScreentip="OnGetAboutButtonScreentip"
                   size="large"
                   imageMso="Help"
                   onAction="OnAboutClicked" />
