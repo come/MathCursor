@@ -1,0 +1,217 @@
+﻿# MathCursor — script de préparation de l'installer Inno Setup.
+#
+# 1) Build le projet VSTO en Release via MSBuild (Visual Studio).
+# 2) Copie les fichiers nécessaires dans installer/payload/.
+# 3) Vérifie que le modèle NER est présent dans installer/payload/models/.
+# 4) Optionnel : lance le compilateur Inno Setup pour produire l'EXE.
+#
+# Usage :
+#   powershell -ExecutionPolicy Bypass -File adapter-vsto\installer\build.ps1
+#
+# Prérequis :
+#   - Visual Studio 2022 (MSBuild avec charge Office Dev)
+#   - Inno Setup 6 installé (pour la production de l'EXE final)
+#   - Les fichiers du modèle NER (copier depuis D:\Software\DocMath\models\)
+
+$ErrorActionPreference = 'Stop'
+$InstallerDir = $PSScriptRoot
+$RepoRoot     = Resolve-Path "$InstallerDir\..\.."
+$VstoProj     = Join-Path $RepoRoot 'adapter-vsto\src\MathCursor\MathCursor.csproj'
+$BinRelease   = Join-Path $RepoRoot 'adapter-vsto\src\MathCursor\bin\Release'
+$BinDebug     = Join-Path $RepoRoot 'adapter-vsto\src\MathCursor\bin\Debug'
+$PayloadDir   = Join-Path $InstallerDir 'payload'
+$ModelSrcDir  = Join-Path $RepoRoot 'models'
+$ModelDstDir  = Join-Path $PayloadDir 'models'
+$IssFile      = Join-Path $InstallerDir 'MathCursor.iss'
+$OutputDir    = Join-Path $InstallerDir 'output'
+
+Write-Host "== MathCursor installer builder ==" -ForegroundColor Cyan
+Write-Host "Repo      : $RepoRoot"
+Write-Host "Payload   : $PayloadDir"
+Write-Host "Output    : $OutputDir"
+Write-Host ""
+
+# 1) Build Release via MSBuild
+Write-Host "[1/4] Build VSTO en Release..." -ForegroundColor Yellow
+$msbuild = Get-Command 'msbuild.exe' -ErrorAction SilentlyContinue
+if (-not $msbuild) {
+    # Fallback : chercher dans Program Files
+    $candidates = @(
+        "${env:ProgramFiles}\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles}\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe",
+        "${env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe"
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path $c) { $msbuild = $c; break }
+    }
+}
+if (-not $msbuild) {
+    Write-Warning "MSBuild introuvable. Lance manuellement :"
+    Write-Warning "  msbuild '$VstoProj' /p:Configuration=Release"
+    Write-Warning "Puis relance ce script."
+    exit 1
+}
+& $msbuild $VstoProj /p:Configuration=Release /nologo /v:minimal
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Build échoué."
+    exit 1
+}
+
+# 2) Copie des binaires vers payload/
+Write-Host "[2/4] Copie des binaires vers payload/..." -ForegroundColor Yellow
+$SrcBin = if (Test-Path $BinRelease) { $BinRelease } else { $BinDebug }
+if (-not (Test-Path $SrcBin)) {
+    Write-Error "Dossier de build introuvable : $SrcBin"
+    exit 1
+}
+Write-Host "  source : $SrcBin"
+if (Test-Path $PayloadDir) { Remove-Item -Recurse -Force $PayloadDir }
+New-Item -ItemType Directory -Force -Path $PayloadDir | Out-Null
+
+$FilesToCopy = @(
+    'MathCursor.dll',
+    'MathCursor.dll.manifest',
+    'MathCursor.dll.config',
+    'MathCursor.vsto',
+    'MathCursor.Core.dll',
+    'MathCursor.HostContract.dll',
+    'WpfMath.dll',
+    'XamlMath.Shared.dll',
+    'FuzzySharp.dll',
+    'YamlDotNet.dll',
+    'Google.Protobuf.dll',
+    'Microsoft.ML.OnnxRuntime.dll',
+    'Microsoft.Office.Tools.Common.v4.0.Utilities.dll',
+    'System.Buffers.dll',
+    'System.Memory.dll',
+    'System.Numerics.Vectors.dll',
+    'System.Runtime.CompilerServices.Unsafe.dll'
+)
+
+foreach ($f in $FilesToCopy) {
+    $src = Join-Path $SrcBin $f
+    if (Test-Path $src) {
+        Copy-Item $src -Destination $PayloadDir -Force
+    }
+    else {
+        if ($f -like 'System.*') {
+            # System.* peuvent ne pas être redistribués, pas grave (GAC)
+            Write-Host "  (skip optionnel : $f)"
+        } else {
+            Write-Warning "manquant : $f"
+        }
+    }
+}
+
+# 2b) Certificat à importer au runtime (cf. [Run] dans MathCursor.iss)
+$CertSrc = Join-Path $RepoRoot 'docs\mathcursor.cer'
+$CertDst = Join-Path $PayloadDir 'mathcursor.cer'
+if (Test-Path $CertSrc) {
+    Copy-Item $CertSrc -Destination $CertDst -Force
+    Write-Host "  certif copié : $CertDst"
+} else {
+    Write-Warning "Certificat introuvable ($CertSrc) — l'installer ne pourra pas l'importer automatiquement."
+}
+
+# 2c) Visual C++ Redistributable x64 (requis par ONNX Runtime native DLL).
+# Téléchargement depuis aka.ms si pas déjà présent localement. URL stable
+# qui suit la dernière version VS2015-2022 (toutes binary-compat).
+$VcRedistDst = Join-Path $PayloadDir 'vc_redist.x64.exe'
+$VcRedistCache = Join-Path $InstallerDir 'vc_redist.x64.exe' # cache au niveau dossier installer
+if (Test-Path $VcRedistCache) {
+    Copy-Item $VcRedistCache -Destination $VcRedistDst -Force
+    Write-Host "  VC++ Redist depuis cache : $VcRedistCache"
+} elseif (Test-Path $VcRedistDst) {
+    Write-Host "  VC++ Redist déjà présent dans payload/"
+} else {
+    Write-Host "  Téléchargement VC++ Redist x64 depuis aka.ms/vs/17/release/vc_redist.x64.exe..."
+    try {
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -Uri 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile $VcRedistDst -UseBasicParsing
+        # Cache pour les builds suivants
+        Copy-Item $VcRedistDst -Destination $VcRedistCache -Force
+        Write-Host "  VC++ Redist téléchargé ($([math]::Round((Get-Item $VcRedistDst).Length / 1MB, 1)) Mo)"
+    } catch {
+        Write-Warning "Téléchargement VC++ Redist échoué : $_"
+        Write-Warning "L'installer fonctionnera mais sans bundling VC++ — l'utilisateur devra l'avoir installé."
+    }
+}
+
+# 3) Modèle NER
+# On déploie UNIQUEMENT distilmult-v4 (le NER actif depuis 2026-04-27).
+# L'ancien XLM-R laissé à la racine de models/ en dev est ignoré ici —
+# il ferait ~265 Mo de poids mort dans l'installer et ne sert plus
+# (FindModelDir priorise distilmult-v4 et tombe sur celui-ci).
+Write-Host "[3/4] Modèle NER (distilmult-v4)..." -ForegroundColor Yellow
+if (Test-Path $ModelDstDir) { Remove-Item -Recurse -Force $ModelDstDir }
+$DistilSrc = Join-Path $ModelSrcDir 'distilmult-v4'
+$DistilDst = Join-Path $ModelDstDir 'distilmult-v4'
+$modelOk = $false
+if (Test-Path (Join-Path $DistilSrc 'model_quantized.onnx')) {
+    Write-Host "  copie depuis $DistilSrc → $DistilDst"
+    New-Item -ItemType Directory -Force -Path $DistilDst | Out-Null
+    Copy-Item -Path "$DistilSrc\*" -Destination $DistilDst -Force -Recurse
+    $modelOk = $true
+}
+else {
+    Write-Warning "Modèle distilmult-v4 introuvable. Copier les fichiers dans :"
+    Write-Warning "  $DistilSrc"
+    Write-Warning "Fichiers requis : model_quantized.onnx, vocab.txt, tokenizer.json, config.json, special_tokens_map.json, tokenizer_config.json, ort_config.json"
+}
+
+# 4) Info fichier post-install
+$afterInstallFile = Join-Path $InstallerDir 'after-install.txt'
+if (-not (Test-Path $afterInstallFile)) {
+    @'
+Installation terminée.
+
+Pour activer MathCursor :
+  1. Ouvrez Microsoft Word.
+  2. L'add-in se charge automatiquement (barre d'état : "MathCursor prêt").
+  3. Commencez à taper : dès qu'une expression math est détectée, une popup apparaît.
+     Naviguez avec Flèche bas, validez avec Entrée.
+
+Si la popup n'apparaît pas :
+  - Vérifiez Fichier > Options > Compléments > Compléments COM : "MathCursor" doit être coché.
+  - Logs : %AppData%\MathCursor\logs\mathcursor.log
+
+Désinstaller : Panneau de configuration > Programmes > MathCursor > Désinstaller.
+'@ | Set-Content -Path $afterInstallFile -Encoding UTF8
+    Write-Host "  créé : after-install.txt"
+}
+
+# 5) Compiler Inno Setup si disponible
+Write-Host "[4/4] Inno Setup..." -ForegroundColor Yellow
+$iscc = Get-Command 'iscc.exe' -ErrorAction SilentlyContinue
+if (-not $iscc) {
+    $isccCandidates = @(
+        "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+        "${env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+    )
+    foreach ($c in $isccCandidates) {
+        if (Test-Path $c) { $iscc = $c; break }
+    }
+}
+
+if ($modelOk -and $iscc) {
+    if (-not (Test-Path $OutputDir)) { New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null }
+    & $iscc $IssFile
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host ""
+        Write-Host "OK — installer créé dans $OutputDir" -ForegroundColor Green
+        Get-ChildItem $OutputDir -Filter '*.exe' | ForEach-Object { Write-Host "  → $($_.FullName)" }
+    } else {
+        Write-Error "Compilation Inno Setup échouée (code $LASTEXITCODE)"
+    }
+}
+else {
+    if (-not $iscc) {
+        Write-Host ""
+        Write-Host "Inno Setup introuvable. Installe-le depuis https://jrsoftware.org/isinfo.php"
+        Write-Host "Puis compile manuellement : clique-droit sur MathCursor.iss → 'Compile'"
+    }
+    if (-not $modelOk) {
+        Write-Host ""
+        Write-Host "Compile à la main après avoir mis le modèle dans payload/models/"
+    }
+}

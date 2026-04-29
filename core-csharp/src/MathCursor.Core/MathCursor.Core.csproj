@@ -16,9 +16,18 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="YamlDotNet" Version="16.2.1" />
+    <PackageReference Include="FuzzySharp" Version="2.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Données multilingues partagées, embarquées dans l'assembly -->
     <EmbeddedResource Include="..\..\..\data\*.json">
       <Link>Data\%(Filename)%(Extension)</Link>
+    </EmbeddedResource>
+    <!-- YAML domains : patterns de conversion texte → LaTeX -->
+    <EmbeddedResource Include="..\..\..\data\yaml_domains\**\*.yaml">
+      <Link>Data\yaml_domains\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </EmbeddedResource>
   </ItemGroup>
 

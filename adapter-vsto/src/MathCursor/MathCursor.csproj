@@ -105,6 +105,9 @@
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Net.Http" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Core" />
@@ -146,6 +149,24 @@
       <Project>{B1000002-0000-0000-0000-000000000002}</Project>
       <Name>MathCursor.Core</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- NER : ONNX Runtime pour l'inférence DistilBERT-multilingual quantizé
+         int8. Le tokenizer WordPiece est implémenté en C# pur dans
+         Detection/WordPiece/ (charge directement vocab.txt), pas de dépendance
+         native ni NuGet additionnel (Microsoft.ML.Tokenizers évité pour rester
+         compatible .NET Framework 4.8 sans surprise). -->
+    <!-- ORT pinned à 1.16.3 pour compat CPUs SSE4.2-only sans AVX/AVX2
+         (Bay Trail 2014, Apollo Lake, etc.). À partir de 1.17, le DLL natif
+         a durci ses requirements CPU et crashe en TypeInitializationException
+         au DllMain sur ces machines. Cf. ADR 2026-04-28-Fix-ort-version-bay-trail-compat.
+         Ne pas bumper sans plan dual-runtime / fallback NER conditionnel. -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.16.3" />
+    <!-- Rendu LaTeX popup : WpfMath 2.1 + substitutions ciblées dans
+         WpfMathAdapter pour les 8 macros non couvertes (\mathbb, \setminus,
+         \mapsto, \widehat, \iint/\oint, \limsup/\liminf, \overline).
+         Cf. ADR 2026-04-24-Feat-popup-revert-wpfmath. -->
+    <PackageReference Include="WpfMath" Version="2.1.0" />
   </ItemGroup>
   <Choose>
     <When Condition="$([System.String]::Copy(&quot;;$(DefineConstants);&quot;).ToLower().Contains(';useofficeinterop;')) or $([System.String]::Copy(&quot;,$(DefineConstants),&quot;).ToLower().Contains(',useofficeinterop,'))">
@@ -229,11 +250,26 @@
     <Compile Include="ThisAddIn.Designer.cs">
       <DependentUpon>ThisAddIn.Designer.xml</DependentUpon>
     </Compile>
-    <Compile Include="Host\VstoDocumentHost.cs" />
+    <Compile Include="Strings.cs" />
     <Compile Include="Host\VstoEquationStore.cs" />
-    <Compile Include="Host\VstoEditorSurface.cs" />
-    <Compile Include="Host\VstoUserFeedback.cs" />
     <Compile Include="Host\KeyboardInterceptor.cs" />
+    <Compile Include="Host\SuggestionService.cs" />
+    <Compile Include="Host\WordContextReader.cs" />
+    <Compile Include="Host\FeedbackBundle.cs" />
+    <Compile Include="Host\Feedback\FeedbackReport.cs" />
+    <Compile Include="Host\Feedback\IFeedbackSender.cs" />
+    <Compile Include="Host\Feedback\FeedbackJson.cs" />
+    <Compile Include="Host\Feedback\UserIdStore.cs" />
+    <Compile Include="Host\Feedback\ClipboardFeedbackSender.cs" />
+    <Compile Include="Host\Feedback\HttpFeedbackSender.cs" />
+    <Compile Include="Host\Feedback\FeedbackSenderFactory.cs" />
+    <Compile Include="UI\WpfMathAdapter.cs" />
+    <Compile Include="UI\SuggestionPopupWindow.cs" />
+    <Compile Include="UI\EditModePopupWindow.cs" />
+    <Compile Include="UI\FeedbackDialog.cs" />
+    <Compile Include="Detection\DetectedZone.cs" />
+    <Compile Include="Detection\MathNerDetector.cs" />
+    <Compile Include="Detection\WordPiece\WordPieceTokenizer.cs" />
     <Compile Include="RibbonCallback.cs" />
     <EmbeddedResource Include="Ribbon.xml" />
     <AppDesigner Include="Properties\" />

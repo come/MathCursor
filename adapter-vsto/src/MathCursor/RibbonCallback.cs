@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Windows;
+using MathCursor.Host;
 using Microsoft.Office.Core;
 
 namespace MathCursor
@@ -65,21 +66,91 @@ namespace MathCursor
             _ribbon = ribbon;
         }
 
-        public void OnConvertClicked(IRibbonControl control)
-        {
-            Globals.ThisAddIn?.TriggerConversion();
-        }
+        // ---------- getLabel / getScreentip callbacks (i18n + version) ----------
+
+        /// <summary>Lit l'AssemblyVersion et formate "Major.Minor.Patch".</summary>
+        private static string CurrentVersion()
+            => Strings.FormatVersion(Assembly.GetExecutingAssembly().GetName().Version);
+
+        public string OnGetGroupLabel(IRibbonControl control)
+            => Strings.GroupLabel(CurrentVersion());
+
+        public string OnGetReportButtonLabel(IRibbonControl control)
+            => Strings.ReportButtonLabel;
+
+        public string OnGetReportButtonScreentip(IRibbonControl control)
+            => Strings.ReportButtonScreentip;
+
+        public string OnGetAboutButtonLabel(IRibbonControl control)
+            => Strings.AboutButtonLabel;
+
+        public string OnGetAboutButtonScreentip(IRibbonControl control)
+            => Strings.AboutButtonScreentip;
 
         public void OnAboutClicked(IRibbonControl control)
         {
             MessageBox.Show(
-                "MathCursor 0.1.0\n\n" +
-                "Notation math au clavier pour Word Desktop.\n\n" +
-                "Usage : tapez votre expression (ex : f(x)=1/x), puis cliquez\n" +
-                "'Convertir' (Alt+M) pour la transformer en équation Word.",
-                "À propos de MathCursor",
+                Strings.HelpDialogBody(CurrentVersion()),
+                Strings.HelpDialogTitle,
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
+        }
+
+        /// <summary>
+        /// Crée un zip avec log + screenshot Word + contexte (paragraphe,
+        /// versions), le met dans le presse-papier comme fichier droppable,
+        /// et affiche un dialogue expliquant comment l'envoyer (WhatsApp ou
+        /// email). Un bouton "Ouvrir le dossier" comme plan B si le clipboard
+        /// ne marche pas.
+        /// </summary>
+        public void OnReportIssueClicked(IRibbonControl control)
+        {
+            string zipPath;
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                zipPath = FeedbackBundle.Create(app);
+            }
+            catch (Exception ex)
+            {
+                LogDebug("report_create_error: " + ex.Message);
+                zipPath = null;
+            }
+
+            if (string.IsNullOrEmpty(zipPath) || !File.Exists(zipPath))
+            {
+                MessageBox.Show(
+                    Strings.ReportFailedBody(FeedbackBundle.ContactEmail),
+                    Strings.ReportFailedTitle,
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            FeedbackBundle.CopyToClipboardAsFile(zipPath);
+
+            var result = MessageBox.Show(
+                Strings.ReportReadyBody(FeedbackBundle.WhatsAppGroupUrl, FeedbackBundle.ContactEmail, zipPath),
+                Strings.ReportReadyTitle,
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Information);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = FeedbackBundle.WhatsAppGroupUrl,
+                        UseShellExecute = true,
+                    });
+                }
+                catch (Exception ex) { LogDebug("wa_open_error: " + ex.Message); }
+            }
+            else if (result == MessageBoxResult.No)
+            {
+                FeedbackBundle.RevealInExplorer(zipPath);
+            }
         }
     }
 }

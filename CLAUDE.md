@@ -102,3 +102,29 @@ uniquement. **Ne pas modifier le prototype** — c'est une photo figée.
 - Branche principale : `main` (à créer quand on quitte `v2-mathiness`)
 - Tag de référence prototype Office.js : `prototype-officejs-final`
 - Pas de push automatique, demander confirmation avant `git push`
+
+## Process de décision
+
+Journal des décisions dans `docs/dev/decisions/` — un fichier ADR par décision
+au format `YYYY-MM-DD-<Kind>-<slug>.md`. Spec complète dans
+[`docs/dev/decisions/2026-04-24-Meta-adr-format.md`](docs/dev/decisions/2026-04-24-Meta-adr-format.md).
+Index dans [`docs/dev/decisions/README.md`](docs/dev/decisions/README.md).
+
+**Pour toute modification non-triviale (feature, refactor, choix ergo, règle
+produit) :**
+
+1. **Proposer le plan** (2-3 phrases, tradeoff, alternatives écartées). Ne pas
+   commencer à coder avant validation.
+2. **Attendre la validation explicite** de l'utilisateur. Citation gardée dans
+   l'ADR.
+3. **Créer l'ADR** avec `Kind`, `Température` (**forte** / **molle** /
+   **provisoire**) et `Statut: acté` + citation, puis mettre à jour
+   `docs/dev/decisions/README.md`.
+4. **Seulement ensuite, coder.**
+
+**Dérogations** (pas d'ADR nécessaire) : questions de diagnostic, lectures de
+code, fixes évidents d'une ligne, commandes shell de check, appels de build/test.
+
+**Si on revient sur une décision** : **ne pas supprimer** l'ADR. Créer une
+nouvelle qui `Supersedes` l'ancienne ; l'ancienne passe en `Statut: retracté`
+avec `Superseded by`. L'historique reste lisible.

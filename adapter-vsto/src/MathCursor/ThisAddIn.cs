@@ -1,43 +1,67 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 using Microsoft.Office.Core;
-using MathCursor.Core.Orchestration;
+using MathCursor.Detection;
 using MathCursor.Host;
+// Moteur lattice : enchaîne Lex → TopK → Parse → Render (cf. Lattice/).
+using Engine = MathCursor.Core.LatticeEngine;
 
 namespace MathCursor
 {
     public partial class ThisAddIn
     {
-        private VstoDocumentHost _host;
         private VstoEquationStore _store;
-        private VstoEditorSurface _surface;
-        private VstoUserFeedback _feedback;
-        private MathCursorOrchestrator _orchestrator;
+        private MathNerDetector _ner;
+        private Engine _engine;
+        private SuggestionService _suggestions;
         private KeyboardInterceptor _keyboard;
 
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
             try
             {
-                _host = new VstoDocumentHost(this.Application);
+                // Store des sources (CustomXMLParts) : utilisé par le mode édition
+                // d'un OMath existant (phase C2 : bookmark → source → popup).
                 _store = new VstoEquationStore(this.Application);
-                _surface = new VstoEditorSurface(this.Application);
-                _feedback = new VstoUserFeedback();
 
-                _orchestrator = new MathCursorOrchestrator(_host, _store, _surface, _feedback);
+                // Modèle NER (chemin dev hardcodé pour MVP)
+                var modelDir = FindModelDir();
+                _ner = new MathNerDetector(modelDir);
 
-                // Hook clavier Tab
+                // Warm-up async : la 1ère inférence prend ~500ms, on la fait
+                // hors thread UI pour ne pas bloquer le chargement de Word.
+                _ = _ner.WarmUpAsync();
+
+                // Moteur lattice : convertit le texte détecté par le NER en
+                // suggestions LaTeX via Lex → top-K Dijkstra → Parse → Render.
+                _engine = Engine.LoadEmbedded("fr");
+
+                _suggestions = new SuggestionService(this.Application, _ner, _engine, _store);
+                _suggestions.Install();
+
+                // Hook clavier : Enter valide le candidat sélectionné UNIQUEMENT
+                // quand la popup est en NavMode. Tab pass-through, Esc masque.
                 _keyboard = new KeyboardInterceptor
                 {
-                    OnTabPressed = HandleTabPressed,
+                    OnTabPressed = () => false,
+                    OnEnterPressed = HandleEnterPressed,
+                    OnUpPressed = HandleUpPressed,
+                    OnDownPressed = HandleDownPressed,
+                    OnLeftPressed = HandleLeftPressed,
+                    OnRightPressed = HandleRightPressed,
+                    OnEscapePressed = HandleEscapePressed,
+                    OnCtrlSpacePressed = HandleCtrlSpacePressed,
                 };
                 _keyboard.Install();
 
-                _surface.Notify("MathCursor prêt. Tapez une expression puis Tab (ou Alt+M).", HostContract.NotificationLevel.Info);
+                this.Application.StatusBar = "MathCursor prêt";
             }
             catch (Exception ex)
             {
                 System.Windows.MessageBox.Show(
-                    "Échec du démarrage MathCursor :\n" + ex.Message,
+                    "Échec du démarrage MathCursor :\n" + ex.Message + "\n\n" + ex.StackTrace,
                     "MathCursor",
                     System.Windows.MessageBoxButton.OK,
                     System.Windows.MessageBoxImage.Error);
@@ -47,30 +71,114 @@ namespace MathCursor
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
         {
             try { _keyboard?.Dispose(); } catch { }
+            try { _suggestions?.Dispose(); } catch { }
+            try { _ner?.Dispose(); } catch { }
         }
 
         /// <summary>
-        /// Sur Tab pressé : retourne true si on a effectivement converti (→ consommer le Tab),
-        /// false sinon (→ laisser Word insérer un tab normal / tabuler / outdent).
+        /// Cherche le dossier du modèle dans plusieurs endroits standards.
         /// </summary>
-        private bool HandleTabPressed()
+        private static string FindModelDir()
         {
-            if (_orchestrator == null) return false;
-            try
+            // On préfère le sous-dossier `distilmult-v4` quand il existe (cf.
+            // ADR 2026-04-27 adoption distilmult). Si non trouvé, fallback sur
+            // les emplacements historiques (dossier racine `models`) — pour
+            // continuer à charger une ancienne installation XLM-R en attendant
+            // que l'utilisateur déploie distilmult-v4.
+            var roots = new[]
             {
-                return _orchestrator.TryConvertAtCaret();
-            }
-            catch (Exception ex)
+                Environment.GetEnvironmentVariable("MATHCURSOR_MODEL_DIR"),
+                Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MathCursor", "models"),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "models"),
+                @"D:\Software\DocMath\models",
+            };
+            var candidates = new List<string>();
+            foreach (var root in roots)
             {
-                _feedback?.LogParsingError("(tab_hook)", ex.Message);
-                return false; // en cas d'erreur, ne pas consommer le Tab
+                if (string.IsNullOrEmpty(root)) continue;
+                candidates.Add(Path.Combine(root, "distilmult-v4"));
+                candidates.Add(root);
             }
+            foreach (var p in candidates)
+            {
+                if (Directory.Exists(p)
+                    && File.Exists(Path.Combine(p, "model_quantized.onnx"))
+                    && File.Exists(Path.Combine(p, "vocab.txt")))
+                    return p;
+            }
+            throw new DirectoryNotFoundException(
+                "Modèle NER introuvable (cherche model_quantized.onnx + vocab.txt). "
+                + "Chemins testés :\n" + string.Join("\n", candidates));
         }
 
-        /// <summary>Appelé par le bouton ribbon "Convertir".</summary>
-        public void TriggerConversion()
+        // Ctrl+Espace : trigger explicite — force la popup sur la span
+        // "caret → stopword/délimiteur/OMath précédent". Escape hatch quand le
+        // NER rate un bout (ex: "Soit f et g" avec f déjà converti → NER ne
+        // capte plus "g" tout seul, on tape Ctrl+Espace pour forcer).
+        private bool HandleCtrlSpacePressed()
         {
-            _orchestrator?.TryConvertAtCaret();
+            _suggestions?.TriggerManual();
+            return true; // consomme la touche, évite l'IME/compose de Word
+        }
+
+        // Esc : cache la popup (suggestion OU édition). En mode édition d'OMath,
+        // les flèches restent à Word pour la nav math native — seul Esc est
+        // intercepté pour fermer la popup edit.
+        private bool HandleEscapePressed()
+        {
+            if (_suggestions?.IsAnyPopupVisible == true)
+            {
+                _suggestions.HidePopup();
+                return true;
+            }
+            return false;
+        }
+
+        // Down : entre en mode nav et descend dans la liste si la popup est visible.
+        private bool HandleDownPressed()
+        {
+            if (_suggestions?.IsPopupVisible != true) return false;
+            if (!_suggestions.IsNavMode) _suggestions.EnterNavMode();
+            else _suggestions.MoveSelection(+1);
+            return true; // consomme la touche
+        }
+
+        // Up : remonte dans la liste si déjà en nav mode, sinon pass-through.
+        private bool HandleUpPressed()
+        {
+            if (_suggestions?.IsPopupVisible != true) return false;
+            if (!_suggestions.IsNavMode) return false;
+            _suggestions.MoveSelection(-1);
+            return true;
+        }
+
+        // Left/Right : navigation horizontale entre alternatives en mode
+        // ambiguïté. N'a d'effet que si la popup est visible + en nav mode +
+        // focus sur la zone alts. Sinon pass-through (Word déplace le caret
+        // dans le texte normalement).
+        private bool HandleLeftPressed()
+        {
+            if (_suggestions?.IsPopupVisible != true) return false;
+            if (!_suggestions.IsNavMode) return false;
+            return _suggestions.MoveSelectionHorizontal(-1);
+        }
+
+        private bool HandleRightPressed()
+        {
+            if (_suggestions?.IsPopupVisible != true) return false;
+            if (!_suggestions.IsNavMode) return false;
+            return _suggestions.MoveSelectionHorizontal(+1);
+        }
+
+        // Enter : si popup visible + NavMode → commit du candidat sélectionné,
+        // sinon pass-through (Word insère un saut de ligne normal).
+        private bool HandleEnterPressed()
+        {
+            if (_suggestions?.IsPopupVisible != true) return false;
+            if (!_suggestions.IsNavMode) return false;
+            return _suggestions.CommitSelected();
         }
 
         protected override IRibbonExtensibility CreateRibbonExtensibilityObject()

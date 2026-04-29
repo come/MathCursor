@@ -1,0 +1,803 @@
+{"text": "on pose x = 2 et y = 3 alors int de 0 a 1 de x dx ou x in N", "spans": [{"start": 8, "end": 22, "label": "MATH"}, {"start": 29, "end": 49, "label": "MATH"}, {"start": 53, "end": 59, "label": "MATH"}], "lang": "fr"}
+{"text": "D'apres le cours precedent, on sait que E(X+Y) = E(X) + E(Y) dans tous les cas.", "spans": [{"start": 40, "end": 60, "label": "MATH"}], "lang": "fr"}
+{"text": "proof by contradiction starts from a false hypothesis", "spans": [], "lang": "en"}
+{"text": "by hypothesis x + y = 5 and 2x - y = 1 so we conclude", "spans": [{"start": 14, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "on a lim x->0 sin(x)/x, ln(x*y) = ln(x) + ln(y) par consequent primitive de cos(x)", "spans": [{"start": 5, "end": 22, "label": "MATH"}, {"start": 24, "end": 47, "label": "MATH"}, {"start": 63, "end": 82, "label": "MATH"}], "lang": "fr"}
+{"text": "the division of property is debated", "spans": [], "lang": "en"}
+{"text": "research in mathematics advances slowly", "spans": [], "lang": "en"}
+{"text": "we must review for the end of year exam", "spans": [], "lang": "en"}
+{"text": "she lost her reason after this tragedy", "spans": [], "lang": "en"}
+{"text": "ainsi int x dx = x^2/2 sur l'intervalle considere", "spans": [{"start": 6, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "mon camarade a obtenu une excellente note", "spans": [], "lang": "fr"}
+{"text": "class representatives are elected in september", "spans": [], "lang": "en"}
+{"text": "j'ai vu trois ou quatre eleves dans la cour", "spans": [], "lang": "fr"}
+{"text": "we get limit of un as n -> +inf which is true", "spans": [{"start": 7, "end": 31, "label": "MATH"}], "lang": "en"}
+{"text": "le produit scalaire est une operation bilineaire et symetrique", "spans": [], "lang": "fr"}
+{"text": "la distance euclidienne est toujours positive", "spans": [], "lang": "fr"}
+{"text": "let us study lim x -> 2 (x^2-4)/(x-2) so x^2 >= 0", "spans": [{"start": 13, "end": 37, "label": "MATH"}, {"start": 41, "end": 49, "label": "MATH"}], "lang": "en"}
+{"text": "la matrice P est inversible", "spans": [{"start": 11, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "we saw the pythagorean theorem yesterday", "spans": [], "lang": "en"}
+{"text": "le produit vectoriel est defini en dimension trois", "spans": [], "lang": "fr"}
+{"text": "la salle de classe est au troisieme etage", "spans": [], "lang": "fr"}
+{"text": "recall that M of size n*n as the calculation shows", "spans": [{"start": 12, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "by induction A = ((1,2),(3,4)) so A^(-1) inverse of A", "spans": [{"start": 13, "end": 30, "label": "MATH"}, {"start": 34, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "the end of class bell just rang", "spans": [], "lang": "en"}
+{"text": "on etudie la suite vn", "spans": [{"start": 19, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "wait so E(X) = 2 tbh", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "tenth graders are on the ground floor", "spans": [], "lang": "en"}
+{"text": "la fonction de ce bouton est mysterieuse", "spans": [], "lang": "fr"}
+{"text": "Let us already note that v(n) = 1/n which will be useful later.", "spans": [{"start": 25, "end": 35, "label": "MATH"}], "lang": "en"}
+{"text": "it is easy to see that AC = sqrt(AB^2 + BC^2) on the considered interval", "spans": [{"start": 23, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "posons limite de f en 0 d'apres le theoreme precedent", "spans": [{"start": 7, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "on a f''(x) - f(x) = 0 par induction", "spans": [{"start": 5, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "la compression sans perte preserve l'information originale", "spans": [], "lang": "fr"}
+{"text": "the letter alpha is used in physics", "spans": [], "lang": "en"}
+{"text": "tout est relatif disait einstein", "spans": [], "lang": "fr"}
+{"text": "we have shown that lim n->inf un as well as for all eps > 0 hence lim f(x) as x -> 1", "spans": [{"start": 19, "end": 32, "label": "MATH"}, {"start": 44, "end": 59, "label": "MATH"}, {"start": 66, "end": 84, "label": "MATH"}], "lang": "en"}
+{"text": "task multiplication becomes unmanageable", "spans": [], "lang": "en"}
+{"text": "etudions f(x) = x^3 - 3x ainsi que n^2 > n", "spans": [{"start": 9, "end": 24, "label": "MATH"}, {"start": 35, "end": 42, "label": "MATH"}], "lang": "fr"}
+{"text": "Notons d'ores et deja que x^2 - 4 = (x-2)(x+2) ce qui nous servira plus tard.", "spans": [{"start": 26, "end": 46, "label": "MATH"}], "lang": "fr"}
+{"text": "l'ensemble de mandelbrot a une frontiere infiniment complexe", "spans": [], "lang": "fr"}
+{"text": "integration by parts is a useful technique", "spans": [], "lang": "en"}
+{"text": "the school bus comes at seven in the morning", "spans": [], "lang": "en"}
+{"text": "the determinant of M equals 1", "spans": [{"start": 19, "end": 20, "label": "MATH"}, {"start": 28, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "on en deduit que syst x+y=5 ; 2x-y=1 d'apres le theoreme precedent", "spans": [{"start": 17, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "soient cos(x) = 1/2 et sin(a+b) = sin(a)cos(b) + cos(a)sin(b)", "spans": [{"start": 7, "end": 19, "label": "MATH"}, {"start": 23, "end": 61, "label": "MATH"}], "lang": "fr"}
+{"text": "we obtain x^2 - 5x + 6 = 0 as well as V(x+1) and f'(0) = 1", "spans": [{"start": 10, "end": 26, "label": "MATH"}, {"start": 38, "end": 44, "label": "MATH"}, {"start": 49, "end": 58, "label": "MATH"}], "lang": "en"}
+{"text": "Let us now go back to the initial equation to verify that vec u . vec v = ||u||*||v||*cos(theta).", "spans": [{"start": 58, "end": 96, "label": "MATH"}], "lang": "en"}
+{"text": "the calculation gives Im(z) = b, x = 2 and y = 3", "spans": [{"start": 22, "end": 31, "label": "MATH"}, {"start": 33, "end": 48, "label": "MATH"}], "lang": "en"}
+{"text": "pour tout x dans Z, x^2 >= 0", "spans": [{"start": 17, "end": 18, "label": "MATH"}, {"start": 20, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "let us set (2n+1)/(n^2+1) thus lmt fx as x to 0", "spans": [{"start": 11, "end": 25, "label": "MATH"}, {"start": 31, "end": 47, "label": "MATH"}], "lang": "en"}
+{"text": "we get lim x->0+ 1/x next ax + by = c and dx + ey = f so we have x + y = 5 and 2x - y = 1 whence AB = 5", "spans": [{"start": 7, "end": 20, "label": "MATH"}, {"start": 26, "end": 53, "label": "MATH"}, {"start": 65, "end": 89, "label": "MATH"}, {"start": 97, "end": 103, "label": "MATH"}], "lang": "en"}
+{"text": "la conjonction est le et logique", "spans": [], "lang": "fr"}
+{"text": "on note (un) la suite", "spans": [{"start": 8, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "alors P(A union B) = P(A) + P(B) - P(A inter B) ainsi que primitive de cos(x)", "spans": [{"start": 6, "end": 47, "label": "MATH"}, {"start": 58, "end": 77, "label": "MATH"}], "lang": "fr"}
+{"text": "the sequence vn converges", "spans": [{"start": 13, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "il faut montrer que vec(AB) = vec(OB) - vec(OA) donc on a qq x dans R", "spans": [{"start": 20, "end": 47, "label": "MATH"}, {"start": 58, "end": 69, "label": "MATH"}], "lang": "fr"}
+{"text": "i have to hand in my homework before monday", "spans": [], "lang": "en"}
+{"text": "le volume V vaut 1/3", "spans": [{"start": 17, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "considerons x = 2 et y = 3 et x^2 - 4", "spans": [{"start": 12, "end": 26, "label": "MATH"}, {"start": 30, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "the zero vector is the additive identity", "spans": [], "lang": "en"}
+{"text": "donc z + z' = (a+c) + i(b+d) ainsi que x + y = 5 et 2x - y = 1 et lmt fx qd x td 0 et int de a a b de f(x) dx", "spans": [{"start": 5, "end": 28, "label": "MATH"}, {"start": 39, "end": 62, "label": "MATH"}, {"start": 66, "end": 82, "label": "MATH"}, {"start": 86, "end": 109, "label": "MATH"}], "lang": "fr"}
+{"text": "then A complement", "spans": [{"start": 5, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "la demonstration par recurrence comporte deux etapes", "spans": [], "lang": "fr"}
+{"text": "we study the sequence (un)", "spans": [{"start": 22, "end": 26, "label": "MATH"}], "lang": "en"}
+{"text": "let us set g(t) = sin(t) + cos(t), limit of un as n -> +inf", "spans": [{"start": 11, "end": 33, "label": "MATH"}, {"start": 35, "end": 59, "label": "MATH"}], "lang": "en"}
+{"text": "by contradiction 2/3 then f''(x) + f(x) = 0 or y' = ay + b", "spans": [{"start": 17, "end": 20, "label": "MATH"}, {"start": 26, "end": 43, "label": "MATH"}, {"start": 47, "end": 58, "label": "MATH"}], "lang": "en"}
+{"text": "it follows that (AB) perp (CD) thus |x| <= 1", "spans": [{"start": 16, "end": 30, "label": "MATH"}, {"start": 36, "end": 44, "label": "MATH"}], "lang": "en"}
+{"text": "The teacher emphasized that sin^2(x) + cos^2(x) = 1 is a remarkable identity.", "spans": [{"start": 28, "end": 51, "label": "MATH"}], "lang": "en"}
+{"text": "we prove that theta according to the course", "spans": [{"start": 14, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "on cherche i^2 = -1 par recurrence", "spans": [{"start": 11, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Dans la suite de l'exercice, on supposera que u(n) = n^2 et on etudiera ses consequences.", "spans": [{"start": 46, "end": 56, "label": "MATH"}], "lang": "fr"}
+{"text": "la matrice M est inversible", "spans": [{"start": 11, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "by induction f''(x) = 2 whence (x+1)/(x-1)", "spans": [{"start": 13, "end": 23, "label": "MATH"}, {"start": 31, "end": 42, "label": "MATH"}], "lang": "en"}
+{"text": "take f'(x) = 1/x and the proof is complete", "spans": [{"start": 5, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "on calcule AB-> ce qui est vrai", "spans": [{"start": 11, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "we set var(X) = E(X^2) - E(X)^2 given that 1/n > 0", "spans": [{"start": 7, "end": 31, "label": "MATH"}, {"start": 43, "end": 50, "label": "MATH"}], "lang": "en"}
+{"text": "the assistant principal monitors the hallways", "spans": [], "lang": "en"}
+{"text": "the test will be next friday", "spans": [], "lang": "en"}
+{"text": "l'orthocentre est le point de concours des hauteurs", "spans": [], "lang": "fr"}
+{"text": "la matrice M est inversible", "spans": [{"start": 11, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "by induction E(X+Y) = E(X) + E(Y) so we have x + 1 > x given that lim n->inf un", "spans": [{"start": 13, "end": 33, "label": "MATH"}, {"start": 45, "end": 54, "label": "MATH"}, {"start": 66, "end": 79, "label": "MATH"}], "lang": "en"}
+{"text": "prenons rac(2)/2 donc on conclut", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "The teacher emphasized that P(A inter B) = P(A) * P(B) is a remarkable identity.", "spans": [{"start": 28, "end": 54, "label": "MATH"}], "lang": "en"}
+{"text": "on cherche ax^2 + bx + c ensuite int(0,1) x^2 dx puis log(1) = 0", "spans": [{"start": 11, "end": 24, "label": "MATH"}, {"start": 33, "end": 48, "label": "MATH"}, {"start": 54, "end": 64, "label": "MATH"}], "lang": "fr"}
+{"text": "on obtient x^2 - 2x + 1 sur l'intervalle considere", "spans": [{"start": 11, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "la limite est tracee sur le terrain de sport", "spans": [], "lang": "fr"}
+{"text": "euh jvais pas rendre le devoir avant demain franchement ouais", "spans": [], "lang": "fr"}
+{"text": "mon camarade a obtenu une excellente note", "spans": [], "lang": "fr"}
+{"text": "the letter alpha is used in physics", "spans": [], "lang": "en"}
+{"text": "il est clair que cos(a-b) = cos(a)cos(b) + sin(a)sin(b) ou 3x^2 + 5x - 2", "spans": [{"start": 17, "end": 55, "label": "MATH"}, {"start": 59, "end": 72, "label": "MATH"}], "lang": "fr"}
+{"text": "la legende veut que pythagore ait sacrifie un boeuf", "spans": [], "lang": "fr"}
+{"text": "l'addition au restaurant etait salee", "spans": [], "lang": "fr"}
+{"text": "we deduce that A subset of B according to the course", "spans": [{"start": 15, "end": 28, "label": "MATH"}], "lang": "en"}
+{"text": "la suite vn converge", "spans": [{"start": 9, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "we study the sequence un", "spans": [{"start": 22, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "jvois pas pk jvais pas rendre le devoir avant demain mdr", "spans": [], "lang": "fr"}
+{"text": "il vient int x dx = x^2/2 donc u_0 = 1 et sqrt(1-x^2)", "spans": [{"start": 9, "end": 25, "label": "MATH"}, {"start": 31, "end": 38, "label": "MATH"}, {"start": 42, "end": 53, "label": "MATH"}], "lang": "fr"}
+{"text": "il en resulte que un = n^2 ; exp(ln(x)) = x donc valeurs propres de A", "spans": [{"start": 18, "end": 26, "label": "MATH"}, {"start": 29, "end": 43, "label": "MATH"}, {"start": 49, "end": 69, "label": "MATH"}], "lang": "fr"}
+{"text": "sachant que det(A*B) = det(A)*det(B)", "spans": [{"start": 12, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "la salle de classe est au troisieme etage", "spans": [], "lang": "fr"}
+{"text": "le volume V vaut L*l*h", "spans": [{"start": 17, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "given that lmt fx as x to 0 but syst x+y=5 ; 2x-y=1 so (un) converges to 0 whence x^2 >= 0", "spans": [{"start": 11, "end": 27, "label": "MATH"}, {"start": 32, "end": 51, "label": "MATH"}, {"start": 55, "end": 74, "label": "MATH"}, {"start": 82, "end": 90, "label": "MATH"}], "lang": "en"}
+{"text": "the matrix A is invertible", "spans": [{"start": 11, "end": 12, "label": "MATH"}], "lang": "en"}
+{"text": "il en resulte que N*", "spans": [{"start": 18, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "pour tout x dans R+, x+1 > x", "spans": [{"start": 17, "end": 19, "label": "MATH"}, {"start": 21, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "j'ai mis ma somme de cote pour les vacances", "spans": [], "lang": "fr"}
+{"text": "the traveling salesman problem is np-complete", "spans": [], "lang": "en"}
+{"text": "on note (vn) la suite", "spans": [{"start": 8, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "a prime number has only two divisors", "spans": [], "lang": "en"}
+{"text": "we will study this chapter next week", "spans": [], "lang": "en"}
+{"text": "the root of the problem is elsewhere", "spans": [], "lang": "en"}
+{"text": "the kernel of a linear map is a subspace", "spans": [], "lang": "en"}
+{"text": "the identity matrix leaves vectors unchanged", "spans": [], "lang": "en"}
+{"text": "it is easy to see that un = a + (n-1)*r by the previous theorem", "spans": [{"start": 23, "end": 39, "label": "MATH"}], "lang": "en"}
+{"text": "l'injectivite signifie que deux entrees distinctes ont deux sorties distinctes", "spans": [], "lang": "fr"}
+{"text": "by contradiction A subset of B and the proof is complete", "spans": [{"start": 17, "end": 30, "label": "MATH"}], "lang": "en"}
+{"text": "hence x/(x+1) with g(x) = sqrt(x)", "spans": [{"start": 6, "end": 13, "label": "MATH"}, {"start": 19, "end": 33, "label": "MATH"}], "lang": "en"}
+{"text": "one student out of two passed", "spans": [], "lang": "en"}
+{"text": "on calcule df/dx = 2x", "spans": [{"start": 11, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "a venn diagram represents sets", "spans": [], "lang": "en"}
+{"text": "recall that x^2 - 2x + 1 given that x + 1 > x hence z * z' = (a+ib)(c+id)", "spans": [{"start": 12, "end": 24, "label": "MATH"}, {"start": 36, "end": 45, "label": "MATH"}, {"start": 52, "end": 73, "label": "MATH"}], "lang": "en"}
+{"text": "rappelons que i^2 = -1", "spans": [{"start": 14, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "the school bus comes at seven in the morning", "spans": [], "lang": "en"}
+{"text": "on calcule limite de un quand n tend vers l'infini comme attendu", "spans": [{"start": 11, "end": 50, "label": "MATH"}], "lang": "fr"}
+{"text": "Applying the theorem seen in class, we immediately obtain un = 1/n.", "spans": [{"start": 58, "end": 66, "label": "MATH"}], "lang": "en"}
+{"text": "the sequence vn converges", "spans": [{"start": 13, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "Assume by contradiction that E(X+Y) = E(X) + E(Y) and see what contradiction follows.", "spans": [{"start": 29, "end": 49, "label": "MATH"}], "lang": "en"}
+{"text": "suppose that int from 0 to 1 of x dx next f(x) = e^x", "spans": [{"start": 13, "end": 36, "label": "MATH"}, {"start": 42, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "il y a une interrogation surprise demain matin", "spans": [], "lang": "fr"}
+{"text": "la soustraction de cette charge est juste", "spans": [], "lang": "fr"}
+{"text": "we deduce that for all x, x^2 >= 0 as well as perimetre = 2*pi*r then for all x in [0,1]", "spans": [{"start": 15, "end": 34, "label": "MATH"}, {"start": 46, "end": 64, "label": "MATH"}, {"start": 70, "end": 88, "label": "MATH"}], "lang": "en"}
+{"text": "le bac approche et il faut etre serieux", "spans": [], "lang": "fr"}
+{"text": "rappelons que sqrt(a^2 - b^2) sur l'intervalle considere", "spans": [{"start": 14, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "j'ai prete mon livre de cours a un camarade", "spans": [], "lang": "fr"}
+{"text": "etudions Re(z) = a et sin(x) = 0", "spans": [{"start": 9, "end": 18, "label": "MATH"}, {"start": 22, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "he is left-handed but he manages well", "spans": [], "lang": "en"}
+{"text": "la lettre beta est utilisee en physique", "spans": [], "lang": "fr"}
+{"text": "To finish the exercise, it remains to establish that f''(x) + f(x) = 0 in this particular case.", "spans": [{"start": 53, "end": 70, "label": "MATH"}], "lang": "en"}
+{"text": "we obtain x in R then det(A) = ad - bc", "spans": [{"start": 10, "end": 16, "label": "MATH"}, {"start": 22, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "The goal of this exercise is to prove that cos(2x) = 2cos^2(x) - 1 is always true.", "spans": [{"start": 43, "end": 66, "label": "MATH"}], "lang": "en"}
+{"text": "appelons sqrt(x+1)", "spans": [{"start": 9, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "introduisons M de taille n*n comme attendu", "spans": [{"start": 13, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "injectivity means distinct inputs have distinct outputs", "spans": [], "lang": "en"}
+{"text": "le calcul donne esp(X+Y) = E(X) + E(Y) ainsi que cos(2x) = 2cos^2(x) - 1", "spans": [{"start": 16, "end": 38, "label": "MATH"}, {"start": 49, "end": 72, "label": "MATH"}], "lang": "fr"}
+{"text": "on demontre que |x - a| < eps ; (vec i, vec j, vec k) sachant que vec u + vec v mais (AB) // (CD)", "spans": [{"start": 16, "end": 29, "label": "MATH"}, {"start": 32, "end": 53, "label": "MATH"}, {"start": 66, "end": 79, "label": "MATH"}, {"start": 85, "end": 97, "label": "MATH"}], "lang": "fr"}
+{"text": "for all x in N, x+1 > x", "spans": [{"start": 13, "end": 14, "label": "MATH"}, {"start": 16, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "the calculation gives a/b + c/d given that integral from 0 to 1 of f(x) dx", "spans": [{"start": 22, "end": 31, "label": "MATH"}, {"start": 43, "end": 74, "label": "MATH"}], "lang": "en"}
+{"text": "l'integration par parties est une technique utile", "spans": [], "lang": "fr"}
+{"text": "by contraposition A^T transpose of A so we have x^5 - x hence f(x) = e^x", "spans": [{"start": 18, "end": 36, "label": "MATH"}, {"start": 48, "end": 55, "label": "MATH"}, {"start": 62, "end": 72, "label": "MATH"}], "lang": "en"}
+{"text": "on calcule V(x^2+1)", "spans": [{"start": 11, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "class representatives are elected in september", "spans": [], "lang": "en"}
+{"text": "etudions x + y = 5 et 2x - y = 1, log_2(8) = 3", "spans": [{"start": 9, "end": 32, "label": "MATH"}, {"start": 34, "end": 46, "label": "MATH"}], "lang": "fr"}
+{"text": "par induction z + z' = (a+c) + i(b+d)", "spans": [{"start": 14, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "il vient ax + by = c et dx + ey = f donc P(A) = 1/2 alors vec AB + vec BC = vec AC", "spans": [{"start": 9, "end": 35, "label": "MATH"}, {"start": 41, "end": 51, "label": "MATH"}, {"start": 58, "end": 82, "label": "MATH"}], "lang": "fr"}
+{"text": "This formula allows us to quickly compute (A*B)^T = B^T * A^T in practice.", "spans": [{"start": 42, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "the postman comes early in the morning", "spans": [], "lang": "en"}
+{"text": "we study the sequence vn", "spans": [{"start": 22, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "R designe l'ensemble des reels", "spans": [], "lang": "fr"}
+{"text": "on demontre que P(A|B) sachant que z * z' = (a+ib)(c+id) alors h(x) = (x+1)/(x-1) avec 0 <= x <= 1", "spans": [{"start": 16, "end": 22, "label": "MATH"}, {"start": 35, "end": 56, "label": "MATH"}, {"start": 63, "end": 81, "label": "MATH"}, {"start": 87, "end": 98, "label": "MATH"}], "lang": "fr"}
+{"text": "it is clear that cos^2(x) + sin^2(x) = 1 so we have syst x+y=5 ; 2x-y=1 whence f'(x) = 2x + 3", "spans": [{"start": 17, "end": 40, "label": "MATH"}, {"start": 52, "end": 71, "label": "MATH"}, {"start": 79, "end": 93, "label": "MATH"}], "lang": "en"}
+{"text": "fixons y(0) = 1 mais (AB) perp (CD) donc on a A^(-1) inverse de A sachant que sin(x) = 0", "spans": [{"start": 7, "end": 15, "label": "MATH"}, {"start": 21, "end": 35, "label": "MATH"}, {"start": 46, "end": 65, "label": "MATH"}, {"start": 78, "end": 88, "label": "MATH"}], "lang": "fr"}
+{"text": "il a la cote aupres de ses camarades", "spans": [], "lang": "fr"}
+{"text": "j'ai oublie mon cahier d'exercices a la maison", "spans": [], "lang": "fr"}
+{"text": "i understood the proof from the course well", "spans": [], "lang": "en"}
+{"text": "we get y' = ay + b whence y'' + y = 0, u(n) = n^2", "spans": [{"start": 7, "end": 18, "label": "MATH"}, {"start": 26, "end": 37, "label": "MATH"}, {"start": 39, "end": 49, "label": "MATH"}], "lang": "en"}
+{"text": "On constate alors sans difficulte que f(x) = x^2 et le resultat s'ensuit.", "spans": [{"start": 38, "end": 48, "label": "MATH"}], "lang": "fr"}
+{"text": "It is important to remember that lim un = 0 is a central property of the course.", "spans": [{"start": 33, "end": 43, "label": "MATH"}], "lang": "en"}
+{"text": "la multiplication des taches devient ingerable", "spans": [], "lang": "fr"}
+{"text": "Le professeur a insiste sur le fait que vec u . vec v = ||u||*||v||*cos(theta) est une identite remarquable.", "spans": [{"start": 40, "end": 78, "label": "MATH"}], "lang": "fr"}
+{"text": "sachant que Z sur l'intervalle considere", "spans": [{"start": 12, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "the convergence of a sequence depends on its limit", "spans": [], "lang": "en"}
+{"text": "la soustraction de cette charge est juste", "spans": [], "lang": "fr"}
+{"text": "supposons que P(A inter B) = P(A) * P(B) sur l'intervalle considere", "spans": [{"start": 14, "end": 40, "label": "MATH"}], "lang": "fr"}
+{"text": "it is clear that vec u + vec v ; un = a + (n-1)*r so (vec i, vec j, vec k)", "spans": [{"start": 17, "end": 30, "label": "MATH"}, {"start": 33, "end": 49, "label": "MATH"}, {"start": 53, "end": 74, "label": "MATH"}], "lang": "en"}
+{"text": "la serie converge si la suite de ses sommes partielles converge", "spans": [], "lang": "fr"}
+{"text": "there are five platonic solids", "spans": [], "lang": "en"}
+{"text": "we saw the pythagorean theorem yesterday", "spans": [], "lang": "en"}
+{"text": "le theoreme de l'angle inscrit relie les angles au centre et inscrits", "spans": [], "lang": "fr"}
+{"text": "we will study this chapter next week", "spans": [], "lang": "en"}
+{"text": "l'union de deux ensembles regroupe leurs elements", "spans": [], "lang": "fr"}
+{"text": "soit x un reel positif", "spans": [{"start": 5, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "la division des biens fait debat", "spans": [], "lang": "fr"}
+{"text": "considerons ax + by = c et dx + ey = f avec i^2 = -1 et (x^2)' = 2x d'ou x^2 + 1", "spans": [{"start": 12, "end": 38, "label": "MATH"}, {"start": 44, "end": 52, "label": "MATH"}, {"start": 56, "end": 67, "label": "MATH"}, {"start": 73, "end": 80, "label": "MATH"}], "lang": "fr"}
+{"text": "the real alpha is strictly positive", "spans": [{"start": 9, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "par induction sqrt(x+1) ; volume = (4/3)*pi*r^3", "spans": [{"start": 14, "end": 23, "label": "MATH"}, {"start": 26, "end": 47, "label": "MATH"}], "lang": "fr"}
+{"text": "on a x = 2 et y = 3 ensuite sqrt(x+1) ensuite x^2 - 5x + 6 = 0 avec syst x+y=5 ; 2x-y=1", "spans": [{"start": 5, "end": 19, "label": "MATH"}, {"start": 28, "end": 37, "label": "MATH"}, {"start": 46, "end": 62, "label": "MATH"}, {"start": 68, "end": 87, "label": "MATH"}], "lang": "fr"}
+{"text": "la difference se voit a l'oeil nu", "spans": [], "lang": "fr"}
+{"text": "cryptography protects communications", "spans": [], "lang": "en"}
+{"text": "lmao E(X) = 2 that's it", "spans": [{"start": 5, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "introduisons sin(2x) = 2sin(x)cos(x) ce qu'il fallait demontrer", "spans": [{"start": 13, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "ok then A inter B wait", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "the concept of derivative is fundamental in analysis", "spans": [], "lang": "en"}
+{"text": "le reel x est strictement positif", "spans": [{"start": 8, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "la salle de classe est au troisieme etage", "spans": [], "lang": "fr"}
+{"text": "the canonical basis is simple to handle", "spans": [], "lang": "en"}
+{"text": "the letter alpha is used in physics", "spans": [], "lang": "en"}
+{"text": "cherchons y'(t) = -k*y(t) sur l'intervalle considere", "spans": [{"start": 10, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "we note x^5 - x on the considered domain", "spans": [{"start": 8, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "les eleves de seconde sont au rez-de-chaussee", "spans": [], "lang": "fr"}
+{"text": "etudions 1/(n^2) selon le cours", "spans": [{"start": 9, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "En derivant les deux membres de l'equation, il vient a^2 + b^2 = c^2.", "spans": [{"start": 53, "end": 68, "label": "MATH"}], "lang": "fr"}
+{"text": "on cherche pour tout x in R ; (x-3)(x+3) par consequent x + y = 5", "spans": [{"start": 11, "end": 27, "label": "MATH"}, {"start": 30, "end": 40, "label": "MATH"}, {"start": 56, "end": 65, "label": "MATH"}], "lang": "fr"}
+{"text": "R designe l'ensemble des reels", "spans": [], "lang": "fr"}
+{"text": "the mandelbrot set has an infinitely complex boundary", "spans": [], "lang": "en"}
+{"text": "thus y' = ay + b", "spans": [{"start": 5, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "on a vu hier en cours le theoreme de pythagore", "spans": [], "lang": "fr"}
+{"text": "introduce i^2 = -1", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "the determinant of A equals 1", "spans": [{"start": 19, "end": 20, "label": "MATH"}, {"start": 28, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "les delegues de classe sont elus en septembre", "spans": [], "lang": "fr"}
+{"text": "We then observe without difficulty that g(x) = sqrt(x) and the result follows.", "spans": [{"start": 40, "end": 54, "label": "MATH"}], "lang": "en"}
+{"text": "we notice that a/b + c/d thus n in N*", "spans": [{"start": 15, "end": 24, "label": "MATH"}, {"start": 30, "end": 37, "label": "MATH"}], "lang": "en"}
+{"text": "il faut montrer que x >= 0 et la preuve s'acheve", "spans": [{"start": 20, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "la factorisation permet de simplifier les expressions", "spans": [], "lang": "fr"}
+{"text": "La demonstration de ce resultat repose sur l'egalite fondamentale 1 + 2 + ... + n = n(n+1)/2.", "spans": [{"start": 66, "end": 92, "label": "MATH"}], "lang": "fr"}
+{"text": "on pose ln(1/x) = -ln(x) ; (u/v)' = (u'v - uv')/v^2 sachant que (vec i, vec j, vec k), |x| <= 1", "spans": [{"start": 8, "end": 24, "label": "MATH"}, {"start": 27, "end": 51, "label": "MATH"}, {"start": 64, "end": 85, "label": "MATH"}, {"start": 87, "end": 95, "label": "MATH"}], "lang": "fr"}
+{"text": "By differentiating both sides of the equation, it follows that cos(2x) = 2cos^2(x) - 1.", "spans": [{"start": 63, "end": 86, "label": "MATH"}], "lang": "en"}
+{"text": "le mathematicien francais Henri Poincare a beaucoup ecrit", "spans": [], "lang": "fr"}
+{"text": "Assume by contradiction that f''(x) + f(x) = 0 and see what contradiction follows.", "spans": [{"start": 29, "end": 46, "label": "MATH"}], "lang": "en"}
+{"text": "a tetrahedron is a pyramid with a triangular base", "spans": [], "lang": "en"}
+{"text": "It is easy to verify that x^3 - 1 = (x-1)(x^2+x+1) by substituting numerical values.", "spans": [{"start": 26, "end": 50, "label": "MATH"}], "lang": "en"}
+{"text": "for all x in N, x^2 >= 0", "spans": [{"start": 13, "end": 14, "label": "MATH"}, {"start": 16, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "the zero vector is the additive identity", "spans": [], "lang": "en"}
+{"text": "the term of the contract is up", "spans": [], "lang": "en"}
+{"text": "Le raisonnement par recurrence permet d'etablir que un = 1/n est vrai a tout rang.", "spans": [{"start": 52, "end": 60, "label": "MATH"}], "lang": "fr"}
+{"text": "we obtain y' = ay + b by induction", "spans": [{"start": 10, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "the letter alpha is used in physics", "spans": [], "lang": "en"}
+{"text": "the letter alpha is used in physics", "spans": [], "lang": "en"}
+{"text": "the postman comes early in the morning", "spans": [], "lang": "en"}
+{"text": "tout est relatif disait einstein", "spans": [], "lang": "fr"}
+{"text": "la negation inverse la valeur de verite", "spans": [], "lang": "fr"}
+{"text": "sachant que f(x) = e^x ce qu'il fallait demontrer", "spans": [{"start": 12, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "On constate alors sans difficulte que u(n) = n^2 et le resultat s'ensuit.", "spans": [{"start": 38, "end": 48, "label": "MATH"}], "lang": "fr"}
+{"text": "il y a une interrogation surprise demain matin", "spans": [], "lang": "fr"}
+{"text": "take M of size n*n which was to be shown", "spans": [{"start": 5, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "la geometrie etudie les figures dans l'espace", "spans": [], "lang": "fr"}
+{"text": "les mathematiques grecques ont fonde la geometrie moderne", "spans": [], "lang": "fr"}
+{"text": "school vacation starts in two weeks", "spans": [], "lang": "en"}
+{"text": "introduisons theta sur l'intervalle considere", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "posons ax + b = 0 par induction", "spans": [{"start": 7, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "it is easy to see that arg(z) = pi/4 so we conclude", "spans": [{"start": 23, "end": 36, "label": "MATH"}], "lang": "en"}
+{"text": "Il faut bien comprendre que |z|^2 = z * z_barre avant de passer a la suite du raisonnement.", "spans": [{"start": 28, "end": 47, "label": "MATH"}], "lang": "fr"}
+{"text": "un eleve sur deux a reussi", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "la serie televisee me passionne", "spans": [], "lang": "fr"}
+{"text": "the tv series fascinates me", "spans": [], "lang": "en"}
+{"text": "Le bon reflexe ici consiste a factoriser pour obtenir f(x) = x^2 - 4.", "spans": [{"start": 54, "end": 68, "label": "MATH"}], "lang": "fr"}
+{"text": "let us call n/(n+1) ; 2x - 3 = 0 whence vec AB + vec BC = vec AC", "spans": [{"start": 12, "end": 19, "label": "MATH"}, {"start": 22, "end": 32, "label": "MATH"}, {"start": 40, "end": 64, "label": "MATH"}], "lang": "en"}
+{"text": "the real lambda is strictly positive", "spans": [{"start": 9, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "this problem is very difficult to solve without help", "spans": [], "lang": "en"}
+{"text": "let us set n = 10", "spans": [{"start": 11, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "prenons int x dx = x^2/2 comme le montre le calcul", "spans": [{"start": 8, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "mon camarade a obtenu une excellente note", "spans": [], "lang": "fr"}
+{"text": "on calcule V(x^2+1)", "spans": [{"start": 11, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "soit x = 2 par consequent (2x+1)/3", "spans": [{"start": 5, "end": 10, "label": "MATH"}, {"start": 26, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "by contradiction 1/(n^2) as expected", "spans": [{"start": 17, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "we notice that (2x+1)/3", "spans": [{"start": 15, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "the root of the problem is elsewhere", "spans": [], "lang": "en"}
+{"text": "we obtain x + y = 5 and 2x - y = 1", "spans": [{"start": 10, "end": 34, "label": "MATH"}], "lang": "en"}
+{"text": "we deduce that ax + b = 0 ; x^2 - 2x + 1", "spans": [{"start": 15, "end": 25, "label": "MATH"}, {"start": 28, "end": 40, "label": "MATH"}], "lang": "en"}
+{"text": "la decomposition en facteurs premiers est unique", "spans": [], "lang": "fr"}
+{"text": "task multiplication becomes unmanageable", "spans": [], "lang": "en"}
+{"text": "les mathematiques grecques ont fonde la geometrie moderne", "spans": [], "lang": "fr"}
+{"text": "cherchons cos(x) + sin(x) = 1, x + y = 5 et 2x - y = 1", "spans": [{"start": 10, "end": 29, "label": "MATH"}, {"start": 31, "end": 54, "label": "MATH"}], "lang": "fr"}
+{"text": "the subtraction of this charge is fair", "spans": [], "lang": "en"}
+{"text": "the determinant of A equals 0", "spans": [{"start": 19, "end": 20, "label": "MATH"}, {"start": 28, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "information theory measures uncertainty", "spans": [], "lang": "en"}
+{"text": "by contraposition x + 1 > x by induction", "spans": [{"start": 18, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "la lettre alpha est utilisee en physique", "spans": [], "lang": "fr"}
+{"text": "l'integration par parties est une technique utile", "spans": [], "lang": "fr"}
+{"text": "l'isomorphisme preserve la structure algebrique", "spans": [], "lang": "fr"}
+{"text": "the blackboard is full of white chalk", "spans": [], "lang": "en"}
+{"text": "the real lambda is strictly positive", "spans": [{"start": 9, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "this problem is very difficult to solve without help", "spans": [], "lang": "en"}
+{"text": "the term of the contract is up", "spans": [], "lang": "en"}
+{"text": "j'aime les cours de mathematiques en general", "spans": [], "lang": "fr"}
+{"text": "tomorrow we will review complex numbers", "spans": [], "lang": "en"}
+{"text": "Le bon reflexe ici consiste a factoriser pour obtenir P(A inter B) = P(A) * P(B).", "spans": [{"start": 54, "end": 80, "label": "MATH"}], "lang": "fr"}
+{"text": "suppose that (AB) // (CD) or vec u and vec v collinear", "spans": [{"start": 13, "end": 25, "label": "MATH"}, {"start": 29, "end": 54, "label": "MATH"}], "lang": "en"}
+{"text": "tkt jvais pas rendre le devoir avant demain enfin je crois", "spans": [], "lang": "fr"}
+{"text": "on a vu hier en cours le theoreme de pythagore", "spans": [], "lang": "fr"}
+{"text": "il faut montrer que arg(z) = pi/4", "spans": [{"start": 20, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "we deduce that 1/i = -i as desired", "spans": [{"start": 15, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "fix y'(t) = -k*y(t), F(x) = int_0^x f(t) dt then f'(x) = cos(x)", "spans": [{"start": 4, "end": 19, "label": "MATH"}, {"start": 21, "end": 43, "label": "MATH"}, {"start": 49, "end": 63, "label": "MATH"}], "lang": "en"}
+{"text": "D'apres le cours precedent, on sait que x^2 - 4 = (x-2)(x+2) dans tous les cas.", "spans": [{"start": 40, "end": 60, "label": "MATH"}], "lang": "fr"}
+{"text": "the calculation gives log(a/b) = log(a) - log(b) by recurrence", "spans": [{"start": 22, "end": 48, "label": "MATH"}], "lang": "en"}
+{"text": "soit pour tout x in R donc (x-3)(x+3) puis x notin A", "spans": [{"start": 5, "end": 21, "label": "MATH"}, {"start": 27, "end": 37, "label": "MATH"}, {"start": 43, "end": 52, "label": "MATH"}], "lang": "fr"}
+{"text": "the tv series fascinates me", "spans": [], "lang": "en"}
+{"text": "soit qq x in [0,1] comme attendu", "spans": [{"start": 5, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "registration for the chess club is open", "spans": [], "lang": "en"}
+{"text": "for all x in R+, f(x) > 0", "spans": [{"start": 13, "end": 15, "label": "MATH"}, {"start": 17, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "il en resulte que y'(t) = -k*y(t) ensuite ax + by = c et dx + ey = f", "spans": [{"start": 18, "end": 33, "label": "MATH"}, {"start": 42, "end": 68, "label": "MATH"}], "lang": "fr"}
+{"text": "On note f la fonction definie par h(x) = 1/x. Alors f est lineaire.", "spans": [{"start": 34, "end": 44, "label": "MATH"}], "lang": "fr"}
+{"text": "we study the sequence un", "spans": [{"start": 22, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "algebraic language came later with the arabs", "spans": [], "lang": "en"}
+{"text": "the difference is visible to the naked eye", "spans": [], "lang": "en"}
+{"text": "par induction (x^2)' = 2x ainsi que primitive de cos(x) avec x app R+", "spans": [{"start": 14, "end": 25, "label": "MATH"}, {"start": 36, "end": 55, "label": "MATH"}, {"start": 61, "end": 69, "label": "MATH"}], "lang": "fr"}
+{"text": "one student out of two passed", "spans": [], "lang": "en"}
+{"text": "on calcule P(X=k) = 1/n mais rac(x) ensuite X suit B(n,p)", "spans": [{"start": 11, "end": 23, "label": "MATH"}, {"start": 29, "end": 35, "label": "MATH"}, {"start": 44, "end": 57, "label": "MATH"}], "lang": "fr"}
+{"text": "we have x != 0 which was to be shown", "spans": [{"start": 8, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "one student out of two passed", "spans": [], "lang": "en"}
+{"text": "it is clear that A * B != B * A but syst x+y=5 ; 2x-y=1", "spans": [{"start": 17, "end": 31, "label": "MATH"}, {"start": 36, "end": 55, "label": "MATH"}], "lang": "en"}
+{"text": "we deduce that ax^2 + bx + c then ax^2 + bx + c", "spans": [{"start": 15, "end": 28, "label": "MATH"}, {"start": 34, "end": 47, "label": "MATH"}], "lang": "en"}
+{"text": "a tetrahedron is a pyramid with a triangular base", "spans": [], "lang": "en"}
+{"text": "rappelons que 1/(n^2) par induction", "spans": [{"start": 14, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "un eleve sur deux a reussi", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "let x be a positive real", "spans": [{"start": 4, "end": 5, "label": "MATH"}], "lang": "en"}
+{"text": "le calcul donne 1 sur n sachant que z barre = a - ib", "spans": [{"start": 16, "end": 23, "label": "MATH"}, {"start": 36, "end": 52, "label": "MATH"}], "lang": "fr"}
+{"text": "l'isomorphisme preserve la structure algebrique", "spans": [], "lang": "fr"}
+{"text": "la complexite polynomiale est consideree comme acceptable", "spans": [], "lang": "fr"}
+{"text": "Le professeur a insiste sur le fait que (A*B)^T = B^T * A^T est une identite remarquable.", "spans": [{"start": 40, "end": 59, "label": "MATH"}], "lang": "fr"}
+{"text": "etudions f'(x) = 1/x donc on conclut", "spans": [{"start": 9, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "thus sqrt(1-x^2) by contradiction", "spans": [{"start": 5, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "Assume by contradiction that a^2 + b^2 = c^2 and see what contradiction follows.", "spans": [{"start": 29, "end": 44, "label": "MATH"}], "lang": "en"}
+{"text": "le proviseur a annonce une nouvelle reforme", "spans": [], "lang": "fr"}
+{"text": "the test will be next friday", "spans": [], "lang": "en"}
+{"text": "pretty sure x = 3 ou x = -3 no cap", "spans": [{"start": 12, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "la recherche en mathematiques avance lentement", "spans": [], "lang": "fr"}
+{"text": "the real lambda is strictly positive", "spans": [{"start": 9, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "on cherche integ x^2 dx par consequent |x - a| < eps", "spans": [{"start": 11, "end": 23, "label": "MATH"}, {"start": 39, "end": 52, "label": "MATH"}], "lang": "fr"}
+{"text": "proof by contradiction starts from a false hypothesis", "spans": [], "lang": "en"}
+{"text": "appelons y' + y = 0 sur R tout entier", "spans": [{"start": 9, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "je dois rendre mon devoir avant lundi", "spans": [], "lang": "fr"}
+{"text": "on a lmt fx qd x td 0", "spans": [{"start": 5, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "la matrice P est inversible", "spans": [{"start": 11, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "j'ai participe a un concours de mathematiques l'an dernier", "spans": [], "lang": "fr"}
+{"text": "l'esperance mathematique est la moyenne theorique", "spans": [], "lang": "fr"}
+{"text": "suppose that sqrt(a^2 - b^2) so square root of 2 thus (x+1)/(x-1) thus un = n^2", "spans": [{"start": 13, "end": 28, "label": "MATH"}, {"start": 32, "end": 48, "label": "MATH"}, {"start": 54, "end": 65, "label": "MATH"}, {"start": 71, "end": 79, "label": "MATH"}], "lang": "en"}
+{"text": "le rapport entre les deux equipes est tendu", "spans": [], "lang": "fr"}
+{"text": "a mobius strip has only one face", "spans": [], "lang": "en"}
+{"text": "j'ai oublie mon cahier d'exercices a la maison", "spans": [], "lang": "fr"}
+{"text": "il en resulte que il existe un unique x d'ou esp(X+Y) = E(X) + E(Y)", "spans": [{"start": 18, "end": 39, "label": "MATH"}, {"start": 45, "end": 67, "label": "MATH"}], "lang": "fr"}
+{"text": "il est facile de voir que ax + by = c et dx + ey = f pour tout n entier", "spans": [{"start": 26, "end": 52, "label": "MATH"}], "lang": "fr"}
+{"text": "i participated in a math contest last year", "spans": [], "lang": "en"}
+{"text": "The calculation is relatively simple: just notice that det(A*B) = det(A)*det(B).", "spans": [{"start": 55, "end": 79, "label": "MATH"}], "lang": "en"}
+{"text": "let us note for all x in [0,1] for all integer n", "spans": [{"start": 12, "end": 30, "label": "MATH"}], "lang": "en"}
+{"text": "j'ai participe a un concours de mathematiques l'an dernier", "spans": [], "lang": "fr"}
+{"text": "introduisons e^(x+y) = e^x * e^y", "spans": [{"start": 13, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "introduisons sqrt(x+1) et x^2 - 5x + 6 = 0 ainsi que u_0 = 1", "spans": [{"start": 13, "end": 22, "label": "MATH"}, {"start": 26, "end": 42, "label": "MATH"}, {"start": 53, "end": 60, "label": "MATH"}], "lang": "fr"}
+{"text": "Le professeur a insiste sur le fait que x^3 - 1 = (x-1)(x^2+x+1) est une identite remarquable.", "spans": [{"start": 40, "end": 64, "label": "MATH"}], "lang": "fr"}
+{"text": "we set ax + by = c and dx + ey = f", "spans": [{"start": 7, "end": 34, "label": "MATH"}], "lang": "en"}
+{"text": "d'apres le cours sin(x) = 0", "spans": [{"start": 17, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "we have lim x->0 sin(x)/x as well as F(x) = int_0^x f(t) dt hence v(n) = 1/n", "spans": [{"start": 8, "end": 25, "label": "MATH"}, {"start": 37, "end": 59, "label": "MATH"}, {"start": 66, "end": 76, "label": "MATH"}], "lang": "en"}
+{"text": "le nombre d'or est lie au pentagone regulier", "spans": [], "lang": "fr"}
+{"text": "par recurrence on a f'(x) = 2x + 3 d'ou valeurs propres de A ainsi que x = 2 et y = 3 avec int de 0 a pi de sin(x) dx", "spans": [{"start": 20, "end": 34, "label": "MATH"}, {"start": 40, "end": 60, "label": "MATH"}, {"start": 71, "end": 85, "label": "MATH"}, {"start": 91, "end": 117, "label": "MATH"}], "lang": "fr"}
+{"text": "so x + y = 5 and 2x - y = 1 by recurrence", "spans": [{"start": 3, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "assume that f(x) = ln(x) as well as 1 sur n", "spans": [{"start": 12, "end": 24, "label": "MATH"}, {"start": 36, "end": 43, "label": "MATH"}], "lang": "en"}
+{"text": "given that tan(x) = 1 according to the course", "spans": [{"start": 11, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "il est facile de voir que qq x in R, f(x) > 0 par consequent f(x) = x^2", "spans": [{"start": 26, "end": 45, "label": "MATH"}, {"start": 61, "end": 71, "label": "MATH"}], "lang": "fr"}
+{"text": "la loi normale est une loi de probabilite continue", "spans": [], "lang": "fr"}
+{"text": "le theoreme de thales concerne les triangles semblables", "spans": [], "lang": "fr"}
+{"text": "le prisme a deux bases polygonales paralleles", "spans": [], "lang": "fr"}
+{"text": "a pyramid has a polygonal base and a vertex", "spans": [], "lang": "en"}
+{"text": "From this hypothesis, we can deduce that E(X+Y) = E(X) + E(Y) in most cases.", "spans": [{"start": 41, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "on obtient z = r*e^(i*theta) comme on le souhaitait", "spans": [{"start": 11, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "le logarithme est la fonction reciproque de l'exponentielle", "spans": [], "lang": "fr"}
+{"text": "fix x + y = 5 next y = 3x + 7, n^2 > n, 2x^2 - 3x + 1", "spans": [{"start": 4, "end": 13, "label": "MATH"}, {"start": 19, "end": 29, "label": "MATH"}, {"start": 31, "end": 38, "label": "MATH"}, {"start": 40, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "les statistiques permettent d'analyser des donnees", "spans": [], "lang": "fr"}
+{"text": "le volume d'une sphere croit avec le cube du rayon", "spans": [], "lang": "fr"}
+{"text": "on obtient A^T transposee de A", "spans": [{"start": 11, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "on en deduit que ln(e) = 1 puis ax^2 + bx + c d'ou f: x -> 2x", "spans": [{"start": 17, "end": 26, "label": "MATH"}, {"start": 32, "end": 45, "label": "MATH"}, {"start": 51, "end": 61, "label": "MATH"}], "lang": "fr"}
+{"text": "a cylinder has two circular bases", "spans": [], "lang": "en"}
+{"text": "we set x notin A so the result is established", "spans": [{"start": 7, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "on etudie la suite (un)", "spans": [{"start": 19, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "the letter alpha is used in physics", "spans": [], "lang": "en"}
+{"text": "by induction f''(x) = 2 on R", "spans": [{"start": 13, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "the determinant of A equals 0", "spans": [{"start": 19, "end": 20, "label": "MATH"}, {"start": 28, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "consider A^(-1) inverse of A", "spans": [{"start": 9, "end": 28, "label": "MATH"}], "lang": "en"}
+{"text": "this theorem is named after its discoverer", "spans": [], "lang": "en"}
+{"text": "hence volume = (4/3)*pi*r^3", "spans": [{"start": 6, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "To solve this equation, let us first notice that x^3 - 1 = (x-1)(x^2+x+1).", "spans": [{"start": 49, "end": 73, "label": "MATH"}], "lang": "en"}
+{"text": "par consequent vec AB + vec BC = vec AC ce qu'il fallait demontrer", "spans": [{"start": 15, "end": 39, "label": "MATH"}], "lang": "fr"}
+{"text": "la serie televisee me passionne", "spans": [], "lang": "fr"}
+{"text": "From the previous course, we know that u(n+1) = 2*un + 3 in all cases.", "spans": [{"start": 39, "end": 56, "label": "MATH"}], "lang": "en"}
+{"text": "nous avons u(n+1) = un + 2 ce qui est vrai", "spans": [{"start": 11, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "the term of the contract is up", "spans": [], "lang": "en"}
+{"text": "he has the rating among his classmates", "spans": [], "lang": "en"}
+{"text": "la factorisation permet de simplifier les expressions", "spans": [], "lang": "fr"}
+{"text": "le cylindre a deux bases circulaires", "spans": [], "lang": "fr"}
+{"text": "par induction cos(x) + sin(x) = 1, |x| <= 1 et tan(x) = 1 puis f'(x) = 2x + 3", "spans": [{"start": 14, "end": 33, "label": "MATH"}, {"start": 35, "end": 43, "label": "MATH"}, {"start": 47, "end": 57, "label": "MATH"}, {"start": 63, "end": 77, "label": "MATH"}], "lang": "fr"}
+{"text": "let us study I = ((1,0),(0,1)) and the proof is complete", "spans": [{"start": 13, "end": 30, "label": "MATH"}], "lang": "en"}
+{"text": "cartesian coordinates describe a point in the plane", "spans": [], "lang": "en"}
+{"text": "Il est facile de verifier que P(A inter B) = P(A) * P(B) en substituant les valeurs numeriques.", "spans": [{"start": 30, "end": 56, "label": "MATH"}], "lang": "fr"}
+{"text": "the determinant of M equals ad - bc", "spans": [{"start": 19, "end": 20, "label": "MATH"}, {"start": 28, "end": 35, "label": "MATH"}], "lang": "en"}
+{"text": "le graphe d'une fonction represente ses variations", "spans": [], "lang": "fr"}
+{"text": "soit (un) converge vers 0 ; e^x >= 1 + x, f(x) = cos(x) ensuite sin(pi/3) = sqrt(3)/2", "spans": [{"start": 5, "end": 25, "label": "MATH"}, {"start": 28, "end": 40, "label": "MATH"}, {"start": 42, "end": 55, "label": "MATH"}, {"start": 64, "end": 85, "label": "MATH"}], "lang": "fr"}
+{"text": "We notice that ln(x*y) = ln(x) + ln(y) by identifying terms of the same degree.", "spans": [{"start": 15, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "the letter beta is used in physics", "spans": [], "lang": "en"}
+{"text": "the class average is fourteen out of twenty", "spans": [], "lang": "en"}
+{"text": "the teacher explains the lesson very well", "spans": [], "lang": "en"}
+{"text": "Induction allows us to establish that cos(2x) = 2cos^2(x) - 1 is true at every rank.", "spans": [{"start": 38, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "La premiere etape consiste a demontrer que e^(x+y) = e^x * e^y puis on conclut.", "spans": [{"start": 43, "end": 62, "label": "MATH"}], "lang": "fr"}
+{"text": "then card(A) = 5", "spans": [{"start": 5, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "by induction M est le milieu de [AB] next 1/(n^2) next n^2 > n", "spans": [{"start": 13, "end": 36, "label": "MATH"}, {"start": 42, "end": 49, "label": "MATH"}, {"start": 55, "end": 62, "label": "MATH"}], "lang": "en"}
+{"text": "a central symmetry inverts with respect to a point", "spans": [], "lang": "en"}
+{"text": "on note lim n->inf un ; sqrt(2)", "spans": [{"start": 8, "end": 21, "label": "MATH"}, {"start": 24, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "the letter alpha is used in physics", "spans": [], "lang": "en"}
+{"text": "let us note sin(x) = 0 by contradiction", "spans": [{"start": 12, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "this theorem is named after its discoverer", "spans": [], "lang": "en"}
+{"text": "we must show that u(n+1) = 2*un + 3 then var(X) = E(X^2) - E(X)^2", "spans": [{"start": 18, "end": 35, "label": "MATH"}, {"start": 41, "end": 65, "label": "MATH"}], "lang": "en"}
+{"text": "the test will be next friday", "spans": [], "lang": "en"}
+{"text": "A ce stade de la demonstration, nous avons montre que P(A inter B) = P(A) * P(B).", "spans": [{"start": 54, "end": 80, "label": "MATH"}], "lang": "fr"}
+{"text": "let gamma be a positive real", "spans": [{"start": 4, "end": 9, "label": "MATH"}], "lang": "en"}
+{"text": "then A * B != B * A, y' + y = 0 and cos(2x) = 2cos^2(x) - 1", "spans": [{"start": 5, "end": 19, "label": "MATH"}, {"start": 21, "end": 31, "label": "MATH"}, {"start": 36, "end": 59, "label": "MATH"}], "lang": "en"}
+{"text": "la sonnerie de fin de cours vient de retentir", "spans": [], "lang": "fr"}
+{"text": "la multiplication des taches devient ingerable", "spans": [], "lang": "fr"}
+{"text": "we have 1 + tan^2(x) = 1/cos^2(x) which ends the proof", "spans": [{"start": 8, "end": 33, "label": "MATH"}], "lang": "en"}
+{"text": "les vacances scolaires commencent dans deux semaines", "spans": [], "lang": "fr"}
+{"text": "appelons syst x+y=5 ; 2x-y=1 sachant que qq x in [0,1]", "spans": [{"start": 9, "end": 28, "label": "MATH"}, {"start": 41, "end": 54, "label": "MATH"}], "lang": "fr"}
+{"text": "la lettre beta est utilisee en physique", "spans": [], "lang": "fr"}
+{"text": "recall that f(x) = 2x + 1 given that tan(x) = sin(x)/cos(x)", "spans": [{"start": 12, "end": 25, "label": "MATH"}, {"start": 37, "end": 59, "label": "MATH"}], "lang": "en"}
+{"text": "he has the rating among his classmates", "spans": [], "lang": "en"}
+{"text": "we know that 2cos(x) - 1 = 0 so 1 sur n", "spans": [{"start": 13, "end": 28, "label": "MATH"}, {"start": 32, "end": 39, "label": "MATH"}], "lang": "en"}
+{"text": "one student out of two passed", "spans": [], "lang": "en"}
+{"text": "on remarque que x^4 - 16 comme attendu", "spans": [{"start": 16, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "it follows that angle ABC = 90 with y'' - y = 0", "spans": [{"start": 16, "end": 30, "label": "MATH"}, {"start": 36, "end": 47, "label": "MATH"}], "lang": "en"}
+{"text": "le programme de cette annee est tres charge", "spans": [], "lang": "fr"}
+{"text": "soit exists n in N, n > 10 comme le montre le calcul", "spans": [{"start": 5, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "we have P(A) = 1/2 by recurrence", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "implication differs from equivalence", "spans": [], "lang": "en"}
+{"text": "le calcul donne lim x->0+ 1/x ou z = r*e^(i*theta)", "spans": [{"start": 16, "end": 29, "label": "MATH"}, {"start": 33, "end": 50, "label": "MATH"}], "lang": "fr"}
+{"text": "the rooster sings at sunrise", "spans": [], "lang": "en"}
+{"text": "fix for all x in R so x^2 - 5x + 6 = 0", "spans": [{"start": 4, "end": 18, "label": "MATH"}, {"start": 22, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "il vient y(0) = 1 ensuite x != 0 et qq eps > 0", "spans": [{"start": 9, "end": 17, "label": "MATH"}, {"start": 26, "end": 32, "label": "MATH"}, {"start": 36, "end": 46, "label": "MATH"}], "lang": "fr"}
+{"text": "At this stage of the proof, we have shown that det(A*B) = det(A)*det(B).", "spans": [{"start": 47, "end": 71, "label": "MATH"}], "lang": "en"}
+{"text": "the determinant of M equals 1", "spans": [{"start": 19, "end": 20, "label": "MATH"}, {"start": 28, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "on en deduit que f(x) = x^3 - 3x ou qq x in R, f(x) > 0 ainsi que f: x -> 2x et (1+i)^2 = 2i", "spans": [{"start": 17, "end": 32, "label": "MATH"}, {"start": 36, "end": 55, "label": "MATH"}, {"start": 66, "end": 76, "label": "MATH"}, {"start": 80, "end": 92, "label": "MATH"}], "lang": "fr"}
+{"text": "take x^3 + 8, f'(x) = e^x", "spans": [{"start": 5, "end": 12, "label": "MATH"}, {"start": 14, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "we must show that volume = (4/3)*pi*r^3 and there exists alpha st alpha > 0", "spans": [{"start": 18, "end": 39, "label": "MATH"}, {"start": 44, "end": 75, "label": "MATH"}], "lang": "en"}
+{"text": "par contraposee Re(z) = a d'apres le theoreme precedent", "spans": [{"start": 16, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "we saw that x in R", "spans": [{"start": 12, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "R designe l'ensemble des reels", "spans": [], "lang": "fr"}
+{"text": "pour tout x dans R, x+1 > x", "spans": [{"start": 17, "end": 18, "label": "MATH"}, {"start": 20, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "considerons valeurs propres de A comme le montre le calcul", "spans": [{"start": 12, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "A ce stade de la demonstration, nous avons montre que x^2 + 2x + 1 = (x+1)^2.", "spans": [{"start": 54, "end": 76, "label": "MATH"}], "lang": "fr"}
+{"text": "appelons rg(A) = 2 donc le resultat est etabli", "spans": [{"start": 9, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "the tv series fascinates me", "spans": [], "lang": "en"}
+{"text": "on cherche vec u et vec v colineaires", "spans": [{"start": 11, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "bon sin 0 = 0 voila quoi", "spans": [{"start": 4, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "la matrice A est inversible", "spans": [{"start": 11, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "the real beta is strictly positive", "spans": [{"start": 9, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "le controle aura lieu vendredi prochain", "spans": [], "lang": "fr"}
+{"text": "we have shown that n = 10", "spans": [{"start": 19, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "the calculation gives for all x in [0,1] by recurrence", "spans": [{"start": 22, "end": 40, "label": "MATH"}], "lang": "en"}
+{"text": "the letter alpha is used in physics", "spans": [], "lang": "en"}
+{"text": "algebraic language came later with the arabs", "spans": [], "lang": "en"}
+{"text": "the traveling salesman problem is np-complete", "spans": [], "lang": "en"}
+{"text": "so angle ABC = 90 on R", "spans": [{"start": 3, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "la loi des sinus relie cotes et angles d'un triangle", "spans": [], "lang": "fr"}
+{"text": "le rapport entre les deux equipes est tendu", "spans": [], "lang": "fr"}
+{"text": "prenons n/(n+1) par recurrence", "spans": [{"start": 8, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "le produit local est de meilleure qualite", "spans": [], "lang": "fr"}
+{"text": "my classmate got an excellent grade", "spans": [], "lang": "en"}
+{"text": "we get y'(t) = -k*y(t)", "spans": [{"start": 7, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "bijectivity combines injectivity and surjectivity", "spans": [], "lang": "en"}
+{"text": "asymmetric encryption uses two keys", "spans": [], "lang": "en"}
+{"text": "we look for df/dt = -kf", "spans": [{"start": 12, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "a box plot summarizes five key values", "spans": [], "lang": "en"}
+{"text": "The calculation is relatively simple: just notice that f(x) = 2x + 1.", "spans": [{"start": 55, "end": 68, "label": "MATH"}], "lang": "en"}
+{"text": "he has the rating among his classmates", "spans": [], "lang": "en"}
+{"text": "notons sqrt(x) + 1 ; pour tout n >= 1", "spans": [{"start": 7, "end": 18, "label": "MATH"}, {"start": 21, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "le carre de la rue est tres anime le samedi", "spans": [], "lang": "fr"}
+{"text": "he is left-handed but he manages well", "spans": [], "lang": "en"}
+{"text": "il vient int de a a b de f(x) dx", "spans": [{"start": 9, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "on sait que 2x^2 - 3x + 1 sachant que f(x) = e^x alors un est geometrique de raison q", "spans": [{"start": 12, "end": 25, "label": "MATH"}, {"start": 38, "end": 48, "label": "MATH"}, {"start": 55, "end": 85, "label": "MATH"}], "lang": "fr"}
+{"text": "given that P(X=k) = 1/n by recurrence", "spans": [{"start": 11, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "pour tout x dans Z, x+1 > x", "spans": [{"start": 17, "end": 18, "label": "MATH"}, {"start": 20, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "par consequent AC = sqrt(AB^2 + BC^2) puis z = a + ib par consequent x^2 - 4", "spans": [{"start": 15, "end": 37, "label": "MATH"}, {"start": 43, "end": 53, "label": "MATH"}, {"start": 69, "end": 76, "label": "MATH"}], "lang": "fr"}
+{"text": "D'apres le cours precedent, on sait que e^(x+y) = e^x * e^y dans tous les cas.", "spans": [{"start": 40, "end": 59, "label": "MATH"}], "lang": "fr"}
+{"text": "task multiplication becomes unmanageable", "spans": [], "lang": "en"}
+{"text": "integration by parts is a useful technique", "spans": [], "lang": "en"}
+{"text": "un eleve sur deux a reussi", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "on calcule P(X=k) = C(n,k) * p^k * (1-p)^(n-k)", "spans": [{"start": 11, "end": 46, "label": "MATH"}], "lang": "fr"}
+{"text": "From this hypothesis, we can deduce that det(A*B) = det(A)*det(B) in most cases.", "spans": [{"start": 41, "end": 65, "label": "MATH"}], "lang": "en"}
+{"text": "appelons df/dt = -kf d'ou int de 0 a pi de sin(x) dx ; ln'(x) = 1/x", "spans": [{"start": 9, "end": 20, "label": "MATH"}, {"start": 26, "end": 52, "label": "MATH"}, {"start": 55, "end": 67, "label": "MATH"}], "lang": "fr"}
+{"text": "the difference is visible to the naked eye", "spans": [], "lang": "en"}
+{"text": "il vient f(x) = cos(x)", "spans": [{"start": 9, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "donc ln(x^n) = n*ln(x) par recurrence", "spans": [{"start": 5, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "we have v_n = u_n + 1 then z + z' = (a+c) + i(b+d) next x^2 + 1 or P(A inter B) = P(A) * P(B)", "spans": [{"start": 8, "end": 21, "label": "MATH"}, {"start": 27, "end": 50, "label": "MATH"}, {"start": 56, "end": 63, "label": "MATH"}, {"start": 67, "end": 93, "label": "MATH"}], "lang": "en"}
+{"text": "ok then x^2 >= 0 maybe", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "le point d'inflexion change la concavite", "spans": [], "lang": "fr"}
+{"text": "la bouteille de klein ne possede pas de bord", "spans": [], "lang": "fr"}
+{"text": "the local product is of better quality", "spans": [], "lang": "en"}
+{"text": "la base canonique est simple a manipuler", "spans": [], "lang": "fr"}
+{"text": "hence A complement as well as f'(x) = cos(x) then M est le milieu de [AB]", "spans": [{"start": 6, "end": 18, "label": "MATH"}, {"start": 30, "end": 44, "label": "MATH"}, {"start": 50, "end": 73, "label": "MATH"}], "lang": "en"}
+{"text": "ainsi 2cos(x) - 1 = 0 ainsi que qq eps > 0 ainsi que ||vec u|| = 1", "spans": [{"start": 6, "end": 21, "label": "MATH"}, {"start": 32, "end": 42, "label": "MATH"}, {"start": 53, "end": 66, "label": "MATH"}], "lang": "fr"}
+{"text": "the average is calculated over ten assignments", "spans": [], "lang": "en"}
+{"text": "le volume V vaut pi*r^2*h", "spans": [{"start": 17, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "il faut reviser pour l'examen de fin d'annee", "spans": [], "lang": "fr"}
+{"text": "this theorem is named after its discoverer", "spans": [], "lang": "en"}
+{"text": "i have to hand in my homework before monday", "spans": [], "lang": "en"}
+{"text": "par contraposee ln(x*y) = ln(x) + ln(y) par contradiction", "spans": [{"start": 16, "end": 39, "label": "MATH"}], "lang": "fr"}
+{"text": "so like i won't hand in the homework before tomorrow wait", "spans": [], "lang": "en"}
+{"text": "let us compute (0, 1) but lim f(x) as x -> 1 whence ln(x) <= x - 1 thus volume = (4/3)*pi*r^3", "spans": [{"start": 15, "end": 21, "label": "MATH"}, {"start": 26, "end": 44, "label": "MATH"}, {"start": 52, "end": 66, "label": "MATH"}, {"start": 72, "end": 93, "label": "MATH"}], "lang": "en"}
+{"text": "la matrice M est inversible", "spans": [{"start": 11, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "on obtient ax + by = c et dx + ey = f ; y' = ay + b", "spans": [{"start": 11, "end": 37, "label": "MATH"}, {"start": 40, "end": 51, "label": "MATH"}], "lang": "fr"}
+{"text": "alors cos(x)", "spans": [{"start": 6, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "donc x in N alors f(x) = e^x", "spans": [{"start": 5, "end": 11, "label": "MATH"}, {"start": 18, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "il s'ensuit que log(a/b) = log(a) - log(b) sur R tout entier", "spans": [{"start": 16, "end": 42, "label": "MATH"}], "lang": "fr"}
+{"text": "les delegues de classe sont elus en septembre", "spans": [], "lang": "fr"}
+{"text": "we set int(0,1) x^2 dx but Im(z) = b so rk(A) = 2", "spans": [{"start": 7, "end": 22, "label": "MATH"}, {"start": 27, "end": 36, "label": "MATH"}, {"start": 40, "end": 49, "label": "MATH"}], "lang": "en"}
+{"text": "la notation moderne date du dix-septieme siecle", "spans": [], "lang": "fr"}
+{"text": "Il faut bien comprendre que un = q^n avant de passer a la suite du raisonnement.", "spans": [{"start": 28, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "le volume V vaut pi*r^2*h", "spans": [{"start": 17, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "on sait que 2x + 3y = 7 et la preuve s'acheve", "spans": [{"start": 12, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "suppose that angle ABC = 90 which was to be shown", "spans": [{"start": 13, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "nous savons que pour tout n >= 1", "spans": [{"start": 16, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "ce theoreme porte le nom de son decouvreur", "spans": [], "lang": "fr"}
+{"text": "rappelons que g(t) = sin(t) + cos(t) donc le resultat est etabli", "spans": [{"start": 14, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "rappelons que y(0) = 1 ce qui est vrai", "spans": [{"start": 14, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "la matrice P est inversible", "spans": [{"start": 11, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "la multiplication des taches devient ingerable", "spans": [], "lang": "fr"}
+{"text": "hence (x+1)/(x-1) so we have x^2 + px + q = 0 whence f''(x) = 2 given that (x+y)/(x-y)", "spans": [{"start": 6, "end": 17, "label": "MATH"}, {"start": 29, "end": 45, "label": "MATH"}, {"start": 53, "end": 63, "label": "MATH"}, {"start": 75, "end": 86, "label": "MATH"}], "lang": "en"}
+{"text": "the golden ratio is related to the regular pentagon", "spans": [], "lang": "en"}
+{"text": "let us study |z| = sqrt(a^2 + b^2) whence sqrt(a^2 - b^2)", "spans": [{"start": 13, "end": 34, "label": "MATH"}, {"start": 42, "end": 57, "label": "MATH"}], "lang": "en"}
+{"text": "par hypothese BAC = pi/2 comme le montre le calcul", "spans": [{"start": 14, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "la recherche en mathematiques avance lentement", "spans": [], "lang": "fr"}
+{"text": "on etudie la suite vn", "spans": [{"start": 19, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "we get V(x+1) which was to be shown", "spans": [{"start": 7, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "soit n in N*", "spans": [{"start": 5, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Le calcul est relativement simple : il suffit de constater que g(x) = sqrt(x).", "spans": [{"start": 63, "end": 77, "label": "MATH"}], "lang": "fr"}
+{"text": "le flocon de koch a un perimetre infini", "spans": [], "lang": "fr"}
+{"text": "Le but de cet exercice est de demontrer que f''(x) + f(x) = 0 est toujours vrai.", "spans": [{"start": 44, "end": 61, "label": "MATH"}], "lang": "fr"}
+{"text": "La demonstration de ce resultat repose sur l'egalite fondamentale x^2 - 4 = (x-2)(x+2).", "spans": [{"start": 66, "end": 86, "label": "MATH"}], "lang": "fr"}
+{"text": "la soustraction de cette charge est juste", "spans": [], "lang": "fr"}
+{"text": "les statistiques permettent d'analyser des donnees", "spans": [], "lang": "fr"}
+{"text": "We then observe without difficulty that f(x) = x^2 - 4 and the result follows.", "spans": [{"start": 40, "end": 54, "label": "MATH"}], "lang": "en"}
+{"text": "we know that f(x) = e^x so M est le milieu de [AB], 1/n", "spans": [{"start": 13, "end": 23, "label": "MATH"}, {"start": 27, "end": 50, "label": "MATH"}, {"start": 52, "end": 55, "label": "MATH"}], "lang": "en"}
+{"text": "he is left-handed but he manages well", "spans": [], "lang": "en"}
+{"text": "let alpha be a positive real", "spans": [{"start": 4, "end": 9, "label": "MATH"}], "lang": "en"}
+{"text": "supposons que x + y = 5 et 2x - y = 1 donc on a limite de un quand n tend vers l'infini", "spans": [{"start": 14, "end": 37, "label": "MATH"}, {"start": 48, "end": 87, "label": "MATH"}], "lang": "fr"}
+{"text": "le diagramme de venn represente les ensembles", "spans": [], "lang": "fr"}
+{"text": "yo derivee x^2 c 2x or whatever", "spans": [{"start": 3, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "considerons vec u . vec v = ||u||*||v||*cos(theta) puis AC = sqrt(AB^2 + BC^2) par consequent sqrt(x+1)", "spans": [{"start": 12, "end": 50, "label": "MATH"}, {"start": 56, "end": 78, "label": "MATH"}, {"start": 94, "end": 103, "label": "MATH"}], "lang": "fr"}
+{"text": "la disjonction est le ou logique", "spans": [], "lang": "fr"}
+{"text": "From this hypothesis, we can deduce that f(x) = x^2 - 4 in most cases.", "spans": [{"start": 41, "end": 55, "label": "MATH"}], "lang": "en"}
+{"text": "fix y' + y = 0 so A inter B = empty hence for all eps > 0", "spans": [{"start": 4, "end": 14, "label": "MATH"}, {"start": 18, "end": 35, "label": "MATH"}, {"start": 42, "end": 57, "label": "MATH"}], "lang": "en"}
+{"text": "l'icosaedre a vingt faces triangulaires", "spans": [], "lang": "fr"}
+{"text": "la mediane partage la population en deux moities", "spans": [], "lang": "fr"}
+{"text": "bon quand n->inf c'est ca non", "spans": [{"start": 4, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "The proof of this result relies on the fundamental equality f'(x) = cos(x).", "spans": [{"start": 60, "end": 74, "label": "MATH"}], "lang": "en"}
+{"text": "la lettre beta est utilisee en physique", "spans": [], "lang": "fr"}
+{"text": "nous avons A inclus dans B", "spans": [{"start": 11, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "we get 1 sur 2 on the considered interval", "spans": [{"start": 7, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "we obtain [0, 1]", "spans": [{"start": 10, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "the end of class bell just rang", "spans": [], "lang": "en"}
+{"text": "algebra is a branch of mathematics", "spans": [], "lang": "en"}
+{"text": "les fonctions trigonometriques sont periodiques", "spans": [], "lang": "fr"}
+{"text": "R designe l'ensemble des reels", "spans": [], "lang": "fr"}
+{"text": "i saw three or four students in the yard", "spans": [], "lang": "en"}
+{"text": "basically x^2 = 4 no cap", "spans": [{"start": 10, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "on a |x - a| < eps ; A^T transposee de A", "spans": [{"start": 5, "end": 18, "label": "MATH"}, {"start": 21, "end": 40, "label": "MATH"}], "lang": "fr"}
+{"text": "supposons que y'' + y = 0 comme attendu", "spans": [{"start": 14, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "we set f(x) = ln(x) whence sqrt(2)/2", "spans": [{"start": 7, "end": 19, "label": "MATH"}, {"start": 27, "end": 36, "label": "MATH"}], "lang": "en"}
+{"text": "let x + y = 5 and 2x - y = 1 then cos(pi) = -1, lim x->0+ 1/x", "spans": [{"start": 4, "end": 28, "label": "MATH"}, {"start": 34, "end": 46, "label": "MATH"}, {"start": 48, "end": 61, "label": "MATH"}], "lang": "en"}
+{"text": "we have shown that vec(AB) = vec(OB) - vec(OA) by recurrence", "spans": [{"start": 19, "end": 46, "label": "MATH"}], "lang": "en"}
+{"text": "We denote by f the function defined by u(n+1) = 2*un + 3. Then f is linear.", "spans": [{"start": 39, "end": 56, "label": "MATH"}], "lang": "en"}
+{"text": "par consequent P(X=k) = 1/n sur l'intervalle considere", "spans": [{"start": 15, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "thus V(X) = 1", "spans": [{"start": 5, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "on remarque que int(0,1) x^2 dx par consequent (AB) // (CD) avec sin(x) = 0 mais n = 10", "spans": [{"start": 16, "end": 31, "label": "MATH"}, {"start": 47, "end": 59, "label": "MATH"}, {"start": 65, "end": 75, "label": "MATH"}, {"start": 81, "end": 87, "label": "MATH"}], "lang": "fr"}
+{"text": "we saw that angle ABC = 90 by contradiction", "spans": [{"start": 12, "end": 26, "label": "MATH"}], "lang": "en"}
+{"text": "we obtain v_n = u_n + 1", "spans": [{"start": 10, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "on a 1/n > 0 ; ax + by = c et dx + ey = f sachant que f'(x) = 2x + 3", "spans": [{"start": 5, "end": 12, "label": "MATH"}, {"start": 15, "end": 41, "label": "MATH"}, {"start": 54, "end": 68, "label": "MATH"}], "lang": "fr"}
+{"text": "les quartiles divisent la distribution en quatre", "spans": [], "lang": "fr"}
+{"text": "j'ai vu trois ou quatre eleves dans la cour", "spans": [], "lang": "fr"}
+{"text": "on pose (2n+1)/(n^2+1) donc le resultat est etabli", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "le bac approche et il faut etre serieux", "spans": [], "lang": "fr"}
+{"text": "soit u(n+1) = 2*un + 3 avec arcsin(1) = pi/2 ou A = ((1,2),(3,4))", "spans": [{"start": 5, "end": 22, "label": "MATH"}, {"start": 28, "end": 44, "label": "MATH"}, {"start": 48, "end": 65, "label": "MATH"}], "lang": "fr"}
+{"text": "le volume V vaut 1/3", "spans": [{"start": 17, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "the calculation gives AB = 5 by recurrence", "spans": [{"start": 22, "end": 28, "label": "MATH"}], "lang": "en"}
+{"text": "a prism has two parallel polygonal bases", "spans": [], "lang": "en"}
+{"text": "nous avons z = r*e^(i*theta)", "spans": [{"start": 11, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "d'apres le cours (vec i, vec j, vec k) ce qu'il fallait demontrer", "spans": [{"start": 17, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "therefore x^2 + 2x + 1", "spans": [{"start": 10, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "on note (wn) la suite", "spans": [{"start": 8, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "prenons y' = ay + b comme attendu", "spans": [{"start": 8, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "by definition 2/3", "spans": [{"start": 14, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "by definition g(t) = sin(t) + cos(t) so f' > 0 sur R", "spans": [{"start": 14, "end": 36, "label": "MATH"}, {"start": 40, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "he has the rating among his classmates", "spans": [], "lang": "en"}
+{"text": "we have Im(z) = b whence 2x - 3 = 0", "spans": [{"start": 8, "end": 17, "label": "MATH"}, {"start": 25, "end": 35, "label": "MATH"}], "lang": "en"}
+{"text": "soit alpha un reel positif", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "l'aire d'un cercle est proportionnelle au carre de son rayon", "spans": [], "lang": "fr"}
+{"text": "wait so ln x = 2 tbh", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "we will study this chapter next week", "spans": [], "lang": "en"}
+{"text": "supposons que z barre = a - ib avec n in N* d'ou x + y = 5 d'ou sin(pi/3) = sqrt(3)/2", "spans": [{"start": 14, "end": 30, "label": "MATH"}, {"start": 36, "end": 43, "label": "MATH"}, {"start": 49, "end": 58, "label": "MATH"}, {"start": 64, "end": 85, "label": "MATH"}], "lang": "fr"}
+{"text": "the music festival will take place in july", "spans": [], "lang": "en"}
+{"text": "it is clear that forall x in R", "spans": [{"start": 17, "end": 30, "label": "MATH"}], "lang": "en"}
+{"text": "In what follows, we will assume that g(x) = sqrt(x) and study its consequences.", "spans": [{"start": 37, "end": 51, "label": "MATH"}], "lang": "en"}
+{"text": "it is easy to see that lim x->-inf e^x", "spans": [{"start": 23, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "il a sin de gaucher mais il s'en sort bien", "spans": [], "lang": "fr"}
+{"text": "let us call lim x -> 2 (x^2-4)/(x-2) and exp'(x) = exp(x) then (AB) // (CD)", "spans": [{"start": 12, "end": 36, "label": "MATH"}, {"start": 41, "end": 57, "label": "MATH"}, {"start": 63, "end": 75, "label": "MATH"}], "lang": "en"}
+{"text": "j'aime les cours de mathematiques en general", "spans": [], "lang": "fr"}
+{"text": "d'apres le cours (AB) // (CD) sachant que M de taille n*n", "spans": [{"start": 17, "end": 29, "label": "MATH"}, {"start": 42, "end": 57, "label": "MATH"}], "lang": "fr"}
+{"text": "l'angle droit mesure quatre-vingt-dix degres", "spans": [], "lang": "fr"}
+{"text": "Notons d'ores et deja que sin^2(x) + cos^2(x) = 1 ce qui nous servira plus tard.", "spans": [{"start": 26, "end": 49, "label": "MATH"}], "lang": "fr"}
+{"text": "we set u(n) = n^2 as desired", "spans": [{"start": 7, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "we study the sequence vn", "spans": [{"start": 22, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "From the previous course, we know that int de 0 a 1 de x^2 dx = 1/3 in all cases.", "spans": [{"start": 39, "end": 67, "label": "MATH"}], "lang": "en"}
+{"text": "we denote (un) the sequence", "spans": [{"start": 10, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "soit sqrt(x) + 1", "spans": [{"start": 5, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "on a vu hier en cours le theoreme de pythagore", "spans": [], "lang": "fr"}
+{"text": "le calcul donne (AB) // (CD)", "spans": [{"start": 16, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "introduce ln'(x) = 1/x and vec u . vec v then h(x) = 1/x", "spans": [{"start": 10, "end": 22, "label": "MATH"}, {"start": 27, "end": 40, "label": "MATH"}, {"start": 46, "end": 56, "label": "MATH"}], "lang": "en"}
+{"text": "il en resulte que P(A) = 1/2 sur le domaine considere", "spans": [{"start": 18, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "then tr(A) = a + d but P(A union B) = P(A) + P(B) - P(A inter B) whence e^x >= 1 + x", "spans": [{"start": 5, "end": 18, "label": "MATH"}, {"start": 23, "end": 64, "label": "MATH"}, {"start": 72, "end": 84, "label": "MATH"}], "lang": "en"}
+{"text": "les delegues de classe sont elus en septembre", "spans": [], "lang": "fr"}
+{"text": "la suite un converge", "spans": [{"start": 9, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "basically rac de 3 tbh", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "rappelons que y'' - y = 0 comme attendu", "spans": [{"start": 14, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "par recurrence on a 1/i = -i", "spans": [{"start": 20, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "let us set X follows B(n,p) which ends the proof", "spans": [{"start": 11, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "ainsi lim un = L par recurrence", "spans": [{"start": 6, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "basically x^2 = 4 maybe", "spans": [{"start": 10, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "we note ax + b = 0 as the calculation shows", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "let us study 3x^2 + 5x - 2 whence vec u and vec v collinear hence [0, 1]", "spans": [{"start": 13, "end": 26, "label": "MATH"}, {"start": 34, "end": 59, "label": "MATH"}, {"start": 66, "end": 72, "label": "MATH"}], "lang": "en"}
+{"text": "the circumcenter is the point where perpendicular bisectors meet", "spans": [], "lang": "en"}
+{"text": "we know that A = b*h/2 hence f'(x) = -sin(x) then f''(x) - f(x) = 0 whence f(x) = x^3 - 3x", "spans": [{"start": 13, "end": 22, "label": "MATH"}, {"start": 29, "end": 44, "label": "MATH"}, {"start": 50, "end": 67, "label": "MATH"}, {"start": 75, "end": 90, "label": "MATH"}], "lang": "en"}
+{"text": "everything is relative said einstein", "spans": [], "lang": "en"}
+{"text": "the matrix A is invertible", "spans": [{"start": 11, "end": 12, "label": "MATH"}], "lang": "en"}
+{"text": "by contraposition e^x >= 1 + x according to the course", "spans": [{"start": 18, "end": 30, "label": "MATH"}], "lang": "en"}
+{"text": "the music festival will take place in july", "spans": [], "lang": "en"}
+{"text": "il a sin de gaucher mais il s'en sort bien", "spans": [], "lang": "fr"}
+{"text": "cherchons cos(x) + sin(x) = 1 mais vec AB + vec BC = vec AC", "spans": [{"start": 10, "end": 29, "label": "MATH"}, {"start": 35, "end": 59, "label": "MATH"}], "lang": "fr"}
+{"text": "we will study this chapter next week", "spans": [], "lang": "en"}
+{"text": "introduisons ker(f) = {0} donc on conclut", "spans": [{"start": 13, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "idk but i won't hand in the homework before tomorrow that's it", "spans": [], "lang": "en"}
+{"text": "It is crucial not to forget that cos(2x) = 2cos^2(x) - 1 when computing.", "spans": [{"start": 33, "end": 56, "label": "MATH"}], "lang": "en"}
+{"text": "alors f'(x) = 2x + 3 sachant que x = 2 et y = 3", "spans": [{"start": 6, "end": 20, "label": "MATH"}, {"start": 33, "end": 47, "label": "MATH"}], "lang": "fr"}
+{"text": "the limit is drawn on the sports field", "spans": [], "lang": "en"}
+{"text": "the sequence un converges", "spans": [{"start": 13, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "we get sqrt(x) + 1 ; integral from 0 to 1 of f(x) dx but un = n^2 next n^2 > n", "spans": [{"start": 7, "end": 18, "label": "MATH"}, {"start": 21, "end": 52, "label": "MATH"}, {"start": 57, "end": 65, "label": "MATH"}, {"start": 71, "end": 78, "label": "MATH"}], "lang": "en"}
+{"text": "euclidean geometry rests on five axioms", "spans": [], "lang": "en"}
+{"text": "Il est facile de verifier que u(n) = n^2 en substituant les valeurs numeriques.", "spans": [{"start": 30, "end": 40, "label": "MATH"}], "lang": "fr"}
+{"text": "par hypothese il existe alpha tq alpha > 0 d'ou esp(X+Y) = E(X) + E(Y) avec lim un quand n -> +inf ensuite u_0 = 1", "spans": [{"start": 14, "end": 42, "label": "MATH"}, {"start": 48, "end": 70, "label": "MATH"}, {"start": 76, "end": 98, "label": "MATH"}, {"start": 107, "end": 114, "label": "MATH"}], "lang": "fr"}
+{"text": "par contraposee var(X) = E(X^2) - E(X)^2 comme attendu", "spans": [{"start": 16, "end": 40, "label": "MATH"}], "lang": "fr"}
+{"text": "the correlation coefficient is normalized", "spans": [], "lang": "en"}
+{"text": "R designe l'ensemble des reels", "spans": [], "lang": "fr"}
+{"text": "par definition R*+ sur l'intervalle considere", "spans": [{"start": 15, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "fixons V(2x-3) avec (x^2)' = 2x", "spans": [{"start": 7, "end": 14, "label": "MATH"}, {"start": 20, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "the class average is fourteen out of twenty", "spans": [], "lang": "en"}
+{"text": "the rooster sings at sunrise", "spans": [], "lang": "en"}
+{"text": "le plus grand commun diviseur se calcule par l'algorithme d'euclide", "spans": [], "lang": "fr"}
+{"text": "bruh ln x = 2 wait", "spans": [{"start": 5, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "on note V(2x-3) puis f''(x) - f(x) = 0", "spans": [{"start": 8, "end": 15, "label": "MATH"}, {"start": 21, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "les inscriptions au club d'echecs sont ouvertes", "spans": [], "lang": "fr"}
+{"text": "let lambda be a positive real", "spans": [{"start": 4, "end": 10, "label": "MATH"}], "lang": "en"}
+{"text": "on remarque que x = 2 et y = 3 ensuite x^3 + 8 donc on a A diagonalisable", "spans": [{"start": 16, "end": 30, "label": "MATH"}, {"start": 39, "end": 46, "label": "MATH"}, {"start": 57, "end": 73, "label": "MATH"}], "lang": "fr"}
+{"text": "bon un+1 = 2un jsp trop", "spans": [{"start": 4, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "we deduce that sqrt(x) + 1 next lim x->0 sin(x)/x, x notin A next lim un = L", "spans": [{"start": 15, "end": 26, "label": "MATH"}, {"start": 32, "end": 49, "label": "MATH"}, {"start": 51, "end": 60, "label": "MATH"}, {"start": 66, "end": 76, "label": "MATH"}], "lang": "en"}
+{"text": "it follows that sin(pi/2) so we have sin(2x) = sin(x)", "spans": [{"start": 16, "end": 25, "label": "MATH"}, {"start": 37, "end": 53, "label": "MATH"}], "lang": "en"}
+{"text": "cherchons f''(x) + f(x) = 0 donc on a vecteur propre v ensuite x = 2 mais tan(x) = 1", "spans": [{"start": 10, "end": 27, "label": "MATH"}, {"start": 38, "end": 54, "label": "MATH"}, {"start": 63, "end": 68, "label": "MATH"}, {"start": 74, "end": 84, "label": "MATH"}], "lang": "fr"}
+{"text": "le mathematicien francais Henri Poincare a beaucoup ecrit", "spans": [], "lang": "fr"}
+{"text": "we note |z| = sqrt(a^2 + b^2) by induction", "spans": [{"start": 8, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "i understood the proof from the course well", "spans": [], "lang": "en"}
+{"text": "The goal of this exercise is to prove that u(n+1) = 2*un + 3 is always true.", "spans": [{"start": 43, "end": 60, "label": "MATH"}], "lang": "en"}
+{"text": "on remarque que sin(pi/2) d'ou il existe un unique x", "spans": [{"start": 16, "end": 25, "label": "MATH"}, {"start": 31, "end": 52, "label": "MATH"}], "lang": "fr"}
+{"text": "injectivity means distinct inputs have distinct outputs", "spans": [], "lang": "en"}
+{"text": "etudions (un) converge vers 0 comme attendu", "spans": [{"start": 9, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "we get V(X) = 1 hence un = (-1)^n then perimetre = 2*pi*r", "spans": [{"start": 7, "end": 15, "label": "MATH"}, {"start": 22, "end": 33, "label": "MATH"}, {"start": 39, "end": 57, "label": "MATH"}], "lang": "en"}
+{"text": "it is easy to see that x in N with vec u and vec v collinear next exp'(x) = exp(x) ; z = a + ib", "spans": [{"start": 23, "end": 29, "label": "MATH"}, {"start": 35, "end": 60, "label": "MATH"}, {"start": 66, "end": 82, "label": "MATH"}, {"start": 85, "end": 95, "label": "MATH"}], "lang": "en"}
+{"text": "considerons df/dx = 2x ensuite f''(x) - f(x) = 0 et f'(x) = -sin(x)", "spans": [{"start": 12, "end": 22, "label": "MATH"}, {"start": 31, "end": 48, "label": "MATH"}, {"start": 52, "end": 67, "label": "MATH"}], "lang": "fr"}
+{"text": "le calcul mental est une bonne gymnastique", "spans": [], "lang": "fr"}
+{"text": "assume that e^(x+y) = e^x * e^y", "spans": [{"start": 12, "end": 31, "label": "MATH"}], "lang": "en"}
+{"text": "we note y(0) = 1 which is true", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "calculons v(n) = 1/n avec rac(2)/2", "spans": [{"start": 10, "end": 20, "label": "MATH"}, {"start": 26, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "calculons X suit N(0,1) ainsi que x = pi/3 + 2k*pi", "spans": [{"start": 10, "end": 23, "label": "MATH"}, {"start": 34, "end": 50, "label": "MATH"}], "lang": "fr"}
+{"text": "posons int de 0 a 1 de x dx ce qu'il fallait demontrer", "spans": [{"start": 7, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "la matrice A est inversible", "spans": [{"start": 11, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "the calculation gives y'(t) = -k*y(t) by the previous theorem", "spans": [{"start": 22, "end": 37, "label": "MATH"}], "lang": "en"}
+{"text": "injectivity means distinct inputs have distinct outputs", "spans": [], "lang": "en"}
+{"text": "mon camarade a obtenu une excellente note", "spans": [], "lang": "fr"}
+{"text": "the classroom is on the third floor", "spans": [], "lang": "en"}
+{"text": "it follows that R", "spans": [{"start": 16, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "we obtain x^2 - 5x + 6 = 0 by contradiction", "spans": [{"start": 10, "end": 26, "label": "MATH"}], "lang": "en"}
+{"text": "by contraposition z * z' = (a+ib)(c+id) with vec(AB)", "spans": [{"start": 18, "end": 39, "label": "MATH"}, {"start": 45, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "the square of the street is very lively on saturdays", "spans": [], "lang": "en"}
+{"text": "the matrix M is invertible", "spans": [{"start": 11, "end": 12, "label": "MATH"}], "lang": "en"}
+{"text": "j'aime les cours de mathematiques en general", "spans": [], "lang": "fr"}
+{"text": "fix P(X=k) = C(n,k) * p^k * (1-p)^(n-k) which was to be shown", "spans": [{"start": 4, "end": 39, "label": "MATH"}], "lang": "en"}
+{"text": "considerons P(X=k) = 1/n d'ou |x| <= 1 ; P(A inter B) = P(A) * P(B) par consequent x in R", "spans": [{"start": 12, "end": 24, "label": "MATH"}, {"start": 30, "end": 38, "label": "MATH"}, {"start": 41, "end": 67, "label": "MATH"}, {"start": 83, "end": 89, "label": "MATH"}], "lang": "fr"}
+{"text": "soit A.X = B par consequent Im(z) = b puis vec u . vec v = ||u||*||v||*cos(theta) ensuite log_10(100) = 2", "spans": [{"start": 5, "end": 12, "label": "MATH"}, {"start": 28, "end": 37, "label": "MATH"}, {"start": 43, "end": 81, "label": "MATH"}, {"start": 90, "end": 105, "label": "MATH"}], "lang": "fr"}
+{"text": "bon cos pi = -1 bref", "spans": [{"start": 4, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "the real alpha is strictly positive", "spans": [{"start": 9, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "on en deduit que z = r*e^(i*theta) sur R tout entier", "spans": [{"start": 17, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "so for all x in R which is true", "spans": [{"start": 3, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "task multiplication becomes unmanageable", "spans": [], "lang": "en"}
+{"text": "on demontre que (un) converge vers 0 avec x in N", "spans": [{"start": 16, "end": 36, "label": "MATH"}, {"start": 42, "end": 48, "label": "MATH"}], "lang": "fr"}
+{"text": "we notice that 1/i = -i", "spans": [{"start": 15, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "Il faut bien comprendre que e^(x+y) = e^x * e^y avant de passer a la suite du raisonnement.", "spans": [{"start": 28, "end": 47, "label": "MATH"}], "lang": "fr"}
+{"text": "on obtient y = 3x + 7 comme attendu", "spans": [{"start": 11, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "un eleve sur deux a reussi", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "on a vu que x^4 - 16", "spans": [{"start": 12, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "la serie televisee me passionne", "spans": [], "lang": "fr"}
+{"text": "Induction allows us to establish that e^(x+y) = e^x * e^y is true at every rank.", "spans": [{"start": 38, "end": 57, "label": "MATH"}], "lang": "en"}
+{"text": "it follows that x != 0 then 1 sur n ; P(X=k) = 1/n", "spans": [{"start": 16, "end": 22, "label": "MATH"}, {"start": 28, "end": 35, "label": "MATH"}, {"start": 38, "end": 50, "label": "MATH"}], "lang": "en"}
+{"text": "On remarquera que un = q^n par identification des termes de meme degre.", "spans": [{"start": 18, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "In what follows, we will assume that f''(x) + f(x) = 0 and study its consequences.", "spans": [{"start": 37, "end": 54, "label": "MATH"}], "lang": "en"}
+{"text": "appelons norme de vec u donc le resultat est etabli", "spans": [{"start": 9, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "let us look for z + z' = (a+c) + i(b+d) by contradiction", "spans": [{"start": 16, "end": 39, "label": "MATH"}], "lang": "en"}
+{"text": "the letter alpha is used in physics", "spans": [], "lang": "en"}
+{"text": "We denote by f the function defined by un = 1/n. Then f is linear.", "spans": [{"start": 39, "end": 47, "label": "MATH"}], "lang": "en"}
+{"text": "let us study sin(pi/3) = sqrt(3)/2 as desired", "spans": [{"start": 13, "end": 34, "label": "MATH"}], "lang": "en"}
+{"text": "it is clear that (x+1)^2 which ends the proof", "spans": [{"start": 17, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "the median connects a vertex to the midpoint of the opposite side", "spans": [], "lang": "en"}
+{"text": "etudions M de taille n*n", "spans": [{"start": 9, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "let A^T transpose of A ; z + z' = (a+c) + i(b+d)", "spans": [{"start": 4, "end": 22, "label": "MATH"}, {"start": 25, "end": 48, "label": "MATH"}], "lang": "en"}
+{"text": "l'intersection conserve les elements communs", "spans": [], "lang": "fr"}
+{"text": "i saw three or four students in the yard", "spans": [], "lang": "en"}
+{"text": "il en resulte que rg(A) = 2 ce qui est vrai", "spans": [{"start": 18, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "la lettre beta est utilisee en physique", "spans": [], "lang": "fr"}
+{"text": "on note f: R -> R par induction", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "par recurrence on a z * z' = (a+ib)(c+id) et x/(x+1) ensuite un -> 0", "spans": [{"start": 20, "end": 41, "label": "MATH"}, {"start": 45, "end": 52, "label": "MATH"}, {"start": 61, "end": 68, "label": "MATH"}], "lang": "fr"}
+{"text": "mon stylo plume a une fuite d'encre bleue", "spans": [], "lang": "fr"}
+{"text": "franchement rac de 3 bref", "spans": [{"start": 12, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "therefore sin(2x) = sin(x) thus P(A inter B) = P(A) * P(B)", "spans": [{"start": 10, "end": 26, "label": "MATH"}, {"start": 32, "end": 58, "label": "MATH"}], "lang": "en"}
+{"text": "Applying the theorem seen in class, we immediately obtain un = n^2.", "spans": [{"start": 58, "end": 66, "label": "MATH"}], "lang": "en"}
+{"text": "it is clear that x/(x+1) for all integer n", "spans": [{"start": 17, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "il en resulte que int de 0 a 1 de x dx sachant que lim f(x) qd x -> 1", "spans": [{"start": 18, "end": 38, "label": "MATH"}, {"start": 51, "end": 69, "label": "MATH"}], "lang": "fr"}
+{"text": "the mandelbrot set has an infinitely complex boundary", "spans": [], "lang": "en"}
+{"text": "la recherche en mathematiques avance lentement", "spans": [], "lang": "fr"}
+{"text": "she lost her reason after this tragedy", "spans": [], "lang": "en"}
+{"text": "so un increasing and bounded above", "spans": [{"start": 3, "end": 34, "label": "MATH"}], "lang": "en"}
+{"text": "mon meilleur ami est tres fort en sciences", "spans": [], "lang": "fr"}
+{"text": "il est clair que volume = (4/3)*pi*r^3 puis V(X) = 1", "spans": [{"start": 17, "end": 38, "label": "MATH"}, {"start": 44, "end": 52, "label": "MATH"}], "lang": "fr"}
+{"text": "we deduce that un = n^2 and the proof is complete", "spans": [{"start": 15, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "les nombres complexes etendent les nombres reels", "spans": [], "lang": "fr"}
+{"text": "En derivant les deux membres de l'equation, il vient P(A inter B) = P(A) * P(B).", "spans": [{"start": 53, "end": 79, "label": "MATH"}], "lang": "fr"}
+{"text": "on etudie la suite (un)", "spans": [{"start": 19, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "i understood the proof from the course well", "spans": [], "lang": "en"}
+{"text": "il est clair que lmt fx qd x td 0 alors sin(2x) = sin(x)", "spans": [{"start": 17, "end": 33, "label": "MATH"}, {"start": 40, "end": 56, "label": "MATH"}], "lang": "fr"}
+{"text": "by definition (x+y)/(x-y) so we have vec u and vec v collinear", "spans": [{"start": 14, "end": 25, "label": "MATH"}, {"start": 37, "end": 62, "label": "MATH"}], "lang": "en"}
+{"text": "by definition e^(x+y) = e^x * e^y and y(0) = 1 and e^x >= 1 + x", "spans": [{"start": 14, "end": 33, "label": "MATH"}, {"start": 38, "end": 46, "label": "MATH"}, {"start": 51, "end": 63, "label": "MATH"}], "lang": "en"}
+{"text": "la lettre alpha est la premiere de l'alphabet grec", "spans": [], "lang": "fr"}
+{"text": "the union of two sets groups their elements", "spans": [], "lang": "en"}
+{"text": "hence f'(x) = e^x ; square root of 2", "spans": [{"start": 6, "end": 17, "label": "MATH"}, {"start": 20, "end": 36, "label": "MATH"}], "lang": "en"}
+{"text": "il est facile de voir que syst x+y=5 ; 2x-y=1 sur le domaine considere", "spans": [{"start": 26, "end": 45, "label": "MATH"}], "lang": "fr"}
+{"text": "sachant que f''(x) + f(x) = 0 ce qu'il fallait demontrer", "spans": [{"start": 12, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "the fibonacci sequence appears in nature", "spans": [], "lang": "en"}
+{"text": "there is a surprise quiz tomorrow morning", "spans": [], "lang": "en"}
+{"text": "by induction cos(x) + sin(x) = 1 and the proof is complete", "spans": [{"start": 13, "end": 32, "label": "MATH"}], "lang": "en"}
+{"text": "supposons que M de taille n*n ; volume = (4/3)*pi*r^3", "spans": [{"start": 14, "end": 29, "label": "MATH"}, {"start": 32, "end": 53, "label": "MATH"}], "lang": "fr"}
+{"text": "consider x^2 + 1 next 2x + 3y = 7 so we have x^5 - x", "spans": [{"start": 9, "end": 16, "label": "MATH"}, {"start": 22, "end": 33, "label": "MATH"}, {"start": 45, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "let (x+1)^2", "spans": [{"start": 4, "end": 11, "label": "MATH"}], "lang": "en"}
+{"text": "ok donc x = 3 ou x = -3 enfin bon", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "l'homothetie change les distances par un meme facteur", "spans": [], "lang": "fr"}
+{"text": "algebra is a branch of mathematics", "spans": [], "lang": "en"}
+{"text": "the cafeteria serves a hot meal at noon", "spans": [], "lang": "en"}
+{"text": "by induction x = 2 and y = 3 next lmt fx as x to 0", "spans": [{"start": 13, "end": 28, "label": "MATH"}, {"start": 34, "end": 50, "label": "MATH"}], "lang": "en"}
+{"text": "we denote (vn) the sequence", "spans": [{"start": 10, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "it is clear that [0, 1] which is true", "spans": [{"start": 17, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "on en deduit que un est geometrique de raison q par consequent x >= 0", "spans": [{"start": 17, "end": 47, "label": "MATH"}, {"start": 63, "end": 69, "label": "MATH"}], "lang": "fr"}
+{"text": "nous savons que P(A union B) = P(A) + P(B) - P(A inter B)", "spans": [{"start": 16, "end": 57, "label": "MATH"}], "lang": "fr"}
+{"text": "we have shown that a/b + c/d on the considered domain", "spans": [{"start": 19, "end": 28, "label": "MATH"}], "lang": "en"}
+{"text": "tkt f de x = x^2 fin bref", "spans": [{"start": 4, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "le manuel scolaire coute trente euros", "spans": [], "lang": "fr"}
+{"text": "then ln(e) = 1 as the calculation shows", "spans": [{"start": 5, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "j'aime les cours de mathematiques en general", "spans": [], "lang": "fr"}
+{"text": "today's lesson was about trigonometry", "spans": [], "lang": "en"}
+{"text": "my best friend is very good at science", "spans": [], "lang": "en"}
+{"text": "Revenons maintenant a l'equation initiale pour verifier que sin^2(x) + cos^2(x) = 1.", "spans": [{"start": 60, "end": 83, "label": "MATH"}], "lang": "fr"}
+{"text": "etant donne log(1) = 0 sur R tout entier", "spans": [{"start": 12, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "frr jvais pas rendre le devoir avant demain fin bref", "spans": [], "lang": "fr"}
+{"text": "we must show that ax + by = c and dx + ey = f so the result is established", "spans": [{"start": 18, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "it follows that int from a to b of f(x) dx as desired", "spans": [{"start": 16, "end": 42, "label": "MATH"}], "lang": "en"}
+{"text": "Le calcul est relativement simple : il suffit de constater que g(x) = sqrt(x).", "spans": [{"start": 63, "end": 77, "label": "MATH"}], "lang": "fr"}
+{"text": "linear regression fits a line to data", "spans": [], "lang": "en"}
+{"text": "par definition syst x+y=5 ; 2x-y=1 ce qu'il fallait demontrer", "spans": [{"start": 15, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "ouais bah jvais pas rendre le devoir avant demain enfin bon", "spans": [], "lang": "fr"}
+{"text": "a cube has six identical faces", "spans": [], "lang": "en"}
+{"text": "it follows that there exists a unique x", "spans": [{"start": 16, "end": 39, "label": "MATH"}], "lang": "en"}
+{"text": "d'apres le cours |z| = sqrt(a^2 + b^2) ce qui termine la preuve", "spans": [{"start": 17, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "les mathematiques grecques ont fonde la geometrie moderne", "spans": [], "lang": "fr"}
+{"text": "the orthocenter is the point where altitudes meet", "spans": [], "lang": "en"}
+{"text": "pi is transcendental", "spans": [], "lang": "en"}
+{"text": "let us call 2x + 3y = 7 by the previous theorem", "spans": [{"start": 12, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "par contraposee n^2 > n alors x^2 = 4", "spans": [{"start": 16, "end": 23, "label": "MATH"}, {"start": 30, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "la soustraction de cette charge est juste", "spans": [], "lang": "fr"}
+{"text": "A partir de cette hypothese, on peut deduire que cos(2x) = 2cos^2(x) - 1 dans la plupart des cas.", "spans": [{"start": 49, "end": 72, "label": "MATH"}], "lang": "fr"}
+{"text": "par recurrence on a x = 2 et y = 3 mais y'(t) = -k*y(t) alors int de 0 a pi de sin(x) dx", "spans": [{"start": 20, "end": 34, "label": "MATH"}, {"start": 40, "end": 55, "label": "MATH"}, {"start": 62, "end": 88, "label": "MATH"}], "lang": "fr"}
+{"text": "la bissectrice partage un angle en deux angles egaux", "spans": [], "lang": "fr"}
+{"text": "le cercle circonscrit passe par les trois sommets", "spans": [], "lang": "fr"}
+{"text": "the blackboard is full of white chalk", "spans": [], "lang": "en"}
+{"text": "we have shown that un = (-1)^n by recurrence", "spans": [{"start": 19, "end": 30, "label": "MATH"}], "lang": "en"}
+{"text": "the real beta is strictly positive", "spans": [{"start": 9, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "the median splits the population into two halves", "spans": [], "lang": "en"}
+{"text": "Dans la suite de l'exercice, on supposera que f'(x) = 2x et on etudiera ses consequences.", "spans": [{"start": 46, "end": 56, "label": "MATH"}], "lang": "fr"}
+{"text": "we must show that sqrt(x+1) so I = ((1,0),(0,1))", "spans": [{"start": 18, "end": 27, "label": "MATH"}, {"start": 31, "end": 48, "label": "MATH"}], "lang": "en"}
+{"text": "the median splits the population into two halves", "spans": [], "lang": "en"}
+{"text": "the calculation gives un = n^2 whence P(A) power set", "spans": [{"start": 22, "end": 30, "label": "MATH"}, {"start": 38, "end": 52, "label": "MATH"}], "lang": "en"}
+{"text": "On va maintenant chercher a caracteriser les solutions telles que un = 1/n.", "spans": [{"start": 66, "end": 74, "label": "MATH"}], "lang": "fr"}
+{"text": "A ce stade de la demonstration, nous avons montre que e^(x+y) = e^x * e^y.", "spans": [{"start": 54, "end": 73, "label": "MATH"}], "lang": "fr"}
+{"text": "Induction allows us to establish that f(x) = 2x + 1 is true at every rank.", "spans": [{"start": 38, "end": 51, "label": "MATH"}], "lang": "en"}
+{"text": "the determinant of M equals ad - bc", "spans": [{"start": 19, "end": 20, "label": "MATH"}, {"start": 28, "end": 35, "label": "MATH"}], "lang": "en"}
+{"text": "we get ax + by = c and dx + ey = f thus un = n^2 or x^2 >= 0 next e^x >= 1 + x", "spans": [{"start": 7, "end": 34, "label": "MATH"}, {"start": 40, "end": 48, "label": "MATH"}, {"start": 52, "end": 60, "label": "MATH"}, {"start": 66, "end": 78, "label": "MATH"}], "lang": "en"}
+{"text": "la suite wn converge", "spans": [{"start": 9, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "conditional probability depends on the conditioning event", "spans": [], "lang": "en"}
+{"text": "la congruence modulo n est une relation d'equivalence", "spans": [], "lang": "fr"}
+{"text": "j'ai prete mon livre de cours a un camarade", "spans": [], "lang": "fr"}
+{"text": "we set V(x+1) ; (x+1)^2", "spans": [{"start": 7, "end": 13, "label": "MATH"}, {"start": 16, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "le professeur explique tres bien la lecon", "spans": [], "lang": "fr"}
+{"text": "ainsi M est le milieu de [AB] donc le resultat est etabli", "spans": [{"start": 6, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "la matrice M est inversible", "spans": [{"start": 11, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "consider vec(AB) so limit of un as n -> +inf or y' + y = 0 then lim f(x) as x -> 1", "spans": [{"start": 9, "end": 16, "label": "MATH"}, {"start": 20, "end": 44, "label": "MATH"}, {"start": 48, "end": 58, "label": "MATH"}, {"start": 64, "end": 82, "label": "MATH"}], "lang": "en"}
+{"text": "algebraic language came later with the arabs", "spans": [], "lang": "en"}
+{"text": "let us look for sin(2x) = sin(x) so (2n+1)/(n^2+1)", "spans": [{"start": 16, "end": 32, "label": "MATH"}, {"start": 36, "end": 50, "label": "MATH"}], "lang": "en"}

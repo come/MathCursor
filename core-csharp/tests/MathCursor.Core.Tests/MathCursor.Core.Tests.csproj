@@ -23,6 +23,7 @@
   <ItemGroup>
     <!-- Fixtures partagées — les tests les lisent au runtime -->
     <None Include="..\..\..\specs\test-fixtures\*.json" CopyToOutputDirectory="PreserveNewest" Link="fixtures\%(Filename)%(Extension)" />
+    <None Include="corpus\*.txt" CopyToOutputDirectory="PreserveNewest" Link="corpus\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

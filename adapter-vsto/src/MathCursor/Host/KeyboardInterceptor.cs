@@ -5,23 +5,40 @@ using System.Runtime.InteropServices;
 namespace MathCursor.Host
 {
     /// <summary>
-    /// Intercepte la touche Tab via un hook WH_KEYBOARD thread-local
-    /// (celui du thread UI Word). Au contraire d'un hook _LL global, celui-ci
-    /// ne tourne QUE dans le processus Word → zéro impact sur d'autres apps.
+    /// Intercepte les touches via un hook WH_KEYBOARD thread-local
+    /// (celui du thread UI Word). Hook NON global → zéro impact sur d'autres apps.
     ///
-    /// Le handler OnTabPressed renvoie true pour "consommer" le Tab (conversion
-    /// effectuée) ou false pour le laisser passer (pas de math détectée →
-    /// comportement Tab normal : tab char / nav table / indent liste).
+    /// Touches gérées :
+    /// - Tab (sans Shift)  : OnTabPressed
+    /// - Up                : OnUpPressed
+    /// - Down              : OnDownPressed
+    /// - Escape            : OnEscapePressed
+    /// Chaque handler retourne true pour "consommer" la touche, false pour la
+    /// laisser passer.
     /// </summary>
     public sealed class KeyboardInterceptor : IDisposable
     {
         private const int WH_KEYBOARD = 2;
         private const int HC_ACTION = 0;
         private const int VK_TAB = 0x09;
+        private const int VK_RETURN = 0x0D;
         private const int VK_SHIFT = 0x10;
+        private const int VK_CONTROL = 0x11;
+        private const int VK_ESCAPE = 0x1B;
+        private const int VK_SPACE = 0x20;
+        private const int VK_LEFT = 0x25;
+        private const int VK_UP = 0x26;
+        private const int VK_RIGHT = 0x27;
+        private const int VK_DOWN = 0x28;
 
-        /// <summary>Appelé sur Tab down (sans Shift). Retourne true = consommer, false = laisser passer.</summary>
         public Func<bool> OnTabPressed { get; set; }
+        public Func<bool> OnEnterPressed { get; set; }
+        public Func<bool> OnUpPressed { get; set; }
+        public Func<bool> OnDownPressed { get; set; }
+        public Func<bool> OnLeftPressed { get; set; }
+        public Func<bool> OnRightPressed { get; set; }
+        public Func<bool> OnEscapePressed { get; set; }
+        public Func<bool> OnCtrlSpacePressed { get; set; }
 
         private IntPtr _hookHandle;
         private KeyboardHookProc _proc; // référence GC-stable
@@ -30,15 +47,14 @@ namespace MathCursor.Host
 
         public void Install()
         {
-            if (_hookHandle != IntPtr.Zero) return; // déjà installé
+            if (_hookHandle != IntPtr.Zero) return;
             _proc = HookCallback;
             var threadId = GetCurrentThreadId();
             _hookHandle = SetWindowsHookEx(WH_KEYBOARD, _proc, IntPtr.Zero, threadId);
             if (_hookHandle == IntPtr.Zero)
             {
                 int err = Marshal.GetLastWin32Error();
-                throw new InvalidOperationException(
-                    "SetWindowsHookEx a échoué, code: " + err);
+                throw new InvalidOperationException("SetWindowsHookEx a échoué, code: " + err);
             }
         }
 
@@ -48,33 +64,35 @@ namespace MathCursor.Host
             {
                 int vkCode = wParam.ToInt32();
                 long lparam = lParam.ToInt64();
-                // Bit 31 du lParam : 0 = key pressed (down), 1 = released
                 bool keyDown = (lparam & 0x80000000L) == 0;
-                bool shiftDown = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
 
-                if (vkCode == VK_TAB && keyDown && !shiftDown)
+                if (keyDown)
                 {
-                    var handler = OnTabPressed;
+                    bool shiftDown = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+                    bool ctrlDown = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+                    Func<bool> handler = null;
+
+                    if (vkCode == VK_SPACE && ctrlDown) handler = OnCtrlSpacePressed;
+                    else if (vkCode == VK_TAB && !shiftDown) handler = OnTabPressed;
+                    else if (vkCode == VK_RETURN && !shiftDown) handler = OnEnterPressed;
+                    else if (vkCode == VK_UP) handler = OnUpPressed;
+                    else if (vkCode == VK_DOWN) handler = OnDownPressed;
+                    else if (vkCode == VK_LEFT) handler = OnLeftPressed;
+                    else if (vkCode == VK_RIGHT) handler = OnRightPressed;
+                    else if (vkCode == VK_ESCAPE) handler = OnEscapePressed;
+
                     if (handler != null)
                     {
                         try
                         {
                             bool consumed = handler();
-                            LogHook("tab_down handler=" + (consumed ? "consume" : "passthru"));
-                            if (consumed)
-                            {
-                                return new IntPtr(1); // consommé, Word ne voit pas le Tab
-                            }
+                            LogHook($"vk={vkCode:X} {(consumed ? "consume" : "passthru")}");
+                            if (consumed) return new IntPtr(1);
                         }
                         catch (Exception ex)
                         {
-                            LogHook("tab_down exception: " + ex.Message);
-                            // Jamais remonter d'exception depuis le hook : Windows décroche
+                            LogHook($"vk={vkCode:X} exception: {ex.Message}");
                         }
-                    }
-                    else
-                    {
-                        LogHook("tab_down handler=null");
                     }
                 }
             }

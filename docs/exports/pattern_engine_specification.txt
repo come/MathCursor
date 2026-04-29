@@ -1,0 +1,1416 @@
+================================================================================
+MathCursor — Pattern Engine
+Spécification complète : algorithme, règles, cas de test
+Branche : Model+Latex
+Date : 2026-04-21
+================================================================================
+
+TABLE DES MATIÈRES
+
+  1. Algorithme de matching
+     1.1  Vue d'ensemble du pipeline
+     1.2  Étape 1 — Pré-traitement
+     1.3  Étape 2 — Tokenisation
+     1.4  Étape 3 — Match DSL
+     1.5  Étape 4 — Moteur de matching (backtracking récursif)
+     1.6  Étape 5 — Rendu du template
+     1.7  Étape 6 — Scoring, dédup, filtre top-k
+     1.8  Types de slots
+     1.9  Priorités de chargement des fichiers YAML
+
+  2. Règles (patterns YAML)
+     2.1  core.yaml             (opérateurs, relations, lettres grecques, délimiteurs)
+     2.2  shared/symbolic.yaml  (fonctions, puissances, fractions, ensembles, intervalles)
+     2.3  fr/_language.yaml     (limites, racines, vecteurs, quantificateurs, shorthands)
+     2.4  fr/algebra.yaml       (équations, inégalités, quadratiques factorisées)
+     2.5  fr/analysis.yaml      (dérivées, EDO, sommes/produits/intégrales)
+     2.6  fr/geometry.yaml      (vecteurs, Chasles, produit scalaire/vectoriel, composantes)
+     2.7  fr/probability.yaml   (P, E, V, intersection, conditionnelle)
+     2.8  fr/sequences.yaml     (un/vn compact, récurrence, convergence)
+     2.9  en/_language.yaml     (limite, racine, for all, exists)
+
+  3. Tests et solutions attendues
+     3.1  Gold examples extraits des YAML (couplage automatique input → output)
+     3.2  Tests d'ambiguïté (candidats classés)
+     3.3  Tests toujours-frac (division → \frac)
+     3.4  Tests composites (combinaisons inter-patterns)
+     3.5  Tests de cohérence multi-rendus
+     3.6  Tests de couverture (CoverageValidator)
+     3.7  Benchmark (perf)
+     3.8  Fuzz tests (robustesse)
+
+================================================================================
+1. ALGORITHME DE MATCHING
+================================================================================
+
+1.1 VUE D'ENSEMBLE DU PIPELINE
+------------------------------
+
+  rawSpan (string brut tapé par l'utilisateur)
+      │
+      ▼
+  [0] BalanceParens       -- rééquilibre ( ) avant tout
+      │
+      ▼
+  [1] Tokenizer.Tokenize  -- découpe en CanonicalToken[]
+      │                        (Raw, Canonical, Name, Generic,
+      │                         IsConnector, HadSpaceBefore, Start, End)
+      ▼
+  [2] Pour chaque PatternDef dans _repo.Patterns :
+      │     PatternMatcher.TryMatch(pattern, tokens) -> MatchResult?
+      │         - parse le DSL de pattern.Match
+      │         - backtracking récursif, gère les slots, les littéraux,
+      │           les alternatives, les optionnels, SPACE, skip connectors
+      │     Si succès → TemplateRenderer.RenderAll(pattern.Template, mr)
+      │                     - substitue {{slot}} par la valeur rendue
+      │                     - pour EXPR/ATOM : récursion jusqu'à profondeur 3
+      │                     - applique précédence (braces→powers→fractions)
+      │                     - produit 1..3 variantes d'index consistant
+      │     Candidates += LatexSuggestion[]  (avec score)
+      ▼
+  [3] Tri par score décroissant
+      │
+      ▼
+  [4] Déduplication sur le LaTeX normalisé (sans whitespace)
+      │
+      ▼
+  [5] Filtre : si plus d'un candidat, on drop tout ce qui est < 30% du top,
+      SAUF les full-coverage (consumed == total) qu'on garde toujours
+      │
+      ▼
+  IReadOnlyList<LatexSuggestion>  (triée, dédupliquée, seuillée)
+
+
+1.2 ÉTAPE 1 — PRÉ-TRAITEMENT
+----------------------------
+
+  BalanceParens(span) — PatternEngine.cs:120
+    - ')' en trop :  suppression L→R des fermetures qui feraient dépasser depth < 0
+    - '(' en trop :  ajout de ')' à la fin jusqu'à ce que opens == closes
+    But : permettre aux captures EXPR de ne pas être rejetées par ParensBalanced
+    quand l'utilisateur oublie/ajoute une paren.
+
+  Pré-traitement tokenizer :
+    - s.Replace("\"", "''")  -- deux guillemets → double prime (seconde dérivée)
+
+
+1.3 ÉTAPE 2 — TOKENISATION
+--------------------------
+
+  Tokenizer.Tokenize(span)  — Tokenizer.cs
+
+  A) Split(span) :
+     1. whitespace → séparateur (non conservé)
+     2. digits  [+ '.' interne si entouré de digits]  → NUMBER piece
+     3. lettres unicode consécutives  → mot alphabétique
+     4. opérateurs multi-caractères connus (triés par longueur décroissante,
+        greedy-match)  → une seule piece : "->", "<=", "==", ">=", etc.
+     5. autres caractères non-espaces → token unitaire
+     Chaque piece porte (start, end) absolus dans le span source.
+
+  B) MergePhrases(pieces) :
+     Fusionne les phrases stop déclarées dans _language.yaml :
+       "for all"     → FORALL
+       "pour tout"   → FORALL
+       "quel que soit" → FORALL
+       "il existe"   → EXISTS
+       "there exists" → EXISTS
+       "tel que"/"tels que"/"telle que" → SUCH_THAT
+       "such that"   → SUCH_THAT
+       "on a", "soit", "on pose"... → stop phrases absorbées (token CONNECTOR)
+     Algorithme : match le plus long d'abord.
+
+  C) Canonicalize(piece) — pour chaque piece produit un CanonicalToken :
+     1. Phrase mergée ayant un mapping → token nommé
+     2. Match exact sur alias (prioritaire) → TokenDef correspondant
+        - Name = nom canonique majuscule (LIMIT, PROBA, REALS...)
+        - Canonical = forme LaTeX ("\\lim", "P", "\\mathbb{R}"...)
+        - IsConnector = true si role == "connector"
+     3. Fallback lowercase si piece.length ≥ 3 et piece toute-lettres
+        (permet "Lim"/"LIM" → LIMIT)
+     4. Connector / stop word → CanonicalToken{ Generic="CONNECTOR", IsConnector=true }
+     5. NUMBER literal (digits + '.'/',' internes) → Generic="NUMBER"
+     6. Fuzzy match (Levenshtein ≤ fuzzy_max_distance, et d*2 ≤ min(|a|,|b|),
+        piece.length ≥ 3) → match approximatif
+     7. "un", "vn", "wn"... (2 lettres, suffixe n/N, préfixe uvwstUVWST)
+        → IDENT mais Canonical = "u_n", "v_n", etc.
+     8. Sinon → IDENT générique avec Canonical = Raw
+
+  Propriétés posées sur chaque CanonicalToken :
+     - HadSpaceBefore : true s'il y a au moins 1 whitespace avant ce token
+     - Start / End     : offsets dans le span source
+
+
+1.4 ÉTAPE 3 — MATCH DSL
+-----------------------
+
+  MatchDslParser.Parse(dsl) → List<MatchElement>
+
+  Syntaxe :
+    - TOKEN              → LiteralToken          (match par CanonicalToken.Name)
+    - word               → LiteralWord           (match case-insensitive sur Raw)
+    - SLOT:name          → Slot capturé (IDENT, EXPR, NUMBER, EXPR_LIST, ATOM,
+                                          IDENT_SEQ, EQUATION_LIST,
+                                          IDENT_UPPER_PAIR, VX_SHORT, CF_SHORT)
+    - (A|B|C):name       → Alternative capturée
+    - SPACE              → assertion "le token courant a HadSpaceBefore=true"
+                           (zéro-width, consomme 0 token)
+    - suffixe ?          → optionnel
+
+  Distinction Upper vs lower dans le DSL :
+    - Mot all-uppercase OU non-lettre → LiteralToken (match sur Name canonique)
+    - Mot contenant une minuscule     → LiteralWord  (match sur Raw, case-insensitive)
+    Ex : "u" dans "EXPR:a u EXPR:b" matche les raw "u" OU "U" (opérateur union).
+
+
+1.5 ÉTAPE 4 — MOTEUR DE MATCHING
+--------------------------------
+
+  PatternMatcher.TryMatch(pattern, tokens)  — PatternMatcher.cs
+
+  Backtracking récursif TryMatchRec(elems, e, tokens, t, slots, out finalT) :
+
+  A) Avant chaque élément, on saute les CONNECTORS du flux de tokens
+     tant que l'élément courant ne les demande pas explicitement.
+     (Les stopwords et connectors sont silencieux.)
+
+  B) Si tous les éléments sont consommés → match SUCCÈS (même s'il reste des
+     tokens non consommés : match partiel autorisé, géré ensuite par le
+     scoring/filter top-k).
+
+  C) Par kind d'élément :
+
+     SPACE  (zero-width)
+       - Matche si HadSpaceBefore=true à la position courante
+       - Si Optional : peut aussi skipper
+       - Ne consomme AUCUN token
+
+     LiteralToken / LiteralWord
+       - CanMatchAtom(el, tokens[t]) avec t < tokens.Count
+       - Si match → consomme 1 token et récurse
+       - Si Optional → tente aussi de skip
+
+     Alternative
+       - Parcourt les alts. Match par Name canonique OU par Raw case-insensitive
+       - Capture le token dans slot[CaptureName]
+       - Si match → consomme 1 token et récurse
+
+     Slot
+       - TryMatchSlot(el, ...) selon SlotType (voir section 1.8)
+
+  D) Greedy-first pour les optionnels : on tente TOUJOURS de CONSOMMER d'abord,
+     puis de skipper seulement en dernier recours. Évite de laisser un
+     LPAREN? non consommé alors que la paren est bien là.
+
+
+1.6 ÉTAPE 5 — RENDU DU TEMPLATE
+-------------------------------
+
+  TemplateRenderer.RenderAll(template, match) → List<string>  — TemplateRenderer.cs
+
+  Substitution :
+    Regex \{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}  → pour chaque slot,
+    rendu selon le SlotType :
+
+      IDENT_SEQ   → raw privé du dernier char  ("un" → "u")
+      VX_SHORT    → raw privé du premier char  ("Vx" → "x")
+      CF_SHORT    → raw privé du premier char  ("Cf" → "f")
+      IDENT       → Canonical (ou Raw si vide)
+      NUMBER      → Canonical
+      EQUATION_LIST → parts splittées sur ',' ou ';', joint par " \\\\ "
+      EXPR / EXPR_LIST / ATOM :
+          - Si le slot est contextuellement à l'intérieur de "{...}" LaTeX
+            (ex. \frac{{{num}}}{{{denom}}}) et les tokens capturés commencent
+            par '(' et finissent par ')' en même pair → on strippe les parens
+            externes  ("(x+1)" → "x+1")
+          - Sinon JoinTokens sur les tokens capturés (voir précédence plus bas)
+          - RÉCURSION : si _recursionDepth > 0 ET |tokens| ≥ 2, on rappelle
+            PatternEngine.Convert sur le sous-span correspondant, on prend
+            les top-3 suggestions full-coverage comme alternatives.
+
+  Profondeur max de récursion = 3 (MaxRecursionDepth dans PatternEngine.cs:31)
+  → couvre "equation_simple → fraction_inline → sqrt_as_V" sans boucle infinie.
+
+  Multi-variantes (INDEX CONSISTANT) :
+    Pour chaque variante idx ∈ [0, max(slot.alts)] :
+      remplace CHAQUE slot par son alt[idx] (ou top-1 si manque)
+    → applique la même lecture à tous les slots
+      ("tout en vecteur" OU "tout en littéral", pas de mix)
+    Cap à 3 variantes max.
+
+  Auto-wrap après _ ou ^ :
+    Si un slot rend plus de 1 caractère et est précédé de '_' ou '^' hors braces,
+    on wrap automatiquement avec {...} : x^abc → x^{abc}.
+
+  JoinTokens — rendu avec précédence mathématique :
+    Passe 1 : fonctions à braces (\sqrt, \vec, \tilde, \hat, \overline,
+              \underline, \bar, \dot) + (...)  → \sqrt{inner}
+    Passe 2 : puissances ^     (atom OP atom → atom^{exp})
+    Passe 3 : subscripts _     (atom _ atom → atom_{idx} ; '_' étend sur chaînes
+              additives : "O_n-1" → "O_{n-1}")
+    Passe 4 : fractions /      (atom / atom → \frac{num}{denom})
+    Chaque passe produit des tokens synthétiques (Generic=SYNTH) qui sont
+    atomiques pour les passes suivantes.
+    Fin : JoinFlat avec gestion d'espaces contextuels (macros ↔ alphanum).
+
+
+1.7 ÉTAPE 6 — SCORING, DÉDUP, FILTRE
+------------------------------------
+
+  ComputeScore(pattern, matchResult, tokens) :
+    consumed       = mr.ConsumedTokens (ou tokens.Count si 0)
+    priorityFactor = pattern.Priority (ou 1 si 0)
+    coverage       = consumed / tokens.Count
+    slotBonus      = 1.0 + 0.2 * (canonicalCount / totalInSlots)
+                     (bonus si les slots ont capturé des tokens nommés)
+    score = coverage × consumed × priorityFactor × slotBonus
+
+    Les variantes alt (i>0) ont score × 0.95 pour classer sans dominer.
+
+  Déduplication normalisée : whitespaces supprimés avant comparaison
+    ("V(x + 1)" et "V(x+1)" considérés identiques).
+
+  Filtre top-k :
+    Si plus d'un candidat, seuil = 0.3 × top.Score
+    On garde tout ce qui est ≥ seuil
+    + toujours garder les full-coverage (ConsumedTokens == TotalTokens)
+      (ex. generic_expression qui est la fallback catch-all).
+
+
+1.8 TYPES DE SLOTS
+------------------
+
+  SlotType         Description                                       Contraintes
+  ─────────────────────────────────────────────────────────────────────────────
+  IDENT            1 token non-connector                             t < count
+  NUMBER           1 token avec Generic=="NUMBER"                    t < count
+  IDENT_SEQ        1 token au format suite compacte (un, vn, wn, sn, tn)
+  IDENT_UPPER_PAIR 1 token ≥ 2 lettres toutes majuscules (AB, XYZ)
+  VX_SHORT         1 token "V" + 1 lettre minuscule (Vx, Vy, Vt)
+  CF_SHORT         1 token "C" + ≥ 1 lettre minuscule (Cf, Cg, Ch)
+  ATOM             1 atome : groupe parenthésé balancé OU token simple
+                   non-opérateur, éventuellement suivi d'un appel de fonction
+                   "f(args)" ; ET absorbe les suffixes d'ensembles math
+                   (R*, R+, R-, R*+, R-{0}, R\{0})
+  EXPR             séquence de 1..30 tokens avec parens balancées,
+                   ne se termine pas sur un opérateur binaire isolé
+  EXPR_LIST        = EXPR (alias sémantique, utilisé dans function_call)
+  EQUATION_LIST    = EXPR mais DOIT contenir un ',' ou ';' interne
+                   (pour splitter en plusieurs équations)
+
+  Stratégie EXPR/ATOM :
+    On parcourt les longueurs du plus court au plus long.
+    - Premier match qui épuise l'input entier → on le prend immédiatement
+      (plus courte EXPR qui consomme tout est gagnante).
+    - Sinon on mémorise le meilleur match partiel (finalT le plus grand).
+
+  FindAtomEnd :
+    - '(' : jusqu'à la paren fermante balancée
+    - '+'/'-' unaires : englobe l'atome suivant
+    - identifiant suivi de '(' : englobe l'appel de fonction
+    - ensemble math (R, N, Z, Q, C) : absorbe jusqu'à 2 suffixes (* + -)
+      et optionnellement "-{...}", "\\{...}", "/{...}"
+
+
+1.9 PRIORITÉS DE CHARGEMENT DES YAML
+-------------------------------------
+
+  Chaque fichier a une priorité ; à collision d'alias, la plus haute gagne.
+
+    _core/core.yaml           → 0
+    shared/symbolic.yaml      → 10
+    {lang}/_language.yaml     → 50
+    {lang}/algebra|analysis|… → 100
+
+  La priorité per-pattern (champ "priority:") est optionnelle ; elle surcharge
+  celle du fichier. Les valeurs effectives utilisées dans les YAML :
+
+    1    generic_expression (fallback catch-all)
+    5    additive_expression, subtractive_expression,
+         vector_components_2d/3d (variantes alt de function_call)
+    40   union_expr, intersection_expr
+    45   interval_*_space (séparateur = espace)
+    50   interval_closed_closed et variantes,
+         forall_shorthand_V_spaced, forall_only_V_spaced,
+         belongs_shorthand_paren, curve_shorthand,
+         chasles_vectors, chasles_norms, sqrt_as_V
+    55   nth_root_prefix, set_star, set_plus, set_minus,
+         forall_shorthand_Vxy_compact, forall_shorthand_V_spaced_two_vars,
+         forall_shorthand_V_spaced_three_vars,
+         belongs_shorthand_paren_two_vars, sum_eq_cmp_summand
+    60   set_strict_positive_a/b, set_strict_negative_a/b,
+         number_times_sqrt
+    65   set_minus_singleton_dash, set_minus_singleton_slash
+    70   nth_root_bracket
+    100  la plupart des patterns de domaine (FR algebra/analysis/geometry/proba/seq)
+    110  sum_eq_to_summand, sum_paren_3args, product_*, integral_*, limit_paren_2args
+    120  limit_post_function, limit_with_expr_function
+
+
+
+================================================================================
+2. RÈGLES (PATTERNS YAML)
+================================================================================
+
+Note : chaque règle est listée avec son id, son motif DSL (match:), son template
+de rendu, sa priorité, et les exemples qui l'accompagnent dans le YAML.
+
+
+2.1 core.yaml — TOKENS UNIVERSELS (priorité 0)
+==============================================
+
+Ce fichier définit uniquement des TOKENS (pas de patterns), consommés ensuite
+par les règles :
+
+  Opérateurs arithmétiques :
+    PLUS       +           aliases: +
+    MINUS      -           aliases: -
+    TIMES      \cdot       aliases: * .
+    DIV        /           aliases: / :
+    POWER      ^           aliases: ^ **
+    UNDERSCORE _           aliases: _
+
+  Relations :
+    EQ         =           aliases: = ==
+    NEQ        \neq        aliases: != <> =/=
+    LT         <           aliases: <
+    GT         >           aliases: >
+    LEQ        \leq        aliases: <= =<
+    GEQ        \geq        aliases: >= =>
+    APPROX     \approx     aliases: ~= ~~
+
+  Flèches :
+    ARROW        \to         aliases: -> --> →
+    DOUBLEARROW  \iff        aliases: <=> <-> ⟺
+    IMPLIES      \Rightarrow aliases: => ==> ⟹
+
+  Infini :
+    INFINITY   \infty      aliases: inf, infty, infini, infinity, ∞, oo
+                           (fuzzy_max_distance: 1)
+
+  Lettres grecques minuscules : alpha, beta, gamma, delta, epsilon (+eps),
+    theta, lambda, mu, pi, sigma, phi, omega, zeta, eta, iota, kappa, nu,
+    xi, rho, tau, upsilon, chi, psi  → rendus \\alpha, \\beta, ...
+    (chaque alias accepte aussi le caractère unicode : α, β, γ, ...)
+
+  Lettres grecques majuscules : Gamma, Delta, Theta, Lambda, Xi, Pi, Sigma,
+    Upsilon, Phi, Psi, Omega  → \\Gamma, \\Delta, ...
+
+  Variantes : varepsilon (+varep), vartheta, varpi, varrho, varsigma, varphi.
+
+  Délimiteurs : LPAREN ( RPAREN ) LBRACKET [ RBRACKET ]
+                LBRACE { RBRACE } PIPE |
+
+  Ponctuation math : COMMA , SEMICOLON ;
+
+
+2.2 shared/symbolic.yaml — PATTERNS LANGUAGE-AGNOSTIC (priorité 10)
+===================================================================
+
+  R-1  generic_expression                                              (prio 1)
+       Fallback générique absorbant tout l'input.
+       match:    EXPR:full
+       template: {{full}}
+       rôle : catch-all — garantit que les tokens en queue (ex. "+1" après
+              "1/V(x)") ne sont jamais perdus.
+
+  R-2  additive_expression                                             (prio 5)
+       match:    EXPR:a PLUS EXPR:b
+       template: {{a}} + {{b}}
+       exemple : "AB(u v) + AC(d x)" → "AB(u v) + AC(d x)"
+
+  R-3  subtractive_expression                                          (prio 5)
+       match:    EXPR:a MINUS EXPR:b
+       template: {{a}} - {{b}}
+       exemple : "f(x) - g(x)" → "f(x) - g(x)"
+
+  R-4  power_simple
+       match:    ATOM:base POWER ATOM:exp
+       template: {{base}}^{{exp}}
+       exemples : "x^2" → "x^2"
+                  "x**2" → "x^2"
+                  "(x+1)^3" → "(x+1)^3"
+
+  R-5  subscript_simple
+       match:    IDENT:base UNDERSCORE EXPR:idx
+       template: {{base}}_{{idx}}
+       exemples : "u_n" → "u_n"     "x_0" → "x_0"
+
+  R-6  fraction_inline
+       match:    ATOM:num DIV ATOM:denom
+       template: \frac{{{num}}}{{{denom}}}
+       exemples : "1/2" → "\\frac{1}{2}"
+                  "(x+1)/(x-1)" → "\\frac{x+1}{x-1}"
+
+  R-7  function_call
+       match:    IDENT:f LPAREN EXPR_LIST:args RPAREN
+       template: {{f}}({{args}})
+       exemples : "f(x)" → "f(x)"    "g(x,y)" → "g(x,y)"
+
+  R-8  derivative_prime
+       match:    IDENT:f PRIME LPAREN EXPR:x RPAREN
+       template: {{f}}'({{x}})
+       exemples : "f'(x)" → "f'(x)"   "g'(t)" → "g'(t)"
+
+  R-9  named_function_cos       match: COS LPAREN? EXPR:arg RPAREN?
+                                template: \cos({{arg}})
+  R-10 named_function_sin       match: SIN LPAREN? EXPR:arg RPAREN?
+                                template: \sin({{arg}})
+  R-11 named_function_tan       (aliases tan, tg)
+                                template: \tan({{arg}})
+  R-12 named_function_ln        match: LN LPAREN? EXPR:arg RPAREN?
+                                template: \ln({{arg}})
+  R-13 named_function_log       (aliases log, lg)
+                                template: \log({{arg}})
+  R-14 named_function_exp       template: \exp({{arg}})
+  R-15 named_function_arccos    (aliases arccos, acos)
+                                template: \arccos({{arg}})
+  R-16 named_function_arcsin    (aliases arcsin, asin)
+                                template: \arcsin({{arg}})
+  R-17 named_function_arctan    (aliases arctan, atan)
+                                template: \arctan({{arg}})
+
+  R-18 absolute_value
+       match:    PIPE EXPR:x PIPE
+       template: |{{x}}|
+       exemples : "|x|" → "|x|"     "|x-1|" → "|x-1|"
+
+  R-19 vector_norm
+       match:    PIPE PIPE EXPR:u PIPE PIPE
+       template: \|{{u}}\|
+       exemple : "||u||" → "\\|u\\|"
+
+  R-20 set_reals        REALS    → \mathbb{R}    aliases: R, IR
+  R-21 set_naturals     NATURALS → \mathbb{N}    aliases: N, IN
+  R-22 set_integers     INTEGERS → \mathbb{Z}    aliases: Z, IZ
+  R-23 set_rationals    RATIONALS→ \mathbb{Q}    aliases: Q, IQ
+  R-24 set_complex      COMPLEX  → \mathbb{C}    aliases: C, IC
+
+  R-25 set_star         (prio 55)
+       match: (REALS|NATURALS|INTEGERS|RATIONALS|COMPLEX):set TIMES
+       template: {{set}}^*
+       exemples : "R*" → "\\mathbb{R}^*"  "N*" → "\\mathbb{N}^*"
+
+  R-26 set_plus         (prio 55)     match: <set> PLUS   template: {{set}}^+
+       exemple : "R+" → "\\mathbb{R}^+"
+
+  R-27 set_minus        (prio 55)     match: <set> MINUS  template: {{set}}^-
+       exemple : "R-" → "\\mathbb{R}^-"
+
+  R-28 set_strict_positive_a  (prio 60)
+       match: <set> TIMES PLUS         template: {{set}}^{*+}
+       exemple : "R*+" → "\\mathbb{R}^{*+}"
+  R-29 set_strict_positive_b  (prio 60)
+       match: <set> PLUS TIMES         template: {{set}}^{*+}
+       exemple : "R+*" → "\\mathbb{R}^{*+}"
+  R-30 set_strict_negative_a  (prio 60)
+       match: <set> TIMES MINUS        template: {{set}}^{*-}
+       exemple : "R*-" → "\\mathbb{R}^{*-}"
+  R-31 set_strict_negative_b  (prio 60)
+       match: <set> MINUS TIMES        template: {{set}}^{*-}
+       exemple : "R-*" → "\\mathbb{R}^{*-}"
+
+  R-32 set_minus_singleton_dash  (prio 65)
+       match:    <set> MINUS LBRACE EXPR:val RBRACE
+       template: {{set}} \setminus \{{{val}}\}
+       exemples : "R-{0}" → "\\mathbb{R} \\setminus \\{0\\}"
+                  "R-{-1}" → "\\mathbb{R} \\setminus \\{-1\\}"
+
+  R-33 set_minus_singleton_slash (prio 65)
+       match:    <set> DIV LBRACE EXPR:val RBRACE
+       template: {{set}} \setminus \{{{val}}\}
+       exemple : "R/{2}" → "\\mathbb{R} \\setminus \\{2\\}"
+
+  Intervalles (match avec séparateur explicite, prio 50) :
+
+  R-34 interval_closed_closed  LBRACKET EXPR:a (SEMICOLON|COMMA) EXPR:b RBRACKET
+                               → [{{a}}, {{b}}]
+                               ex: "[0;1]"→"[0, 1]", "[-2;5]"→"[-2, 5]"
+
+  R-35 interval_closed_open    LBRACKET EXPR:a (SEMICOLON|COMMA) EXPR:b LBRACKET
+                               → [{{a}}, {{b}}[
+                               ex: "[0;+inf[" → "[0, +\\infty["
+
+  R-36 interval_open_closed    RBRACKET EXPR:a (SEMICOLON|COMMA) EXPR:b RBRACKET
+                               → ]{{a}}, {{b}}]
+                               ex: "]-inf;5]" → "]-\\infty, 5]"
+
+  R-37 interval_open_open      RBRACKET EXPR:a (SEMICOLON|COMMA) EXPR:b LBRACKET
+                               → ]{{a}}, {{b}}[
+                               ex: "]-inf;+inf[" → "]-\\infty, +\\infty["
+
+  Intervalles avec séparateur = espace (prio 45) :
+
+  R-38 interval_closed_closed_space  LBRACKET ATOM:a ATOM:b RBRACKET
+                                     ex: "[0 1]" → "[0, 1]"
+  R-39 interval_closed_open_space    LBRACKET ATOM:a ATOM:b LBRACKET
+                                     ex: "[0 +inf[" → "[0, +\\infty["
+  R-40 interval_open_closed_space    RBRACKET ATOM:a ATOM:b RBRACKET
+                                     ex: "]0 1]" → "]0, 1]"
+  R-41 interval_open_open_space      RBRACKET ATOM:a ATOM:b LBRACKET
+                                     ex: "]0 1[" → "]0, 1["
+
+  R-42 union_expr  (prio 40)
+       match:    EXPR:a u EXPR:b          (le lowercase 'u' matche 'U'/'u' raw)
+       template: {{a}} \cup {{b}}
+       exemple : "[0;12]U[16;20[" → "[0, 12] \\cup [16, 20["
+
+  R-43 intersection_expr (prio 40)
+       match:    EXPR:a inter EXPR:b
+       template: {{a}} \cap {{b}}
+       exemple : "[0;10] inter [5;15]" → "[0, 10] \\cap [5, 15]"
+
+  Tokens additionnels déclarés en fin de fichier :
+    PRIME (' ’), INTER (inter, ∩, \cap), UNION (union, ∪, \cup)
+
+
+2.3 fr/_language.yaml — FRANÇAIS (priorité 50)
+===============================================
+
+Stop phrases (absorbées, type verbal) :
+  "on a", "on sait que", "on pose", "on note", "on cherche",
+  "soit", "soient", "posons", "notons", "considerons", "supposons que"
+
+Quantificateurs :
+  "il existe"      → EXISTS
+  "pour tout"      → FORALL
+  "quel que soit"  → FORALL
+  "tel que" / "tels que" / "telle que" → SUCH_THAT
+
+Stop words (ignorés) : to, from, il, elle, a, ai, as, avons, avez, ont, est,
+  sont, etait, etaient, sera, seront, vaut, valent, donne, donnent, donc,
+  alors, or, car, ainsi, ensuite.
+
+Connectors (neutres) : de, du, des, la, le, les, a, au, aux, pour, par, et,
+  avec, sur, dans, entre, sous, vers, en.
+
+Tokens :
+  LIMIT      \lim    [lim, limite, lmt]    fuzzy 1
+  TENDS_TO   \to     [->, tend, tends, td, vrs]
+  WHEN       ""      [quand, lorsque, qd, lorsqu]   role: connector
+  SQRT       \sqrt   [sqrt, rac, racine]   fuzzy 1
+  INTEGRAL   \int    [int, integrale, integ]   fuzzy 1
+  SUM        \sum    [sum, somme]    fuzzy 1
+  PRODUCT    \prod   [prod, produit] fuzzy 1
+  VEC        \vec    [vec, vect, vecteur]
+  IN         \in     [in, dans, app, appartient, ∈]
+  FORALL     \forall [forall, qq, qqe]
+  EXISTS     \exists [exists, existe]
+  SUCH_THAT  \mid    [tq]
+  SYSTEM_KW  \begin{cases}  [syst, systeme]
+
+Patterns :
+
+  R-44 limit_only
+       match:    LIMIT WHEN? IDENT:var TENDS_TO? EXPR:target
+       template: \lim_{{{var}} \to {{target}}}
+       exemples : "lim x -> inf"         → "\\lim_{x \\to \\infty}"
+                  "lim quand x tend vers 0" → "\\lim_{x \\to 0}"
+                  "limite x -> +inf"      → "\\lim_{x \\to +\\infty}"
+                  "lim x tends vers 1"    → "\\lim_{x \\to 1}"
+
+  R-45 limit_post_function  (prio 120)
+       match:    LIMIT WHEN? IDENT:var TENDS_TO? ATOM:target IDENT:f LPAREN EXPR:x RPAREN
+       template: \lim_{{{var}} \to {{target}}} {{f}}({{x}})
+       exemples : "lim x -> 1 f(x)"         → "\\lim_{x \\to 1} f(x)"
+                  "lim x tend vers 0 f(x)"  → "\\lim_{x \\to 0} f(x)"
+
+  R-46 limit_with_expr_function (prio 120)
+       match:    LIMIT WHEN? IDENT:var TENDS_TO? ATOM:target EXPR:f
+       template: \lim_{{{var}} \to {{target}}} {{f}}
+       exemples : "lim x->0 (2x+1)/(3x+3)^2" → "\\lim_{x \\to 0} \\frac{2x+1}{(3x+3)^2}"
+                  "lim x->0 x^2"             → "\\lim_{x \\to 0} x^2"
+
+  R-47 limit_fr_qd
+       match:    LIMIT IDENT:f LPAREN EXPR:x RPAREN WHEN? IDENT:var TENDS_TO? EXPR:target
+       template: \lim_{{{var}} \to {{target}}} {{f}}({{x}})
+       exemples : "lim f(x) qd x -> 1"       → "\\lim_{x \\to 1} f(x)"
+                  "lim f(x) quand x tend vers 1" → "\\lim_{x \\to 1} f(x)"
+                  "limite f(x) x -> +inf"   → "\\lim_{x \\to +\\infty} f(x)"
+                  "lmt fx qd x td 1"          [SKIP — parens requises]
+
+  R-48 limit_fr_en_point
+       match:    LIMIT de? IDENT:f en IDENT:target
+       template: \lim_{{{target}}} {{f}}
+       exemple : "limite de f en 0" → "\\lim_{0} f"
+
+  R-49 number_times_sqrt (prio 60)
+       match:    NUMBER:n SQRT LPAREN EXPR:arg RPAREN
+       template: {{n}} \sqrt{{{arg}}}
+       exemples : "3 sqrt(4)" → "3 \\sqrt{4}"
+                  "3sqrt(4)"  → "3 \\sqrt{4}"
+
+  R-50 nth_root_prefix (prio 55)
+       match:    NUMBER:n SQRT LPAREN EXPR:arg RPAREN
+       template: \sqrt[{{n}}]{{{arg}}}
+       exemple : "3sqrt(4)" → "\\sqrt[3]{4}"   (alternative à R-49)
+
+  R-51 nth_root_bracket (prio 70)
+       match:    SQRT LBRACKET NUMBER:n RBRACKET LPAREN EXPR:arg RPAREN
+       template: \sqrt[{{n}}]{{{arg}}}
+       exemple : "sqrt[3](4)" → "\\sqrt[3]{4}"
+
+  R-52 sqrt_fr
+       match:    SQRT LPAREN? EXPR:x RPAREN?
+       template: \sqrt{{{x}}}
+       exemples : "sqrt(2)"       → "\\sqrt{2}"
+                  "rac(x+1)"      → "\\sqrt{x+1}"
+                  "racine de 2"   → "\\sqrt{2}"
+                  "V(x+1)"         [SKIP — V ambigu avec variance]
+
+  R-53 vector_fr
+       match:    VEC LPAREN? IDENT:name RPAREN?
+       template: \vec{{{name}}}
+       exemples : "vec AB"   → "\\vec{AB}"
+                  "vec(u)"    → "\\vec{u}"
+                  "vecteur AB"→ "\\vec{AB}"
+
+  R-54 integral_fr_bounds
+       match:    INTEGRAL de? EXPR:a a EXPR:b de? EXPR:f dx?
+       template: \int_{{{a}}}^{{{b}}} {{f}} \, dx
+       exemples : "int de 0 a 1 de x^2 dx"       → "\\int_{0}^{1} x^2 \\, dx"
+                  "integrale de 0 a pi de sin(x) dx" → "\\int_{0}^{\\pi} \\sin(x) \\, dx"
+                  "int de 0 a 1 x^2"             → "\\int_{0}^{1} x^2 \\, dx"
+                  "int 0 a 1 x^2"                → "\\int_{0}^{1} x^2 \\, dx"
+
+  R-55 integral_fr_indef
+       match:    INTEGRAL de? EXPR:f dx?
+       template: \int {{f}} \, dx
+       exemples : "int x^2 dx"       → "\\int x^2 \\, dx"
+                  "int x^2"          → "\\int x^2 \\, dx"
+                  "integrale de sin(x)" → "\\int \\sin(x) \\, dx"
+
+  R-56 forall_fr
+       match:    FORALL IDENT:var IN EXPR:set
+       template: \forall {{var}} \in {{set}}
+       exemples : "pour tout x in R" → "\\forall x \\in \\mathbb{R}"
+                  "qq x dans R"      → "\\forall x \\in \\mathbb{R}"
+
+  R-57 forall_shorthand_V
+       match:    VX_SHORT:var LPAREN ATOM:set
+       template: \forall {{var}} \in {{set}}
+       exemples : "Vx(R"   → "\\forall x \\in \\mathbb{R}"
+                  "Vx(R*"  → "\\forall x \\in \\mathbb{R}^*"
+
+  R-58 forall_shorthand_Vxy_compact (prio 55)
+       match:    VX_SHORT:var1 COMMA IDENT:var2 LPAREN ATOM:set
+       template: \forall {{var1}}, {{var2}} \in {{set}}
+       exemples : "Vx,y(R"  → "\\forall x, y \\in \\mathbb{R}"
+                  "Vx,y(R*" → "\\forall x, y \\in \\mathbb{R}^*"
+
+  R-59 forall_shorthand_V_spaced (prio 50)
+       match:    VAR IDENT:var LPAREN ATOM:set
+       template: \forall {{var}} \in {{set}}
+       exemples : "V x ( R"   → "\\forall x \\in \\mathbb{R}"
+                  "V x(R"     → "\\forall x \\in \\mathbb{R}"
+                  "V n ( N"   → "\\forall n \\in \\mathbb{N}"
+                  "V k ( Z"   → "\\forall k \\in \\mathbb{Z}"
+                  "V z ( C"   → "\\forall z \\in \\mathbb{C}"
+                  "V q ( Q"   → "\\forall q \\in \\mathbb{Q}"
+                  "V x ( R*"  → "\\forall x \\in \\mathbb{R}^*"
+                  "V x ( R+"  → "\\forall x \\in \\mathbb{R}^+"
+                  "V x ( R-{0}" → "\\forall x \\in \\mathbb{R} \\setminus \\{0\\}"
+
+  R-60 forall_shorthand_V_spaced_two_vars (prio 55)
+       match:    VAR IDENT:var1 COMMA IDENT:var2 LPAREN ATOM:set
+       template: \forall {{var1}}, {{var2}} \in {{set}}
+       exemples : "V x,y ( R"  → "\\forall x, y \\in \\mathbb{R}"
+                  "V x,y ( R*" → "\\forall x, y \\in \\mathbb{R}^*"
+                  "V x, y ( R+" → "\\forall x, y \\in \\mathbb{R}^+"
+
+  R-61 forall_shorthand_V_spaced_three_vars (prio 55)
+       match:    VAR IDENT:var1 COMMA IDENT:var2 COMMA IDENT:var3 LPAREN ATOM:set
+       template: \forall {{var1}}, {{var2}}, {{var3}} \in {{set}}
+       exemple : "V x,y,z ( R" → "\\forall x, y, z \\in \\mathbb{R}"
+
+  R-62 forall_only_V_spaced (prio 50)
+       match:    VAR IDENT:var
+       template: \forall {{var}}
+       exemple : "V x" → "\\forall x"
+
+  R-63 curve_shorthand (prio 50)
+       match:    CF_SHORT:name
+       template: \mathcal{C}_{{{name}}}
+       exemples : "Cf" → "\\mathcal{C}_{f}"
+                  "Cg" → "\\mathcal{C}_{g}"
+
+  R-64 belongs_shorthand_paren (prio 50)
+       match:    IDENT:var LPAREN ATOM:set
+       template: {{var}} \in {{set}}
+       exemples : "x ( R"     → "x \\in \\mathbb{R}"
+                  "x(R"       → "x \\in \\mathbb{R}"
+                  "x ( R*"    → "x \\in \\mathbb{R}^*"
+                  "x ( R+"    → "x \\in \\mathbb{R}^+"
+                  "x ( R-{0}" → "x \\in \\mathbb{R} \\setminus \\{0\\}"
+
+  R-65 belongs_shorthand_paren_two_vars (prio 55)
+       match:    IDENT:var1 COMMA IDENT:var2 LPAREN ATOM:set
+       template: {{var1}}, {{var2}} \in {{set}}
+       exemples : "x,y ( R"   → "x, y \\in \\mathbb{R}"
+                  "x, y ( R*" → "x, y \\in \\mathbb{R}^*"
+
+  R-66 exists_fr
+       match:    EXISTS IDENT:var SUCH_THAT? EXPR:cond
+       template: \exists {{var}} \mid {{cond}}
+       exemple : "il existe alpha tq alpha > 0" → "\\exists \\alpha \\mid \\alpha > 0"
+
+  R-67 belongs_to_fr
+       match:    IDENT:x IN EXPR:set
+       template: {{x}} \in {{set}}
+       exemples : "x in R"   → "x \\in \\mathbb{R}"
+                  "x dans R" → "x \\in \\mathbb{R}"
+
+  R-68 system_fr
+       match:    SYSTEM_KW EQUATION_LIST:eqs
+       template: \begin{cases} {{eqs}} \end{cases}
+       exemples : "syst x+y=5 ; 2x-y=1"       → "\\begin{cases} x+y=5 \\\\ 2x-y=1 \\end{cases}"
+                  "systeme x+y=5, 2x-y=1"     → "\\begin{cases} x+y=5 \\\\ 2x-y=1 \\end{cases}"
+
+
+2.4 fr/algebra.yaml — ALGÈBRE (priorité 100)
+=============================================
+
+  R-69 equation_simple
+       match:    EXPR:lhs EQ EXPR:rhs
+       template: {{lhs}} = {{rhs}}
+       exemples : "x + y = 5"   → "x + y = 5"
+                  "2x - 3 = 0"  → "2x - 3 = 0"
+
+  R-70 inequality
+       match:    EXPR:lhs (LT|LEQ|GT|GEQ):op EXPR:rhs
+       template: {{lhs}} {{op}} {{rhs}}
+       exemples : "x^2 >= 0"    → "x^2 \\geq 0"
+                  "x < 2"       → "x < 2"
+
+  R-71 factored_quadratic
+       match:    LPAREN EXPR:a RPAREN LPAREN EXPR:b RPAREN
+       template: ({{a}})({{b}})
+       exemple : "(x-1)(x+2)" → "(x-1)(x+2)"
+
+
+2.5 fr/analysis.yaml — ANALYSE (priorité 100)
+==============================================
+
+Tokens additionnels :
+  DERIV_KW     ""  [derivee, deriv, derivée]   fuzzy 1  role: semantic
+  PRIMITIVE_KW ""  [primitive, primit]          fuzzy 1  role: semantic
+
+Patterns :
+
+  R-72 derivative_leibniz
+       match:    d IDENT:y DIV d IDENT:x
+       template: \frac{d{{y}}}{d{{x}}}
+       exemples : "df/dx" → "\\frac{df}{dx}"
+                  "dy/dt" → "\\frac{dy}{dt}"
+
+  R-73 derivative_second_prime
+       match:    IDENT:f PRIME PRIME LPAREN EXPR:x RPAREN
+       template: {{f}}''({{x}})
+       exemples : "f''(x)"  → "f''(x)"
+                  'f"(x)'   → "f''(x)"    (guillemets doubles → '' via preprocess)
+
+  R-74 ode_first_order
+       match:    IDENT:y PRIME EQ EXPR:rhs
+       template: {{y}}' = {{rhs}}
+       exemples : "y' = ky"    → "y' = ky"
+                  "f'(x) = 2x" → "f'(x) = 2x"
+
+  R-75 sum_eq_to_summand (prio 110)
+       match:    SUM IDENT:var EQ ATOM:lower (to|a) ATOM:upper EXPR:summand
+       template: \sum_{{{var}}={{lower}}}^{{{upper}}} {{summand}}
+       exemples : "Sum k=1 to 10 f(k)" → "\\sum_{k=1}^{10} f(k)"
+                  "sum k=1 a n f(k)"    → "\\sum_{k=1}^{n} f(k)"
+
+  R-76 sum_eq_cmp_summand (prio 110)
+       match:    SUM IDENT:var EQ ATOM:lower IDENT:var2 (LT|LEQ|GT|GEQ):op ATOM:upper EXPR:summand
+       template: \sum_{{{var}}={{lower}}}^{{{upper}}} {{summand}}
+       exemple : "Sum k=1 k<10 f(k)+1" → "\\sum_{k=1}^{10} f(k)+1"
+
+  R-77 sum_paren_3args (prio 110)
+       match:    SUM LPAREN IDENT:var COMMA ATOM:lower COMMA ATOM:upper RPAREN EXPR:summand
+       template: \sum_{{{var}}={{lower}}}^{{{upper}}} {{summand}}
+       exemple : "Sum(k,1,10) f(k)" → "\\sum_{k=1}^{10} f(k)"
+
+  R-78 product_eq_to_factor (prio 110)
+       match:    PRODUCT IDENT:var EQ ATOM:lower (to|a) ATOM:upper EXPR:factor
+       template: \prod_{{{var}}={{lower}}}^{{{upper}}} {{factor}}
+       exemples : "prod k=1 to n f(k)" → "\\prod_{k=1}^{n} f(k)"
+                  "produit k=1 a 10 k" → "\\prod_{k=1}^{10} k"
+
+  R-79 product_paren_3args (prio 110)
+       match:    PRODUCT LPAREN IDENT:var COMMA ATOM:lower COMMA ATOM:upper RPAREN EXPR:factor
+       template: \prod_{{{var}}={{lower}}}^{{{upper}}} {{factor}}
+       exemple : "prod(k,1,n) k" → "\\prod_{k=1}^{n} k"
+
+  R-80 integral_eq_to (prio 110)
+       match:    INTEGRAL ATOM:lower (to|a) ATOM:upper EXPR:f dx?
+       template: \int_{{{lower}}}^{{{upper}}} {{f}} \, dx
+       exemples : "int 0 to 1 x^2 dx"        → "\\int_{0}^{1} x^2 \\, dx"
+                  "integrale 0 a pi sin(x)"  → "\\int_{0}^{\\pi} \\sin(x) \\, dx"
+
+  R-81 integral_paren_3args (prio 110)
+       match:    INTEGRAL LPAREN IDENT:var COMMA ATOM:lower COMMA ATOM:upper RPAREN EXPR:f
+       template: \int_{{{lower}}}^{{{upper}}} {{f}} \, d{{var}}
+       exemple : "int(x,0,1) x^2" → "\\int_{0}^{1} x^2 \\, dx"
+
+  R-82 limit_paren_2args (prio 110)
+       match:    LIMIT LPAREN IDENT:var COMMA ATOM:target RPAREN EXPR:f
+       template: \lim_{{{var}} \to {{target}}} {{f}}
+       exemples : "Lim(x,0) f(x)"    → "\\lim_{x \\to 0} f(x)"
+                  "lim(n,+inf) 1/n"  → "\\lim_{n \\to +\\infty} \\frac{1}{n}"
+
+
+2.6 fr/geometry.yaml — GÉOMÉTRIE (priorité 100)
+================================================
+
+  R-83 vector_addition
+       match:    VEC IDENT:a PLUS VEC IDENT:b
+       template: \vec{{{a}}} + \vec{{{b}}}
+       exemple : "vec AB + vec BC" → "\\vec{AB} + \\vec{BC}"
+
+  R-84 dot_product
+       match:    VEC IDENT:u TIMES VEC IDENT:v
+       template: \vec{{{u}}} \cdot \vec{{{v}}}
+       exemple : "vec u . vec v" → "\\vec{u} \\cdot \\vec{v}"
+
+  R-85 segment_length
+       match:    IDENT_UPPER_PAIR:name EQ EXPR:val
+       template: {{name}} = {{val}}
+       exemple : "AB = 5" → "AB = 5"
+
+  R-86 unit_literal        match: IDENT_UPPER_PAIR:name  template: {{name}}
+                           exemple : "AB" → "AB"
+  R-87 unit_vector         match: IDENT_UPPER_PAIR:name  template: \vec{{{name}}}
+                           exemple : "AB" → "\\vec{AB}"
+  R-88 unit_norm           match: IDENT_UPPER_PAIR:name  template: \|{{name}}\|
+                           exemple : "AB" → "\\|AB\\|"
+
+  Les trois R-86/87/88 SONT COEXISTANTS : ils produisent les 3 lectures
+  possibles d'un identifiant géométrique (littéral, vectoriel, normé) et
+  c'est la popup qui laisse l'utilisateur choisir.
+
+  R-89 chasles_vectors (prio 50)
+       match:    IDENT_UPPER_PAIR:a PLUS IDENT_UPPER_PAIR:b EQ IDENT_UPPER_PAIR:c
+       template: \vec{{{a}}} + \vec{{{b}}} = \vec{{{c}}}
+       exemple : "AB+BC=AC" → "\\vec{AB} + \\vec{BC} = \\vec{AC}"
+
+  R-90 chasles_norms (prio 50)
+       match:    IDENT_UPPER_PAIR:a PLUS IDENT_UPPER_PAIR:b EQ IDENT_UPPER_PAIR:c
+       template: \|{{a}}\| + \|{{b}}\| = \|{{c}}\|
+       exemple : "AB+BC=AC" → "\\|AB\\| + \\|BC\\| = \\|AC\\|"
+
+  R-91 dot_product_atomic
+       match:    IDENT_UPPER_PAIR:a TIMES IDENT_UPPER_PAIR:b
+       template: \vec{{{a}}} \cdot \vec{{{b}}}
+       exemple : "AB.BC" → "\\vec{AB} \\cdot \\vec{BC}"
+
+  R-92 cross_product_atomic
+       match:    IDENT_UPPER_PAIR:a POWER IDENT_UPPER_PAIR:b
+       template: \vec{{{a}}} \wedge \vec{{{b}}}
+       exemple : "AB^BC" → "\\vec{AB} \\wedge \\vec{BC}"
+
+  R-93 vector_components_2d (prio 5)
+       match:    IDENT:u LPAREN ATOM:x COMMA? ATOM:y RPAREN
+       template: \vec{{{u}}} \binom{{{x}}}{{{y}}}
+       exemples : "u(x,y)" → "\\vec{u} \\binom{x}{y}"
+                  "u(x y)" → "\\vec{u} \\binom{x}{y}"
+
+  R-94 vector_components_2d_upper (prio 5)
+       match:    IDENT_UPPER_PAIR:u LPAREN ATOM:x COMMA? ATOM:y RPAREN
+       template: \vec{{{u}}} \binom{{{x}}}{{{y}}}
+       exemples : "AB(x,y)" → "\\vec{AB} \\binom{x}{y}"
+                  "AB(x y)" → "\\vec{AB} \\binom{x}{y}"
+
+  R-95 vector_components_3d (prio 5)
+       match:    IDENT:u LPAREN ATOM:x COMMA? ATOM:y COMMA? ATOM:z RPAREN
+       template: \vec{{{u}}} \binom{{{x}}}{\binom{{{y}}}{{{z}}}}
+       exemples : "u(x,y,z)" → "\\vec{u} \\binom{x}{\\binom{y}{z}}"
+                  "u(x y z)" → "\\vec{u} \\binom{x}{\\binom{y}{z}}"
+
+  R-96 vector_components_3d_upper (prio 5)
+       match:    IDENT_UPPER_PAIR:u LPAREN ATOM:x COMMA? ATOM:y COMMA? ATOM:z RPAREN
+       template: \vec{{{u}}} \binom{{{x}}}{\binom{{{y}}}{{{z}}}}
+       exemple : "AB(x y z)" → "\\vec{AB} \\binom{x}{\\binom{y}{z}}"
+
+
+2.7 fr/probability.yaml — PROBABILITÉS (priorité 100)
+======================================================
+
+Tokens additionnels :
+  PROBA  P  [P, Pr, proba]
+  ESP    E  [E, esp, esperance]
+  VAR    V  [V, var, variance]
+
+Patterns :
+
+  R-97 probability_event
+       match:    PROBA LPAREN EXPR:event RPAREN
+       template: P({{event}})
+       exemples : "P(A)"       → "P(A)"
+                  "proba(A)"   → "P(A)"
+
+  R-98 probability_intersection
+       match:    PROBA LPAREN EXPR:a INTER EXPR:b RPAREN
+       template: P({{a}} \cap {{b}})
+       exemple : "P(A inter B)" → "P(A \\cap B)"
+
+  R-99 conditional_probability
+       match:    PROBA LPAREN EXPR:a PIPE EXPR:b RPAREN
+       template: P({{a}} \mid {{b}})
+       exemple : "P(A|B)" → "P(A \\mid B)"
+
+  R-100 expectation
+        match:    ESP LPAREN EXPR:x RPAREN
+        template: E({{x}})
+        exemples : "E(X)"           → "E(X)"
+                   "esperance(X)"   → "E(X)"
+
+  R-101 variance
+        match:    VAR LPAREN EXPR:x RPAREN
+        template: V({{x}})
+        exemple : "V(X)" → "V(X)"
+
+  R-102 sqrt_as_V (prio 50) — alternative à la variance
+        match:    VAR LPAREN EXPR:x RPAREN
+        template: \sqrt{{{x}}}
+        exemple : "V(x+1)" → "\\sqrt{x+1}"
+
+
+2.8 fr/sequences.yaml — SUITES (priorité 100)
+==============================================
+
+  R-103 sequence_un_compact
+        match:    IDENT_SEQ:name
+        template: {{name}}_n
+        exemples : "un" → "u_n"
+                   "vn" → "v_n"
+
+  R-104 sequence_with_parens
+        match:    LPAREN IDENT_SEQ:name RPAREN
+        template: ({{name}}_n)
+        exemple : "(un)" → "(u_n)"
+
+  R-105 recurrence
+        match:    IDENT:u LPAREN IDENT:n PLUS NUMBER:k RPAREN EQ EXPR:rhs
+        template: {{u}}_{{{n}}+{{k}}} = {{rhs}}
+        exemple : "u(n+1) = 2*un + 3" → "u_{n+1} = 2 \\cdot u_n + 3"
+
+  R-106 sequence_limit
+        match:    LPAREN IDENT_SEQ:name RPAREN converge vers EXPR:L
+        template: ({{name}}_n) \to {{L}}
+        exemple : "(un) converge vers 0" → "(u_n) \\to 0"
+
+
+2.9 en/_language.yaml — ENGLISH (priorité 50)
+==============================================
+
+Stop phrases : "we have", "we know that", "let us set", "let",
+  "suppose that", "assume that", "there exists" → EXISTS,
+  "for all" → FORALL, "such that" → SUCH_THAT.
+
+Stop words : to, from, is, are, was, were, be, been, being,
+  has, have, had, therefore, thus, hence, so.
+
+Connectors : of, the, a, an, to, by, for, and, with, on, in, from, as.
+
+Tokens : LIMIT, TENDS_TO (->, to, towards, approaches),
+  WHEN (when, as, connector), SQRT, INTEGRAL (fuzzy 1), SUM, VEC,
+  IN, FORALL, EXISTS, SUCH_THAT (st, |).
+
+Patterns :
+
+  R-107 limit_en_as
+        match:    LIMIT IDENT:f LPAREN EXPR:x RPAREN WHEN? IDENT:var TENDS_TO EXPR:target
+        template: \lim_{{{var}} \to {{target}}} {{f}}({{x}})
+        exemples : "lim f(x) as x -> 1"            → "\\lim_{x \\to 1} f(x)"
+                   "limit of f(x) as x approaches 1" → "\\lim_{x \\to 1} f(x)"
+
+  R-108 sqrt_en
+        match:    SQRT LPAREN? EXPR:x RPAREN?
+        template: \sqrt{{{x}}}
+        exemples : "sqrt(2)"  → "\\sqrt{2}"
+                   "V(x+1)"    [SKIP — V ambigu avec variance]
+
+  R-109 forall_en
+        match:    FORALL IDENT:var IN EXPR:set
+        template: \forall {{var}} \in {{set}}
+        exemple : "for all x in R" → "\\forall x \\in \\mathbb{R}"
+
+  R-110 exists_en
+        match:    EXISTS IDENT:var SUCH_THAT? EXPR:cond
+        template: \exists {{var}} \mid {{cond}}
+        exemple : "there exists alpha st alpha > 0" → "\\exists \\alpha \\mid \\alpha > 0"
+
+
+
+================================================================================
+3. TESTS ET SOLUTIONS ATTENDUES
+================================================================================
+
+3.1 GOLD EXAMPLES
+=================
+
+Fichier : core-csharp/tests/MathCursor.Core.Tests/PatternEngineGoldTests.cs
+
+Mécanique : les Theory data sont générés automatiquement en parcourant tous
+les patterns du repo FR et EN, et en prenant les exemples qui N'ONT PAS de
+champ `skip:`. L'assertion :
+  Assert.Contains(suggestions, s => norm(s.Latex) == norm(expected));
+où norm() supprime les whitespaces (équivalence visuelle LaTeX).
+
+Le tableau complet input → output est celui listé section 2 (R-2 à R-110)
+exemples sans tag [SKIP]. Synthèse des cas NON-SKIP (≈ 90 cas) :
+
+  shared/symbolic.yaml :
+    "AB(u v) + AC(d x)"     → "AB(u v) + AC(d x)"
+    "f(x) - g(x)"           → "f(x) - g(x)"
+    "x^2"                   → "x^2"
+    "x**2"                  → "x^2"
+    "(x+1)^3"               → "(x+1)^3"
+    "u_n"                   → "u_n"
+    "x_0"                   → "x_0"
+    "1/2"                   → "\\frac{1}{2}"
+    "(x+1)/(x-1)"           → "\\frac{x+1}{x-1}"
+    "f(x)"                  → "f(x)"
+    "g(x,y)"                → "g(x,y)"
+    "f'(x)"                 → "f'(x)"
+    "g'(t)"                 → "g'(t)"
+    "cos(x)"                → "\\cos(x)"
+    "cos x"                 → "\\cos(x)"
+    "sin(x)"                → "\\sin(x)"
+    "tan(x)"                → "\\tan(x)"
+    "tg(x)"                 → "\\tan(x)"
+    "ln(x)"                 → "\\ln(x)"
+    "log(x)"                → "\\log(x)"
+    "exp(x)"                → "\\exp(x)"
+    "arccos(x)"             → "\\arccos(x)"
+    "acos(x)"               → "\\arccos(x)"
+    "arcsin(x)"             → "\\arcsin(x)"
+    "asin(x)"               → "\\arcsin(x)"
+    "arctan(x)"             → "\\arctan(x)"
+    "atan(x)"               → "\\arctan(x)"
+    "|x|"                   → "|x|"
+    "|x-1|"                 → "|x-1|"
+    "||u||"                 → "\\|u\\|"
+    "R"                     → "\\mathbb{R}"
+    "R*"                    → "\\mathbb{R}^*"
+    "N*"                    → "\\mathbb{N}^*"
+    "R+"                    → "\\mathbb{R}^+"
+    "R-"                    → "\\mathbb{R}^-"
+    "R*+"                   → "\\mathbb{R}^{*+}"
+    "R+*"                   → "\\mathbb{R}^{*+}"
+    "R*-"                   → "\\mathbb{R}^{*-}"
+    "R-*"                   → "\\mathbb{R}^{*-}"
+    "R-{0}"                 → "\\mathbb{R} \\setminus \\{0\\}"
+    "R-{-1}"                → "\\mathbb{R} \\setminus \\{-1\\}"
+    "R/{2}"                 → "\\mathbb{R} \\setminus \\{2\\}"
+    "[0;1]"                 → "[0, 1]"
+    "[0,1]"                 → "[0, 1]"
+    "[0 1]"                 → "[0, 1]"
+    "[-2;5]"                → "[-2, 5]"
+    "[0;+inf["              → "[0, +\\infty["
+    "[0,+inf["              → "[0, +\\infty["
+    "[0 +inf["              → "[0, +\\infty["
+    "]0;1]"                 → "]0, 1]"
+    "]-inf;5]"              → "]-\\infty, 5]"
+    "]0,1]"                 → "]0, 1]"
+    "]0;1["                 → "]0, 1["
+    "]-inf;+inf["           → "]-\\infty, +\\infty["
+    "]-inf,+inf["           → "]-\\infty, +\\infty["
+    "]0 1]"                 → "]0, 1]"
+    "]0 1["                 → "]0, 1["
+    "[0;12]U[16;20["        → "[0, 12] \\cup [16, 20["
+    "[0;10] inter [5;15]"   → "[0, 10] \\cap [5, 15]"
+
+  fr/_language.yaml :
+    "lim x -> inf"                    → "\\lim_{x \\to \\infty}"
+    "lim quand x tend vers 0"         → "\\lim_{x \\to 0}"
+    "limite x -> +inf"                → "\\lim_{x \\to +\\infty}"
+    "lim x tends vers 1"              → "\\lim_{x \\to 1}"
+    "lim x -> 1 f(x)"                 → "\\lim_{x \\to 1} f(x)"
+    "lim x tend vers 0 f(x)"          → "\\lim_{x \\to 0} f(x)"
+    "lim x->0 (2x+1)/(3x+3)^2"        → "\\lim_{x \\to 0} \\frac{2x+1}{(3x+3)^2}"
+    "lim x->0 x^2"                    → "\\lim_{x \\to 0} x^2"
+    "lim f(x) qd x -> 1"              → "\\lim_{x \\to 1} f(x)"
+    "lim f(x) quand x tend vers 1"    → "\\lim_{x \\to 1} f(x)"
+    "limite f(x) x -> +inf"           → "\\lim_{x \\to +\\infty} f(x)"
+    "limite de f en 0"                → "\\lim_{0} f"
+    "3 sqrt(4)"                       → "3 \\sqrt{4}"
+    "3sqrt(4)"                        → "3 \\sqrt{4}"   (+ alt "\\sqrt[3]{4}")
+    "sqrt[3](4)"                      → "\\sqrt[3]{4}"
+    "sqrt(2)"                         → "\\sqrt{2}"
+    "rac(x+1)"                        → "\\sqrt{x+1}"
+    "racine de 2"                     → "\\sqrt{2}"
+    "vec AB"                          → "\\vec{AB}"
+    "vec(u)"                          → "\\vec{u}"
+    "vecteur AB"                      → "\\vec{AB}"
+    "int de 0 a 1 de x^2 dx"          → "\\int_{0}^{1} x^2 \\, dx"
+    "integrale de 0 a pi de sin(x) dx"→ "\\int_{0}^{\\pi} \\sin(x) \\, dx"
+    "int de 0 a 1 x^2"                → "\\int_{0}^{1} x^2 \\, dx"
+    "int 0 a 1 x^2"                   → "\\int_{0}^{1} x^2 \\, dx"
+    "int x^2 dx"                      → "\\int x^2 \\, dx"
+    "int x^2"                         → "\\int x^2 \\, dx"
+    "integrale de sin(x)"             → "\\int \\sin(x) \\, dx"
+    "pour tout x in R"                → "\\forall x \\in \\mathbb{R}"
+    "qq x dans R"                     → "\\forall x \\in \\mathbb{R}"
+    "Vx(R"                            → "\\forall x \\in \\mathbb{R}"
+    "Vx(R*"                           → "\\forall x \\in \\mathbb{R}^*"
+    "Vx,y(R"                          → "\\forall x, y \\in \\mathbb{R}"
+    "Vx,y(R*"                         → "\\forall x, y \\in \\mathbb{R}^*"
+    "V x ( R"                         → "\\forall x \\in \\mathbb{R}"
+    "V x(R"                           → "\\forall x \\in \\mathbb{R}"
+    "V n ( N"                         → "\\forall n \\in \\mathbb{N}"
+    "V k ( Z"                         → "\\forall k \\in \\mathbb{Z}"
+    "V z ( C"                         → "\\forall z \\in \\mathbb{C}"
+    "V q ( Q"                         → "\\forall q \\in \\mathbb{Q}"
+    "V x ( R*"                        → "\\forall x \\in \\mathbb{R}^*"
+    "V x ( R+"                        → "\\forall x \\in \\mathbb{R}^+"
+    "V x ( R-{0}"                     → "\\forall x \\in \\mathbb{R} \\setminus \\{0\\}"
+    "V x,y ( R"                       → "\\forall x, y \\in \\mathbb{R}"
+    "V x,y ( R*"                      → "\\forall x, y \\in \\mathbb{R}^*"
+    "V x, y ( R+"                     → "\\forall x, y \\in \\mathbb{R}^+"
+    "V x,y,z ( R"                     → "\\forall x, y, z \\in \\mathbb{R}"
+    "V x"                             → "\\forall x"
+    "Cf"                              → "\\mathcal{C}_{f}"
+    "Cg"                              → "\\mathcal{C}_{g}"
+    "x ( R"                           → "x \\in \\mathbb{R}"
+    "x(R"                             → "x \\in \\mathbb{R}"
+    "x ( R*"                          → "x \\in \\mathbb{R}^*"
+    "x ( R+"                          → "x \\in \\mathbb{R}^+"
+    "x ( R-{0}"                       → "x \\in \\mathbb{R} \\setminus \\{0\\}"
+    "x,y ( R"                         → "x, y \\in \\mathbb{R}"
+    "x, y ( R*"                       → "x, y \\in \\mathbb{R}^*"
+    "il existe alpha tq alpha > 0"    → "\\exists \\alpha \\mid \\alpha > 0"
+    "x in R"                          → "x \\in \\mathbb{R}"
+    "x dans R"                        → "x \\in \\mathbb{R}"
+    "syst x+y=5 ; 2x-y=1"             → "\\begin{cases} x+y=5 \\\\ 2x-y=1 \\end{cases}"
+    "systeme x+y=5, 2x-y=1"           → "\\begin{cases} x+y=5 \\\\ 2x-y=1 \\end{cases}"
+
+  fr/algebra.yaml :
+    "x + y = 5"                       → "x + y = 5"
+    "2x - 3 = 0"                      → "2x - 3 = 0"
+    "x^2 >= 0"                        → "x^2 \\geq 0"
+    "x < 2"                           → "x < 2"
+    "(x-1)(x+2)"                      → "(x-1)(x+2)"
+
+  fr/analysis.yaml :
+    "df/dx"                           → "\\frac{df}{dx}"
+    "dy/dt"                           → "\\frac{dy}{dt}"
+    "f''(x)"                          → "f''(x)"
+    'f"(x)'                           → "f''(x)"   (remplacement " → '')
+    "y' = ky"                         → "y' = ky"
+    "f'(x) = 2x"                      → "f'(x) = 2x"
+    "Sum k=1 to 10 f(k)"              → "\\sum_{k=1}^{10} f(k)"
+    "sum k=1 a n f(k)"                → "\\sum_{k=1}^{n} f(k)"
+    "Sum k=1 k<10 f(k)+1"             → "\\sum_{k=1}^{10} f(k)+1"
+    "Sum(k,1,10) f(k)"                → "\\sum_{k=1}^{10} f(k)"
+    "prod k=1 to n f(k)"              → "\\prod_{k=1}^{n} f(k)"
+    "produit k=1 a 10 k"              → "\\prod_{k=1}^{10} k"
+    "prod(k,1,n) k"                   → "\\prod_{k=1}^{n} k"
+    "int 0 to 1 x^2 dx"               → "\\int_{0}^{1} x^2 \\, dx"
+    "integrale 0 a pi sin(x)"         → "\\int_{0}^{\\pi} \\sin(x) \\, dx"
+    "int(x,0,1) x^2"                  → "\\int_{0}^{1} x^2 \\, dx"
+    "Lim(x,0) f(x)"                   → "\\lim_{x \\to 0} f(x)"
+    "lim(n,+inf) 1/n"                 → "\\lim_{n \\to +\\infty} \\frac{1}{n}"
+
+  fr/geometry.yaml :
+    "vec AB + vec BC"                 → "\\vec{AB} + \\vec{BC}"
+    "vec u . vec v"                   → "\\vec{u} \\cdot \\vec{v}"
+    "AB = 5"                          → "AB = 5"
+    "AB"                              → "AB" et "\\vec{AB}" et "\\|AB\\|"
+                                        (3 patterns coexistent, popup → choix)
+    "AB+BC=AC"                        → "\\vec{AB} + \\vec{BC} = \\vec{AC}"
+                                        (+ alt "\\|AB\\| + \\|BC\\| = \\|AC\\|")
+    "AB.BC"                           → "\\vec{AB} \\cdot \\vec{BC}"
+    "AB^BC"                           → "\\vec{AB} \\wedge \\vec{BC}"
+    "u(x,y)"                          → "\\vec{u} \\binom{x}{y}" (alt de f(x,y))
+    "u(x y)"                          → "\\vec{u} \\binom{x}{y}"
+    "AB(x,y)"                         → "\\vec{AB} \\binom{x}{y}"
+    "AB(x y)"                         → "\\vec{AB} \\binom{x}{y}"
+    "u(x,y,z)"                        → "\\vec{u} \\binom{x}{\\binom{y}{z}}"
+    "u(x y z)"                        → "\\vec{u} \\binom{x}{\\binom{y}{z}}"
+    "AB(x y z)"                       → "\\vec{AB} \\binom{x}{\\binom{y}{z}}"
+
+  fr/probability.yaml :
+    "P(A)"                            → "P(A)"
+    "proba(A)"                        → "P(A)"
+    "P(A inter B)"                    → "P(A \\cap B)"
+    "P(A|B)"                          → "P(A \\mid B)"
+    "E(X)"                            → "E(X)"
+    "esperance(X)"                    → "E(X)"
+    "V(X)"                            → "V(X)"
+    "V(x+1)"                          → "\\sqrt{x+1}"  (alt à V=variance)
+
+  fr/sequences.yaml :
+    "un"                              → "u_n"
+    "vn"                              → "v_n"
+    "(un)"                            → "(u_n)"
+    "u(n+1) = 2*un + 3"               → "u_{n+1} = 2 \\cdot u_n + 3"
+    "(un) converge vers 0"            → "(u_n) \\to 0"
+
+  en/_language.yaml (uniquement les patterns *_en) :
+    "lim f(x) as x -> 1"              → "\\lim_{x \\to 1} f(x)"
+    "limit of f(x) as x approaches 1" → "\\lim_{x \\to 1} f(x)"
+    "sqrt(2)"                         → "\\sqrt{2}"
+    "for all x in R"                  → "\\forall x \\in \\mathbb{R}"
+    "there exists alpha st alpha > 0" → "\\exists \\alpha \\mid \\alpha > 0"
+
+Exemples marqués [SKIP] (limitations documentées, ne cassent pas les tests) :
+  "lmt fx qd x td 1" (limit_fr_qd) — pattern exige les parens autour de l'argument
+  "V(x+1)" (sqrt_fr)                — V ambigu avec variance, analyse contextuelle requise
+  "V(x+1)" (sqrt_en)                — V ambigu avec variance
+
+
+3.2 TESTS D'AMBIGUÏTÉ
+=====================
+
+Fichier : PatternEngineAmbiguityDemo.cs — Shows_ranked_candidates(input)
+Mécanique : pour chaque entrée, Convert doit renvoyer au moins un candidat ;
+le test logge la liste classée pour inspection manuelle. Liste des inputs :
+
+  P(A)                 cos(x)               f(x)
+  x + y = 5            AB+BC=AC             AB
+  AB.BC                AB^BC                u(x,y)
+  u(x y)               AB(x y)              1/V((x+1)/(x+2)^2)
+  1/V((x+1)/(x+2)^2)+1 x   +   y   =   5    u( x ,  y )
+  AB(u v) + AC(d x)    alpha + beta = gamma V x ( R
+  x ( R                p <=> q              A_ABCD
+  Cf                   arccos(x)            asin(x)
+  R*                   R+                   R-
+  R*+                  R-{0}                V x ( R*
+  x ( R+               V x,y ( R*           Sum k=1 k<10 f(k)+1
+  sum k=1 a n f(k)     prod(k,1,n) k        Lim(x,0) f(x)
+  1/V((x+1)/(x+2)^2) = 12                   Vx,y(R
+  x,y ( R              12/v(t+d+5)
+  1/V((x+1)/(x+2)^2) + alpha = 12/v(t+d+5)
+  V(x+1)               Vx(R                 lim x->1 f(x) = 1
+  O_n = O_n-1          u_n+1 = 2*u_n + 3
+
+Assertion : Assert.NotEmpty(suggestions).
+
+
+3.3 TESTS TOUJOURS-FRAC (division → \frac)
+===========================================
+
+Fichier : PatternEngineAmbiguityDemo.cs — Always_renders_division_as_frac
+
+Règle : pour chaque input, au moins un candidat doit contenir la sous-chaîne
+attendue (après normalisation whitespace).
+
+  input                                  doit contenir
+  ─────────────────────────────────────────────────────────────
+  x = 1/2 + 3                            \frac{1}{2}
+  p/q                                    \frac{p}{q}
+  (x+1)/(x-1)                            \frac{x+1}{x-1}
+  f(x)/g(x)                              \frac{f(x)}{g(x)}
+  F(x)=1/sqrt(x+205)^2                   \sqrt{x+205}^2
+  sqrt(x)^2                              \sqrt{x}^2
+  1/sqrt(x)                              \frac{1}{\sqrt{x}}
+
+
+3.4 TESTS COMPOSITES
+====================
+
+Fichier : CompositePatternTests.cs
+
+Règle : au moins un candidat doit contenir LES DEUX sous-chaînes part1 ET part2
+(combinaisons inter-patterns fonctionnelles).
+
+  input                              part1              part2
+  ──────────────────────────────────────────────────────────────
+  Sum k=1 to n sqrt(k)               \sum_{k=1}^{n}    \sqrt{k}
+  int 0 to 1 x/sqrt(1+x^2) dx        \int_{0}^{1}      \sqrt{1+x^2}
+  lim x->0 sin(x)/x                  \lim_{x \to 0}    \sin(x)
+  lim n->+inf 1/sqrt(n)              \lim_{n \to +\infty}  \sqrt{n}
+  (2x+1)/(sqrt(x)+1)                 \frac              \sqrt{x}
+
+Limitation connue : les énoncés composés séparés par ':' ne sont pas encore
+supportés (1 seul pattern par span pour l'instant).
+
+
+3.5 TESTS DE COHÉRENCE MULTI-RENDUS
+===================================
+
+Fichier : MultiRenderConsistencyTests.cs
+
+Test AB_uv_plus_AC_dx_has_consistent_vec_variant
+  input : "AB(u v) + AC(d x)"
+  Doit contenir au moins UNE suggestion avec les DEUX côtés en vecteur :
+       "\\vec{AB}" ET "\\vec{AC}"
+  Ne doit JAMAIS contenir de variante mixte :
+       "\\vec{AB}" + "AC(" (vec + literal)
+       "\\vec{AC}" + "AB(" (literal + vec)
+
+Test V_x_plus_1_over_V_x_minus_1_has_consistent_sqrt_variant
+  input : "V(x+1)/V(x-1)"
+  Assertion simple : Assert.NotEmpty. Test documentaire — les 2 V(...) doivent
+  être interprétés simultanément soit comme variance (literal) soit comme sqrt,
+  pas un mix.
+
+
+3.6 TESTS DE COUVERTURE
+=======================
+
+Fichier : CoverageValidatorTests.cs
+
+A) Gold_output_preserves_all_strong_input_tokens(lang, input, expected)
+   Pour tout gold example (non-skip) en FR et EN :
+     missing = CoverageValidator.FindMissingTokens(input, expected)
+     Assert.Empty(missing)
+   Protège contre les régressions où un pattern mangerait silencieusement un
+   token "fort" de l'input (IDENT, NUMBER, token nommé à canonical non vide).
+
+   Règles d'exclusion :
+     - tokens ambigus : "VAR" (V peut devenir \forall, \sqrt, variance)
+     - marqueurs structurels : "U" (→ \cup), "converge" (absorbé)
+     - raccourcis : Vx, Cf (éclatés — seul le suffixe laisse trace)
+     - opérateurs / délimiteurs / ponctuation : non tracés
+
+B) Engine_output_preserves_input_on_typical_inputs
+   Check runtime : on fait tourner l'engine réel et on vérifie la top
+   suggestion.
+   Inputs :
+     "x+y=5"              "f(x)=2x+1"
+     "Sum k=1 to n k^2"   "lim x->0 sin(x)/x"
+     "V x ( R*"           "1/sqrt(x+1)"
+     "AB+BC=AC"
+
+
+3.7 BENCHMARK
+=============
+
+Fichier : BenchmarkTests.cs — Convert_p95_under_20ms_for_typical_inputs
+
+Warm-up puis 5 itérations × 22 inputs représentatifs.
+Inputs :
+  "x^2", "u_n", "f(x) = 2x+1", "1/2", "(x+1)/(x-1)",
+  "lim x->0 sin(x)/x", "Sum k=1 to n k^2", "int 0 to 1 x^2 dx",
+  "V x ( R*", "AB+BC=AC", "\\sqrt{x+1}", "P(A|B)", "E(X) = 0",
+  "F(x) = 1/sqrt(x+1)^2", "alpha+beta=gamma", "cos(x)+sin(y)",
+  "[0;1] U [2;3]", "prod k=1 to 10 k", "O_n = O_n-1 + 1",
+  "x,y ( R", "Cf", "arccos(x)", "f'(x) = 2x"
+
+Assertion : p95 < 50 ms (cible brief = 20 ms, seuil CI relevé à 50 pour éviter
+les flakes).
+
+
+3.8 FUZZ TESTS
+==============
+
+Fichier : FuzzTests.cs
+
+A) Engine_never_throws_on_random_garbage
+   1000 itérations, seed fixe 42, alphabet mixte ASCII + unicode.
+   Assertion : aucune exception ne doit être levée. 0 candidat = OK.
+
+B) Engine_handles_edge_cases_gracefully — 13 cas :
+   ""          " "          "\t\n"
+   "(((("      "))))"       "[[[["        "]]]]"
+   "+++++"     "======"     "/////"
+   "\\\\\\\\"  "^^^^^"      "____"
+   Assertion : result != null (0 candidats OK, pas null).
+
+
+================================================================================
+FIN
+================================================================================

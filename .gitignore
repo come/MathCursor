@@ -36,3 +36,22 @@ coverage/
 # Certificats (clé privée) — jamais commiter
 *.pfx
 pfx-base64.txt
+
+# Secrets env (API tokens, etc.) — toujours hors repo
+*.env
+.env.*
+!*.env.example
+
+# Cloudflare local state (caches + miniflare state, regenerated à la volée)
+.wrangler/
+
+# Artifacts de build installer (regenerables via adapter-vsto/installer/build.ps1 ;
+# les .exe finaux sont hébergés sur R2, pas sur git)
+adapter-vsto/installer/payload/
+adapter-vsto/installer/output/
+adapter-vsto/installer/after-install.txt
+
+# Modèle ML — gros fichiers binaires, distribués hors git
+models/
+*.onnx
+*.bpe.model

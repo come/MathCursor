@@ -22,32 +22,35 @@ Depuis ce dossier :
    - `host-contract-csharp/src/MathCursor.HostContract/MathCursor.HostContract.csproj`
    - `core-csharp/src/MathCursor.Core/MathCursor.Core.csproj`
 
-## Structure cible
+## Structure actuelle
 
 ```
-adapter-vsto/src/MathCursor.Vsto/
+adapter-vsto/src/MathCursor/
 ├── Host/
-│   ├── VstoDocumentHost.cs       # implémente IDocumentHost
-│   ├── VstoEquationStore.cs      # implémente IEquationStore (CustomXMLParts)
-│   ├── VstoEditorSurface.cs      # implémente IEditorSurface (popup WPF)
-│   └── VstoUserFeedback.cs       # implémente IUserFeedback (fichier JSON local)
+│   ├── SuggestionService.cs       # orchestration : tick NER + popup + commit OMath
+│   ├── KeyboardInterceptor.cs     # hook Up/Down/Enter/Esc pour la popup
+│   ├── WordContextReader.cs       # lecture du paragraphe courant
+│   └── VstoEquationStore.cs       # IEquationStore via CustomXMLParts (phase édition)
+├── Detection/
+│   ├── MathNerDetector.cs         # modèle NER XLM-RoBERTa ONNX
+│   └── Sp/                        # tokenizer SentencePiece C# pur
 ├── UI/
-│   ├── CaretPopup.xaml            # popup WPF TopMost au caret
-│   └── EditEquationPopup.xaml
-├── Ribbon/
-│   └── MathCursorRibbon.xml
-├── ThisAddIn.cs                  # point d'entrée VSTO
-└── MathCursor.Vsto.csproj
+│   └── SuggestionPopupWindow.cs   # popup WPF TopMost au caret (WPF-Math)
+├── ThisAddIn.cs                   # point d'entrée VSTO
+├── RibbonCallback.cs              # bouton "À propos"
+└── MathCursor.csproj
 ```
 
-## Stratégie d'implémentation (phase C de la roadmap)
+## Flux runtime
 
-1. `ThisAddIn` crée les implémentations VSTO des 4 interfaces host-contract.
-2. Les injecte dans un `MathCursorOrchestrator` (déjà dans `core-csharp`).
-3. Câble les events Word : `ContentControlOnEnter`, `WindowSelectionChange`,
-   raccourci global `Ctrl+Espace` (via hook Windows ou ribbon command).
-4. `VstoEditorSurface` affiche une popup WPF positionnée au caret via
-   `Application.ActiveWindow.RangeFromPoint` / `Application.Caret.ScreenPosition`.
+1. `ThisAddIn` charge le NER, l'engine YAML, le store (CustomXMLParts),
+   et installe `SuggestionService` + `KeyboardInterceptor`.
+2. `SuggestionService` tick toutes les 200 ms + `WindowSelectionChange` :
+   lit le paragraphe, invoque le NER (thread pool), affiche la popup.
+3. Popup masquée si le caret est sur/collé à un OMath existant (évite
+   de relancer l'algo sur du LaTeX déjà rendu).
+4. `KeyboardInterceptor` : Down → NavMode, Up/Down navigue, Enter →
+   commit (insère OMath à partir du LaTeX via UnicodeMath), Esc masque.
 
 ## Packaging / déploiement (phase ultérieure)
 
