@@ -188,4 +188,30 @@ namespace MathCursor.Core.Lattice.Ast
             Low = low; High = high; LeftClosed = leftClosed; RightClosed = rightClosed;
         }
     }
+
+    /// <summary>
+    /// Vecteur ou point avec coordonnées explicites — pattern lycée FR
+    /// <c>u(1, 2)</c> / <c>u (1 2)</c> / <c>A(1, 2)</c> / <c>AB (3 -1)</c>.
+    /// Cf. brief 2026-04-29-vector-coordinates-shorthand.
+    ///
+    /// <para><see cref="Name"/> = identifiant 1 ou 2 lettres (u, v, w, AB, OM, …).</para>
+    /// <para><see cref="Values"/> = 2 ou 3 cellules de coordonnées (atomes ou
+    /// expressions sans espace top-level).</para>
+    /// <para><see cref="Layout"/> = "column" si séparateur interne = espace
+    /// (rendu pmatrix), "row" si séparateur = virgule (rendu inline parens).</para>
+    /// <para><see cref="IsPoint"/> = true pour 1 majuscule seule (A, B, M, …).
+    /// Dans ce cas le rendu omet <c>\vec{...}</c> autour du nom — convention
+    /// française : majuscule seule = point géométrique, pas vecteur.</para>
+    /// </summary>
+    public sealed class VectorCoordinates : AstNode
+    {
+        public string Name { get; }
+        public IReadOnlyList<AstNode> Values { get; }
+        public string Layout { get; }
+        public bool IsPoint { get; }
+        public VectorCoordinates(string name, IReadOnlyList<AstNode> values, string layout, bool isPoint)
+        {
+            Name = name; Values = values; Layout = layout; IsPoint = isPoint;
+        }
+    }
 }

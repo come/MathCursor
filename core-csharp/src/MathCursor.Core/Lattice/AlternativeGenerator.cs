@@ -215,6 +215,12 @@ namespace MathCursor.Core.Lattice
             ScanVAsForallEAsExists(source, topLatex, matches, consumed);
             // 4) Lettres canoniques R/N/Z/Q/C isolées : popup ensemble vs lettre.
             ScanCanonicalSetLetters(source, topLatex, matches, consumed);
+            // 5) Function-typique + parens avec 2/3 args virgule : `f(1, 2)`.
+            //    Default = function call (top-1), alt = vec coords ligne via
+            //    mutation source `f` → `u` (un ident vec-typique) qui force
+            //    le parser à reconnaître le pattern coords.
+            //    Cf. brief 2026-04-29-vector-coordinates-shorthand §3.1.
+            ScanFunctionTypicalWithCommaCoords(source, topLatex, matches, consumed);
             // Tri : priorité aux règles structurantes (V→∀, E→∃ qui changent
             // la sémantique globale) puis aux règles locales (canonical-set,
             // AB→vec, x²→x_2). En cas d'égalité de priorité, rightmost first
@@ -240,6 +246,10 @@ namespace MathCursor.Core.Lattice
             RuleTwoUppercase => 3,
             RuleThreeUppercase => 3,
             RuleLetterSupNumber => 3,
+            // f(1, 2) ambig : priorité haute parce que sémantiquement
+            // structurante (function call vs vecteur de coords) — l'élève
+            // doit trancher avant qu'on touche aux locales.
+            RuleVectorCoordsVsCall => 2,
             _ => 99,
         };
 
@@ -308,6 +318,183 @@ namespace MathCursor.Core.Lattice
         private static bool IsCanonicalSetDelimiter(char c)
             => char.IsWhiteSpace(c) || c == ',' || c == ';' || c == '.'
                || c == ')' || c == ']' || c == '}';
+
+        /// <summary>
+        /// Scan SOURCE : `f(<arg>, <arg>[, <arg>])` où <c>f</c> est un ident
+        /// 1 lettre typique fonction (f, g, h, F, G, H), suivi d'une paren
+        /// avec 2 ou 3 arguments séparés par virgule. Default = function call
+        /// (top-1, déjà rendu), alt = vec coords ligne `\vec{f}(...)`.
+        /// Cf. brief 2026-04-29-vector-coordinates-shorthand §3.1.
+        ///
+        /// Détection légère sur source brute (heuristique) :
+        /// 1) Lettre f/g/h/F/G/H isolée (word boundary à gauche)
+        /// 2) Suivie d'une `(` (avec ou sans espace optionnel)
+        /// 3) Contenu jusqu'à `)` matchant : 2 ou 3 segments virgule top-level
+        /// 4) AUCUN espace top-level entre les segments (sinon c'est déjà
+        ///    layout colonne → parser a tranché coords sans ambig)
+        ///
+        /// Mutation source : `f` → identifiant vec-typique (`u`) à la position
+        /// de la lettre. Force le parser à reconnaître le pattern coords sur
+        /// le re-parse, et on substitue ensuite le nom vec rendu (`\vec{u}`)
+        /// par `\vec{f}` pour l'aperçu fidèle.
+        /// </summary>
+        private static void ScanFunctionTypicalWithCommaCoords(string source, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            for (int i = 0; i < source.Length; i++)
+            {
+                char c = source[i];
+                if (c != 'f' && c != 'g' && c != 'h'
+                    && c != 'F' && c != 'G' && c != 'H') continue;
+                // Word boundary à gauche
+                if (i > 0 && char.IsLetter(source[i - 1])) continue;
+                // Suivi (peut-être après un espace) par `(`
+                int j = i + 1;
+                while (j < source.Length && source[j] == ' ') j++;
+                if (j >= source.Length || source[j] != '(') continue;
+                int openParen = j;
+                // Trouver `)` matching (gestion parens imbriquées + brackets)
+                int depth = 1;
+                int k = openParen + 1;
+                while (k < source.Length && depth > 0)
+                {
+                    char ck = source[k];
+                    if (ck == '(' || ck == '[') depth++;
+                    else if (ck == ')' || ck == ']') depth--;
+                    if (depth == 0) break;
+                    k++;
+                }
+                if (k >= source.Length) continue; // pas de `)` trouvée
+                int closeParen = k;
+                // Découpe top-level par virgule (les espaces sont juste de la
+                // mise en forme à l'intérieur des cellules, pas des séparateurs).
+                var segments = SplitTopLevelByComma(source, openParen + 1, closeParen);
+                if (segments.Count < 2 || segments.Count > 3) continue;
+
+                // Position dans topLatex de la lettre `f`. Heuristique : LaTeX
+                // rendu garde généralement la lettre telle quelle (f → f).
+                int topPos = i < topLatex.Length && topLatex[i] == c
+                    ? i
+                    : topLatex.IndexOf(c, 0);
+                if (topPos < 0 || topPos >= topLatex.Length) continue;
+                if (consumed[topPos]) continue;
+
+                // Le default LaTeX correspond au function call rendu : `f\left(...\right)`.
+                // On le retrouve en partant de `f` jusqu'à la `\right)` qui
+                // correspond. Pour rester simple : on prend le span Latex
+                // entre topPos et la fin du \left(...\right) qu'on identifie
+                // par comptage. Si pas trouvable proprement, on saute.
+                int defaultEnd = FindFuncCallEndInLatex(topLatex, topPos);
+                if (defaultEnd < 0) continue;
+                // Vérifier que toutes les positions [topPos, defaultEnd) sont
+                // libres dans consumed (sinon collision avec un autre match).
+                bool free = true;
+                for (int p = topPos; p < defaultEnd; p++)
+                    if (consumed[p]) { free = false; break; }
+                if (!free) continue;
+
+                var defaultLatex = topLatex.Substring(topPos, defaultEnd - topPos);
+
+                // Construit l'aperçu de l'alt : muter `f` → ident vec-typique
+                // (`u`) puis re-rendre, puis substituer `\vec{u}` → `\vec{f}`
+                // (préservation du nom original).
+                string vecTypicalLetter = "u";
+                var alt1Source = MutateSource(source, i, 1, vecTypicalLetter);
+                var alt1Rendered = RenderRaw(alt1Source);
+                var alt1Latex = alt1Rendered.Replace($"\\vec{{{vecTypicalLetter}}}", $"\\vec{{{c}}}");
+
+                // Pas de mutation au sens "appliquer l'alt" : la mutation logique
+                // serait `f` → `vec f` (préfixer) mais le pipeline ne reconnaît
+                // pas ça nativement comme coords ligne. Plus pragmatique : on
+                // pose le LaTeX rendu directement comme alt, sans SourceMutation.
+                // (Si l'utilisateur sélectionne, l'adapter substitue le LaTeX.)
+                var alts = new List<AmbiguityAlternative>
+                {
+                    // Alt 0 : function call (default, identity — pas de mutation)
+                    new AmbiguityAlternative(defaultLatex, mutation: null),
+                    // Alt 1 : vec coords ligne `\vec{f}(...)`
+                    new AmbiguityAlternative(alt1Latex, mutation: null),
+                };
+                var spot = new AmbiguitySpot(RuleVectorCoordsVsCall, defaultLatex, alts);
+                for (int p = topPos; p < defaultEnd; p++) consumed[p] = true;
+                output.Add(new AmbiguityMatch(spot, topPos, defaultEnd));
+            }
+        }
+
+        /// <summary>
+        /// Découpe [start, end) (string source) par virgules au depth 0
+        /// (parens/brackets ignorées). Retourne les segments comme paires
+        /// (start, end). Au moins 1 segment si la zone est non-vide.
+        /// </summary>
+        private static List<(int start, int end)> SplitTopLevelByComma(string source, int start, int end)
+        {
+            var result = new List<(int, int)>();
+            int depth = 0;
+            int prev = start;
+            for (int i = start; i < end; i++)
+            {
+                char c = source[i];
+                if (c == '(' || c == '[') depth++;
+                else if (c == ')' || c == ']') depth--;
+                else if (c == ',' && depth == 0)
+                {
+                    result.Add((prev, i));
+                    prev = i + 1;
+                }
+            }
+            result.Add((prev, end));
+            return result;
+        }
+
+        /// <summary>
+        /// Trouve la fin d'un function call rendu en LaTeX : `<name>\left(<args>\right)`.
+        /// Retourne l'index juste après la `\right)`. Si pas de pattern reconnu
+        /// (ex: rendu intégré sans \left/\right), -1.
+        /// </summary>
+        private static int FindFuncCallEndInLatex(string topLatex, int nameStart)
+        {
+            // Avancer après les lettres du nom (1 char ASCII pour notre cas
+            // f/g/h/F/G/H — par sécurité, on consomme toutes les lettres ASCII).
+            int p = nameStart;
+            while (p < topLatex.Length && char.IsLetter(topLatex[p])) p++;
+            // Doit être suivi de `\left(`
+            const string LeftParen = "\\left(";
+            if (p + LeftParen.Length > topLatex.Length) return -1;
+            if (topLatex.Substring(p, LeftParen.Length) != LeftParen) return -1;
+            p += LeftParen.Length;
+            // Chercher la `\right)` qui matche, en gérant l'imbrication
+            int depth = 1;
+            while (p < topLatex.Length)
+            {
+                if (p + LeftParen.Length <= topLatex.Length
+                    && topLatex.Substring(p, LeftParen.Length) == LeftParen)
+                { depth++; p += LeftParen.Length; continue; }
+                const string RightParen = "\\right)";
+                if (p + RightParen.Length <= topLatex.Length
+                    && topLatex.Substring(p, RightParen.Length) == RightParen)
+                {
+                    depth--;
+                    p += RightParen.Length;
+                    if (depth == 0) return p;
+                    continue;
+                }
+                p++;
+            }
+            return -1;
+        }
+
+        // Helpers source → LaTeX
+        private static string MutateSource(string source, int offset, int length, string replacement)
+            => source.Substring(0, offset) + replacement + source.Substring(offset + length);
+
+        private static string RenderRaw(string source)
+        {
+            var edges = Lexer.Lex(source);
+            var paths = LatticePathFinder.TopK(edges, source.Length, 1);
+            if (paths.Count == 0) return source;
+            var ast = new Parser(paths[0].Edges).Parse();
+            return LatexRenderer.Render(ast);
+        }
 
         /// <summary>
         /// Parcourt <paramref name="topLatex"/> et émet un match pour chaque
@@ -580,6 +767,13 @@ namespace MathCursor.Core.Lattice
         public const string RuleVAsForall = "v-as-forall";
         public const string RuleEAsExists = "e-as-exists";
         public const string RuleCanonicalSet = "canonical-set";
+        // Ambig f(1, 2) : function call (default) vs vec coords \vec{f}(1, 2).
+        // Cf. brief 2026-04-29-vector-coordinates-shorthand §3.1. Le pattern
+        // n'est déclenché QUE pour les idents typique fonction (f, g, h, F,
+        // G, H) suivis d'une paren contenant 2 ou 3 valeurs séparées par
+        // virgule (= layout row only — pour layout column le parser a déjà
+        // tranché en faveur des coords sans ambig).
+        public const string RuleVectorCoordsVsCall = "vector-coords-vs-call";
 
         /// <summary>
         /// Simule l'application d'une <see cref="SourceMutation"/> sur la

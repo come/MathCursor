@@ -40,6 +40,7 @@ namespace MathCursor.Core.Lattice
             Int it => $"\\int_{{{Render(Unwrap(it.Low))}}}^{{{Render(Unwrap(it.High))}}} {Render(it.Body)}",
             Interval iv => RenderInterval(iv),
             FuncDef fd => RenderFuncDef(fd),
+            VectorCoordinates vc => RenderVectorCoordinates(vc),
             _ => string.Empty,
         };
 
@@ -140,6 +141,27 @@ namespace MathCursor.Core.Lattice
             var leftBr = iv.LeftClosed ? "[" : "]";
             var rightBr = iv.RightClosed ? "]" : "[";
             return $"{leftBr}{Render(Unwrap(iv.Low))},{Render(Unwrap(iv.High))}{rightBr}";
+        }
+
+        // VectorCoordinates : 4 combinaisons (col/row × vec/point).
+        //   layout=column, isPoint=false : \vec{name} \begin{pmatrix} v1 \\ v2 [\\ v3] \end{pmatrix}
+        //   layout=column, isPoint=true  : name \begin{pmatrix} v1 \\ v2 [\\ v3] \end{pmatrix}
+        //   layout=row, isPoint=false    : \vec{name}(v1, v2[, v3])
+        //   layout=row, isPoint=true     : name(v1, v2[, v3])
+        // Cf. brief 2026-04-29-vector-coordinates-shorthand §4.4.
+        private static string RenderVectorCoordinates(VectorCoordinates vc)
+        {
+            var prefix = vc.IsPoint ? vc.Name : $"\\vec{{{vc.Name}}}";
+            var rendered = new System.Collections.Generic.List<string>(vc.Values.Count);
+            foreach (var v in vc.Values) rendered.Add(Render(Unwrap(v)));
+            if (vc.Layout == "column")
+            {
+                var body = string.Join(" \\\\ ", rendered);
+                return $"{prefix} \\begin{{pmatrix}} {body} \\end{{pmatrix}}";
+            }
+            // layout = "row"
+            var inline = string.Join(", ", rendered);
+            return $"{prefix}({inline})";
         }
     }
 }

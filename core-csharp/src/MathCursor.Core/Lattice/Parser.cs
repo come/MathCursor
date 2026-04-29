@@ -25,6 +25,13 @@ namespace MathCursor.Core.Lattice
     public sealed class Parser
     {
         private readonly IReadOnlyList<LatticeEdge> _toks;
+        // _hasSpaceBefore[i] = true si l'arête Space précédait immédiatement le
+        // i-e token filtré dans la liste brute d'origine. Sert au pattern
+        // VectorCoordinates (cf. brief 2026-04-29) : le séparateur interne des
+        // coords (espace = colonne / virgule = ligne) doit être détecté APRÈS
+        // le filtrage des Spaces. Sans ce flag, on ne pourrait pas distinguer
+        // `u(1 2)` (espace = colonne) de `u(12)` (un seul number).
+        private readonly bool[] _hasSpaceBefore;
         private int _i;
 
         // Compteur d'intervalles en cours de parsing. Sert à distinguer un
@@ -37,10 +44,20 @@ namespace MathCursor.Core.Lattice
         public Parser(IReadOnlyList<LatticeEdge> tokens)
         {
             // Filtrer les Space ici plutôt que d'imposer au caller — moins fragile.
+            // En parallèle, on mémorise par token filtré si une arête Space le
+            // précédait dans le flux brut (cf. _hasSpaceBefore plus haut).
             var filtered = new List<LatticeEdge>(tokens.Count);
+            var spaceFlags = new List<bool>(tokens.Count);
+            bool pendingSpace = false;
             foreach (var t in tokens)
-                if (t.Type != EdgeType.Space) filtered.Add(t);
+            {
+                if (t.Type == EdgeType.Space) { pendingSpace = true; continue; }
+                filtered.Add(t);
+                spaceFlags.Add(pendingSpace);
+                pendingSpace = false;
+            }
             _toks = filtered;
+            _hasSpaceBefore = spaceFlags.ToArray();
             _i = 0;
         }
 
@@ -442,6 +459,14 @@ namespace MathCursor.Core.Lattice
             var t = Peek();
             if (t == null) return null;
 
+            // Pattern VectorCoordinates AVANT atom : `<ident>(...)` ou
+            // `<ident_pair>(...)` ou même avec espace (`u (1 2)`). Tente de
+            // matcher 4 critères stricts (§6.b du brief). En cas d'échec sur
+            // n'importe quel critère, _i est restauré et on retombe sur le
+            // flow normal (Atom + multiplication implicite avec Group).
+            var vc = TryParseVectorCoordinates();
+            if (vc != null) return vc;
+
             // Unary - ou +
             if (t.Type == EdgeType.Op && (t.Value == "-" || t.Value == "+"))
             {
@@ -605,6 +630,313 @@ namespace MathCursor.Core.Lattice
             if (t.Type == EdgeType.Ident)  { Consume(); return new Atom("ident",  t.Value); }
             if (t.Type == EdgeType.Greek)  { Consume(); return new Atom("greek",  t.Value); }
             return null;
+        }
+
+        // ---------------- VectorCoordinates (brief 2026-04-29) ----------------
+
+        /// <summary>
+        /// Tente de reconnaître le pattern <c>&lt;ident&gt;(...)</c> ou
+        /// <c>&lt;ident&gt; (...)</c> où l'identifiant est 1 ou 2 lettres et
+        /// les parens contiennent 2 ou 3 cellules avec séparateur HOMOGÈNE
+        /// (que des espaces top-level → layout colonne, que des virgules
+        /// top-level → layout ligne).
+        ///
+        /// Retourne null sur échec et restaure _i pour laisser le flow normal
+        /// reprendre (Atom + multiplication implicite avec Group). C'est la
+        /// stratégie « opt-in stricte » du §6.b du brief : aucun risque de
+        /// régression sur f(x), (0,1), [0,1], etc.
+        ///
+        /// Critères STRICTS (tous obligatoires, sinon fallback) :
+        /// <list type="number">
+        /// <item>Identifiant 1 ou 2 lettres (Atom ident len=1, ou 2 idents
+        ///   len=1 tight-adjacents). Pas de fonction reconnue (cos, sin, …)
+        ///   en première position.</item>
+        /// <item>Suivi de `(` immédiatement (avec ou sans espace avant — ne
+        ///   change rien au layout, cf. spec §2.1).</item>
+        /// <item>Contenu = exactement 2 ou 3 cellules.</item>
+        /// <item>Séparateur interne homogène : que des espaces top-level OU
+        ///   que des virgules top-level — pas de mélange.</item>
+        /// </list>
+        /// </summary>
+        private VectorCoordinates? TryParseVectorCoordinates()
+        {
+            int save = _i;
+            // Critère 1 : identifiant 1 ou 2 lettres en tête. On accepte aussi
+            // le cas où le top-1 du Lexer est Function/Greek/Keyword au même
+            // emplacement — pour `f(...)` la règle scan-source proposera l'alt
+            // vec via AlternativeGenerator (cf. brief §3.1, ambig f-typique).
+            // ICI on prend uniquement les Idents bruts pour ne pas écraser le
+            // comportement function-call existant.
+            var t0 = Peek();
+            if (t0 == null || t0.Type != EdgeType.Ident) { _i = save; return null; }
+            if (t0.Value.Length != 1 || !IsAlphaLetter(t0.Value[0])) { _i = save; return null; }
+
+            string name = t0.Value;
+            int afterIdent = _i + 1;
+
+            // Cas 2 lettres : deuxième Ident len=1 immédiatement adjacent
+            // (sans espace top-1 intermédiaire — pour préserver "u v" comme
+            // produit, pas comme nom de vecteur).
+            var t1 = Peek(1);
+            if (t1 != null && t1.Type == EdgeType.Ident && t1.Value.Length == 1
+                && IsAlphaLetter(t1.Value[0])
+                && t1.Start == t0.End && !_hasSpaceBefore[_i + 1])
+            {
+                name += t1.Value;
+                afterIdent = _i + 2;
+            }
+
+            // Critère 2 : `(` immédiatement après (avec ou sans espace).
+            // Le lexer émet aussi `(-` comme Op multi-char (alias de \in), et
+            // top-1 le préfère pour son coût négatif. Quand notre LHS est un
+            // ident court (= candidat vecteur), `(-` doit être traité comme
+            // `(` + unary minus pour permettre `v(-1 3)` → vec{v} pmatrix.
+            int parenIdx = afterIdent;
+            bool startsWithUnaryMinus = false;
+            if (parenIdx >= _toks.Count || _toks[parenIdx].Type != EdgeType.Op)
+            { _i = save; return null; }
+            if (_toks[parenIdx].Value == "(-") startsWithUnaryMinus = true;
+            else if (_toks[parenIdx].Value != "(") { _i = save; return null; }
+
+            // Trouver le `)` fermant top-level. On scanne en gérant les parens
+            // imbriquées pour calculer la profondeur 0 (séparateurs top-level).
+            int closeIdx = FindMatchingClose(parenIdx);
+            if (closeIdx < 0) { _i = save; return null; }
+
+            // Critère 3 + 4 : split top-level en cellules par séparateur homogène.
+            string layout;
+            var cellRanges = SplitCells(parenIdx + 1, closeIdx, out layout);
+            if (cellRanges == null) { _i = save; return null; }
+            if (cellRanges.Count != 2 && cellRanges.Count != 3) { _i = save; return null; }
+
+            // Layout=row + identifiant typique fonction (f, g, h) → on laisse
+            // le comportement function-call par défaut. Le pattern coords sera
+            // proposé en ALTERNATIVE via AlternativeGenerator.RuleVectorCoordsVsCall
+            // pour donner le choix à l'utilisateur. Cf. brief §3.1 :
+            // « 1 lettre minuscule typique fonction → fonction par défaut ».
+            // En layout=column (séparateur espace), aucune fonction n'utilise
+            // l'espace comme séparateur d'args → toujours coords, pas d'ambig.
+            if (layout == "row" && IsFunctionTypicalIdent(name))
+            { _i = save; return null; }
+
+            // Pour le layout colonne, vérifier qu'aucune cellule ne commence par
+            // un keyword scope (sin/cos/lim/frac/sum/…) NON parenthésé : ces
+            // keywords consomment des args avec espaces, ce qui casserait le
+            // découpage en cellules. Cf. spec §2.4.
+            if (layout == "column")
+            {
+                foreach (var (s, e) in cellRanges)
+                {
+                    if (s == e) { _i = save; return null; } // cellule vide
+                    var first = _toks[s];
+                    if (first.Type == EdgeType.Keyword) { _i = save; return null; }
+                    // Function suivie d'autre chose qu'un Group : `cos t`
+                    // consomme `t` comme arg, casse le découpage. `cos(t)`
+                    // est OK parce que l'arg est entièrement parenthésé.
+                    if (first.Type == EdgeType.Function)
+                    {
+                        if (s + 1 >= e) { _i = save; return null; }
+                        var next = _toks[s + 1];
+                        if (next.Type != EdgeType.Op || next.Value != "(")
+                        { _i = save; return null; }
+                    }
+                }
+            }
+
+            // Parser chaque cellule en sous-expression complète (ParseExpr
+            // avec _i borné). Pour préserver l'isolation des cellules, on
+            // appelle un parse de sous-séquence en sauvegardant/restaurant _i.
+            var values = new List<AstNode>(cellRanges.Count);
+            for (int idx = 0; idx < cellRanges.Count; idx++)
+            {
+                var (s, e) = cellRanges[idx];
+                // Première cellule + `(-` consommé : injecter un `-` synthétique
+                // en tête (l'op multi-char absorbait le `-` qui était logiquement
+                // le signe unaire du premier nombre, ex: `v(-1 3)`).
+                bool injectUnaryMinus = idx == 0 && startsWithUnaryMinus;
+                var cell = ParseSubrange(s, e, injectUnaryMinus);
+                values.Add(cell);
+            }
+
+            // Avancer _i au-delà du `)` consommé.
+            _i = closeIdx + 1;
+
+            bool isPoint = name.Length == 1 && char.IsUpper(name[0]);
+            return new VectorCoordinates(name, values, layout, isPoint);
+        }
+
+        // Liste des idents 1 lettre considérés "typiques fonction" (f, g, h,
+        // F, G, H). Ces noms par défaut → function call ; le pattern
+        // VectorCoordinates est proposé en ALTERNATIVE par
+        // AlternativeGenerator (RuleVectorCoordsVsCall). Cf. brief §3.1.
+        private static bool IsFunctionTypicalIdent(string name)
+            => name.Length == 1
+               && (name == "f" || name == "g" || name == "h"
+                   || name == "F" || name == "G" || name == "H");
+
+        // True si le char est une lettre alphabétique (ASCII + accents FR).
+        // Réplique d'IsAlphabetic du Lexer mais accessible côté parser sans
+        // dépendance circulaire.
+        private static bool IsAlphaLetter(char c)
+        {
+            if (c >= 'a' && c <= 'z') return true;
+            if (c >= 'A' && c <= 'Z') return true;
+            return c == 'é' || c == 'è' || c == 'à' || c == 'ù' || c == 'â'
+                || c == 'ê' || c == 'î' || c == 'ô' || c == 'û' || c == 'ç';
+        }
+
+        /// <summary>
+        /// Trouve l'index du `)` fermant qui matche la `(` à <paramref name="openIdx"/>.
+        /// Gère les parens imbriquées et les brackets `[` / `]` (pour ne pas
+        /// confondre `u([0,1] [2,3])` avec un séparateur space top-level).
+        /// Retourne -1 si non trouvé jusqu'à la fin du flux.
+        /// </summary>
+        private int FindMatchingClose(int openIdx)
+        {
+            int depth = 1;
+            for (int i = openIdx + 1; i < _toks.Count; i++)
+            {
+                var tok = _toks[i];
+                if (tok.Type != EdgeType.Op) continue;
+                if (tok.Value == "(") depth++;
+                else if (tok.Value == ")") { depth--; if (depth == 0) return i; }
+                else if (tok.Value == "[") depth++;
+                else if (tok.Value == "]") depth--;
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// Découpe la séquence [start, end) en cellules selon le séparateur
+        /// HOMOGÈNE détecté au top-level (depth=0 dans les parens/brackets).
+        /// Retourne null si mélange (espace ET virgule), ou si aucune cellule.
+        /// Affecte <paramref name="layout"/> à "column" si séparateur=espace,
+        /// "row" si séparateur=virgule.
+        ///
+        /// Critère séparateur=espace : deux tokens adjacents (depth=0) avec
+        /// _hasSpaceBefore[i]=true sur le second. Critère séparateur=virgule :
+        /// un token Op "," au depth=0.
+        /// </summary>
+        private List<(int start, int end)>? SplitCells(int start, int end, out string layout)
+        {
+            layout = string.Empty;
+            if (start >= end) return null;
+
+            var commaPositions = new List<int>();
+            // "spaceBoundaries" = positions où un séparateur d'espace pur
+            // (sans virgule attenante) existe au top-level. Pour `(1, 2)`,
+            // l'espace après la virgule n'est PAS un séparateur — c'est juste
+            // de la mise en forme. On filtre donc les boundaries dont le
+            // token précédent (ou suivant immédiat sans espace) est `,`.
+            var spaceBoundaries = new List<int>();
+            int depth = 0;
+            for (int i = start; i < end; i++)
+            {
+                var tok = _toks[i];
+                if (tok.Type == EdgeType.Op)
+                {
+                    if (tok.Value == "(" || tok.Value == "[") { depth++; continue; }
+                    if (tok.Value == ")" || tok.Value == "]") { depth--; continue; }
+                    if (depth == 0 && tok.Value == ",") { commaPositions.Add(i); continue; }
+                }
+                if (depth == 0 && i > start && _hasSpaceBefore[i])
+                {
+                    // Ignore les espaces qui suivent immédiatement un `,` ou
+                    // qui précèdent un `,` (ces espaces sont du whitespace de
+                    // mise en forme, pas un séparateur de cellule colonne).
+                    var prev = _toks[i - 1];
+                    bool prevIsComma = prev.Type == EdgeType.Op && prev.Value == ",";
+                    bool nextIsComma = tok.Type == EdgeType.Op && tok.Value == ",";
+                    if (!prevIsComma && !nextIsComma)
+                        spaceBoundaries.Add(i);
+                }
+            }
+
+            // Critère 4 : séparateur HOMOGÈNE — soit que des virgules, soit que
+            // des espaces. Mélange (ex: `u(1, 2 3)`) → rejet.
+            bool hasComma = commaPositions.Count > 0;
+            bool hasSpace = spaceBoundaries.Count > 0;
+            if (hasComma && hasSpace) return null;
+
+            var cells = new List<(int, int)>();
+            if (hasComma)
+            {
+                layout = "row";
+                int prev = start;
+                foreach (var c in commaPositions)
+                {
+                    cells.Add((prev, c));
+                    prev = c + 1;
+                }
+                cells.Add((prev, end));
+            }
+            else if (hasSpace)
+            {
+                layout = "column";
+                int prev = start;
+                foreach (var sp in spaceBoundaries)
+                {
+                    cells.Add((prev, sp));
+                    prev = sp;
+                }
+                cells.Add((prev, end));
+            }
+            else
+            {
+                // Une seule cellule = pas de pattern coords valide (cardinalité ≠ 2/3).
+                // Marqué row par défaut pour ne pas planter mais sera rejeté par
+                // le check 2/3 cellules dans TryParseVectorCoordinates.
+                layout = "row";
+                cells.Add((start, end));
+            }
+            return cells;
+        }
+
+        /// <summary>
+        /// Parse récursivement la sous-séquence [start, end) comme une
+        /// expression complète (ParseExpr) et retourne l'AST. _i est
+        /// sauvegardé/restauré pour ne pas perturber le parser englobant.
+        /// Si la sous-séquence est vide (start == end) → Hole.
+        ///
+        /// <paramref name="injectUnaryMinus"/> = true → ajoute un `-` Op
+        /// synthétique en tête de slice (cas `(-` collé pris comme
+        /// `(` + unary minus). Vu en V1 sur `v(-1 3)`.
+        /// </summary>
+        private AstNode ParseSubrange(int start, int end, bool injectUnaryMinus = false)
+        {
+            if (start >= end && !injectUnaryMinus) return Hole(1);
+            int saveI = _i;
+            var slice = new List<LatticeEdge>(end - start + 1);
+            var sliceSpaces = new List<bool>(end - start + 1);
+            if (injectUnaryMinus)
+            {
+                // Synthétiser une arête Op "-" non-tight (cf. parser ParsePrimary
+                // unary case). Position arbitraire (-1) puisque cette arête
+                // n'est pas dans le DAG d'origine ; aucune règle parse n'utilise
+                // les positions des tokens (seulement Tight).
+                slice.Add(new LatticeEdge(-1, -1, EdgeType.Op, "-", 0, tight: false));
+                sliceSpaces.Add(false);
+            }
+            for (int i = start; i < end; i++)
+            {
+                slice.Add(_toks[i]);
+                // Premier token "vrai" de la cellule (après l'éventuelle
+                // injection unary minus) : pas d'espace en tête.
+                sliceSpaces.Add(i == start ? false : _hasSpaceBefore[i]);
+            }
+            var sub = new Parser(slice, sliceSpaces);
+            var ast = sub.ParseExpr() ?? (AstNode)Hole(1);
+            _i = saveI;
+            return ast;
+        }
+
+        // Ctor interne utilisé par ParseSubrange : on a déjà la liste filtrée
+        // (sans Spaces) et le tableau parallèle de flags, pas besoin de re-filtrer.
+        private Parser(List<LatticeEdge> filtered, List<bool> spaceFlags)
+        {
+            _toks = filtered;
+            _hasSpaceBefore = spaceFlags.ToArray();
+            _i = 0;
         }
 
         // ---------------- Scopes ----------------
