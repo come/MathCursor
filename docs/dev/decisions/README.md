@@ -19,9 +19,17 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-04-29
+- `[molle]` Feat — [Décomposition modulaire de `forall`/`exists` (∀ + var + ∈ + set)](2026-04-29-Feat-forall-modular-decomposition.md) (Supersedes scope forall du 28-04)
+- `[molle]` Feat — [Définition de fonction au clavier `f:x->expr` → `f : x ↦ expr`](2026-04-29-Feat-function-definition.md)
+- `[molle]` Feat — [Ensembles canoniques R/N/Z/Q/C avec modificateurs `*`/`+`/`-`](2026-04-29-Feat-canonical-sets.md)
+- `[molle]` Feat — [Juxtaposition tight = groupement implicite pour `/`, `^`, `_`](2026-04-29-Feat-tight-as-grouping.md)
+- `[molle]` Feat — [Composition d'intervalles : union (`U`/`union`) et intersection (`inter`)](2026-04-29-Feat-interval-union-intersection.md)
+
 ### 2026-04-28
+- `[molle]` Feat — [Notation intervalle française au clavier (`[a,b[`, `]a,b]`...)](2026-04-28-Feat-interval-notation.md)
 - `[forte]` Meta — [Refactor : ZoneResolver, point d'entrée unique pour la résolution de zone](2026-04-28-Meta-zone-resolver-refactor.md)
-- `[forte]` Feat — [Quantificateur ∀/∃ via scope clavier + désambiguïsation par mutation source](2026-04-28-Feat-forall-scope-source-mutation.md)
+- `[forte]` Feat — [Quantificateur ∀/∃ via scope clavier + désambiguïsation par mutation source](2026-04-28-Feat-forall-scope-source-mutation.md) `retracté`
 
 ### 2026-04-27
 - `[molle]` Feat — [Corpus NER v4 (keywords math en début de zone)](2026-04-27-Feat-ner-corpus-v4-keywords.md)

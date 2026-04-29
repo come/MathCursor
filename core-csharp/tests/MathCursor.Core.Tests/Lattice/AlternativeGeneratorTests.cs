@@ -299,7 +299,9 @@ namespace MathCursor.Core.Tests.Lattice
         {
             // V suivi d'espace → 3 alts : V identity (no mutation), ∀ (mutation
             // V→forall), √ (mutation V→racine). L'utilisateur choisit dans la popup.
-            var r = _engine.ConvertWithAmbiguity("V x R");
+            // Source sans R/N/Z/Q/C à droite pour que le rightmost spot reste V
+            // (sinon canonical-set sur R écrase, cf. ADR canonical sets).
+            var r = _engine.ConvertWithAmbiguity("V x y");
             Assert.NotNull(r.Spot);
             Assert.Equal(AlternativeGenerator.RuleVAsForall, r.Spot!.RuleId);
             Assert.Equal(3, r.Spot.Alternatives.Count);
@@ -337,16 +339,18 @@ namespace MathCursor.Core.Tests.Lattice
         [Fact]
         public void V_alt_previews_render_real_post_mutation()
         {
-            // L'aperçu LaTeX de chaque alt = rendu RÉEL post-mutation. Pour
-            // `V x R` avec mutation V→forall, le preview doit être
-            // `\forall x \in R` (var et set remplis), pas `\forall \square \in \square`.
-            var r = _engine.ConvertWithAmbiguity("V x R");
+            // Décomposition modulaire (ADR 29-04) : forall n'est plus un scope.
+            // L'aperçu de l'alt ∀ pour `V x y` est juste `\forall xy` (juxtaposition
+            // simple, pas de \in automatique). L'utilisateur ajoute `dans`/`(-`
+            // explicitement après s'il veut le \in.
+            var r = _engine.ConvertWithAmbiguity("V x y");
             Assert.NotNull(r.Spot);
-            // Alt 0 (V identity) : rendu source telle quelle = "VxR" (concat sans espaces)
-            Assert.Contains("V", r.Spot!.Alternatives[0].Latex);
-            // Alt 1 (∀) : rendu post-mutation V→forall = "\forall x \in R"
-            Assert.Equal("\\forall x \\in R", r.Spot.Alternatives[1].Latex);
-            // Alt 2 (√) : rendu post-mutation V→racine = "\sqrt{x}R" (racine consomme x, R en suite)
+            Assert.Equal(AlternativeGenerator.RuleVAsForall, r.Spot!.RuleId);
+            // Alt 0 (V identity)
+            Assert.Contains("V", r.Spot.Alternatives[0].Latex);
+            // Alt 1 (∀) : rendu post-mutation V→forall, juxtaposition
+            Assert.Contains("\\forall", r.Spot.Alternatives[1].Latex);
+            // Alt 2 (√) : rendu post-mutation V→racine
             Assert.Contains("\\sqrt", r.Spot.Alternatives[2].Latex);
         }
 
@@ -375,38 +379,128 @@ namespace MathCursor.Core.Tests.Lattice
         }
 
         [Fact]
-        public void Forall_x_R_after_mutation_renders_full_scope()
+        public void Forall_x_dans_R_juxtaposition()
         {
-            // Simule l'état post-mutation : la source est devenue `forall x R`
-            // (V remplacé par forall). Le pipeline doit produire le scope.
-            var r = _engine.ConvertWithAmbiguity("forall x R");
+            // Décomposition modulaire (ADR 29-04) : forall + x + dans + R
+            // se composent par juxtaposition. Plus de scope avec \in auto.
+            var r = _engine.ConvertWithAmbiguity("forall x dans R");
             Assert.Equal("\\forall x \\in R", r.TopLatex);
-            // Pas d'ambig sur ce résultat (forall scope est résolu)
-            Assert.Null(r.Spot);
+            // Ambig canonical-set proposée sur R isolé
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleCanonicalSet, r.Spot!.RuleId);
         }
 
         [Fact]
-        public void Forall_alone_after_mutation_renders_squares()
+        public void Forall_alone_renders_just_forall()
         {
-            // Après mutation `V` → `forall` mais avant que l'utilisateur tape
-            // var et set : source = `forall`, render = `\forall \square \in \square`.
-            // L'utilisateur voit immédiatement les boîtes à remplir.
+            // Décomposition modulaire : forall seul = juste "\forall " (avec
+            // trailing space pour la juxtaposition future).
             var r = _engine.ConvertWithAmbiguity("forall");
-            Assert.Contains("\\forall", r.TopLatex);
-            Assert.Contains("\\square", r.TopLatex);
-            Assert.Contains("\\in", r.TopLatex);
+            Assert.Equal("\\forall ", r.TopLatex);
         }
 
         [Fact]
         public void E_yields_two_alternatives()
         {
             // E : 2 alts (E identity / ∃). Pas de "racine" pour E (uniquement V).
-            var r = _engine.ConvertWithAmbiguity("E y N");
+            // Source sans R/N/Z/Q/C à droite pour que rightmost reste E.
+            var r = _engine.ConvertWithAmbiguity("E y z");
             Assert.NotNull(r.Spot);
             Assert.Equal(AlternativeGenerator.RuleEAsExists, r.Spot!.RuleId);
             Assert.Equal(2, r.Spot.Alternatives.Count);
             Assert.Null(r.Spot.Alternatives[0].Mutation);
             Assert.Equal("exists", r.Spot.Alternatives[1].Mutation!.Replacement);
+        }
+
+        // ---- Ensembles canoniques R/N/Z/Q/C ----
+
+        [Fact]
+        public void R_isolated_yields_two_alts_ensemble_default()
+        {
+            // R seul (suivi d'EOF) → popup avec 2 alts :
+            // - alt 0 (focus défaut) = ensemble \mathbb{R} via mutation R→bbR
+            // - alt 1 = R lettre identity (variable)
+            var r = _engine.ConvertWithAmbiguity("R");
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleCanonicalSet, r.Spot!.RuleId);
+            Assert.Equal(2, r.Spot.Alternatives.Count);
+            // Alt 0 : mutation R → bbR
+            Assert.NotNull(r.Spot.Alternatives[0].Mutation);
+            Assert.Equal("bbR", r.Spot.Alternatives[0].Mutation!.Replacement);
+            Assert.Contains("\\mathbb{R}", r.Spot.Alternatives[0].Latex);
+            // Alt 1 : identity
+            Assert.Null(r.Spot.Alternatives[1].Mutation);
+        }
+
+        [Fact]
+        public void R_in_pi_R_squared_no_ambig()
+        {
+            // pi*R^2 : R suivi de ^ tight (opérateur math) → PAS isolé,
+            // pas de popup. Préserve la formule de géométrie.
+            var r = _engine.ConvertWithAmbiguity("pi*R^2");
+            // Pas d'ambig sur R (peut y avoir une autre, ex sur sup/x², mais pas R)
+            if (r.Spot != null)
+                Assert.NotEqual(AlternativeGenerator.RuleCanonicalSet, r.Spot.RuleId);
+        }
+
+        [Fact]
+        public void R_in_pi_R_squared_unicode_no_ambig()
+        {
+            // pi*R² : idem avec unicode super-2 (préprocessé en ^2)
+            var r = _engine.ConvertWithAmbiguity("pi*R²");
+            if (r.Spot != null)
+                Assert.NotEqual(AlternativeGenerator.RuleCanonicalSet, r.Spot.RuleId);
+        }
+
+        [Fact]
+        public void R_followed_by_op_no_ambig()
+        {
+            // 2R+1 : R suivi de + (op math) → pas isolé
+            var r = _engine.ConvertWithAmbiguity("2R+1");
+            if (r.Spot != null)
+                Assert.NotEqual(AlternativeGenerator.RuleCanonicalSet, r.Spot.RuleId);
+        }
+
+        [Fact]
+        public void R_followed_by_comma_yields_ambig()
+        {
+            // x dans R, x ≥ 0 : R suivi de , → isolé, popup
+            var r = _engine.ConvertWithAmbiguity("x dans R, x");
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleCanonicalSet, r.Spot!.RuleId);
+        }
+
+        [Fact]
+        public void N_isolated_yields_ambig()
+        {
+            var r = _engine.ConvertWithAmbiguity("N");
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleCanonicalSet, r.Spot!.RuleId);
+            Assert.Equal("bbN", r.Spot.Alternatives[0].Mutation!.Replacement);
+        }
+
+        [Fact]
+        public void Z_isolated_yields_ambig()
+        {
+            var r = _engine.ConvertWithAmbiguity("Z");
+            Assert.NotNull(r.Spot);
+            Assert.Equal("bbZ", r.Spot!.Alternatives[0].Mutation!.Replacement);
+        }
+
+        [Fact]
+        public void Forall_x_dans_bbR_via_juxtaposition()
+        {
+            // Décomposition modulaire : forall + x + dans + bbR.
+            var r = _engine.ConvertWithAmbiguity("forall x dans bbR");
+            Assert.Equal("\\forall x \\in \\mathbb{R}", r.TopLatex);
+        }
+
+        [Fact]
+        public void BbR_with_modifier_via_pipeline()
+        {
+            // bbR* → \mathbb{R}^*
+            var r = _engine.ConvertWithAmbiguity("bbR*");
+            Assert.Equal("\\mathbb{R}^*", r.TopLatex);
         }
     }
 }

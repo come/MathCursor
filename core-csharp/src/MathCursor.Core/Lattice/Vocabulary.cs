@@ -39,6 +39,22 @@ namespace MathCursor.Core.Lattice
             { "dans",      "in" },
             { "perp",      "perp" },
             { "perpendiculaire", "perp" },
+            { "union",     "union" },
+            { "inter",     "inter" },
+            { "intersection", "inter" },
+            // Ensembles canoniques. On enregistre uniquement les versions
+            // préfixées `bb*` parce que les lettres seules R/N/Z/Q/C doivent
+            // rester atom par défaut (pour préserver `pi*R²`, `2N+1`, etc.).
+            // L'AlternativeGenerator scan R/N/Z/Q/C isolées et propose une
+            // mutation `R` → `bbR` si l'utilisateur veut l'ensemble.
+            // Clés en minuscules : le lexer fait ToLowerInvariant sur le mot
+            // avant lookup. La mutation `bbR` (tapée caps par convention) est
+            // donc lookupée comme `bbr` dans ce dict.
+            { "bbr",       "bbR" },
+            { "bbn",       "bbN" },
+            { "bbz",       "bbZ" },
+            { "bbq",       "bbQ" },
+            { "bbc",       "bbC" },
         };
 
         /// <summary>Fonctions nommées qui prennent un argument (sin x, cos(2x)).</summary>
@@ -68,6 +84,9 @@ namespace MathCursor.Core.Lattice
             { "<>", "neq" },
             { "->", "to" },
             { "=>", "Rightarrow" },
+            // Notation clavier `(-` pour `\in` (alias de `dans`/`in`/`appartient`).
+            // Visuellement le `(` ouvert + `-` rappelle ∈.
+            { "(-", "in_op" },
             // // = parallèle (∥) entre deux droites/vecteurs. Évite que la
             // saisie clavier fluide "AB//CD" soit interprétée comme une
             // fraction imbriquée AB/(CD) ou similaire.

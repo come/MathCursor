@@ -268,46 +268,168 @@ namespace MathCursor.Core.Tests.Lattice
 
         // ------------------ Quantificateurs ------------------
 
-        [Fact]
-        public void Forall_x_in_R_via_pipeline()
-            => Assert.Equal("\\forall x \\in R", RenderTop("forall x R"));
+        // Décomposition modulaire (cf. ADR 29-04 supersedes scope du 28-04) :
+        // forall + var + dans/in/(- + set se composent naturellement par
+        // juxtaposition, sans nœud Quant ni grammaire scope.
 
         [Fact]
-        public void Forall_x_dans_R_renders_with_in()
-            // `dans` keyword → `in` (alias) consommé par le scope, le `\in` est
-            // généré par le renderer du Quant. L'utilisateur n'a jamais à taper
-            // `\in` ni à connaître le LaTeX.
+        public void Forall_alone_renders_just_forall()
+            // Trailing space pour la juxtaposition (cf. ADR 29-04).
+            => Assert.Equal("\\forall ", RenderTop("forall"));
+
+        [Fact]
+        public void Exists_alone_renders_just_exists()
+            => Assert.Equal("\\exists ", RenderTop("exists"));
+
+        [Fact]
+        public void Forall_x_dans_R_via_juxtaposition()
+            // forall + x + dans (\in) + R → composition naturelle. Le \in
+            // a des espaces autour (cf. Const " \\in ") qui se propagent.
             => Assert.Equal("\\forall x \\in R", RenderTop("forall x dans R"));
 
         [Fact]
-        public void Forall_var_only_renders_with_hole_set()
-            // forall x sans set → Set=Hole, render = `\forall x \in \square `
-            // (le \in est toujours là, symétrique avec somme qui montre toujours
-            // les rails du scope même avec des carrés vides).
-            => Assert.Equal("\\forall x \\in \\square ", RenderTop("forall x"));
+        public void Forall_x_in_R_via_juxtaposition()
+            => Assert.Equal("\\forall x \\in R", RenderTop("forall x in R"));
 
         [Fact]
-        public void Forall_alone_renders_two_squares()
-            // `forall` seul : Quant(Hole, Hole), jamais juste \forall.
-            // L'utilisateur voit immédiatement `\forall \square \in \square`
-            // après mutation V→forall, prêt à recevoir var et set au clavier.
-            => Assert.Equal("\\forall \\square  \\in \\square ", RenderTop("forall"));
+        public void Forall_x_arrow_R_keyboard_alias()
+            // forall x (- R : `(-` est l'alias clavier de \in
+            => Assert.Equal("\\forall x \\in R", RenderTop("forall x (- R"));
 
         [Fact]
-        public void Exists_y_in_N_via_pipeline()
-            => Assert.Equal("\\exists y \\in N", RenderTop("exists y N"));
+        public void Exists_y_dans_N_via_juxtaposition()
+            => Assert.Equal("\\exists y \\in N", RenderTop("exists y dans N"));
+
+        // ------------------ Intervalles français ------------------
 
         [Fact]
-        public void Forall_with_holes_renders_squares()
+        public void Closed_interval_renders_brackets()
+            => Assert.Equal("[0,1]", RenderTop("[0,1]"));
+
+        [Fact]
+        public void Closed_open_interval_renders_correctly()
+            => Assert.Equal("[0,1[", RenderTop("[0,1["));
+
+        [Fact]
+        public void Open_closed_interval_renders_correctly()
+            => Assert.Equal("]0,1]", RenderTop("]0,1]"));
+
+        [Fact]
+        public void Open_open_interval_renders_correctly()
+            => Assert.Equal("]0,1[", RenderTop("]0,1["));
+
+        [Fact]
+        public void Interval_with_neg_infinity_renders()
+            // ]-inf,1] avec inf keyword → ]-\infty,1]
+            => Assert.Equal("]-\\infty,1]", RenderTop("]-inf,1]"));
+
+        [Fact]
+        public void Interval_in_forall_set_explicit_in()
         {
-            // AST construit à la main : forall ⬜ ⬜ → \forall \square  \in \square
-            // C'est l'état que voit l'utilisateur juste après mutation V→forall
-            // avant qu'il tape var et set.
-            var ast = new Quant("\\forall", new Hole(1), new Hole(2));
-            var rendered = LatexRenderer.Render(ast);
-            Assert.Contains("\\forall", rendered);
-            Assert.Contains("\\square", rendered);
-            Assert.Contains("\\in", rendered);
+            // Décomposition modulaire (ADR 29-04) : il faut taper `dans`/`in`/`(-`
+            // explicitement entre var et set. Sans, c'est juste une mult implicite.
+            Assert.Equal("\\forall x \\in [0,1]", RenderTop("forall x dans [0,1]"));
         }
+
+        [Fact]
+        public void Interval_in_forall_no_in_keyword_is_juxtaposition()
+        {
+            // `forall x [0,1]` sans keyword `dans` = juxtaposition simple
+            Assert.Equal("\\forall x[0,1]", RenderTop("forall x [0,1]"));
+        }
+
+        // ------------------ Union / Intersection d'intervalles ------------------
+
+        [Fact]
+        public void Union_keyword_renders_with_cup()
+            => Assert.Equal("[0,1] \\cup [3,5]", RenderTop("[0,1] union [3,5]"));
+
+        [Fact]
+        public void U_between_intervals_renders_with_cup()
+            => Assert.Equal("[0,1] \\cup [3,5]", RenderTop("[0,1] U [3,5]"));
+
+        [Fact]
+        public void U_between_intervals_no_space_renders_with_cup()
+            => Assert.Equal("[0,1] \\cup [3,5]", RenderTop("[0,1]U[3,5]"));
+
+        [Fact]
+        public void Inter_keyword_renders_with_cap()
+            => Assert.Equal("[0,1] \\cap [0.5,2]", RenderTop("[0,1] inter [0.5,2]"));
+
+        [Fact]
+        public void Forall_with_union_set_explicit_in()
+            // forall x dans [0,1]U[2,3] → \forall x \in [0,1] \cup [2,3]
+            // (avec keyword `dans` explicite, cf. décomposition modulaire 29-04)
+            => Assert.Equal("\\forall x \\in [0,1] \\cup [2,3]", RenderTop("forall x dans [0,1]U[2,3]"));
+
+        // ------------------ ADR 29-04 tight-as-grouping pour / ------------------
+
+        [Fact]
+        public void AB_slash_DC_tight_renders_as_fraction_block()
+            // AB/DC tight : rhs absorbe DC en bloc → \frac{AB}{DC}
+            => Assert.Equal("\\frac{AB}{DC}", RenderTop("AB/DC"));
+
+        [Fact]
+        public void AB_slash_BC_tight_renders_as_fraction_block()
+            // Cas explicitement listé dans l'ADR
+            => Assert.Equal("\\frac{AB}{BC}", RenderTop("AB/BC"));
+
+        [Fact]
+        public void Slash_tight_with_plus_collé_groups_rhs()
+            // 1/x+1 collé : rhs absorbe (x+1) → \frac{1}{x+1}
+            => Assert.Equal("\\frac{1}{x+1}", RenderTop("1/x+1"));
+
+        [Fact]
+        public void Slash_with_space_before_plus_does_not_group_rhs()
+            // 1/x +1 (espace) : rhs = juste x, le +1 reste hors fraction
+            => Assert.Equal("\\frac{1}{x}+1", RenderTop("1/x +1"));
+
+        [Fact]
+        public void Simple_slash_unchanged()
+            // 1/x simple : non-régression, \frac{1}{x}
+            => Assert.Equal("\\frac{1}{x}", RenderTop("1/x"));
+
+        // ------------------ Ensembles canoniques (keyword bbR/bbN/etc.) ------------------
+
+        [Fact]
+        public void BbR_renders_mathbb_R()
+            => Assert.Equal("\\mathbb{R}", RenderTop("bbR"));
+
+        [Fact]
+        public void BbN_renders_mathbb_N()
+            => Assert.Equal("\\mathbb{N}", RenderTop("bbN"));
+
+        [Fact]
+        public void BbR_star_renders_with_exponent()
+            // R* tight = réels non nuls
+            => Assert.Equal("\\mathbb{R}^*", RenderTop("bbR*"));
+
+        [Fact]
+        public void BbR_plus_renders_with_exponent()
+            => Assert.Equal("\\mathbb{R}^+", RenderTop("bbR+"));
+
+        [Fact]
+        public void BbR_minus_renders_with_exponent()
+            // R- existe : réels négatifs
+            => Assert.Equal("\\mathbb{R}^-", RenderTop("bbR-"));
+
+        [Fact]
+        public void BbR_star_plus_renders_strict_positive()
+            // R*+ ou R+* = strictement positifs
+            => Assert.Equal("\\mathbb{R}_+^*", RenderTop("bbR*+"));
+
+        [Fact]
+        public void BbR_plus_star_renders_strict_positive()
+            => Assert.Equal("\\mathbb{R}_+^*", RenderTop("bbR+*"));
+
+        [Fact]
+        public void BbR_star_minus_renders_strict_negative()
+            => Assert.Equal("\\mathbb{R}_-^*", RenderTop("bbR*-"));
+
+        [Fact]
+        public void Forall_x_in_bbR_via_pipeline_explicit_in()
+            // forall x dans bbR → \forall x \in \mathbb{R}
+            // Décomposition modulaire : keyword `dans` explicite.
+            => Assert.Equal("\\forall x \\in \\mathbb{R}", RenderTop("forall x dans bbR"));
     }
 }

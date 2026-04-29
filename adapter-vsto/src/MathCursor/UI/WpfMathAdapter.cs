@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
 namespace MathCursor.UI
@@ -25,15 +24,17 @@ namespace MathCursor.UI
 
             string s = latex;
 
-            // 1) \mathbb{X} → caractère Unicode (WpfMath rend les chars du font math).
-            //    Pour les lettres rares non-mappées, on déballe en \mathrm{X}.
-            s = MathbbRegex.Replace(s, m =>
-            {
-                var letter = m.Groups[1].Value;
-                return MathbbMap.TryGetValue(letter, out var unicode)
-                    ? unicode
-                    : "\\mathrm{" + letter + "}";
-            });
+            // 1) \mathbb{X} → \mathrm{X} pour la popup. WpfMath ne supporte
+            //    NI \mathbb NI \mathbf NI le caractère Unicode `ℝ` (testés :
+            //    tous rendent un point placeholder). \mathrm est natively
+            //    supporté et donne un X en romain droit, distinctif visuellement
+            //    de la variable italique.
+            //
+            //    Compromis assumé : on perd la double barre dans la popup,
+            //    mais la conversion finale Word OMath reste \mathbb{X} (path
+            //    SuggestionService.InsertOMathAt qui ne passe pas par Adapt,
+            //    Word OMath gère `\mathbb` natively → vrai ℝ avec barre).
+            s = MathbbRegex.Replace(s, "\\mathrm{$1}");
 
             // 2) \widehat{X} → \hat{X}. Perd le chapeau étendu pour multi-char,
             //    acceptable visuellement.
@@ -84,20 +85,6 @@ namespace MathCursor.UI
                 RegexOptions.Compiled | RegexOptions.Singleline);
 
         // ----- maps -----
-
-        // Caractères Unicode "letterlike" couvrant les ensembles classiques
-        // de maths lycée/sup. Lettres rares (K/F/T/...) fallback en \mathrm.
-        private static readonly Dictionary<string, string> MathbbMap =
-            new Dictionary<string, string>
-            {
-                { "R", "ℝ" }, // ℝ
-                { "N", "ℕ" }, // ℕ
-                { "Z", "ℤ" }, // ℤ
-                { "Q", "ℚ" }, // ℚ
-                { "C", "ℂ" }, // ℂ
-                { "P", "ℙ" }, // ℙ
-                { "H", "ℍ" }, // ℍ
-            };
 
         // Substitutions simples (ordre important : remplacements longs d'abord).
         private static readonly (string from, string to)[] LiteralSubs = new[]

@@ -3,7 +3,14 @@
 **Date :** 2026-04-28
 **Kind :** Feat
 **Température :** forte
-**Statut :** acté
+**Statut :** retracté
+**Superseded by :** [2026-04-29-Feat-forall-modular-decomposition.md](2026-04-29-Feat-forall-modular-decomposition.md)
+
+> ⚠️ **ADR retracté le 2026-04-29.** Le scope `forall var (in?) set` introduit
+> ici a été remplacé par une décomposition modulaire (∀ + var + ∈ + set
+> juxtaposés). ~150 lignes de code en moins. Voir l'ADR successeur pour les
+> motifs et le nouveau périmètre. Le mécanisme de **désambig V → 3 alts (V/∀/√)**
+> et de **mutation source** est conservé ; seul le scope monolithique disparaît.
 
 ## Décision
 

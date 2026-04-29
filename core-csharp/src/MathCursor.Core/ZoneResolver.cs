@@ -138,10 +138,16 @@ namespace MathCursor.Core
 
         /// <summary>
         /// Applique les préférences source-mutation à la source brute.
-        /// Itère jusqu'à fixpoint : à chaque tour, on convertit, on prend le
-        /// rightmost Spot. Si son ruleId a une pref enregistrée et que l'alt
-        /// préférée a une mutation, on l'applique et on recommence. Stop quand
-        /// pas de Spot, pas de pref, ou pref sans mutation (= alt identity).
+        /// Itère jusqu'à fixpoint : à chaque tour, on convertit et on cherche
+        /// dans <see cref="AmbiguityResult.AllMatches"/> le PREMIER match dont
+        /// le ruleId a une pref enregistrée ET dont l'alt préférée a une mutation.
+        /// On applique cette mutation, on recommence. Stop quand aucun match
+        /// applicable.
+        ///
+        /// On scanne tous les matches (pas juste le rightmost) parce qu'une
+        /// pref peut concerner un match qui n'est pas le plus à droite — ex:
+        /// `V x R` avec pref forall pour V mais Spot rightmost = R (canonical-set).
+        /// Sans cette généralisation, la pref V→forall ne s'appliquerait jamais.
         /// </summary>
         private string ApplyPreferences(string source)
         {
@@ -150,15 +156,20 @@ namespace MathCursor.Core
             for (int i = 0; i < MaxMutationIterations; i++)
             {
                 var r = _engine.ConvertWithAmbiguity(source);
-                if (r.Spot == null) return source;
-                if (!_preferences.TryGetValue(r.Spot.RuleId, out var altIdx))
-                    return source;
-                if (altIdx < 0 || altIdx >= r.Spot.Alternatives.Count) return source;
-                var alt = r.Spot.Alternatives[altIdx];
-                if (alt.Mutation == null) return source;
-                source = source.Substring(0, alt.Mutation.Offset)
-                       + alt.Mutation.Replacement
-                       + source.Substring(alt.Mutation.Offset + alt.Mutation.Length);
+                SourceMutation? mutToApply = null;
+                foreach (var m in r.AllMatches)
+                {
+                    if (!_preferences.TryGetValue(m.Spot.RuleId, out var altIdx)) continue;
+                    if (altIdx < 0 || altIdx >= m.Spot.Alternatives.Count) continue;
+                    var alt = m.Spot.Alternatives[altIdx];
+                    if (alt.Mutation == null) continue; // identity, rien à appliquer
+                    mutToApply = alt.Mutation;
+                    break;
+                }
+                if (mutToApply == null) return source;
+                source = source.Substring(0, mutToApply.Offset)
+                       + mutToApply.Replacement
+                       + source.Substring(mutToApply.Offset + mutToApply.Length);
             }
             return source;
         }

@@ -156,17 +156,20 @@ namespace MathCursor.Core.Lattice.Ast
         }
     }
 
-    /// <summary>Quantificateur : ∀ x ∈ R, ∃ x ∈ R. <see cref="Symbol"/> = "\\forall" ou "\\exists".
-    /// Args manquants matérialisés par des <see cref="Hole"/> (jamais null) — symétrique
-    /// avec <see cref="Sum"/> et <see cref="Lim"/>. Le `\in` est toujours rendu.</summary>
-    public sealed class Quant : AstNode
+    /// <summary>Intervalle français : <c>[a,b]</c>, <c>[a,b[</c>, <c>]a,b]</c>, <c>]a,b[</c>.
+    /// Les flags <see cref="LeftClosed"/> / <see cref="RightClosed"/> indiquent
+    /// si la borne est incluse (`[` / `]` côté ouvert/fermé). Le rendu garde la
+    /// notation lycée française telle quelle (brackets bruts, pas de `\left`/`\right`
+    /// pour préserver la compat WpfMath/Word OMath sur les délimiteurs inversés).</summary>
+    public sealed class Interval : AstNode
     {
-        public string Symbol { get; }
-        public AstNode Var { get; }
-        public AstNode Set { get; }
-        public Quant(string symbol, AstNode var, AstNode set)
+        public AstNode Low { get; }
+        public AstNode High { get; }
+        public bool LeftClosed { get; }
+        public bool RightClosed { get; }
+        public Interval(AstNode low, AstNode high, bool leftClosed, bool rightClosed)
         {
-            Symbol = symbol; Var = var; Set = set;
+            Low = low; High = high; LeftClosed = leftClosed; RightClosed = rightClosed;
         }
     }
 }

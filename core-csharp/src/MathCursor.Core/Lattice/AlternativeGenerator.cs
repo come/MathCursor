@@ -213,10 +213,78 @@ namespace MathCursor.Core.Lattice
             //    Scannent la source brute (pas le LaTeX rendu) pour avoir les
             //    positions exactes à muter.
             ScanVAsForallEAsExists(source, topLatex, matches, consumed);
+            // 4) Lettres canoniques R/N/Z/Q/C isolées : popup ensemble vs lettre.
+            ScanCanonicalSetLetters(source, topLatex, matches, consumed);
             // Tri par position décroissante : le rightmost reste matches[0].
             matches.Sort((a, b) => b.Start.CompareTo(a.Start));
             return matches;
         }
+
+        /// <summary>
+        /// Scan SOURCE : R/N/Z/Q/C isolées (précédées de non-lettre, suivies
+        /// d'espace/EOF/ponctuation/fermeture) → popup ensemble vs lettre.
+        /// Critère « isolé » strict pour préserver les formules de géométrie
+        /// (`pi*R^2`, `2N+1`, etc.) où R est une variable.
+        ///
+        /// Émet 2 alternatives :
+        /// <list type="number">
+        /// <item>Alt 0 (focus défaut) : ensemble `\mathbb{R}` via mutation
+        ///   source `R` → `bbR` (le keyword bbR est consommé par ParseScope
+        ///   et rend `\mathbb{R}`).</item>
+        /// <item>Alt 1 : lettre identity (R reste atom, variable).</item>
+        /// </list>
+        ///
+        /// Délimiteurs droits qui valident l'isolation : espace, EOF,
+        /// ponctuation `, ; .`, fermeture `]`/`)`/`}`. Les opérateurs math
+        /// (`+`, `-`, `*`, `/`, `^`, `_`) NE sont pas considérés isolants
+        /// car ils suggèrent un contexte arithmétique (variable).
+        /// </summary>
+        private static void ScanCanonicalSetLetters(string source, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            for (int i = 0; i < source.Length; i++)
+            {
+                char c = source[i];
+                if (c != 'R' && c != 'N' && c != 'Z' && c != 'Q' && c != 'C') continue;
+                // Word boundary à gauche
+                if (i > 0 && char.IsLetter(source[i - 1])) continue;
+                // À droite : EOF, espace, ou délimiteur de contexte ensemble
+                bool followedByDelim = i + 1 == source.Length
+                    || IsCanonicalSetDelimiter(source[i + 1]);
+                if (!followedByDelim) continue;
+
+                // Position dans topLatex : pour une lettre seule rendue telle
+                // quelle, position identique. Sinon on saute (rare).
+                int topPos = i < topLatex.Length && topLatex[i] == c ? i : topLatex.IndexOf(c, 0);
+                if (topPos < 0 || topPos >= topLatex.Length || consumed[topPos]) continue;
+
+                var canonical = "bb" + c;
+                var ensemblePreview = RenderAfterMutation(source, i, 1, canonical);
+                var identityPreview = RenderAfterMutation(source, i, 1, c.ToString());
+
+                var alts = new List<AmbiguityAlternative>
+                {
+                    // Alt 0 (focus par défaut) : ensemble \mathbb{X} via mutation
+                    new AmbiguityAlternative(
+                        ensemblePreview,
+                        new SourceMutation(i, 1, canonical)),
+                    // Alt 1 : lettre identity (no mutation, R reste variable)
+                    new AmbiguityAlternative(identityPreview, mutation: null),
+                };
+
+                var spot = new AmbiguitySpot(RuleCanonicalSet, c.ToString(), alts);
+                consumed[topPos] = true;
+                output.Add(new AmbiguityMatch(spot, topPos, topPos + 1));
+            }
+        }
+
+        // Caractères qui suivent une lettre canonique en contexte « ensemble ».
+        // Whitespace OU ponctuation OU fermeture de groupement. Les opérateurs
+        // math (+ - * / ^ _) sont volontairement exclus pour préserver les
+        // formules variables (pi*R², 2N+1, R^2, etc.).
+        private static bool IsCanonicalSetDelimiter(char c)
+            => char.IsWhiteSpace(c) || c == ',' || c == ';' || c == '.'
+               || c == ')' || c == ']' || c == '}';
 
         /// <summary>
         /// Parcourt <paramref name="topLatex"/> et émet un match pour chaque
@@ -488,6 +556,7 @@ namespace MathCursor.Core.Lattice
         public const string RuleLetterSupNumber = "letter-sup-number";
         public const string RuleVAsForall = "v-as-forall";
         public const string RuleEAsExists = "e-as-exists";
+        public const string RuleCanonicalSet = "canonical-set";
 
         /// <summary>
         /// Simule l'application d'une <see cref="SourceMutation"/> sur la

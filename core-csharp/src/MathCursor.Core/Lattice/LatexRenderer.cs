@@ -38,7 +38,7 @@ namespace MathCursor.Core.Lattice
             Sum sum => RenderSum(sum),
             Lim lim => $"\\lim_{{{Render(lim.Var)} \\to {Render(Unwrap(lim.Target))}}} {Render(lim.Body)}",
             Int it => $"\\int_{{{Render(Unwrap(it.Low))}}}^{{{Render(Unwrap(it.High))}}} {Render(it.Body)}",
-            Quant q => RenderQuant(q),
+            Interval iv => RenderInterval(iv),
             _ => string.Empty,
         };
 
@@ -77,6 +77,9 @@ namespace MathCursor.Core.Lattice
             // WpfMath et Word OMath les rendent comme tels (visuellement
             // obliques, conformes à la notation lycée FR).
             if (b.Op == "//") return $"{lhs} // {rhs}";
+            // Composition d'intervalles / ensembles
+            if (b.Op == "union") return $"{lhs} \\cup {rhs}";
+            if (b.Op == "inter") return $"{lhs} \\cap {rhs}";
             return $"{lhs}{b.Op}{rhs}";
         }
 
@@ -106,11 +109,15 @@ namespace MathCursor.Core.Lattice
             return $"{sym}_{{{Render(sum.Var)}={Render(Unwrap(sum.Start))}}}^{{{Render(Unwrap(sum.End))}}} {Render(sum.Body)}";
         }
 
-        // Quant : `\forall x \in R`. Le `\in` est généré par le scope, pas tapé
-        // par l'utilisateur — c'est l'analogue du `_` / `^` de \sum_{k=…}^{…}
-        // qui matérialise les rails du scope. Args manquants = Holes rendus
-        // en \square, l'utilisateur voit `\forall \square \in \square` post-mutation.
-        private static string RenderQuant(Quant q)
-            => $"{q.Symbol} {Render(Unwrap(q.Var))} \\in {Render(Unwrap(q.Set))}";
+        // Intervalle français : brackets bruts (pas \left/\right) parce que
+        // \left] / \right[ ne sont pas universellement supportés (WpfMath,
+        // Word OMath BuildUp). Le rendu reste lisible pour les cas typiques
+        // (bornes numériques ou identifiants courts).
+        private static string RenderInterval(Interval iv)
+        {
+            var leftBr = iv.LeftClosed ? "[" : "]";
+            var rightBr = iv.RightClosed ? "]" : "[";
+            return $"{leftBr}{Render(Unwrap(iv.Low))},{Render(Unwrap(iv.High))}{rightBr}";
+        }
     }
 }

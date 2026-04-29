@@ -53,29 +53,26 @@ namespace MathCursor.Core.Tests
         [Fact]
         public void Resolve_V_with_forall_pref_mutates_to_forall()
         {
-            // L'utilisateur a déjà choisi ∀ (altIdx=1) pour V. Les futures
-            // résolutions appliquent la mutation V→forall en mémoire.
+            // L'utilisateur a déjà choisi ∀ (altIdx=1) pour V.
+            // Décomposition modulaire (ADR 29-04) : forall seul rend "\forall ".
             var resolver = MakeResolver();
             resolver.AddPreference(AlternativeGenerator.RuleVAsForall, 1);
             var r = resolver.Resolve("V");
             Assert.Equal("V", r.RawSource);
             Assert.Equal("forall", r.MutedSource);
-            // Source mutée → pipeline → \forall \square \in \square (Quant avec Holes)
             Assert.Contains("\\forall", r.TopLatex);
-            Assert.Contains("\\square", r.TopLatex);
         }
 
         [Fact]
-        public void Resolve_V_x_R_with_forall_pref_renders_full_scope()
+        public void Resolve_V_x_dans_R_with_forall_pref_renders_full()
         {
-            // L'utilisateur a tapé V x R puis a choisi ∀ une fois. Les
-            // espaces tapés ensuite doivent garder le scope résolu.
+            // V x dans R + pref forall → forall x dans R → "\forall x \in R"
+            // Décomposition modulaire : `dans` keyword explicite pour le \in.
             var resolver = MakeResolver();
             resolver.AddPreference(AlternativeGenerator.RuleVAsForall, 1);
-            var r = resolver.Resolve("V x R");
-            Assert.Equal("forall x R", r.MutedSource);
+            var r = resolver.Resolve("V x dans R");
+            Assert.Equal("forall x dans R", r.MutedSource);
             Assert.Equal("\\forall x \\in R", r.TopLatex);
-            Assert.Null(r.Spot); // Plus d'ambig, scope est résolu
         }
 
         [Fact]
@@ -145,14 +142,19 @@ namespace MathCursor.Core.Tests
         }
 
         [Fact]
-        public void IsIncomplete_with_forall_pref_after_var_only()
+        public void IsIncomplete_with_forall_pref_after_dans()
         {
-            // V x → pref forall → forall x → \forall x \in \square (Hole pour set)
-            // → IsIncomplete=true, l'utilisateur peut taper le set en continuant
+            // V x dans (avec pref forall) → forall x dans → "\forall x \in "
+            // Le \in n'est qu'un Const, donc IsIncomplete via Hole=false. Mais
+            // on a un Const " \in " qui se termine par un espace : pas
+            // d'opérateur final non plus → IsIncomplete=false.
+            // Pour la décomposition modulaire (29-04), c'est l'utilisateur qui
+            // décide quand sa formule est complète, le résolveur ne devine pas.
             var resolver = MakeResolver();
             resolver.AddPreference(AlternativeGenerator.RuleVAsForall, 1);
-            var r = resolver.Resolve("V x");
-            Assert.True(r.IsIncomplete);
+            var r = resolver.Resolve("V x dans");
+            // Pas de Hole (\square), pas d'op trailing dans la source brute "V x dans"
+            Assert.False(r.IsIncomplete);
         }
 
         // ---- Clear ----

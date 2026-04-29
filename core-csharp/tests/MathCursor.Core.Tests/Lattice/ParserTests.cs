@@ -345,73 +345,145 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.Equal("\\infty", c.Value);
         }
 
-        // ------------------ Quantificateurs (scope, symétrique à somme/lim) ------------------
+        // ------------------ Quantificateurs (décomposition modulaire) ------------------
+        //
+        // Depuis l'ADR du 29-04, forall/exists ne sont plus des scopes mais
+        // des Const composés naturellement avec var, in/dans/(- et set par
+        // juxtaposition. Plus de nœud Quant.
 
         [Fact]
-        public void Forall_alone_yields_quant_with_holes()
+        public void Forall_yields_const()
         {
-            // `forall` seul (analogue à `somme` seul) → Quant(Hole, Hole),
-            // jamais Const. L'utilisateur voit `\forall \square \in \square`
-            // au render. Les carrés se remplissent au fur et à mesure.
             var ast = ParseTop("forall");
-            var q = Assert.IsType<Quant>(ast);
-            Assert.Equal("\\forall", q.Symbol);
-            Assert.IsType<Hole>(q.Var);
-            Assert.IsType<Hole>(q.Set);
+            var c = Assert.IsType<Const>(ast);
+            // Trailing space pour la juxtaposition propre avec le var qui suit.
+            Assert.Equal("\\forall ", c.Value);
         }
 
         [Fact]
-        public void Forall_with_var_and_set_yields_quant()
+        public void Exists_yields_const()
         {
-            // forall x R : scope `var = ParseAtomOnly`, set = ParseArgument
-            var ast = ParseTop("forall x R");
-            var q = Assert.IsType<Quant>(ast);
-            Assert.Equal("\\forall", q.Symbol);
-            var v = Assert.IsType<Atom>(q.Var);
-            Assert.Equal("x", v.Value);
-            var s = Assert.IsType<Atom>(q.Set);
-            Assert.Equal("R", s.Value);
+            var ast = ParseTop("exists");
+            var c = Assert.IsType<Const>(ast);
+            Assert.Equal("\\exists ", c.Value);
         }
 
         [Fact]
-        public void Forall_with_in_keyword_yields_quant()
+        public void In_arrow_keyboard_alias_yields_in_const()
         {
-            // forall x in R : `in` keyword consommé entre var et set, mais pas
-            // émis dans l'AST (le \in est généré par le renderer du Quant)
-            var ast = ParseTop("forall x in R");
-            var q = Assert.IsType<Quant>(ast);
-            Assert.Equal("\\forall", q.Symbol);
-            Assert.IsType<Atom>(q.Var);
-            Assert.IsType<Atom>(q.Set);
+            // (- (clavier, multi-char) est un alias de `in` qui rend ` \in `
+            var ast = ParseTop("(-");
+            var c = Assert.IsType<Const>(ast);
+            Assert.Equal(" \\in ", c.Value);
+        }
+
+        // ------------------ Intervalles français ------------------
+
+        [Fact]
+        public void Closed_interval_yields_interval_node()
+        {
+            var ast = ParseTop("[0,1]");
+            var iv = Assert.IsType<Interval>(ast);
+            Assert.True(iv.LeftClosed);
+            Assert.True(iv.RightClosed);
+            Assert.IsType<Atom>(iv.Low);
+            Assert.IsType<Atom>(iv.High);
         }
 
         [Fact]
-        public void Forall_with_dans_keyword_yields_quant()
+        public void Closed_open_interval_yields_correct_flags()
         {
-            // `dans` est un alias de `in` dans Vocabulary.Keywords
-            var ast = ParseTop("forall x dans R");
-            var q = Assert.IsType<Quant>(ast);
-            Assert.Equal("\\forall", q.Symbol);
+            // [a,b[ : fermé à gauche, ouvert à droite
+            var ast = ParseTop("[0,1[");
+            var iv = Assert.IsType<Interval>(ast);
+            Assert.True(iv.LeftClosed);
+            Assert.False(iv.RightClosed);
         }
 
         [Fact]
-        public void Forall_with_var_only_yields_hole_set()
+        public void Open_closed_interval_yields_correct_flags()
         {
-            // forall x : pas de set tapé → Set=Hole, render = `\forall x \in \square`
-            // (cohérent avec somme qui rend `\sum_{k=\square}^{\square} \square`
-            // quand seule la var est tapée).
-            var ast = ParseTop("forall x");
-            var q = Assert.IsType<Quant>(ast);
-            Assert.IsType<Atom>(q.Var);
-            Assert.IsType<Hole>(q.Set);
+            // ]a,b] : ouvert à gauche, fermé à droite
+            var ast = ParseTop("]0,1]");
+            var iv = Assert.IsType<Interval>(ast);
+            Assert.False(iv.LeftClosed);
+            Assert.True(iv.RightClosed);
         }
 
         [Fact]
-        public void Exists_with_var_and_set_yields_quant()
+        public void Open_open_interval_yields_correct_flags()
         {
-            var ast = ParseTop("exists y N");
-            var q = Assert.IsType<Quant>(ast);
-            Assert.Equal("\\exists", q.Symbol);
+            var ast = ParseTop("]0,1[");
+            var iv = Assert.IsType<Interval>(ast);
+            Assert.False(iv.LeftClosed);
+            Assert.False(iv.RightClosed);
+        }
+
+        [Fact]
+        public void Interval_with_negative_infinity_low()
+        {
+            // ]-inf,1] : low = Unary(-, Const(\infty)), high = 1
+            var ast = ParseTop("]-inf,1]");
+            var iv = Assert.IsType<Interval>(ast);
+            Assert.False(iv.LeftClosed);
+            Assert.True(iv.RightClosed);
+            Assert.IsType<Unary>(iv.Low);
+        }
+
+        // ------------------ Union / Intersection d'intervalles ------------------
+
+        [Fact]
+        public void Union_keyword_between_intervals()
+        {
+            var ast = ParseTop("[0,1] union [3,5]");
+            var b = Assert.IsType<Bin>(ast);
+            Assert.Equal("union", b.Op);
+            Assert.IsType<Interval>(b.Lhs);
+            Assert.IsType<Interval>(b.Rhs);
+        }
+
+        [Fact]
+        public void U_letter_between_intervals_yields_union()
+        {
+            // U entre intervalles = union 100% (détection contextuelle)
+            var ast = ParseTop("[0,1] U [3,5]");
+            var b = Assert.IsType<Bin>(ast);
+            Assert.Equal("union", b.Op);
+        }
+
+        [Fact]
+        public void U_letter_between_intervals_no_space_yields_union()
+        {
+            // Sans espace : "[0,1]U[3,5]" → idem union
+            var ast = ParseTop("[0,1]U[3,5]");
+            var b = Assert.IsType<Bin>(ast);
+            Assert.Equal("union", b.Op);
+        }
+
+        [Fact]
+        public void U_letter_alone_stays_variable()
+        {
+            // U dans contexte non-intervalle → reste atom U (variable)
+            var ast = ParseTop("U");
+            var a = Assert.IsType<Atom>(ast);
+            Assert.Equal("ident", a.Kind);
+            Assert.Equal("U", a.Value);
+        }
+
+        [Fact]
+        public void Inter_keyword_between_intervals()
+        {
+            var ast = ParseTop("[0,1] inter [0.5,2]");
+            var b = Assert.IsType<Bin>(ast);
+            Assert.Equal("inter", b.Op);
+        }
+
+        [Fact]
+        public void Intersection_keyword_alias()
+        {
+            var ast = ParseTop("[0,1] intersection [0.5,2]");
+            var b = Assert.IsType<Bin>(ast);
+            Assert.Equal("inter", b.Op);
         }
 
         // ------------------ Relations (=, <, >, <=, ...) ------------------
