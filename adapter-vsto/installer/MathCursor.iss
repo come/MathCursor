@@ -14,7 +14,7 @@
 ;   - Visual Studio Tools for Office Runtime (livré avec Office 2016+)
 
 #define MyAppName "MathCursor"
-#define MyAppVersion "0.5.2"
+#define MyAppVersion "0.5.3"
 #define MyAppPublisher "MathCursor"
 #define MyAppExeName "MathCursor.dll"
 #define MyAppId "{{6E4B3A1E-7F2D-4B8C-9A0E-2C5D6F7A8B90}"
@@ -58,6 +58,10 @@ Source: "payload\FuzzySharp.dll";                         DestDir: "{app}"; Flag
 Source: "payload\YamlDotNet.dll";                         DestDir: "{app}"; Flags: ignoreversion
 Source: "payload\Google.Protobuf.dll";                    DestDir: "{app}"; Flags: ignoreversion
 Source: "payload\Microsoft.ML.OnnxRuntime.dll";           DestDir: "{app}"; Flags: ignoreversion
+; Native ORT DLLs : pas copiées par MSBuild (PlatformTarget non défini).
+; Indispensables : NativeMethods..cctor() crashe sans onnxruntime.dll.
+Source: "payload\onnxruntime.dll";                        DestDir: "{app}"; Flags: ignoreversion
+Source: "payload\onnxruntime_providers_shared.dll";       DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "payload\Microsoft.Office.Tools.Common.v4.0.Utilities.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 ; Runtimes .NET (ne-gênent-pas si présents dans GAC aussi)

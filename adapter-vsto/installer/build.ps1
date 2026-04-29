@@ -113,6 +113,31 @@ if (Test-Path $CertSrc) {
     Write-Warning "Certificat introuvable ($CertSrc) — l'installer ne pourra pas l'importer automatiquement."
 }
 
+# 2b-bis) Native ONNX Runtime DLLs (NON copiées par MSBuild).
+# Le NuGet Microsoft.ML.OnnxRuntime expose ses natives via .props avec
+# une condition `PlatformTarget == x64` (ou AnyCPU+!Prefer32Bit). Le
+# csproj VSTO n'a aucun PlatformTarget défini → la condition est fausse
+# → MSBuild ne copie PAS les natives dans bin/Release. Sans elles, le
+# .cctor de NativeMethods lève une TypeInitializationException au
+# démarrage de l'add-in. On copie donc explicitement depuis le cache
+# NuGet. Cf. brief 2026-04-29-fix-native-onnxruntime-deploy.md.
+$OrtVersion = '1.16.3'
+$OrtNativeSrc = Join-Path $env:USERPROFILE ".nuget\packages\microsoft.ml.onnxruntime\$OrtVersion\runtimes\win-x64\native"
+if (Test-Path $OrtNativeSrc) {
+    foreach ($dll in @('onnxruntime.dll', 'onnxruntime_providers_shared.dll')) {
+        $src = Join-Path $OrtNativeSrc $dll
+        if (Test-Path $src) {
+            Copy-Item $src -Destination $PayloadDir -Force
+            Write-Host "  ORT native : $dll"
+        } else {
+            Write-Warning "ORT native manquante dans cache NuGet : $dll"
+        }
+    }
+} else {
+    Write-Warning "Cache NuGet ORT introuvable : $OrtNativeSrc"
+    Write-Warning "Lance d'abord 'dotnet restore' ou un build complet pour peupler le cache."
+}
+
 # 2c) Visual C++ Redistributable x64 (requis par ONNX Runtime native DLL).
 # Téléchargement depuis aka.ms si pas déjà présent localement. URL stable
 # qui suit la dernière version VS2015-2022 (toutes binary-compat).
