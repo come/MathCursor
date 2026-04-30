@@ -80,11 +80,10 @@ namespace MathCursor
         /// </summary>
         private static string FindModelDir()
         {
-            // On préfère le sous-dossier `distilmult-v4` quand il existe (cf.
-            // ADR 2026-04-27 adoption distilmult). Si non trouvé, fallback sur
-            // les emplacements historiques (dossier racine `models`) — pour
-            // continuer à charger une ancienne installation XLM-R en attendant
-            // que l'utilisateur déploie distilmult-v4.
+            // Cherche le sous-dossier `distilmult-v5` (NER actif depuis
+            // 2026-04-30, cf. ADR 2026-04-27 d'adoption initiale + bump v5).
+            // Pas de fallback sur d'anciens layouts : l'installer propre
+            // déploie v5, les anciennes versions disparaissent à l'update.
             var roots = new[]
             {
                 Environment.GetEnvironmentVariable("MATHCURSOR_MODEL_DIR"),
@@ -98,8 +97,7 @@ namespace MathCursor
             foreach (var root in roots)
             {
                 if (string.IsNullOrEmpty(root)) continue;
-                candidates.Add(Path.Combine(root, "distilmult-v4"));
-                candidates.Add(root);
+                candidates.Add(Path.Combine(root, "distilmult-v5"));
             }
             foreach (var p in candidates)
             {

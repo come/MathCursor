@@ -163,14 +163,15 @@ if (Test-Path $VcRedistCache) {
 }
 
 # 3) Modèle NER
-# On déploie UNIQUEMENT distilmult-v4 (le NER actif depuis 2026-04-27).
+# On déploie UNIQUEMENT distilmult-v5 (le NER actif depuis 2026-04-30,
+# bumpé depuis distilmult-v4 du 2026-04-27 — F1 0.95 vs 0.80 sur regression_v1_gold).
 # L'ancien XLM-R laissé à la racine de models/ en dev est ignoré ici —
 # il ferait ~265 Mo de poids mort dans l'installer et ne sert plus
-# (FindModelDir priorise distilmult-v4 et tombe sur celui-ci).
-Write-Host "[3/4] Modèle NER (distilmult-v4)..." -ForegroundColor Yellow
+# (FindModelDir priorise distilmult-v5 et tombe sur celui-ci).
+Write-Host "[3/4] Modèle NER (distilmult-v5)..." -ForegroundColor Yellow
 if (Test-Path $ModelDstDir) { Remove-Item -Recurse -Force $ModelDstDir }
-$DistilSrc = Join-Path $ModelSrcDir 'distilmult-v4'
-$DistilDst = Join-Path $ModelDstDir 'distilmult-v4'
+$DistilSrc = Join-Path $ModelSrcDir 'distilmult-v5'
+$DistilDst = Join-Path $ModelDstDir 'distilmult-v5'
 $modelOk = $false
 if (Test-Path (Join-Path $DistilSrc 'model_quantized.onnx')) {
     Write-Host "  copie depuis $DistilSrc → $DistilDst"
@@ -179,7 +180,7 @@ if (Test-Path (Join-Path $DistilSrc 'model_quantized.onnx')) {
     $modelOk = $true
 }
 else {
-    Write-Warning "Modèle distilmult-v4 introuvable. Copier les fichiers dans :"
+    Write-Warning "Modèle distilmult-v5 introuvable. Copier les fichiers dans :"
     Write-Warning "  $DistilSrc"
     Write-Warning "Fichiers requis : model_quantized.onnx, vocab.txt, tokenizer.json, config.json, special_tokens_map.json, tokenizer_config.json, ort_config.json"
 }
