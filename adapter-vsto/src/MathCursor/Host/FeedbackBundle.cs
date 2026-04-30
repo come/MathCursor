@@ -23,7 +23,7 @@ namespace MathCursor.Host
     /// Pas de réseau : le bundle est local, c'est l'utilisateur qui l'envoie
     /// (respect du principe "pas de télémétrie silencieuse").
     /// </summary>
-    internal static class FeedbackBundle
+    public static class FeedbackBundle
     {
         public const string ContactEmail = "come2percin@wanadev.fr";
         public const string WhatsAppGroupUrl = "https://chat.whatsapp.com/DewkjN8rwoAJeDtAd8yAth";
@@ -162,29 +162,8 @@ namespace MathCursor.Host
         {
             try
             {
-                var logPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "MathCursor", "logs", "mathcursor.log");
-                if (!File.Exists(logPath)) return;
-
-                // Tail des N derniers KB : le log peut grossir indéfiniment,
-                // mais seuls les derniers événements sont pertinents pour un bug.
-                byte[] tail;
-                using (var fs = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                {
-                    if (fs.Length <= LogTailMaxBytes)
-                    {
-                        tail = new byte[fs.Length];
-                        fs.Read(tail, 0, tail.Length);
-                    }
-                    else
-                    {
-                        fs.Seek(-LogTailMaxBytes, SeekOrigin.End);
-                        tail = new byte[LogTailMaxBytes];
-                        fs.Read(tail, 0, tail.Length);
-                    }
-                }
-
+                var tail = ReadLogTail();
+                if (tail == null || tail.Length == 0) return;
                 var entry = zip.CreateEntry("mathcursor.log", CompressionLevel.Optimal);
                 using (var es = entry.Open())
                 {
@@ -192,6 +171,37 @@ namespace MathCursor.Host
                 }
             }
             catch { }
+        }
+
+        /// <summary>
+        /// Lit la queue (LogTailMaxBytes derniers bytes) du log local. Public
+        /// pour que la fenêtre "Signaler une erreur" puisse joindre le log au
+        /// rapport HTTP sans passer par le zip. Renvoie null si pas de log ou
+        /// erreur d'I/O (jamais throw).
+        /// </summary>
+        public static byte[] ReadLogTail()
+        {
+            try
+            {
+                var logPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "MathCursor", "logs", "mathcursor.log");
+                if (!File.Exists(logPath)) return null;
+                using (var fs = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    if (fs.Length <= LogTailMaxBytes)
+                    {
+                        var buf = new byte[fs.Length];
+                        fs.Read(buf, 0, buf.Length);
+                        return buf;
+                    }
+                    fs.Seek(-LogTailMaxBytes, SeekOrigin.End);
+                    var tail = new byte[LogTailMaxBytes];
+                    fs.Read(tail, 0, tail.Length);
+                    return tail;
+                }
+            }
+            catch { return null; }
         }
 
         private static void TryAddScreenshot(ZipArchive zip)

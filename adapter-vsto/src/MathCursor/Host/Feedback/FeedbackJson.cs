@@ -12,19 +12,39 @@ namespace MathCursor.Host.Feedback
     {
         public static string Serialize(FeedbackReport r)
         {
+            // Format aligné avec l'endpoint Cloudflare Pages Function
+            // /api/v1/report (cf. docs/functions/api/v1/report.js et brief
+            // 2026-04-30-feedback-form-with-cloudflare-backend.md).
+            //
+            // Les noms de propriétés C# (NerText, RecognizedFormula,
+            // UserMessage) gardent leur nom historique pour compat ; la
+            // sérialisation les renomme en clés snake_case attendues par
+            // l'endpoint (source_text, proposed_latex, user_comment).
             var sb = new StringBuilder();
             sb.Append('{');
             WriteField(sb, "version", r.Version, first: true);
-            WriteField(sb, "timestamp", r.Timestamp.ToString("o"));
+            WriteField(sb, "ts", r.Timestamp.ToString("o"));
             WriteField(sb, "user_id", r.UserId);
             WriteField(sb, "session_id", r.SessionId);
-            WriteField(sb, "ner_text", r.NerText);
-            WriteField(sb, "recognized_formula", r.RecognizedFormula);
-            WriteField(sb, "user_message", r.UserMessage);
+            WriteField(sb, "source_text", r.NerText);
+            WriteField(sb, "proposed_latex", r.RecognizedFormula);
+            WriteField(sb, "committed_latex", r.CommittedLatex);
+            WriteField(sb, "paragraph_context", r.ParagraphContext);
+            WriteField(sb, "user_comment", r.UserMessage);
             WriteField(sb, "user_email", r.UserEmail);
-            WriteField(sb, "log_tail", r.LogTail);
-            WriteField(sb, "word_version", r.WordVersion);
+            // log_tail / screenshot_b64 omis si vides pour économiser le
+            // payload (utile surtout côté screenshot ~500 KB).
+            if (!string.IsNullOrEmpty(r.LogTail))
+                WriteField(sb, "log_tail", r.LogTail);
+            if (!string.IsNullOrEmpty(r.ScreenshotPngBase64))
+                WriteField(sb, "screenshot_b64", r.ScreenshotPngBase64);
+            // Métadonnées env. Imbriquées dans un objet "metadata" pour
+            // matcher la convention de l'endpoint.
+            sb.Append(",\"metadata\":{");
+            WriteField(sb, "word_version", r.WordVersion, first: true);
             WriteField(sb, "os_version", r.OsVersion);
+            WriteField(sb, "dotnet_version", r.DotNetVersion);
+            sb.Append('}');
             sb.Append('}');
             return sb.ToString();
         }
