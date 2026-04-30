@@ -420,9 +420,43 @@ namespace MathCursor.Host
                 _inferenceInFlight = true;
                 Task.Run(() =>
                 {
+                    // Coupe le paragraphe APRÈS la dernière région OMath qui
+                    // se termine avant le caret. Évite que le NER voit le
+                    // contexte math résiduel et drag des stopwords ("et",
+                    // "donc"...) dans le span MATH suivant.
+                    // Cf. bug user 30-04 : `f(x) = 1/x² et g(x)=rac(x+1)`
+                    // avec OMath rendu pour `f(x) = 1/x²` faisait que le NER
+                    // classait `et g(x)=rac(x+1)` ENTIER comme MATH.
+                    int nerOffset = 0;
+                    foreach (var (s, e) in omathRegions)
+                    {
+                        if (e <= caretInParagraph && e > nerOffset) nerOffset = e;
+                    }
+                    string nerInput = nerOffset > 0
+                        ? paragraphText.Substring(nerOffset)
+                        : paragraphText;
+                    LogDiag($"ner_input offset={nerOffset} len={nerInput.Length} omaths={omathRegions.Count} text=\"{nerInput.Replace("\r", "\\r").Replace("\n", "\\n")}\"");
+
                     IReadOnlyList<DetectedZone> zones;
-                    try { zones = _ner.Detect(paragraphText); }
+                    try { zones = _ner.Detect(nerInput); }
                     catch (Exception ex) { LogDiag("ner_error: " + ex.Message); zones = Array.Empty<DetectedZone>(); }
+
+                    // Remap des positions : les zones reviennent avec des
+                    // positions dans `nerInput`, on les rebase sur le paragraphe
+                    // entier en ajoutant `nerOffset`.
+                    if (zones != null && zones.Count > 0 && nerOffset > 0)
+                    {
+                        var rebased = new List<DetectedZone>(zones.Count);
+                        foreach (var z in zones)
+                            rebased.Add(new DetectedZone(
+                                z.Start + nerOffset, z.End + nerOffset, z.Text, z.Confidence));
+                        zones = rebased;
+                    }
+                    if (zones != null)
+                    {
+                        for (int z = 0; z < zones.Count; z++)
+                            LogDiag($"ner_zone[{z}]=[{zones[z].Start},{zones[z].End}] conf={zones[z].Confidence:F2} text=\"{zones[z].Text}\"");
+                    }
 
                     // Filtre : on jette les zones NER qui chevauchent une région OMath.
                     // Ces zones sont déjà converties — les re-proposer serait redondant
@@ -1094,13 +1128,24 @@ namespace MathCursor.Host
 
         private void OnReportRequested()
         {
+            // Séquence importante :
+            //   1. CAPTURER d'abord le screen — popup de suggestion toujours
+            //      visible : c'est CE que voit l'user au moment du bug, donc
+            //      utile pour le debug (rendu visuel + position popup).
+            //   2. PUIS cacher la popup pour ne pas qu'elle gêne le dialog
+            //   3. PUIS ouvrir le dialog (qui apparaîtra APRÈS capture, donc
+            //      ne pollue pas l'image)
+            byte[] preScreenshot = null;
+            try { preScreenshot = FeedbackBundle.CaptureScreenshotPng(); } catch { }
+            try { HidePopup(); } catch { }
+
             try
             {
                 var report = BuildFeedbackReport();
+                if (preScreenshot != null && preScreenshot.Length > 0)
+                    report.ScreenshotPngBase64 = Convert.ToBase64String(preScreenshot);
                 var sender = Feedback.FeedbackSenderFactory.Create();
                 var dialog = new FeedbackDialog(report, sender);
-                // ShowDialog = modal vis-à-vis de Word (focus bloqué tant qu'ouvert),
-                // choix acté dans decisions.md.
                 dialog.ShowDialog();
             }
             catch (Exception ex) { LogDiag("feedback_dialog_error: " + ex.Message); }
@@ -1108,20 +1153,38 @@ namespace MathCursor.Host
 
         /// <summary>
         /// Construit un <see cref="Feedback.FeedbackReport"/> pré-rempli à partir
-        /// de l'état courant : source NER / span manuel, formule sélectionnée,
-        /// version add-in, version Word, OS, et tail du log.
+        /// du <see cref="LastActionSnapshot"/> (saisie + popup + commit éventuel)
+        /// + métadonnées env (version add-in, Word, OS, .NET).
+        ///
+        /// Si aucune action depuis le démarrage de Word (snapshot null), retourne
+        /// un report vide avec juste les métadonnées — l'utilisateur devra remplir
+        /// les 3 champs à la main dans la fenêtre.
+        ///
+        /// Public pour que <see cref="ThisAddIn"/> y accède depuis le ribbon.
         /// </summary>
-        private Feedback.FeedbackReport BuildFeedbackReport()
+        public Feedback.FeedbackReport BuildFeedbackReport()
         {
-            string recognized = "";
-            try { recognized = _popup?.CurrentFinalLatex ?? ""; }
-            catch { }
-
             string wordVersion = "?";
             try { wordVersion = _app?.Version ?? "?"; } catch { }
 
             string version = "?";
             try { version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "?"; } catch { }
+
+            var snap = _lastAction;
+            string proposed = snap?.ProposedLatex ?? "";
+            string committed = snap?.CommittedLatex ?? "";
+
+            // Si l'user n'a PAS encore committé (CommittedLatex vide) mais
+            // qu'on a une proposition, on simule la conversion LaTeX →
+            // UnicodeMath comme si Enter avait été pressé. Cas typique :
+            // l'user voit un mauvais rendu dans la popup et clique
+            // "Signaler" sans valider — on doit quand même renseigner ce
+            // que Word RECEVRAIT pour que le rapport soit utile.
+            if (string.IsNullOrEmpty(committed) && !string.IsNullOrEmpty(proposed))
+            {
+                try { committed = MathCursor.Core.LatexToUnicodeMath.Convert(proposed); }
+                catch { /* best-effort, on laisse vide si la conversion plante */ }
+            }
 
             return new Feedback.FeedbackReport
             {
@@ -1129,41 +1192,16 @@ namespace MathCursor.Host
                 Timestamp = DateTimeOffset.UtcNow,
                 UserId = Feedback.UserIdStore.GetOrCreate(),
                 SessionId = _sessionId,
-                NerText = _lastZoneSource ?? "",
-                RecognizedFormula = recognized,
-                LogTail = ReadLogTail(),
+                NerText = snap?.SourceText ?? (_lastZoneSource ?? ""),
+                RecognizedFormula = proposed,
+                CommittedLatex = committed,
+                ParagraphContext = snap?.ParagraphContext ?? "",
                 WordVersion = wordVersion,
                 OsVersion = Environment.OSVersion.ToString(),
+                DotNetVersion = Environment.Version.ToString(),
+                // LogTail / ScreenshotPngBase64 remplis par la fenêtre selon
+                // les toggles (pas ici).
             };
-        }
-
-        private static string ReadLogTail()
-        {
-            try
-            {
-                var path = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "MathCursor", "logs", "mathcursor.log");
-                if (!File.Exists(path)) return "";
-                const int maxBytes = 16 * 1024; // 16 KB
-                using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                {
-                    byte[] buf;
-                    if (fs.Length <= maxBytes)
-                    {
-                        buf = new byte[fs.Length];
-                        fs.Read(buf, 0, buf.Length);
-                    }
-                    else
-                    {
-                        fs.Seek(-maxBytes, SeekOrigin.End);
-                        buf = new byte[maxBytes];
-                        fs.Read(buf, 0, buf.Length);
-                    }
-                    return System.Text.Encoding.UTF8.GetString(buf);
-                }
-            }
-            catch { return ""; }
         }
 
         private void ShowPopup(ResolvedZone resolved, int absStart, int absEnd, int rawZoneLength, string debugText = "")

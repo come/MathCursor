@@ -221,5 +221,80 @@ namespace MathCursor.Core.Tests
             _log.WriteLine($"MULT SYMBOL\nLaTeX: \"{latex}\"\n=> \"{got}\"\nexpected: \"{expected}\"");
             Assert.Equal(expected, got);
         }
+
+        // ---- ADR 30-04 tight-implicit-mult-grouping (P5) couche (c) OMath ----
+
+        [Theory]
+        // `\frac{AB}{BC}` (P5) → après conversion : single-char shortcut ne
+        // s'applique pas (AB et BC sont multi-char), parens conservées.
+        // Word BuildUp lit `(AB)/(BC)` comme fraction empilée.
+        [InlineData("\\frac{AB}{BC}", "(AB)/(BC)")]
+        [InlineData("\\frac{AB}{B}C", "(AB)/B C")]      // AB multi-char num, B single denom + séparateur anti-absorption
+        [InlineData("\\frac{1}{2x}", "1/(2x)")]          // single num, multi denom (chaîne implicite)
+        [InlineData("\\frac{1}{x}+1", "1/x+1")]         // single num + single denom + op explicite
+        [InlineData("\\frac{\\frac{A}{B}}{C}", "(A/B)/C")] // chaîne / / / gauche-assoc
+        public void P5_tight_implicit_mult_grouping_converts_to_omath(string latex, string expected)
+        {
+            var got = LatexToUnicodeMath.Convert(latex);
+            _log.WriteLine($"P5\nLaTeX: \"{latex}\"\n=> \"{got}\"\nexpected: \"{expected}\"");
+            Assert.Equal(expected, got);
+        }
+
+        // ---- ADR 30-04 asterisk-tightness-associativity (P6) couche (c) ----
+
+        [Theory]
+        // `\frac{(1/2) \cdot 3}{4}` (P6 default tight `*`) → conversion
+        // produit la fraction imbriquée Word OMath. Vérifier que les parens
+        // de `(1/2)` sont conservées (sinon Word colle `1/2 \cdot 3` au num).
+        [InlineData("\\frac{\\frac{1}{2}\\cdot 3}{4}", "(1/2⋅ 3)/4")]
+        // `\frac{1}{2}\cdot \frac{3}{4}` (P6 alt loose `*`) → 2 fractions séparées.
+        [InlineData("\\frac{1}{2}\\cdot \\frac{3}{4}", "1/2⋅ 3/4")]
+        // Mêmes cas avec `\times` (setting culturel FR)
+        [InlineData("\\frac{\\frac{1}{2}\\times 3}{4}", "(1/2× 3)/4")]
+        [InlineData("\\frac{1}{2}\\times \\frac{3}{4}", "1/2× 3/4")]
+        public void P6_asterisk_tightness_assoc_converts_to_omath(string latex, string expected)
+        {
+            var got = LatexToUnicodeMath.Convert(latex);
+            _log.WriteLine($"P6\nLaTeX: \"{latex}\"\n=> \"{got}\"\nexpected: \"{expected}\"");
+            Assert.Equal(expected, got);
+        }
+
+        // ---- ADR 30-04 french-semicolon-coordinates (P4) couche (c) ----
+
+        [Theory]
+        // `\vec{u}(1 ; 2)` (P4 séparateur français) → conversion. Le `;` est
+        // juste un caractère, passe tel quel. Le `\vec{u}` devient `u⃗`
+        // (combining arrow accent, single-char inner u).
+        [InlineData("\\vec{u}(1 ; 2)", "u⃗(1 ; 2)")]
+        [InlineData("A(1 ; 2)", "A(1 ; 2)")]
+        [InlineData("M(x ; y ; z)", "M(x ; y ; z)")]
+        // Vec multi-char : `(AB)⃗` (parens conservées à l'intérieur du vec)
+        [InlineData("\\vec{AB}(3 ; -1)", "(AB)⃗(3 ; -1)")]
+        // Avec décimal anglo dans une cellule (le `.` reste tel quel dans la
+        // string LaTeX, mais en pratique le pipeline le convertit en mult avant)
+        public void P4_french_semicolon_coordinates_converts_to_omath(string latex, string expected)
+        {
+            var got = LatexToUnicodeMath.Convert(latex);
+            _log.WriteLine($"P4\nLaTeX: \"{latex}\"\n=> \"{got}\"\nexpected: \"{expected}\"");
+            Assert.Equal(expected, got);
+        }
+
+        // ---- Pipeline complet : bug image (1/2 x → ½ x) ----
+
+        [Fact]
+        public void End_to_end_bug_image_frac_does_not_absorb_x()
+        {
+            // Bug user 30-04 (image v0.5.3) : `1/2 x` saisie → `\frac{1}{2}x`
+            // LaTeX → Word OMath rendait `1/((2)x)` (x absorbé au dénom).
+            // Avec mon refactor P1, la conversion produit `1/2 x` (single-char
+            // shortcut + séparateur anti-absorption) qui rend correctement.
+            var latex = "\\frac{1}{2}x";
+            var got = LatexToUnicodeMath.Convert(latex);
+            // PAS de `(2)x` collé (qui aurait causé l'absorption)
+            Assert.DoesNotContain("(2)x", got);
+            Assert.DoesNotContain("/2x", got);  // pas de `2x` collé après division
+            // Forme attendue : `1/2 x` (espace entre dénom et `x`)
+            Assert.Equal("1/2 x", got);
+        }
     }
 }
