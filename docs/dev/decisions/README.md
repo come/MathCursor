@@ -7,7 +7,7 @@ Format et conventions : voir
 [2026-04-24-Meta-adr-format.md](2026-04-24-Meta-adr-format.md).
 
 ## Kinds
-`Feat-` · `Fix-` · `UX-` · `Release-` · `Meta-`
+`Feat-` · `Fix-` · `UX-` · `Release-` · `Meta-` · `Test-`
 
 ## Températures
 - **[forte]** — structurelle, coûte cher à changer. On n'y revient qu'avec un très bon argument.
@@ -19,7 +19,19 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-04-30
+- `[molle]` Fix — [Fonction trigo + Number tight + Group avale la suite (`cos2(x)+1`)](2026-04-30-Fix-trig-func-power-tight-arg.md)
+- `[molle]` Feat — [Le point `.` comme opérateur de multiplication (rendu `\cdot`)](2026-04-30-Feat-dot-as-multiplier.md)
+- `[molle]` Feat — [Multiplication explicite `*` rendue selon culture (`×` ou `·`)](2026-04-30-Feat-explicit-mult-times-vs-cdot.md)
+- `[molle]` Feat — [Formulaire "Signaler une erreur" pré-rempli + backend Cloudflare](2026-04-30-Feat-feedback-form-cloudflare-backend.md) (Supersedes partiellement feedback-bundle-whatsapp du 23-04)
+- `[molle]` Feat — [Associativité de `*` pilotée par sa tightness](2026-04-30-Feat-asterisk-tightness-associativity.md)
+- `[molle]` Feat — [Juxtaposition tight = groupement, ops explicites = PEMDAS (avec alt désambig)](2026-04-30-Feat-tight-implicit-mult-grouping.md) (Supersedes revert-tight-as-grouping)
+- `[molle]` Feat — [Séparateur `;` pour coordonnées en notation française](2026-04-30-Feat-french-semicolon-coordinates.md)
+- `[molle]` Fix — [Refactor `LatexToUnicodeMath` en parser → AST → émetteur (anti-absorption Word OMath)](2026-04-30-Fix-latex-to-unicodemath-refactor.md)
+- `[molle]` Feat — [Précédence math standard pour `/` collé (revert tight-as-grouping)](2026-04-30-Feat-revert-tight-as-grouping.md) (Supersedes tight-as-grouping du 29-04) `retracté`
+
 ### 2026-04-29
+- `[molle]` Test — [Audit follow-up : combler les angles morts de tests (cleanup + désambig + corpus patho + adapter tests + NER inference)](2026-04-29-Test-audit-followup.md)
 - `[molle]` Feat — [Vecteur/point + coordonnées au clavier (`u(1, 2)` / `u (1 2)` / `A(1, 2)`)](2026-04-29-Feat-vector-coordinates-shorthand.md)
 - `[molle]` Feat — [Fusionner OMath adjacents lors d'une conversion](2026-04-29-Feat-merge-adjacent-omaths.md)
 - `[molle]` Feat — [Détection `=>` / `<=>` / `<==` et conversion en flèches math](2026-04-29-Feat-implication-equivalence-arrows.md)
@@ -27,7 +39,7 @@ Format et conventions : voir
 - `[molle]` Feat — [Décomposition modulaire de `forall`/`exists` (∀ + var + ∈ + set)](2026-04-29-Feat-forall-modular-decomposition.md) (Supersedes scope forall du 28-04)
 - `[molle]` Feat — [Définition de fonction au clavier `f:x->expr` → `f : x ↦ expr`](2026-04-29-Feat-function-definition.md)
 - `[molle]` Feat — [Ensembles canoniques R/N/Z/Q/C avec modificateurs `*`/`+`/`-`](2026-04-29-Feat-canonical-sets.md)
-- `[molle]` Feat — [Juxtaposition tight = groupement implicite pour `/`, `^`, `_`](2026-04-29-Feat-tight-as-grouping.md)
+- `[molle]` Feat — [Juxtaposition tight = groupement implicite pour `/`, `^`, `_`](2026-04-29-Feat-tight-as-grouping.md) `retracté`
 - `[molle]` Feat — [Composition d'intervalles : union (`U`/`union`) et intersection (`inter`)](2026-04-29-Feat-interval-union-intersection.md)
 
 ### 2026-04-28

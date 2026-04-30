@@ -34,6 +34,31 @@ namespace MathCursor.Core.Lattice
         private readonly bool[] _hasSpaceBefore;
         private int _i;
 
+        /// <summary>
+        /// Mode "tight chain absorbe aussi les opérateurs tight" — utilisé
+        /// uniquement pour générer l'alternative désambig (cf. ADR
+        /// 2026-04-30-Feat-tight-implicit-mult-grouping). Default `false` :
+        /// la chaîne tight pour rhs de `/`, `^`, `_` consomme UNIQUEMENT la
+        /// mult implicite (juxtaposition). En mode `true` : consomme aussi
+        /// les ops tight (`+`, `-`, `*`) pour produire l'élargissement
+        /// type `\frac{1}{x+1}` ou `x^{a+b}`.
+        /// </summary>
+        public bool TightExtendsToOps { get; set; } = false;
+
+        /// <summary>
+        /// Bascule l'associativité de `*` explicite par rapport à sa
+        /// tightness. Default `false` :
+        /// - `*` tight (collé) → gauche-assoc PEMDAS (rhs = ParsePostfix).
+        ///   `1/2*3/4` → `\frac{(1/2)\cdot 3}{4}`.
+        /// - `*` loose (espace) → droite-récursive (rhs = ParseTerm).
+        ///   `1/2 * 3/4` → `\frac{1}{2} \cdot \frac{3}{4}`.
+        /// Mode `true` (utilisé par AlternativeGenerator pour l'alt cascade) :
+        /// les rôles sont inversés. Permet à l'utilisateur de switcher
+        /// rapidement entre les deux groupements via la popup. Cf. ADR
+        /// 2026-04-30-Feat-asterisk-tightness-associativity.
+        /// </summary>
+        public bool FlipAsteriskAssociativity { get; set; } = false;
+
         // Compteur d'intervalles en cours de parsing. Sert à distinguer un
         // bracket `[`/`]` qui OUVRE un intervalle (CanStartFactor accepté)
         // d'un bracket qui FERME un intervalle déjà ouvert (le parent doit
@@ -359,18 +384,56 @@ namespace MathCursor.Core.Lattice
             if (lhs == null) return null;
             while (true)
             {
-                if (IsOp("*", "/"))
+                if (IsOp("/"))
                 {
                     var op = Consume();
+                    // ADR 30-04 Feat-tight-implicit-mult-grouping :
+                    // - `/` tight default → rhs absorbe la chaîne de MULT IMPLICITE
+                    //   tight (juxtaposition) UNIQUEMENT, pas les ops `+ - *` tight.
+                    //   Ex: AB/BC → \frac{AB}{BC} ; 1/x+1 → \frac{1}{x}+1 (PEMDAS).
+                    // - Mode `TightExtendsToOps` (alt désambig) → ParseTightChain
+                    //   absorbe TOUT le tight chain (ex: \frac{1}{x+1}).
                     AstNode rhs;
-                    // ADR 29-04 tight-as-grouping : si `/` tight, le rhs absorbe
-                    // toute la chaîne tight (ex: AB/DC → \frac{AB}{DC}, pas \frac{AB}{D}*C).
-                    // Pour `*` ou `/` non-tight, comportement inchangé : ParsePostfix.
-                    if (op.Value == "/" && (op.Tight ?? false))
-                        rhs = ParseTightChain() ?? (AstNode)Hole(1);
+                    if (op.Tight ?? false)
+                    {
+                        rhs = (TightExtendsToOps
+                            ? ParseTightChain()
+                            : ParseTightImplicitMultChain()) ?? (AstNode)Hole(1);
+                    }
                     else
+                    {
                         rhs = ParsePostfix() ?? (AstNode)Hole(1);
-                    lhs = new Bin(op.Value, op.Tight ?? false, false, lhs, rhs);
+                    }
+                    lhs = new Bin("/", op.Tight ?? false, false, lhs, rhs);
+                }
+                else if (IsOp("*", "."))
+                {
+                    var op = Consume();
+                    // ADR 30-04 Feat-asterisk-tightness-associativity :
+                    // - `*`/`.` tight default → gauche-assoc PEMDAS (rhs = ParsePostfix).
+                    //   `1/2*3/4` → \frac{1\cdot 2}{...}.
+                    // - `*`/`.` loose default → droite-récursive (rhs = ParseTerm).
+                    //   `1/2 * 3/4` → \frac{1}{2} \cdot \frac{3}{4} (sépare).
+                    // Mode `FlipAsteriskAssociativity` inverse les rôles.
+                    //
+                    // `.` est conservé comme `Bin(".")` distinct de `Bin("*")`
+                    // pour que LatexRenderer rende toujours `\cdot` (lecture
+                    // littérale du point), indépendamment du setting culturel.
+                    // Cf. ADR 30-04 Feat-dot-as-multiplier.
+                    string opValue = op.Value;
+                    bool tight = op.Tight ?? false;
+                    bool useLeftAssoc = FlipAsteriskAssociativity ? !tight : tight;
+                    if (useLeftAssoc)
+                    {
+                        var rhs = ParsePostfix() ?? (AstNode)Hole(1);
+                        lhs = new Bin(opValue, tight, false, lhs, rhs);
+                        // continue loop (gauche-associatif)
+                    }
+                    else
+                    {
+                        var rhs = ParseTerm() ?? (AstNode)Hole(1);
+                        return new Bin(opValue, tight, false, lhs, rhs);
+                    }
                 }
                 else if (CanStartFactor())
                 {
@@ -419,7 +482,12 @@ namespace MathCursor.Core.Lattice
                 if (IsOp("^", "_"))
                 {
                     var op = Consume();
-                    var arg = ParseArgument() ?? (AstNode)Hole(1);
+                    // ADR 30-04 Feat-tight-implicit-mult-grouping : aligné sur `/`.
+                    // L'argument de `^` / `_` consomme la chaîne MULT IMPLICITE tight
+                    // par défaut (ex: x^2n → x^{2n}). Les ops tight (+, -, *) brisent
+                    // la chaîne (ex: x^a+b → x^{a}+b en PEMDAS standard).
+                    // Mode TightExtendsToOps (alt désambig) → x^{a+b}.
+                    var arg = ParseSupSubArg() ?? (AstNode)Hole(1);
                     @base = op.Value == "^" ? (AstNode)new Sup(@base, arg) : new Sub(@base, arg);
                     continue;
                 }
@@ -513,13 +581,38 @@ namespace MathCursor.Core.Lattice
             if (t.Type == EdgeType.Function)
             {
                 Consume();
+                // Pattern dédié `Func Number Group` (puissance + appel) : si
+                // les 2 tokens suivants sont Number + `(...)` (Group), on
+                // consomme JUSTE ces 2 et on émet `Sup(Func(name, Group), Number)`.
+                // Le reste reste pour le parser parent.
+                //
+                // Sans ce check précoce, `Cos2(x)+1` tombait dans ParseArgument
+                // → ParseTightChain qui absorbait `+1` (le `+` est tight entre
+                // `)` et `1`) et le Func gardait tout. Cf. ADR
+                // 2026-04-30-Fix-trig-func-power-tight-arg.
+                var t1 = Peek();
+                if (t1 != null && t1.Type == EdgeType.Number)
+                {
+                    int save = _i;
+                    var numTok = Consume();
+                    var t2 = Peek();
+                    if (t2 != null && t2.Type == EdgeType.Op && t2.Value == "("
+                        && IsTightAdjacent())
+                    {
+                        var group = ParsePrimary();
+                        if (group is Group g)
+                            return new Sup(
+                                new Func(t.Value, g),
+                                new Atom("number", numTok.Value),
+                                isImplicit: true);
+                    }
+                    _i = save; // pas le pattern → rollback
+                }
                 var arg = ParseArgument() ?? (AstNode)Hole(1);
-                // Application de la règle générique "Number tight après nom =
-                // exposant" au cas particulier d'une fonction. Le flow de
-                // ParseArgument absorbe le Number ET le Group qui suit dans
-                // un Bin(*, implicit, tight) — on remap ici en Sup(Func, Num)
-                // quand le second opérande est un Group (parens explicites).
-                // Sans parens (cos2x), on conserve la mult implicite arg-of.
+                // Remap historique conservé : il fait fonctionner le cas
+                // tolérant à l'espace `cos 2(x)` (où le check précoce ci-dessus
+                // ne déclenche pas car `2` n'est pas tight au `cos`, mais
+                // ParseTightChain regroupe quand même `2(x)` en Bin tight).
                 if (arg is Bin bin && bin.Op == "*" && bin.Implicit && bin.Tight
                     && bin.Lhs is Atom lhsAtom && lhsAtom.Kind == "number"
                     && bin.Rhs is Group)
@@ -550,6 +643,55 @@ namespace MathCursor.Core.Lattice
             if (t.Type == EdgeType.Op && (t.Value == "-" || t.Value == "+")) return ParseTightChain();
             if (CanStartFactor()) return ParseTightChain();
             return null;
+        }
+
+        // Argument de `^` / `_` : aligné sur `/` (ADR 30-04 tight-implicit-mult).
+        // - `(expr)` ou `[expr]` : ParsePrimary (group / interval)
+        // - `+/-` unaire ou facteur : ParseTightImplicitMultChain (default)
+        //   ou ParseTightChain (mode alt désambig).
+        // Différence avec `ParseArgument` (utilisé par les SCOPE keywords cos,
+        // lim, sum, int, sqrt, frac) : ces derniers gardent ParseTightChain
+        // pour préserver `frac a+b c` → `\frac{a+b}{c}` etc. Pour `^` et `_`
+        // (opérateurs binaires), la convention math standard est plus
+        // appropriée : `x^a+b` = `x^{a}+b` par défaut, l'élargissement à
+        // `x^{a+b}` est accessible via cascade de désambig.
+        private AstNode? ParseSupSubArg()
+        {
+            var t = Peek();
+            if (t == null) return null;
+            if (t.Type == EdgeType.Op && t.Value == "(") return ParsePrimary();
+            if (t.Type == EdgeType.Op && (t.Value == "[" || t.Value == "]"))
+                return ParsePrimary();
+            System.Func<AstNode?> chainParser = TightExtendsToOps
+                ? (System.Func<AstNode?>)ParseTightChain
+                : ParseTightImplicitMultChain;
+            if (t.Type == EdgeType.Op && (t.Value == "-" || t.Value == "+"))
+                return chainParser();
+            if (CanStartFactor()) return chainParser();
+            return null;
+        }
+
+        // TightImplicitMultChain = Postfix (tightAdjacent Postfix)*
+        // Variante restreinte de ParseTightChain : consomme UNIQUEMENT la
+        // chaîne de mult implicite tight (juxtaposition), PAS les ops tight
+        // `+ - * /`. Utilisée par défaut pour le rhs de `/` tight et pour
+        // l'argument de `^` / `_`. Les ops tight cassent la chaîne en mode
+        // par défaut (ADR 30-04). Le mode élargi (alt désambig) bascule vers
+        // ParseTightChain qui consomme aussi les ops.
+        private AstNode? ParseTightImplicitMultChain()
+        {
+            var lhs = ParsePostfix();
+            if (lhs == null) return null;
+            while (CanStartFactor() && IsTightAdjacent())
+            {
+                // Stop avant union/inter (consommés au niveau ParseExpr en
+                // infix). Cohérent avec ParseTerm qui fait le même check.
+                if (IsKwCanon("union") || IsKwCanon("inter")) break;
+                var rhs = ParsePostfix();
+                if (rhs == null) break;
+                lhs = new Bin("*", true, true, lhs, rhs);
+            }
+            return lhs;
         }
 
         // TightChain = Postfix (TightOp Postfix | tightAdjacent Postfix)*
