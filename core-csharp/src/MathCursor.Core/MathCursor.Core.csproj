@@ -25,10 +25,6 @@
     <EmbeddedResource Include="..\..\..\data\*.json">
       <Link>Data\%(Filename)%(Extension)</Link>
     </EmbeddedResource>
-    <!-- YAML domains : patterns de conversion texte → LaTeX -->
-    <EmbeddedResource Include="..\..\..\data\yaml_domains\**\*.yaml">
-      <Link>Data\yaml_domains\%(RecursiveDir)%(Filename)%(Extension)</Link>
-    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

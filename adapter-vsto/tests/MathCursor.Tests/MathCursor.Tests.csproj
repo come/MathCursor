@@ -1,0 +1,75 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>MathCursor.Tests</RootNamespace>
+    <AssemblyName>MathCursor.Tests</AssemblyName>
+    <Nullable>disable</Nullable>
+    <!-- Forcer x64 pour ONNX Runtime : la DLL native onnxruntime.dll n'est
+         que x64 dans notre version pinned (1.16.3, cf. ADR Bay Trail compat). -->
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- Génère App.config + binding redirects auto pour résoudre les
+         conflits de versions des assemblies System.* entre .NET Framework
+         (4.0.4.1) et NuGet packages (6.0.0.0). Sans ça, OnnxRuntime échoue
+         au TypeInitializer en chargeant System.Runtime.CompilerServices.Unsafe. -->
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+  </PropertyGroup>
+
+  <!-- Copie post-build : sur net48 + SDK csproj, les natives runtimes/win-x64/
+       du NuGet OnnxRuntime ne sont pas déployées automatiquement à côté de
+       l'assembly. Sans onnxruntime.dll dans le bin, le P/Invoke côté
+       OnnxRuntime échoue avec TypeInitializationException. On copie
+       explicitement depuis le package restored. -->
+  <Target Name="CopyOnnxRuntimeNatives" AfterTargets="Build">
+    <ItemGroup>
+      <_OnnxNativeFiles Include="$(NuGetPackageRoot)microsoft.ml.onnxruntime\1.16.3\runtimes\win-x64\native\*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_OnnxNativeFiles)"
+          DestinationFolder="$(OutDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <!-- Pour les tests NER : mêmes versions que l'adapter VSTO (cf. ADR
+         2026-04-28-Fix-ort-version-bay-trail-compat). -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.16.3" />
+    <!-- Force la version 6.0.0 de System.Runtime.CompilerServices.Unsafe :
+         OnnxRuntime 1.16.3 utilise des types qui ne sont dispos que dans
+         cette version. Sur net48 par défaut, MSBuild résout 4.0.4.1 et le
+         loader plante avec FileLoadException → TypeInitializationException
+         côté OnnxRuntime. -->
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- xunit.runner.json copié à côté de l'assembly pour désactiver le
+         shadow-copy. Sinon les natives DLLs (onnxruntime.dll) ne sont pas
+         résolues car le test runner shadow-copie l'assembly ailleurs et
+         perd le bin/ original. -->
+    <None Include="xunit.runner.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Sources adapter testées : compilation directe via Compile Include.
+         Le csproj VSTO d'origine requiert MSBuild Office Tools pour build,
+         ce qu'on ne veut pas comme prérequis du test runner. Les fichiers
+         testés sont pure compute (pas de dépendance Word/VSTO) → on les
+         recompile dans l'assembly de test. -->
+    <Compile Include="..\..\src\MathCursor\UI\WpfMathAdapter.cs" Link="adapter-sources\UI\WpfMathAdapter.cs" />
+    <Compile Include="..\..\src\MathCursor\Detection\DetectedZone.cs" Link="adapter-sources\Detection\DetectedZone.cs" />
+    <Compile Include="..\..\src\MathCursor\Detection\WordPiece\WordPieceTokenizer.cs" Link="adapter-sources\Detection\WordPiece\WordPieceTokenizer.cs" />
+    <Compile Include="..\..\src\MathCursor\Detection\MathNerDetector.cs" Link="adapter-sources\Detection\MathNerDetector.cs" />
+  </ItemGroup>
+
+</Project>
