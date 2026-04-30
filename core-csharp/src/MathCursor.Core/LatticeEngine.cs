@@ -41,7 +41,7 @@ namespace MathCursor.Core
             if (string.IsNullOrWhiteSpace(rawSpan))
                 return System.Array.Empty<LatexSuggestion>();
 
-            var trimmed = NormalizeUnicodeSubSup(rawSpan.Trim());
+            var trimmed = AutoBalanceDelimiters(NormalizeUnicodeSubSup(rawSpan.Trim()));
             var edges = Lexer.Lex(trimmed);
             var paths = LatticePathFinder.TopK(edges, trimmed.Length, TopKWidth);
             if (paths.Count == 0)
@@ -112,7 +112,7 @@ namespace MathCursor.Core
             if (string.IsNullOrWhiteSpace(rawSpan))
                 return new AmbiguityResult(string.Empty, null, null, null);
 
-            var trimmed = NormalizeUnicodeSubSup(rawSpan.Trim());
+            var trimmed = AutoBalanceDelimiters(NormalizeUnicodeSubSup(rawSpan.Trim()));
             var edges = Lexer.Lex(trimmed);
             var paths = LatticePathFinder.TopK(edges, trimmed.Length, TopKWidth);
             if (paths.Count == 0)
@@ -120,8 +120,9 @@ namespace MathCursor.Core
 
             var topAst = new Parser(paths[0].Edges).Parse();
             var topLatex = LatexRenderer.Render(topAst);
-            // On passe `trimmed` (la source post-NormalizeUnicode) pour que les
-            // règles source-mutation (V→forall, etc.) scannent la bonne chaîne.
+            // On passe `trimmed` (la source post-NormalizeUnicode + balance) pour
+            // que les règles source-mutation (V→forall, etc.) scannent la chaîne
+            // qui correspond à l'AST top-1.
             return AlternativeGenerator.FindRightmost(topAst, topLatex, trimmed);
         }
 
@@ -133,6 +134,48 @@ namespace MathCursor.Core
         /// </summary>
         public static LatticeEngine LoadEmbedded(string language = "fr")
             => new LatticeEngine();
+
+        /// <summary>
+        /// Auto-balance les délimiteurs ouverts : si l'utilisateur tape
+        /// <c>u (1 3</c> sans fermer la paren, on append le <c>)</c> manquant
+        /// pour que le pattern soit reconnu en cours de frappe.
+        ///
+        /// UX : la conversion live (popup en cours de saisie / démo web) doit
+        /// reconnaître l'intention avant que l'utilisateur ait fini de fermer.
+        /// On ferme silencieusement les parens / brackets / braces non fermés
+        /// dans l'ordre où ils manquent.
+        ///
+        /// Comportement :
+        /// <list type="bullet">
+        /// <item>Compteurs séparés pour <c>()</c>, <c>[]</c>, <c>{}</c>.</item>
+        /// <item>Une fermeture en trop (closer sans opener) ne crée pas un
+        /// compteur négatif — l'utilisateur peut fermer une paren qu'il a
+        /// pas ouverte (collage) sans qu'on injecte de chars devant.</item>
+        /// <item>Append seulement à la FIN. On ne réordonne pas, on ne ferme
+        /// pas dans l'ordre LIFO strict — c'est une approximation qui suffit
+        /// pour les cas typiques (un seul niveau d'imbrication ouvert).</item>
+        /// </list>
+        /// </summary>
+        private static string AutoBalanceDelimiters(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return input ?? string.Empty;
+            // On ne balance QUE les parens `()`. Les `[]` ne sont PAS balançés
+            // parce que la convention française des intervalles utilise `[`
+            // et `]` dans les deux sens (`[0,1]` fermé, `[0,1[` semi-ouvert,
+            // `]0,1]` semi-ouvert inverse). Compter `[` comme open pure
+            // ferait casser `[0,+inf[`. Idem `{}` non balancés (rare en
+            // saisie partielle, et risque sur les commandes LaTeX `\frac{`).
+            int parens = 0;
+            foreach (var c in input)
+            {
+                if (c == '(') parens++;
+                else if (c == ')' && parens > 0) parens--;
+            }
+            if (parens == 0) return input;
+            var sb = new System.Text.StringBuilder(input);
+            while (parens-- > 0) sb.Append(')');
+            return sb.ToString();
+        }
 
         /// <summary>
         /// Normalise les caractères Unicode de superscript/subscript en notation

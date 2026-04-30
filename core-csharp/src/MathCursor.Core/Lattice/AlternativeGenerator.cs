@@ -221,6 +221,24 @@ namespace MathCursor.Core.Lattice
             //    le parser à reconnaître le pattern coords.
             //    Cf. brief 2026-04-29-vector-coordinates-shorthand §3.1.
             ScanFunctionTypicalWithCommaCoords(source, topLatex, matches, consumed);
+            // 6) Col↔ligne pour VectorCoordinates top-level : si l'AST entier
+            //    est une seule VectorCoordinates (cas `u (1 2)`, `u(1, 2)`,
+            //    `OM (x y z)`, etc.), proposer le layout opposé en alt. On
+            //    limite au top-level pour éviter les conflits avec d'autres
+            //    ambig nested (V/E, AB, etc.). V2 étendra aux nested.
+            ScanVectorLayoutFlipTopLevel(topAst, topLatex, matches, consumed);
+            // 7) Élargissement tight de la chaîne (cf. ADR 30-04
+            //    Feat-tight-implicit-mult-grouping). Default : `1/x+1` →
+            //    \frac{1}{x}+1 (PEMDAS, chaîne implicite uniquement). Alt :
+            //    \frac{1}{x+1} (chaîne tight élargie aux ops). Re-parse avec
+            //    TightExtendsToOps=true et compare.
+            ScanTightChainExtension(source, topLatex, matches, consumed);
+            // 8) Décimal vs multiplication pour `\d+\.\d+` (ADR 30-04
+            //    Feat-dot-as-multiplier). Default = mult (`3 \cdot 4`),
+            //    alt = décimal (`3{,}4`). Permet aux utilisateurs anglo
+            //    qui tapent `3.4` pour "trois virgule quatre" de switcher
+            //    rapidement.
+            ScanDecimalVsMultiplication(source, topLatex, matches, consumed);
             // Tri : priorité aux règles structurantes (V→∀, E→∃ qui changent
             // la sémantique globale) puis aux règles locales (canonical-set,
             // AB→vec, x²→x_2). En cas d'égalité de priorité, rightmost first
@@ -246,10 +264,26 @@ namespace MathCursor.Core.Lattice
             RuleTwoUppercase => 3,
             RuleThreeUppercase => 3,
             RuleLetterSupNumber => 3,
+            // u*v ambig : priorité 3 comme les autres règles d'ambig de
+            // multiplication d'idents — pas plus structurant qu'AB→vec.
+            RuleVecDotProduct => 3,
             // f(1, 2) ambig : priorité haute parce que sémantiquement
             // structurante (function call vs vecteur de coords) — l'élève
             // doit trancher avant qu'on touche aux locales.
             RuleVectorCoordsVsCall => 2,
+            // Col↔ligne : priorité basse (juste un layout, pas un changement
+            // sémantique). Les autres ambig l'emportent en cas de coexistence
+            // (= rightmost wins entre ambig de priorité égale ; ici on est en
+            // dernier).
+            RuleVectorLayoutFlip => 4,
+            // Tight chain extension : priorité basse (juste un regroupement
+            // alternatif, pas un changement sémantique). Les ambig structurelles
+            // (AB, V/E) gardent la main.
+            RuleTightChainExtension => 4,
+            // Décimal vs mult : priorité 3 (sémantique change, pas un layout).
+            // Plus haut que tight-chain-extension (4) parce que la confusion
+            // décimal/mult a un impact plus fort sur le rendu visuel.
+            RuleDecimalVsMultiplication => 3,
             _ => 99,
         };
 
@@ -338,6 +372,186 @@ namespace MathCursor.Core.Lattice
         /// le re-parse, et on substitue ensuite le nom vec rendu (`\vec{u}`)
         /// par `\vec{f}` pour l'aperçu fidèle.
         /// </summary>
+        /// <summary>
+        /// Si l'AST top est une <see cref="VectorCoordinates"/> seule (toute
+        /// la formule = un vecteur+coords, sans autre opération autour), propose
+        /// le layout opposé en alternative :
+        /// <list type="bullet">
+        /// <item>Saisie <c>u (1 2)</c> → default colonne, alt ligne `\vec{u}(1, 2)`</item>
+        /// <item>Saisie <c>u(1, 2)</c> → default ligne, alt colonne `\vec{u}\begin{pmatrix}1 \\ 2\end{pmatrix}`</item>
+        /// </list>
+        /// V1 limité au top-level pour éviter les conflits de positions avec
+        /// les autres ambig (AB, V/E…). Si l'utilisateur tape `vec u + u (1 2)`,
+        /// l'AST top n'est PAS une VectorCoordinates (c'est un Bin) et on ne
+        /// propose pas le flip — V2 si besoin.
+        /// </summary>
+        private static void ScanVectorLayoutFlipTopLevel(AstNode topAst, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            if (!(topAst is VectorCoordinates vc)) return;
+            // Vérifier qu'aucun match précédent n'a déjà consommé tout ou
+            // partie du topLatex — sinon collision avec un ambig plus
+            // structurant (V/E à l'intérieur d'une cell, par exemple).
+            for (int i = 0; i < topLatex.Length; i++)
+                if (consumed[i]) return;
+
+            string flippedLayout = vc.Layout == "column" ? "row" : "column";
+            var altVc = new VectorCoordinates(vc.Name, vc.Values, flippedLayout, vc.IsPoint);
+            string altLatex = LatexRenderer.Render(altVc);
+            if (altLatex == topLatex) return; // identique → pas d'ambig
+
+            // alt[0] = current (default = ce qu'on voit déjà dans top), alt[1]
+            // = layout flipped. Le bridge filtre alt[0] (== top) et n'expose
+            // que alt[1] dans la popup.
+            var alts = new List<AmbiguityAlternative>
+            {
+                new AmbiguityAlternative(topLatex, mutation: null),
+                new AmbiguityAlternative(altLatex, mutation: null),
+            };
+            var spot = new AmbiguitySpot(RuleVectorLayoutFlip, topLatex, alts);
+            for (int i = 0; i < topLatex.Length; i++) consumed[i] = true;
+            output.Add(new AmbiguityMatch(spot, 0, topLatex.Length));
+        }
+
+        /// <summary>
+        /// Scan SOURCE re-parsé avec divers flags du <see cref="Parser"/> qui
+        /// modifient le groupement (tight chain extension, asterisk associativity
+        /// flip). Toute alt qui diffère du default est exposée en cascade.
+        /// Cf. ADR 30-04 <c>Feat-tight-implicit-mult-grouping</c> et
+        /// <c>Feat-asterisk-tightness-associativity</c>.
+        ///
+        /// Cas typiques :
+        /// <list type="bullet">
+        /// <item><c>1/x+1</c> : default <c>\frac{1}{x}+1</c>, alt <c>\frac{1}{x+1}</c>
+        ///   (tight extension)</item>
+        /// <item><c>x^a+b</c> : default <c>x^{a}+b</c>, alt <c>x^{a+b}</c></item>
+        /// <item><c>u_n+1</c> : default <c>u_{n}+1</c>, alt <c>u_{n+1}</c></item>
+        /// <item><c>1/2*3/4</c> : default <c>\frac{(1/2)\cdot 3}{4}</c>, alt
+        ///   <c>\frac{1}{2}\cdot \frac{3}{4}</c> (asterisk flip)</item>
+        /// <item><c>1/2 * 3/4</c> : default <c>\frac{1}{2}\cdot \frac{3}{4}</c>,
+        ///   alt <c>\frac{(1/2)\cdot 3}{4}</c> (asterisk flip inverse)</item>
+        /// </list>
+        ///
+        /// Exposé en TOP-LEVEL uniquement (= toute la formule comme spot) pour
+        /// rester simple. V2 ciblera la sous-expression précise si plusieurs
+        /// élargissements coexistent dans la formule.
+        /// </summary>
+        private static void ScanTightChainExtension(string source, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(topLatex)) return;
+            // Si le top-latex est déjà entièrement consommé par un autre match
+            // (V→∀, vec coords, etc.), on ne propose pas l'alt (priorité aux
+            // ambig structurelles).
+            for (int i = 0; i < topLatex.Length; i++)
+                if (consumed[i]) return;
+
+            // Tester chaque combinaison non-default de flags. Collecter les
+            // alts distinctes (déduplication via HashSet, ordre préservé via
+            // List). Combinaisons : extension seule, flip seul, les deux.
+            var seen = new HashSet<string> { topLatex };
+            var altList = new List<string>();
+            (bool extend, bool flip)[] combos = { (true, false), (false, true), (true, true) };
+            foreach (var (extend, flip) in combos)
+            {
+                string? altLatex = TryReparse(source, extend, flip);
+                if (altLatex == null) continue;
+                if (seen.Add(altLatex)) altList.Add(altLatex);
+            }
+            if (altList.Count == 0) return;
+
+            var alts = new List<AmbiguityAlternative>
+            {
+                new AmbiguityAlternative(topLatex, mutation: null),  // default
+            };
+            foreach (var alt in altList)
+                alts.Add(new AmbiguityAlternative(alt, mutation: null));
+
+            var spot = new AmbiguitySpot(RuleTightChainExtension, topLatex, alts);
+            for (int i = 0; i < topLatex.Length; i++) consumed[i] = true;
+            output.Add(new AmbiguityMatch(spot, 0, topLatex.Length));
+        }
+
+        /// <summary>
+        /// Scan SOURCE pour le pattern `\d+\.\d+` (= deux nombres séparés
+        /// par un point). Default = mult (rendu actuel `n \cdot m`), alt =
+        /// décimal `n{,}m` (substitution typographique FR). Cf. ADR 30-04
+        /// Feat-dot-as-multiplier §3.
+        ///
+        /// Critère strict : les deux côtés du `.` sont **purement
+        /// numériques**. `a.b`, `2.x`, `x.2` ne déclenchent pas cette règle
+        /// (ils sont rendus en mult sans alt décimal possible).
+        ///
+        /// Le scan se fait sur la SOURCE (pas le topLatex rendu) parce que
+        /// le pattern est trivial à matcher via regex sur le texte saisi.
+        /// La position dans topLatex est récupérée par recherche du
+        /// substring `n\\cdot m` (ou `n\\times m` selon setting).
+        /// </summary>
+        private static void ScanDecimalVsMultiplication(string source, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            if (string.IsNullOrEmpty(source)) return;
+            int i = 0;
+            while (i < source.Length)
+            {
+                if (!IsDigit(source[i])) { i++; continue; }
+                int numStart = i;
+                while (i < source.Length && IsDigit(source[i])) i++;
+                int numEnd = i;
+                // Doit être suivi de `.` puis d'au moins un chiffre.
+                if (i >= source.Length || source[i] != '.') continue;
+                int dotPos = i;
+                if (i + 1 >= source.Length || !IsDigit(source[i + 1])) continue;
+                i++;
+                int frac1Start = i;
+                while (i < source.Length && IsDigit(source[i])) i++;
+                int frac1End = i;
+                // On a un pattern `\d+\.\d+` complet : [numStart..frac1End).
+                string num = source.Substring(numStart, numEnd - numStart);
+                string frac = source.Substring(frac1Start, frac1End - frac1Start);
+                // Default rendu = `num \cdot frac` (le `.` rend toujours \cdot).
+                string defaultLatex = $"{num}\\cdot {frac}";
+                string altDecimalLatex = $"{num}{{,}}{frac}";
+                // Localiser dans topLatex
+                int pos = topLatex.IndexOf(defaultLatex, System.StringComparison.Ordinal);
+                if (pos < 0) continue;
+                bool free = true;
+                for (int k = pos; k < pos + defaultLatex.Length; k++)
+                    if (consumed[k]) { free = false; break; }
+                if (!free) continue;
+
+                var alts = new List<AmbiguityAlternative>
+                {
+                    new AmbiguityAlternative(defaultLatex, mutation: null),
+                    new AmbiguityAlternative(altDecimalLatex, mutation: null),
+                };
+                var spot = new AmbiguitySpot(RuleDecimalVsMultiplication, defaultLatex, alts);
+                for (int k = pos; k < pos + defaultLatex.Length; k++) consumed[k] = true;
+                output.Add(new AmbiguityMatch(spot, pos, pos + defaultLatex.Length));
+            }
+        }
+
+        private static bool IsDigit(char c) => c >= '0' && c <= '9';
+
+        /// <summary>Re-parse avec les flags spécifiés. Retourne le LaTeX, ou null si erreur.</summary>
+        private static string? TryReparse(string source, bool tightExtendsToOps, bool flipAsterisk)
+        {
+            try
+            {
+                var edges = Lexer.Lex(source);
+                var paths = LatticePathFinder.TopK(edges, source.Length, 1);
+                if (paths.Count == 0) return null;
+                var parser = new Parser(paths[0].Edges)
+                {
+                    TightExtendsToOps = tightExtendsToOps,
+                    FlipAsteriskAssociativity = flipAsterisk,
+                };
+                var ast = parser.Parse();
+                return LatexRenderer.Render(ast);
+            }
+            catch { return null; }
+        }
+
         private static void ScanFunctionTypicalWithCommaCoords(string source, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
@@ -755,8 +969,51 @@ namespace MathCursor.Core.Lattice
                     });
             }
 
+            // Règle 3 : multiplication EXPLICITE entre deux lettres simples
+            // (`a*b`, `u*v`, `A*B`, `x*y`…) → propose le produit scalaire de
+            // vecteurs en alt :
+            //   default `a\cdot b`   alt `\vec{a} \cdot \vec{b}`
+            // Restriction au `*` explicite (pas la juxtaposition `ab`/`AB`)
+            // pour ne pas voler le terrain aux autres cascades :
+            //   `AB` juxtaposition → RuleTwoUppercase (vec/paren/crochet)
+            //   `V x` juxtaposition → RuleVAsForall (∀)
+            //   `xy` juxtaposition → variables liées, pas de promotion vec
+            // La présence du `*` est un signal explicite que l'utilisateur
+            // distingue les opérandes — d'où la pertinence de la cascade.
+            if (node is Bin b && (b.Op == "*" || b.Op == ".") && !b.Implicit
+                && b.Lhs is Atom la && la.Kind == "ident" && IsSingleLetterIdent(la.Value)
+                && b.Rhs is Atom ra && ra.Kind == "ident" && IsSingleLetterIdent(ra.Value))
+            {
+                // DefaultLatex doit matcher le rendu actuel pour que le scan
+                // localise correctement le spot dans topLatex.
+                // - Bin("*") rend selon GlobalOptions.MultSymbol (cf. ADR
+                //   Feat-explicit-mult-times-vs-cdot).
+                // - Bin(".") rend toujours `\cdot` (lecture littérale du point,
+                //   cf. ADR Feat-dot-as-multiplier).
+                // L'alt vec dot product reste en `\cdot` indépendamment du
+                // setting (convention math du produit scalaire vectoriel).
+                string symbol = b.Op == "."
+                    ? "\\cdot "
+                    : LatexRenderer.GlobalOptions.MultSymbol;
+                string defaultLatex = $"{la.Value}{symbol}{ra.Value}";
+                string altLatex = $"\\vec{{{la.Value}}} \\cdot \\vec{{{ra.Value}}}";
+                return new AmbiguitySpot(
+                    ruleId: RuleVecDotProduct,
+                    defaultLatex: defaultLatex,
+                    alternatives: new[]
+                    {
+                        new AmbiguityAlternative(altLatex),
+                    });
+            }
+
             return null;
         }
+
+        // Identifiant 1-lettre alphabétique (lower ou upper). Permet de
+        // proposer une interprétation vecteur sur `a*b`, `x*y`, `A*B`, etc.
+        // — l'utilisateur trie via la cascade.
+        private static bool IsSingleLetterIdent(string ident)
+            => ident.Length == 1 && char.IsLetter(ident[0]);
 
         // Identifiants des règles d'ambiguïté — utilisés par la popup pour
         // mémoriser les préférences utilisateur par TYPE de pattern (et non
@@ -774,6 +1031,17 @@ namespace MathCursor.Core.Lattice
         // virgule (= layout row only — pour layout column le parser a déjà
         // tranché en faveur des coords sans ambig).
         public const string RuleVectorCoordsVsCall = "vector-coords-vs-call";
+        public const string RuleVectorLayoutFlip = "vector-layout-flip";
+        public const string RuleVecDotProduct = "vec-dot-product";
+        // Élargissement tight chain : default `1/x+1` → \frac{1}{x}+1 (PEMDAS) ;
+        // alt `\frac{1}{x+1}` (chaîne tight aux ops). Cf. ADR 2026-04-30
+        // Feat-tight-implicit-mult-grouping. Pareil pour `^a+b`, `_n+1`.
+        public const string RuleTightChainExtension = "tight-chain-extension";
+        // Décimal vs multiplication : `3.4` rendu `3 \cdot 4` par défaut
+        // (notation FR pure, ADR Feat-dot-as-multiplier), alt = décimal `3{,}4`.
+        // Concerne UNIQUEMENT le pattern `\d+\.\d+` (deux nombres séparés
+        // par `.`). Lettres ou expressions ne déclenchent pas cette règle.
+        public const string RuleDecimalVsMultiplication = "decimal-vs-multiplication";
 
         /// <summary>
         /// Simule l'application d'une <see cref="SourceMutation"/> sur la

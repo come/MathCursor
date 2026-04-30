@@ -20,6 +20,14 @@ namespace MathCursor.Core.Lattice
         // BuildUp (boîte vide native d'éditeur d'équation).
         private const string HoleLatex = "\\square ";
 
+        /// <summary>
+        /// Options de rendu globales (configurées par l'adapter au démarrage).
+        /// Cf. <see cref="MathCursor.Core.RenderOptions"/>. Notamment :
+        /// <see cref="RenderOptions.MultSymbol"/> (`\times` ou `\cdot` selon
+        /// culture/Registry) appliqué au rendu de Bin("*") explicite.
+        /// </summary>
+        public static RenderOptions GlobalOptions { get; set; } = new RenderOptions();
+
         public static string Render(AstNode? node) => node switch
         {
             null => string.Empty,
@@ -59,8 +67,28 @@ namespace MathCursor.Core.Lattice
         {
             var lhs = Render(b.Lhs);
             var rhs = Render(b.Rhs);
-            if (b.Op == "*" && b.Implicit) return $"{lhs}{rhs}";
-            if (b.Op == "*") return $"{lhs}\\cdot {rhs}";
+            // `.` saisi par l'utilisateur → toujours `\cdot` (lecture littérale,
+            // pas configurable). Cf. ADR Feat-dot-as-multiplier.
+            if (b.Op == ".") return $"{lhs}\\cdot {rhs}";
+            // Mult implicite (juxtaposition `2x`, `ab`) :
+            // - Number-Number (`2 3`) : insère le symbole explicite (sinon `23`
+            //   collé est mathématiquement faux). Cf. brief §5.ter.
+            // - Sinon : concaténation pure (comportement existant).
+            if (b.Op == "*" && b.Implicit)
+            {
+                if (b.Lhs is Atom la && la.Kind == "number"
+                    && b.Rhs is Atom ra && ra.Kind == "number")
+                    return $"{lhs}{GlobalOptions.MultSymbol}{rhs}";
+                return $"{lhs}{rhs}";
+            }
+            // `*` explicite : Vec*Vec forcé `\cdot` (convention produit scalaire,
+            // indépendamment du setting). Sinon symbole selon GlobalOptions
+            // (`\times` FR par défaut, `\cdot` autres cultures).
+            if (b.Op == "*")
+            {
+                if (b.Lhs is Vec && b.Rhs is Vec) return $"{lhs}\\cdot {rhs}";
+                return $"{lhs}{GlobalOptions.MultSymbol}{rhs}";
+            }
             // Division explicite "/" → fraction empilée typographique. C'est la
             // convention math : un slash au clavier produit une fraction visuelle
             // (Word et WpfMath rendent \frac empilé, pas inline). On déballe les
@@ -160,7 +188,9 @@ namespace MathCursor.Core.Lattice
                 return $"{prefix} \\begin{{pmatrix}} {body} \\end{{pmatrix}}";
             }
             // layout = "row"
-            var inline = string.Join(", ", rendered);
+            // Convention française (cf. ADR 30-04 Feat-french-semicolon-coordinates) :
+            // séparateur de coordonnées = ` ; ` pour réserver la virgule au décimal.
+            var inline = string.Join(" ; ", rendered);
             return $"{prefix}({inline})";
         }
     }

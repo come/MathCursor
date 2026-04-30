@@ -9,8 +9,25 @@ namespace MathCursor.Core.Tests.Lattice
     /// 1) Rendu direct d'AST construit à la main (isole le renderer)
     /// 2) Pipeline complet Lex → TopK → Parse → Render (intégration)
     /// </summary>
-    public sealed class LatexRendererTests
+    [Collection(GlobalOptionsTestCollection.Name)]
+    public sealed class LatexRendererTests : System.IDisposable
     {
+        private readonly string _savedMultSymbol;
+
+        public LatexRendererTests()
+        {
+            // Force le symbole de mult à `\times` pour déterminisme des tests
+            // cross-culture (default culture-aware résout `\times` ou `\cdot`
+            // selon CultureInfo, ce qui rendrait les tests fragiles).
+            _savedMultSymbol = LatexRenderer.GlobalOptions.MultSymbol;
+            LatexRenderer.GlobalOptions.MultSymbol = "\\times ";
+        }
+
+        public void Dispose()
+        {
+            LatexRenderer.GlobalOptions.MultSymbol = _savedMultSymbol;
+        }
+
         private static string RenderTop(string input)
         {
             var edges = Lexer.Lex(input);
@@ -58,11 +75,13 @@ namespace MathCursor.Core.Tests.Lattice
             => Assert.Equal("n + 1".Replace(" ", ""), RenderTop("n + 1").Replace(" ", ""));
 
         [Fact]
-        public void Bin_explicit_mult_uses_cdot()
+        public void Bin_explicit_mult_uses_times()
         {
-            // 2*x explicite → 2\cdot x
+            // 2*x explicite → 2\times x (culture FR par défaut, cf. ADR
+            // Feat-explicit-mult-times-vs-cdot). Le constructor du test force
+            // GlobalOptions.MultSymbol à "\\times " pour déterminisme.
             var ast = new Bin("*", false, false, new Atom("number", "2"), new Atom("ident", "x"));
-            Assert.Equal("2\\cdot x", LatexRenderer.Render(ast));
+            Assert.Equal("2\\times x", LatexRenderer.Render(ast));
         }
 
         [Fact]
@@ -354,7 +373,11 @@ namespace MathCursor.Core.Tests.Lattice
 
         [Fact]
         public void Inter_keyword_renders_with_cap()
-            => Assert.Equal("[0,1] \\cap [0.5,2]", RenderTop("[0,1] inter [0.5,2]"));
+            // Test du keyword `inter`. On évite les décimales `0.5` car le `.`
+            // est désormais un opérateur de mult (ADR Feat-dot-as-multiplier).
+            // Pour les décimales en input, l'utilisateur tape `0,5` ou utilise
+            // l'alt cascade RuleDecimalVsMultiplication.
+            => Assert.Equal("[0,1] \\cap [1,2]", RenderTop("[0,1] inter [1,2]"));
 
         [Fact]
         public void Forall_with_union_set_explicit_in()
@@ -362,32 +385,250 @@ namespace MathCursor.Core.Tests.Lattice
             // (avec keyword `dans` explicite, cf. décomposition modulaire 29-04)
             => Assert.Equal("\\forall x \\in [0,1] \\cup [2,3]", RenderTop("forall x dans [0,1]U[2,3]"));
 
-        // ------------------ ADR 29-04 tight-as-grouping pour / ------------------
+        // ------------------ ADR 30-04 tight-implicit-mult-grouping ------------------
+        // (cf. 2026-04-30-Feat-tight-implicit-mult-grouping)
+        // Règle : sur le rhs de `/`, `^`, `_` tight, on absorbe la CHAÎNE DE MULT
+        // IMPLICITE tight (juxtaposition) UNIQUEMENT — les ops `+ - *` tight cassent
+        // la chaîne (PEMDAS standard). L'élargissement aux ops tight est exposé en
+        // alt de désambig (cf. AlternativeGeneratorTests).
 
         [Fact]
-        public void AB_slash_DC_tight_renders_as_fraction_block()
-            // AB/DC tight : rhs absorbe DC en bloc → \frac{AB}{DC}
+        public void AB_slash_DC_implicit_chain_grouped()
+            // AB et DC sont des juxtapositions (mult implicite tight) → groupés
+            // dans num/denom. Résultat : \frac{AB}{DC}.
             => Assert.Equal("\\frac{AB}{DC}", RenderTop("AB/DC"));
 
         [Fact]
-        public void AB_slash_BC_tight_renders_as_fraction_block()
-            // Cas explicitement listé dans l'ADR
+        public void AB_slash_BC_implicit_chain_grouped()
             => Assert.Equal("\\frac{AB}{BC}", RenderTop("AB/BC"));
 
         [Fact]
-        public void Slash_tight_with_plus_collé_groups_rhs()
-            // 1/x+1 collé : rhs absorbe (x+1) → \frac{1}{x+1}
-            => Assert.Equal("\\frac{1}{x+1}", RenderTop("1/x+1"));
+        public void Slash_with_implicit_mult_2x_grouped_in_denom()
+            // 1/2x : la chaîne implicite 2x est absorbée au dénom → \frac{1}{2x}.
+            => Assert.Equal("\\frac{1}{2x}", RenderTop("1/2x"));
 
         [Fact]
-        public void Slash_with_space_before_plus_does_not_group_rhs()
-            // 1/x +1 (espace) : rhs = juste x, le +1 reste hors fraction
+        public void Slash_followed_by_plus_does_not_group_rhs_pemdas()
+            // 1/x+1 collé : `+` op explicite casse la chaîne → \frac{1}{x}+1.
+            // L'élargissement `\frac{1}{x+1}` est en alt désambig.
+            => Assert.Equal("\\frac{1}{x}+1", RenderTop("1/x+1"));
+
+        [Fact]
+        public void Slash_with_space_before_plus_keeps_pemdas()
+            // 1/x +1 (espace) : précédence standard, idem que collé après ADR 30-04.
             => Assert.Equal("\\frac{1}{x}+1", RenderTop("1/x +1"));
 
         [Fact]
+        public void Slash_with_space_breaks_implicit_chain()
+            // 1/2 x (espace) : chaîne implicite cassée → \frac{1}{2}x.
+            => Assert.Equal("\\frac{1}{2}x", RenderTop("1/2 x"));
+
+        [Fact]
         public void Simple_slash_unchanged()
-            // 1/x simple : non-régression, \frac{1}{x}
+            // 1/x simple : \frac{1}{x}
             => Assert.Equal("\\frac{1}{x}", RenderTop("1/x"));
+
+        [Fact]
+        public void Slash_chain_is_left_associative_pemdas()
+            // A/B/C : gauche-associatif (PEMDAS). \frac{\frac{A}{B}}{C}, pas A/(B/C).
+            => Assert.Equal("\\frac{\\frac{A}{B}}{C}", RenderTop("A/B/C"));
+
+        [Fact]
+        public void Slash_between_func_groups_unchanged()
+            // cos(x)/sin(x) : groupes explicites → \frac{\cos(x)}{\sin(x)}
+            => Assert.Equal(
+                "\\frac{\\cos\\left(x\\right)}{\\sin\\left(x\\right)}",
+                RenderTop("cos(x)/sin(x)"));
+
+        [Fact]
+        public void Sup_with_implicit_mult_grouped()
+            // x^2n : chaîne implicite `2n` dans l'exposant → x^{2n}.
+            => Assert.Equal("x^{2n}", RenderTop("x^2n"));
+
+        [Fact]
+        public void Sup_with_explicit_op_does_not_group_pemdas()
+            // x^a+b : `+` op explicite casse la chaîne → x^{a}+b.
+            // L'élargissement `x^{a+b}` est en alt désambig.
+            => Assert.Equal("x^{a}+b", RenderTop("x^a+b"));
+
+        [Fact]
+        public void Sub_with_explicit_op_does_not_group_pemdas()
+            // u_n+1 : `+` op explicite casse la chaîne → u_{n}+1.
+            // L'élargissement `u_{n+1}` est en alt désambig.
+            => Assert.Equal("u_{n}+1", RenderTop("u_n+1"));
+
+        [Fact]
+        public void Sup_with_paren_unchanged()
+            // x^(a+b) : parens explicites → x^{a+b}.
+            => Assert.Equal("x^{a+b}", RenderTop("x^(a+b)"));
+
+        // ------------------ ADR 30-04 asterisk-tightness-associativity ------------------
+        // `*` tight (collé) → gauche-assoc PEMDAS ; `*` loose (espace) → droite-récursive.
+        // L'inverse est exposé en cascade de désambig (cf. AlternativeGeneratorTests).
+
+        [Fact]
+        public void Asterisk_tight_left_assoc_pemdas()
+            // a*b/3 (tight) : `(a*b)/3` = \frac{a\times b}{3}
+            => Assert.Equal("\\frac{a\\times b}{3}", RenderTop("a*b/3"));
+
+        [Fact]
+        public void Asterisk_loose_right_recursive_after_space()
+            // a* b/3 (espace après `*`) : a*(b/3) = a\times \frac{b}{3}
+            => Assert.Equal("a\\times \\frac{b}{3}", RenderTop("a* b/3"));
+
+        [Fact]
+        public void Asterisk_loose_right_recursive_before_space()
+            // a *b/3 (espace avant `*`) : a*(b/3) = a\times \frac{b}{3}
+            => Assert.Equal("a\\times \\frac{b}{3}", RenderTop("a *b/3"));
+
+        [Fact]
+        public void Asterisk_loose_right_recursive_both_spaces()
+            // a * b/3 : idem, loose * → droite-récursive
+            => Assert.Equal("a\\times \\frac{b}{3}", RenderTop("a * b/3"));
+
+        [Fact]
+        public void Asterisk_tight_two_fractions_pemdas()
+            // 1/2*3/4 (tight) : `((1/2)*3)/4` = \frac{(1/2)\times 3}{4}
+            => Assert.Equal("\\frac{\\frac{1}{2}\\times 3}{4}", RenderTop("1/2*3/4"));
+
+        [Fact]
+        public void Asterisk_loose_two_fractions_separated()
+            // 1/2 * 3/4 (loose) : (1/2)*(3/4) = \frac{1}{2}\times \frac{3}{4}
+            => Assert.Equal("\\frac{1}{2}\\times \\frac{3}{4}", RenderTop("1/2 * 3/4"));
+
+        [Fact]
+        public void Asterisk_implicit_mult_unchanged()
+            // 2x/3 : mult IMPLICITE (juxtaposition) reste gauche-assoc tight,
+            // pas affectée par la nouvelle règle (qui cible `*` explicite).
+            => Assert.Equal("\\frac{2x}{3}", RenderTop("2x/3"));
+
+        // ------------------ ADR 30-04 explicit-mult-times-vs-cdot ------------------
+        // GlobalOptions.MultSymbol contrôle le rendu de `*`. Vec*Vec forcé `\cdot`
+        // (convention produit scalaire). Number-Number juxtaposition utilise le
+        // symbole explicit (fix du bug `2 3` → `23` collés).
+
+        [Fact]
+        public void Vec_times_vec_forces_cdot_independent_of_setting()
+        {
+            // vec u * vec v : Vec * Vec → toujours \cdot (produit scalaire),
+            // même si setting = \times.
+            // Le constructor du test set \times, mais Vec*Vec doit ignorer.
+            var ast = new Bin("*", true, false, new Vec("u"), new Vec("v"));
+            Assert.Equal("\\vec{u}\\cdot \\vec{v}", LatexRenderer.Render(ast));
+        }
+
+        [Fact]
+        public void Vec_times_vec_renders_cdot_via_pipeline()
+            // Pipeline complet : `vec u * vec v` → \vec{u}\cdot \vec{v}
+            => Assert.Equal("\\vec{u}\\cdot \\vec{v}", RenderTop("vec u * vec v"));
+
+        [Fact]
+        public void Number_times_number_juxtaposition_uses_explicit_symbol()
+        {
+            // 2 3 (juxtaposition implicite avec espace) : doit rendre `2\times 3`
+            // (selon GlobalOptions = \times pour les tests). Sans cette règle,
+            // le rendu serait `23` collés (mathématiquement faux). Cf. brief
+            // frère §5.ter.
+            var ast = new Bin("*", false, true,  // tight=false (loose), implicit=true
+                new Atom("number", "2"), new Atom("number", "3"));
+            Assert.Equal("2\\times 3", LatexRenderer.Render(ast));
+        }
+
+        [Fact]
+        public void Mult_setting_cdot_renders_with_cdot()
+        {
+            // Setting \cdot : a*b rendu `a\cdot b`.
+            var prev = LatexRenderer.GlobalOptions.MultSymbol;
+            LatexRenderer.GlobalOptions.MultSymbol = "\\cdot ";
+            try
+            {
+                Assert.Equal("a\\cdot b", RenderTop("a*b"));
+            }
+            finally { LatexRenderer.GlobalOptions.MultSymbol = prev; }
+        }
+
+        // ------------------ ADR 30-04 dot-as-multiplier ------------------
+        // `.` est un opérateur de multiplication, rendu TOUJOURS `\cdot`
+        // (lecture littérale du point, indépendant du setting). Pour le décimal
+        // anglo `3.4`, l'alt cascade RuleDecimalVsMultiplication propose `3{,}4`.
+
+        [Fact]
+        public void Dot_letter_letter_renders_cdot()
+            => Assert.Equal("a\\cdot b", RenderTop("a.b"));
+
+        [Fact]
+        public void Dot_number_number_renders_cdot()
+            // `3.4` → `3\cdot 4` par défaut. Cf. ADR Feat-dot-as-multiplier.
+            => Assert.Equal("3\\cdot 4", RenderTop("3.4"));
+
+        [Fact]
+        public void Dot_number_letter_renders_cdot()
+            => Assert.Equal("2\\cdot x", RenderTop("2.x"));
+
+        [Fact]
+        public void Dot_chain_left_assoc()
+            => Assert.Equal("a\\cdot b\\cdot c", RenderTop("a.b.c"));
+
+        [Fact]
+        public void Dot_with_func_renders_cdot()
+            => Assert.Equal(
+                "\\cos\\left(x\\right)\\cdot \\sin\\left(x\\right)",
+                RenderTop("cos(x).sin(x)"));
+
+        [Fact]
+        public void Dot_renders_cdot_independent_of_setting()
+        {
+            // Même avec setting \times, le `.` rend toujours \cdot.
+            var prev = LatexRenderer.GlobalOptions.MultSymbol;
+            LatexRenderer.GlobalOptions.MultSymbol = "\\times ";
+            try
+            {
+                Assert.Equal("a\\cdot b", RenderTop("a.b"));
+            }
+            finally { LatexRenderer.GlobalOptions.MultSymbol = prev; }
+        }
+
+        [Fact]
+        public void Dot_tightness_alignée_avec_asterisk()
+            // `.` suit les mêmes règles tightness que `*` (cf. ADR
+            // Feat-asterisk-tightness-associativity). `a.b/3` tight → \frac{a\cdot b}{3}.
+            => Assert.Equal("\\frac{a\\cdot b}{3}", RenderTop("a.b/3"));
+
+        [Fact]
+        public void Dot_loose_right_recursive()
+            // Espace avant `.` : loose → droite-récursive.
+            // `a .b/3` → `a\cdot \frac{b}{3}`.
+            => Assert.Equal("a\\cdot \\frac{b}{3}", RenderTop("a .b/3"));
+
+        // ------------------ Diagnostic bug reporté 30-04 ------------------
+
+        [Fact]
+        public void Diagnostic_one_over_x_plus_2x2()
+        {
+            // Bug user 30-04 : `1/x+2x2` rendait `\frac{1}{x+2x^{2}}` (le `+2x²`
+            // est absorbé au dénominateur). Avec ADR Feat-tight-implicit-mult-
+            // grouping, default = PEMDAS : `\frac{1}{x} + 2x^{2}`.
+            var result = RenderTop("1/x+2x2");
+            // Loggé en clair au cas où ; le test pinne le PEMDAS.
+            Assert.Equal("\\frac{1}{x}+2x^{2}", result);
+        }
+
+        [Fact]
+        public void Diagnostic_g_of_x_equals_one_over_x_plus_2x2()
+        {
+            // Le cas exact de l'image utilisateur : `g(x)=1/x+2x2`.
+            var result = RenderTop("g(x)=1/x+2x2");
+            // Default attendu : g(x) = \frac{1}{x} + 2x^{2}
+            Assert.DoesNotContain("\\frac{1}{x+", result);
+            Assert.Contains("\\frac{1}{x}", result);
+            Assert.Contains("2x^{2}", result);
+        }
+
+        [Fact]
+        public void Asterisk_tight_chain_left_assoc()
+            // 1*2*3 tight : visuellement identique en gauche-assoc ou droite-assoc
+            // (les parens transparentes pour times). On vérifie juste que ça parse.
+            => Assert.Equal("1\\times 2\\times 3", RenderTop("1*2*3"));
 
         // ------------------ Ensembles canoniques (keyword bbR/bbN/etc.) ------------------
 

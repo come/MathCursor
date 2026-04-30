@@ -92,40 +92,43 @@ namespace MathCursor.Core.Tests.Lattice
         // §5.2 — Coordonnées en ligne (séparateur INTERNE = virgule)
         // ===================================================================
 
+        // Notation française : séparateur ` ; ` en sortie (cf. ADR 30-04
+        // Feat-french-semicolon-coordinates). Input virgule inchangé.
+
         [Fact]
         public void Vec_u_row_no_space()
-            => Assert.Equal("\\vec{u}(1, 2)", Top("u(1,2)"));
+            => Assert.Equal("\\vec{u}(1 ; 2)", Top("u(1,2)"));
 
         [Fact]
         public void Vec_u_row_with_space_after_comma()
             // L'espace après la virgule est de la mise en forme, pas un
             // séparateur. On reste en row layout.
-            => Assert.Equal("\\vec{u}(1, 2)", Top("u(1, 2)"));
+            => Assert.Equal("\\vec{u}(1 ; 2)", Top("u(1, 2)"));
 
         [Fact]
         public void Vec_u_row_with_space_before_paren_and_after_comma()
-            => Assert.Equal("\\vec{u}(1, 2)", Top("u (1, 2)"));
+            => Assert.Equal("\\vec{u}(1 ; 2)", Top("u (1, 2)"));
 
         [Fact]
         public void Point_A_row_2D()
             // A majuscule seule = point, pas de \vec
-            => Assert.Equal("A(1, 2)", Top("A(1, 2)"));
+            => Assert.Equal("A(1 ; 2)", Top("A(1, 2)"));
 
         [Fact]
         public void Point_A_row_2D_no_space()
-            => Assert.Equal("A(1, 2)", Top("A(1,2)"));
+            => Assert.Equal("A(1 ; 2)", Top("A(1,2)"));
 
         [Fact]
         public void Point_M_row_3D()
-            => Assert.Equal("M(x, y, z)", Top("M(x, y, z)"));
+            => Assert.Equal("M(x ; y ; z)", Top("M(x, y, z)"));
 
         [Fact]
         public void Vec_AB_row_2D()
-            => Assert.Equal("\\vec{AB}(3, -1)", Top("AB(3, -1)"));
+            => Assert.Equal("\\vec{AB}(3 ; -1)", Top("AB(3, -1)"));
 
         [Fact]
         public void Vec_u_row_with_expressions()
-            => Assert.Equal("\\vec{u}(2x+1, 3y-2)", Top("u(2x+1, 3y-2)"));
+            => Assert.Equal("\\vec{u}(2x+1 ; 3y-2)", Top("u(2x+1, 3y-2)"));
 
         // Bonus : layout=column vs point + 1 maj seule
         [Fact]
@@ -264,9 +267,9 @@ namespace MathCursor.Core.Tests.Lattice
 
         [Fact]
         public void AB_with_coords_renders_vec_AB()
-            // NOUVEAU comportement spec : AB(3, -1) → \vec{AB}(3, -1)
+            // AB(3, -1) → \vec{AB}(3 ; -1) — séparateur français
             // L'ambig two-uppercase reste proposée sur AB.
-            => Assert.Equal("\\vec{AB}(3, -1)", Top("AB(3, -1)"));
+            => Assert.Equal("\\vec{AB}(3 ; -1)", Top("AB(3, -1)"));
 
         // ---- Number-tight et Sup ----
 
@@ -281,7 +284,7 @@ namespace MathCursor.Core.Tests.Lattice
         [Fact]
         public void Vec_u_row_with_x2_y2_implicit_sup_in_cells()
             // u(x2, y2) : number-tight DANS les cellules → x², y²
-            => Assert.Equal("\\vec{u}(x^{2}, y^{2})", Top("u(x2, y2)"));
+            => Assert.Equal("\\vec{u}(x^{2} ; y^{2})", Top("u(x2, y2)"));
 
         // ---- Holes et fractions ----
 
@@ -332,8 +335,8 @@ namespace MathCursor.Core.Tests.Lattice
             var alts = r.Spot.Alternatives.Select(a => a.Latex).ToList();
             // Alt 0 = identity (fonction)
             Assert.Contains("f\\left(1,2\\right)", alts);
-            // Alt 1 = vec coords
-            Assert.Contains("\\vec{f}(1, 2)", alts);
+            // Alt 1 = vec coords (séparateur français ;)
+            Assert.Contains("\\vec{f}(1 ; 2)", alts);
         }
 
         [Fact]
@@ -343,7 +346,7 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.NotNull(r.Spot);
             Assert.Equal(AlternativeGenerator.RuleVectorCoordsVsCall, r.Spot!.RuleId);
             var alts = r.Spot.Alternatives.Select(a => a.Latex).ToList();
-            Assert.Contains("\\vec{g}(x, y)", alts);
+            Assert.Contains("\\vec{g}(x ; y)", alts);
         }
 
         [Fact]
@@ -353,7 +356,7 @@ namespace MathCursor.Core.Tests.Lattice
             // L'ambig serait théoriquement function-call, mais on l'expose pas
             // en V1 (priorité simplicité côté UX).
             var r = _engine.ConvertWithAmbiguity("u(1, 2)");
-            Assert.Equal("\\vec{u}(1, 2)", r.TopLatex);
+            Assert.Equal("\\vec{u}(1 ; 2)", r.TopLatex);
             // Pas d'ambig RuleVectorCoordsVsCall (u n'est pas typique fonction)
             if (r.Spot != null)
                 Assert.NotEqual(AlternativeGenerator.RuleVectorCoordsVsCall, r.Spot.RuleId);
@@ -364,7 +367,7 @@ namespace MathCursor.Core.Tests.Lattice
         {
             // A(1, 2) : majuscule seule → point sans ambig (A pas typique fonction)
             var r = _engine.ConvertWithAmbiguity("A(1, 2)");
-            Assert.Equal("A(1, 2)", r.TopLatex);
+            Assert.Equal("A(1 ; 2)", r.TopLatex);
             if (r.Spot != null)
                 Assert.NotEqual(AlternativeGenerator.RuleVectorCoordsVsCall, r.Spot.RuleId);
         }
@@ -377,6 +380,58 @@ namespace MathCursor.Core.Tests.Lattice
             var r = _engine.ConvertWithAmbiguity("f(x)");
             if (r.Spot != null)
                 Assert.NotEqual(AlternativeGenerator.RuleVectorCoordsVsCall, r.Spot.RuleId);
+        }
+
+        // ===================================================================
+        // P3 — Bug rapporté 30-04 : `u(1, 2)` produit `u((1@2))` en OMath
+        // ===================================================================
+        // Tests pivot 3 couches pour le bug : vérifier que le pipeline complet
+        // (top-1 LaTeX + UnicodeMath conversion) ne produit JAMAIS `((1@2))`
+        // ou autre artefact matrice pour un layout=row (séparateur virgule).
+
+        [Fact]
+        public void Bug_p3_vector_row_latex_is_inline_not_pmatrix()
+        {
+            // Couche (a) : LatexRenderer doit produire la forme ligne, pas pmatrix
+            var latex = Top("u(1, 2)");
+            Assert.Equal("\\vec{u}(1 ; 2)", latex);
+            Assert.DoesNotContain("\\begin{pmatrix}", latex);
+        }
+
+        [Fact]
+        public void Bug_p3_vector_row_unicode_no_matrix_marker()
+        {
+            // Couche (c) : conversion finale ne doit pas contenir `■(` (matrice)
+            // ni `((` doublé. Cas user : `u(1, 2)` → user voit `u((1@2))`.
+            var latex = Top("u(1, 2)");
+            var unicode = LatexToUnicodeMath.Convert(latex);
+            Assert.DoesNotContain("■", unicode);          // marqueur matrice UnicodeMath
+            Assert.DoesNotContain("@", unicode);          // séparateur lignes matrice
+            Assert.DoesNotContain("((1", unicode);        // double-paren autour du `1`
+        }
+
+        [Fact]
+        public void Bug_p3_point_row_unicode_clean()
+        {
+            // A(1, 2) en notation point : doit rendre `A(1 ; 2)` propre,
+            // pas de matrice, pas de \vec, pas de double parens.
+            var latex = Top("A(1, 2)");
+            var unicode = LatexToUnicodeMath.Convert(latex);
+            Assert.Equal("A(1 ; 2)", latex);
+            Assert.DoesNotContain("■", unicode);
+            Assert.DoesNotContain("@", unicode);
+            Assert.DoesNotContain("⃗", unicode);          // pas de combining arrow (= \vec)
+        }
+
+        [Fact]
+        public void Bug_p3_3d_point_unicode_clean()
+        {
+            // M(x, y, z) en 3D
+            var latex = Top("M(x, y, z)");
+            var unicode = LatexToUnicodeMath.Convert(latex);
+            Assert.Equal("M(x ; y ; z)", latex);
+            Assert.DoesNotContain("■", unicode);
+            Assert.DoesNotContain("@", unicode);
         }
 
         // ===================================================================

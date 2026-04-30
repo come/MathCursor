@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using System.Windows.Threading;
 using MathCursor.Core;
 using MathCursor.Core.Lattice;
-using MathCursor.Core.Symbols;
 using MathCursor.Detection;
 using MathCursor.HostContract;
 using MathCursor.UI;
@@ -64,6 +63,11 @@ namespace MathCursor.Host
         private int _lastZoneAbsStart = -1;
         private int _lastZoneAbsEnd = -1;
         private string _lastZoneSource = "";
+
+        // Snapshot de la dernière action user (popup + commit éventuel) pour
+        // pré-remplir la fenêtre "Signaler une erreur". Mis à jour à chaque
+        // ShowPopup et juste avant InsertOMathAt. Cf. LastActionSnapshot.
+        private LastActionSnapshot _lastAction;
 
         // État mode édition : la popup _editPopup est affichée pour proposer
         // « Revenir à la saisie initiale » sur l'OMath au caret. _editHandle
@@ -125,6 +129,32 @@ namespace MathCursor.Host
             _resolver = new ZoneResolver(_engine);
             _store = store ?? throw new ArgumentNullException(nameof(store));
             _contextReader = new WordContextReader(_app);
+        }
+
+        /// <summary>
+        /// Retourne le snapshot de la dernière action (popup + commit éventuel)
+        /// pour pré-remplir la fenêtre "Signaler une erreur". Renvoie null si
+        /// aucune action depuis le démarrage de Word.
+        /// </summary>
+        public LastActionSnapshot GetLastAction() => _lastAction;
+
+        /// <summary>
+        /// Lit le texte du paragraphe Word courant pour le snapshot du report.
+        /// Tronqué à 2000 chars pour ne pas bourrer le payload si l'user a un
+        /// méga-paragraphe. Retourne "" en cas d'erreur (jamais throw).
+        /// </summary>
+        private string ReadParagraphContextForReport()
+        {
+            try
+            {
+                var sel = _app?.Selection;
+                if (sel == null) return string.Empty;
+                var paraRange = sel.Paragraphs[1].Range;
+                var text = paraRange.Text ?? string.Empty;
+                if (text.Length > 2000) text = text.Substring(0, 2000) + "[…]";
+                return text;
+            }
+            catch { return string.Empty; }
         }
 
         public void Install()
@@ -1172,6 +1202,22 @@ namespace MathCursor.Host
             _lastZoneAbsStart = absStart;
             _lastZoneAbsEnd = absEnd;
 
+            // Snapshot pour la fenêtre "Signaler une erreur" : on capture la
+            // saisie source + ce que MathCursor propose. Le CommittedLatex sera
+            // rempli plus tard (avant InsertOMathAt) si l'user commit.
+            try
+            {
+                _lastAction = new LastActionSnapshot
+                {
+                    At = DateTime.UtcNow,
+                    SourceText = _lastZoneSource ?? string.Empty,
+                    ProposedLatex = resolved?.TopLatex ?? string.Empty,
+                    CommittedLatex = null,
+                    ParagraphContext = ReadParagraphContextForReport(),
+                };
+            }
+            catch { /* le snapshot est best-effort, jamais bloquant pour la popup */ }
+
             var alts = resolved.Spot?.Alternatives
                 ?? (IReadOnlyList<MathCursor.Core.Lattice.AmbiguityAlternative>)Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
             string ruleId = resolved.Spot?.RuleId ?? "";
@@ -1302,6 +1348,24 @@ namespace MathCursor.Host
                     LogDiag($"merge: {merged.RemovedHandles.Count} OMath(s) absorbés range=[{_lastZoneAbsStart},{_lastZoneAbsEnd}] (shrunk by {rangeShrink}) mergedSource=\"{source}\" latex=\"{latex}\"");
                 }
             }
+
+            // Snapshot : on enregistre le LaTeX qui va être committé pour que
+            // la fenêtre "Signaler une erreur" puisse le pré-remplir.
+            try
+            {
+                if (_lastAction == null)
+                {
+                    _lastAction = new LastActionSnapshot
+                    {
+                        At = DateTime.UtcNow,
+                        SourceText = source ?? string.Empty,
+                        ParagraphContext = ReadParagraphContextForReport(),
+                    };
+                }
+                _lastAction.CommittedLatex = latex ?? string.Empty;
+                _lastAction.At = DateTime.UtcNow;
+            }
+            catch { /* best-effort */ }
 
             try
             {

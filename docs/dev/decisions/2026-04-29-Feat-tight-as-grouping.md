@@ -3,7 +3,8 @@
 **Date :** 2026-04-29
 **Kind :** Feat
 **Température :** molle
-**Statut :** acté
+**Statut :** retracté
+**Superseded by :** [2026-04-30-Feat-revert-tight-as-grouping.md](2026-04-30-Feat-revert-tight-as-grouping.md)
 
 ## Décision
 
@@ -165,4 +166,8 @@ explicite.)
 
 ## Statut
 
-acté
+retracté — la règle a été reversée le 2026-04-30 (cf. `Superseded by`).
+Après une journée d'usage, l'utilisateur a constaté que la divergence avec
+la précédence math standard perturbait l'apprentissage. La nouvelle ADR
+restaure le comportement standard pour `/`. `^` et `_` ne sont pas
+affectés (leur tight-grouping est conservé).

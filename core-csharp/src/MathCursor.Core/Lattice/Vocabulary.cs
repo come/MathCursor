@@ -116,10 +116,17 @@ namespace MathCursor.Core.Lattice
         /// <summary>Opérateurs mono-caractère reconnus. Inclut les relations
         /// `=`, `&lt;`, `&gt;` qui sont consommées par <c>parseRelation</c> au
         /// top-level (sinon des inputs comme "a &lt; b" produisent un résultat
-        /// vide car `&lt;` n'est pas tokenisé).</summary>
-        public const string SingleOps = "+-*/^_=<>()[]{},|;:";
+        /// vide car `&lt;` n'est pas tokenisé).
+        ///
+        /// `.` est inclus comme opérateur de multiplication (alias de `*` rendu
+        /// en `\cdot`, cf. ADR 30-04 Feat-dot-as-multiplier). Le lexer doit
+        /// arrêter la tokenisation du Number sur `.` pour que `3.4` produise
+        /// trois tokens (`3` Number, `.` Op, `4` Number) au lieu d'un seul.</summary>
+        public const string SingleOps = "+-*/^_=<>()[]{},|;:.";
 
-        /// <summary>Opérateurs binaires pour lesquels on calcule le drapeau Tight.</summary>
-        public const string TightOpChars = "+-*/^";
+        /// <summary>Opérateurs binaires pour lesquels on calcule le drapeau Tight.
+        /// `.` y figure pour bénéficier de la même règle d'associativité tightness-
+        /// based que `*` (cf. ADR Feat-asterisk-tightness-associativity).</summary>
+        public const string TightOpChars = "+-*/^.";
     }
 }

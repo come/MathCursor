@@ -1,0 +1,566 @@
+{"text": "Posons ]a;b[.", "spans": [{"start": 7, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "E n N*", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que E x ]0,1[.", "spans": [{"start": 14, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons forall (x,y) R^2.", "spans": [{"start": 12, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer V x R+, sqrt(x) ≥ 0.", "spans": [{"start": 10, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "[0;1[ U ]2;3]", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit A U B inter C.", "spans": [{"start": 13, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer [0,1[.", "spans": [{"start": 10, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons exists x R.", "spans": [{"start": 7, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : V y N.", "spans": [{"start": 14, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "(A U B) inter C", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie forall x in [0,1], x^2 ≤ x.", "spans": [{"start": 11, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons [0;1[ U ]2;3].", "spans": [{"start": 12, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose V > x.", "spans": [{"start": 8, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : (A U B) inter C.", "spans": [{"start": 14, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "forall n N*, 1/n > 0", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Suppose forall x in R+.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "On pose exists n N tel que 2^n > n^2.", "spans": [{"start": 8, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "forall x [0;+inf[", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit exists x [0;1].", "spans": [{"start": 5, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "]-inf,0]", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : forall x in R.", "spans": [{"start": 13, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "V ≠ 0", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that E x R+.", "spans": [{"start": 10, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "Robot V de la série télé culte.", "spans": [], "lang": "fr"}
+{"text": "On en déduit E n N, u_n > M.", "spans": [{"start": 13, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : [0,1[ U ]2,3].", "spans": [{"start": 13, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : ]-inf,0].", "spans": [{"start": 14, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose exists y in R, x + y = 0.", "spans": [{"start": 8, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, V x [a;b].", "spans": [{"start": 16, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose ]0;1[.", "spans": [{"start": 8, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "V x ]0;1[", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère [0,1[.", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons V n in N.", "spans": [{"start": 7, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that ]-∞;0] U [1;+∞[.", "spans": [{"start": 10, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "[a,b] U [c,d]", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "forall x in R, x + 0 = x", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit forall n in N*.", "spans": [{"start": 13, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "V x [0,1], x^2 ≤ x", "spans": [{"start": 0, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "V x R+", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Rappelons que V n N*, 1/n > 0.", "spans": [{"start": 14, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "Le métro ligne U passe par ici.", "spans": [], "lang": "fr"}
+{"text": "On pose exists x [0;1[.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "[-1,1]", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "V < 10", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Théorème : V n N, n+1 > n.", "spans": [{"start": 11, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "On a V y R.", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "U comme la lettre ouverte de l'alphabet.", "spans": [], "lang": "fr"}
+{"text": "exists x [0;1[", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit [0;1] U [2;3].", "spans": [{"start": 13, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "La lettre V de l'alphabet vient après U.", "spans": [], "lang": "fr"}
+{"text": "Let V y N.", "spans": [{"start": 4, "end": 9, "label": "MATH"}], "lang": "en"}
+{"text": "Proposition : E y in N tel que y > 0.", "spans": [{"start": 14, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "forall epsilon > 0", "spans": [{"start": 0, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "V x [0,1] inter [2,3]", "spans": [{"start": 0, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition: V x N.", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "V comme victoire, en signe de paix.", "spans": [], "lang": "fr"}
+{"text": "Il n'existe aucun moyen de tricher.", "spans": [], "lang": "fr"}
+{"text": "exists n in N*", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "E x R, f(x) = 0", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose forall n N.", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit [a,b[.", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "E comme énergie en mécanique.", "spans": [], "lang": "fr"}
+{"text": "V y N", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer V x ]-inf,0].", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : E n N*.", "spans": [{"start": 13, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que [a;b[.", "spans": [{"start": 14, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que V x dans [0,1].", "spans": [{"start": 17, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "[0,1[", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "By definition, V x in R+.", "spans": [{"start": 15, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "We have exists x ]-inf,0].", "spans": [{"start": 8, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "E x [0;1[", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "We have A U B inter C.", "spans": [{"start": 8, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "E n N", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que forall y in N.", "spans": [{"start": 17, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit V = 5.", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que forall x [0,1[.", "spans": [{"start": 12, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Vol AF V123 retardé d'une heure.", "spans": [], "lang": "fr"}
+{"text": "Par définition, forall x in [0;1[.", "spans": [{"start": 16, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer V x [0,1] inter [2,3].", "spans": [{"start": 8, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "There exists a unique solution to this problem.", "spans": [], "lang": "en"}
+{"text": "∃ y ∈ N tel que y > 5", "spans": [{"start": 0, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que [0,+inf[.", "spans": [{"start": 14, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que forall n in Z.", "spans": [{"start": 12, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "exists x [0,1[", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons V x ]-inf,0].", "spans": [{"start": 12, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose forall y N.", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit ]a,b[.", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "[a,b[", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, E x [0,1], f(x) = 0.", "spans": [{"start": 16, "end": 35, "label": "MATH"}], "lang": "fr"}
+{"text": "On suppose V x in N.", "spans": [{"start": 11, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Vitamine E dans les noix et amandes.", "spans": [], "lang": "fr"}
+{"text": "Démontrer que [0;1].", "spans": [{"start": 14, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit exists y N.", "spans": [{"start": 5, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer A inter B.", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : ]0;1].", "spans": [{"start": 14, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Le moteur V6 développe 250 chevaux.", "spans": [], "lang": "fr"}
+{"text": "V x N", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "V n in N", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "V x R, x^2 ≥ 0", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "]-∞;0]", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Il existe une solution unique au problème.", "spans": [], "lang": "fr"}
+{"text": "Show that exists y in N tel que y > 0.", "spans": [{"start": 10, "end": 37, "label": "MATH"}], "lang": "en"}
+{"text": "Proposition: V x R, x^2 ≥ 0.", "spans": [{"start": 13, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "Montrer que ∀ x ∈ R.", "spans": [{"start": 12, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit ]0,1[.", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose E ≠ 0.", "spans": [{"start": 8, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, E y N tel que y > 5.", "spans": [{"start": 18, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, [0,1] inter [0.5,2].", "spans": [{"start": 18, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "[-2,2]", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "E pour effectif total de la classe.", "spans": [], "lang": "fr"}
+{"text": "Symbole V pour la vitesse en physique.", "spans": [], "lang": "fr"}
+{"text": "Internet a changé nos vies.", "spans": [], "lang": "fr"}
+{"text": "Tous les élèves doivent rendre ce devoir.", "spans": [], "lang": "fr"}
+{"text": "A U B", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer V x ]0;1[.", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie exists n N, u_n > M.", "spans": [{"start": 11, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "A inter B", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Rappelons que V x dans R.", "spans": [{"start": 14, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons [0;+∞[.", "spans": [{"start": 7, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "On note E ! x R.", "spans": [{"start": 8, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère V ≥ 0.", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "V x in N", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : exists y in N tel que y > 0.", "spans": [{"start": 13, "end": 40, "label": "MATH"}], "lang": "fr"}
+{"text": "Rappelons que A inter B.", "spans": [{"start": 14, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "V x R, x ≥ 0", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "V x [0,1]", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : [a;b] U [c;d].", "spans": [{"start": 14, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "[0,1[ U ]2,3]", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "On a forall x R, exp(x) > 0.", "spans": [{"start": 5, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "E x [0;1]", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose V ≤ M.", "spans": [{"start": 8, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "On note V x in R+.", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer [0,1] inter [0.5,2].", "spans": [{"start": 10, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "exists x [0,1[ U [2,3]", "spans": [{"start": 0, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : exists x [0,+inf[.", "spans": [{"start": 13, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit ∀ n ∈ Z, n+1 ∈ Z.", "spans": [{"start": 5, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "V x dans R", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "On a forall x in R.", "spans": [{"start": 5, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Sur l'intervalle de temps qui nous reste, on récapitule.", "spans": [], "lang": "fr"}
+{"text": "L'intermède musical dure cinq minutes.", "spans": [], "lang": "fr"}
+{"text": "Recall that forall x [0,+inf[.", "spans": [{"start": 12, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "Par définition, V x [0,1], x^2 ≤ x.", "spans": [{"start": 16, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that V n N*, 1/n > 0.", "spans": [{"start": 10, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "On a forall n Z.", "spans": [{"start": 5, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition: [0,1[.", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "On pose V < 10.", "spans": [{"start": 8, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "On a forall x dans R, x = x.", "spans": [{"start": 5, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Le volume V augmente avec la température.", "spans": [], "lang": "fr"}
+{"text": "Supposons E > 0.", "spans": [{"start": 10, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose forall x [0;1].", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "V x [0;+inf[", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Volume V remains constant in this room.", "spans": [], "lang": "en"}
+{"text": "Considérons exists n N.", "spans": [{"start": 12, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie [0,+inf[.", "spans": [{"start": 11, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "A U B inter C", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie forall x [0,1].", "spans": [{"start": 11, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "We note exists y N tel que y > 5.", "spans": [{"start": 8, "end": 32, "label": "MATH"}], "lang": "en"}
+{"text": "Proposition : forall x ]0;1].", "spans": [{"start": 14, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "[0;+inf[", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit V ≥ 0.", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "]a,b[", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer ∃ y ∈ N.", "spans": [{"start": 8, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que forall x R+.", "spans": [{"start": 12, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que [0;+inf[.", "spans": [{"start": 17, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "]0,1]", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons exists x in [0,1].", "spans": [{"start": 7, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : forall x [0,1] U [2,3].", "spans": [{"start": 14, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose V ≠ 0.", "spans": [{"start": 8, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Prove that exists ! x R.", "spans": [{"start": 11, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "On note [0;+inf[.", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "Recall that E x R.", "spans": [{"start": 12, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "Montrer forall x R+, sqrt(x) ≥ 0.", "spans": [{"start": 8, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "Existe-t-il une réponse à cette question ?", "spans": [], "lang": "fr"}
+{"text": "Considérons V x [0;1], 0 ≤ x ≤ 1.", "spans": [{"start": 12, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "L'existence de cette suite est démontrée plus loin.", "spans": [], "lang": "fr"}
+{"text": "exists n N*", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit V un volume sphérique.", "spans": [], "lang": "fr"}
+{"text": "E > 0", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "V = 5", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, exists x [0,1[ U [2,3].", "spans": [{"start": 18, "end": 40, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que forall y R.", "spans": [{"start": 14, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "By definition, exists x ]0,1[.", "spans": [{"start": 15, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "V x ]0;1]", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, [0,1[ U ]2,3].", "spans": [{"start": 18, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose forall x [0,1].", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout x, E > 0.", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "]-inf,+inf[", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "V x [0;+∞[", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "For everyone in the class, please listen.", "spans": [], "lang": "en"}
+{"text": "Proposition: exists x R+.", "spans": [{"start": 13, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "forall x appartient R", "spans": [{"start": 0, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie ]-inf,0].", "spans": [{"start": 11, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "E x R+, x^2 = 2", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "]-∞;+∞[", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "Note that E y in N.", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "Considérons forall n N, n+1 > n.", "spans": [{"start": 12, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : forall x dans [0,1].", "spans": [{"start": 14, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "E x [0,1]", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Note that E n N.", "spans": [{"start": 10, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "exists x in [0,1]", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "E y N tel que y > 5", "spans": [{"start": 0, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Une berline V8 décapotable.", "spans": [], "lang": "fr"}
+{"text": "Lemma: ]-∞;+∞[.", "spans": [{"start": 7, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "V x R*", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "E ≥ 0", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, forall x ]-inf,0].", "spans": [{"start": 16, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que (A U B) inter C.", "spans": [{"start": 17, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "V > 0", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : ∀ n ∈ N*.", "spans": [{"start": 14, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "E y in N", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit V = 5 un nombre.", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "V x dans [0;1[", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : [0;1[.", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "On a exists x in R.", "spans": [{"start": 5, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie forall n N*.", "spans": [{"start": 11, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit V ≠ 0 un réel.", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que forall x [0;1[.", "spans": [{"start": 14, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "V n N, n+1 > n", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "forall x [0,+inf[", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "V x [0;1[ U [2;3]", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : forall x in R+.", "spans": [{"start": 13, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "On suppose V x ]0,1[.", "spans": [{"start": 11, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons E y dans N.", "spans": [{"start": 7, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Supposons V > 0.", "spans": [{"start": 10, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Toutes les filières scientifiques sont concernées.", "spans": [], "lang": "fr"}
+{"text": "Volume E in the encyclopedia covers physics.", "spans": [], "lang": "en"}
+{"text": "Proposition : ∃ x ∈ R, f(x) = 0.", "spans": [{"start": 14, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour toutes ces raisons, on arrête.", "spans": [], "lang": "fr"}
+{"text": "Par définition, forall x R, x^2 ≥ 0.", "spans": [{"start": 16, "end": 35, "label": "MATH"}], "lang": "fr"}
+{"text": "exists ! x in R", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider [a,b] U [c,d].", "spans": [{"start": 9, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "]0,1[", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie forall x in [0,1].", "spans": [{"start": 11, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider exists y appartient N.", "spans": [{"start": 9, "end": 30, "label": "MATH"}], "lang": "en"}
+{"text": "On note forall x in R+.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout x, E ≠ 0.", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "On suppose forall x [0;1].", "spans": [{"start": 11, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Cette possibilité existe encore.", "spans": [], "lang": "fr"}
+{"text": "On vérifie E y N.", "spans": [{"start": 11, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "On suppose exists x [0,1] U [2,3].", "spans": [{"start": 11, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons exists x R+, x^2 = 2.", "spans": [{"start": 12, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "E y dans N", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit exists x [0;1[.", "spans": [{"start": 5, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, V x [0,1].", "spans": [{"start": 18, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que exists y N tel que y > 5.", "spans": [{"start": 17, "end": 41, "label": "MATH"}], "lang": "fr"}
+{"text": "Vélo V de course en compétition.", "spans": [], "lang": "fr"}
+{"text": "Corollaire : forall x R, x^2 ≥ 0.", "spans": [{"start": 13, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that E x [0,1], f(x) = 0.", "spans": [{"start": 10, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "D'après le cours, forall x ]-inf,0].", "spans": [{"start": 18, "end": 35, "label": "MATH"}], "lang": "fr"}
+{"text": "[0;1] U [2;3]", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "E ! x R", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "V x in R, |x| ≥ 0", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Mr. E asked the question yesterday.", "spans": [], "lang": "en"}
+{"text": "Train E45 direction Lyon.", "spans": [], "lang": "fr"}
+{"text": "Il est clair que [0,1].", "spans": [{"start": 17, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "forall x ]0,1[", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : V x [a,b].", "spans": [{"start": 13, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "V x R", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "E x R", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : forall n in Z.", "spans": [{"start": 8, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer [a,b] U [c,d].", "spans": [{"start": 8, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "[a;b[", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, V x [0;+∞[.", "spans": [{"start": 18, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "[0;1[", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "On a V x dans [0;1[.", "spans": [{"start": 5, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : E x [0,1].", "spans": [{"start": 13, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "V x [a,b]", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons V x R*.", "spans": [{"start": 12, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que ]-inf,+inf[.", "spans": [{"start": 17, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Théorème : ]-inf,0] U [1,+inf[.", "spans": [{"start": 11, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "Let exists x [0,1].", "spans": [{"start": 4, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "Par définition, E x R.", "spans": [{"start": 16, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "V epsilon > 0", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose [-2,2].", "spans": [{"start": 8, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer exists y in N tel que y > 0.", "spans": [{"start": 10, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère forall x R*.", "spans": [{"start": 13, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "[0,1] U [2,3]", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "[-1;1]", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Mélodie en E mineur.", "spans": [], "lang": "fr"}
+{"text": "Recall that exists x [0,1[ U [2,3].", "spans": [{"start": 12, "end": 34, "label": "MATH"}], "lang": "en"}
+{"text": "Soit E y in N.", "spans": [{"start": 5, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, ]0;1[.", "spans": [{"start": 16, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that V x [0;+∞[.", "spans": [{"start": 10, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "D'après le cours, forall x ]0,1].", "spans": [{"start": 18, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider forall x [0,1] U [2,3].", "spans": [{"start": 9, "end": 31, "label": "MATH"}], "lang": "en"}
+{"text": "[a,b]", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Voiture V12 super puissante en course.", "spans": [], "lang": "fr"}
+{"text": "Note that exists n N*.", "spans": [{"start": 10, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "E ≠ 0", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "V x R+, sqrt(x) ≥ 0", "spans": [{"start": 0, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "International, intermédiaire, intersection routière.", "spans": [], "lang": "fr"}
+{"text": "Let V n N.", "spans": [{"start": 4, "end": 9, "label": "MATH"}], "lang": "en"}
+{"text": "Recall that E x [0;1[.", "spans": [{"start": 12, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "We note V x [0,1] inter [2,3].", "spans": [{"start": 8, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "Let V x [0,1], x^2 ≤ x.", "spans": [{"start": 4, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "Soit V un volume connu de la cuve.", "spans": [], "lang": "fr"}
+{"text": "Théorème : [a,b].", "spans": [{"start": 11, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit exists x R+.", "spans": [{"start": 13, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "[a;b] U [c;d]", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que exists x [0,1[ U [2,3].", "spans": [{"start": 14, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, V x [0;+inf[.", "spans": [{"start": 16, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer exists x [0,1].", "spans": [{"start": 10, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit V = 5 un réel.", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie E n N.", "spans": [{"start": 11, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : exists x dans R.", "spans": [{"start": 13, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Théorème : V epsilon > 0.", "spans": [{"start": 11, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "V x [0;1], 0 ≤ x ≤ 1", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons forall y dans N.", "spans": [{"start": 12, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "E.g. ce cas particulier nous intéresse.", "spans": [], "lang": "fr"}
+{"text": "∀ y ∈ Z", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, forall n in N*.", "spans": [{"start": 16, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère V x ]0;1].", "spans": [{"start": 13, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit V > x un réel.", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons V x dans [0,1].", "spans": [{"start": 7, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "∃ x ∈ R, f(x) = 0", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose E ≠ 0.", "spans": [{"start": 8, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "On note forall x [0,1] inter [2,3].", "spans": [{"start": 8, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : forall x in [a,b].", "spans": [{"start": 14, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie [-1,1].", "spans": [{"start": 11, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit forall y dans N.", "spans": [{"start": 13, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Supposons V > 0.", "spans": [{"start": 10, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "forall y R", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Suppose forall x R, |x| ≥ 0.", "spans": [{"start": 8, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "exists x in R+", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer ∀ y ∈ Z.", "spans": [{"start": 10, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout x, V < 10.", "spans": [{"start": 13, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons E x [0,1[.", "spans": [{"start": 12, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition: [a;b] U [c;d].", "spans": [{"start": 13, "end": 26, "label": "MATH"}], "lang": "en"}
+{"text": "Il est clair que E x R+.", "spans": [{"start": 17, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tous les exercices, fais le 1 et le 3.", "spans": [], "lang": "fr"}
+{"text": "Note E en mathématiques au bac.", "spans": [], "lang": "fr"}
+{"text": "Théorème : E x R+, x^2 = 2.", "spans": [{"start": 11, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "forall x ]-inf,0]", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "E x R+", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : forall x dans [0;1[.", "spans": [{"start": 13, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "E y N", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "[0,+inf[", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que V ≤ M.", "spans": [{"start": 14, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit V x [0,+inf[.", "spans": [{"start": 13, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Le V de la victoire est emblématique.", "spans": [], "lang": "fr"}
+{"text": "V x ]-∞;0]", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons V x R, x ≥ 0.", "spans": [{"start": 12, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition: V n in N.", "spans": [{"start": 13, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "Le E de l'équation est implicite.", "spans": [], "lang": "fr"}
+{"text": "Démontrer ]0,1].", "spans": [{"start": 10, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "V x dans [0,1]", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer forall epsilon > 0.", "spans": [{"start": 8, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons E x in R.", "spans": [{"start": 7, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : exists ! x [0,1].", "spans": [{"start": 14, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons exists x R, f(x) = 0.", "spans": [{"start": 12, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, exists y in N.", "spans": [{"start": 16, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "On suppose V x ]0,1].", "spans": [{"start": 11, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider ]-inf,0].", "spans": [{"start": 9, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "Pour tout x, E ≥ 0.", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que V y R.", "spans": [{"start": 14, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Grade E in math last term was disappointing.", "spans": [], "lang": "en"}
+{"text": "E x ]0,1[", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tous renseignements, voir l'accueil.", "spans": [], "lang": "fr"}
+{"text": "On suppose forall n Z.", "spans": [{"start": 11, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer [0;1] inter [0.5;2].", "spans": [{"start": 10, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "We have forall n in N*.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "Proposition : ]-∞;+∞[.", "spans": [{"start": 14, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "]a;b[", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "forall x in [0;1[", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer ]-∞;0] U [1;+∞[.", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons exists ! x in R.", "spans": [{"start": 7, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "]0;1]", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons exists n in N*.", "spans": [{"start": 7, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer ∀ n ∈ N*.", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Théorème : ∀ x ∈ R, x^2 ≥ 0.", "spans": [{"start": 11, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "exists y in N", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que [a,b] U [c,d].", "spans": [{"start": 12, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "[0;1]", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Existence of solutions is proven below.", "spans": [], "lang": "en"}
+{"text": "[a;b]", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "On a V x ]-∞;0].", "spans": [{"start": 5, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que exists x [0,1[.", "spans": [{"start": 14, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Il a obtenu un E en physique l'an dernier.", "spans": [], "lang": "fr"}
+{"text": "Vehicle V12 luxury car at the show.", "spans": [], "lang": "en"}
+{"text": "exists x dans R", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Note that forall x R+.", "spans": [{"start": 10, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "Prove that forall x ]0;1].", "spans": [{"start": 11, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "V ≤ M", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit forall x dans [0;1[.", "spans": [{"start": 13, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "forall n N", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons forall x [0;+inf[.", "spans": [{"start": 7, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie E x [0;1].", "spans": [{"start": 11, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "forall epsilon in R+", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "V x ]0,1]", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit V ≥ 0 un nombre.", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Rappelons que forall x dans R.", "spans": [{"start": 14, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer V n N, n+1 > n.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "On a exists x in R.", "spans": [{"start": 5, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : forall x R+.", "spans": [{"start": 8, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer V x [0,1[ U [2,3].", "spans": [{"start": 8, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit exists n N*.", "spans": [{"start": 13, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "[0,1] inter [0.5,2]", "spans": [{"start": 0, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "]-inf,0] U [1,+inf[", "spans": [{"start": 0, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "forall n N, u_n ≤ M", "spans": [{"start": 0, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère E x R, f(x) = 0.", "spans": [{"start": 13, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que V x dans [0;1[.", "spans": [{"start": 14, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que forall x R, x ≥ 0.", "spans": [{"start": 14, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : forall n N*, 1/n > 0.", "spans": [{"start": 8, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : V n N.", "spans": [{"start": 14, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie ]-∞;0].", "spans": [{"start": 11, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "V x [0,+inf[", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "V x in R", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "By definition, forall x dans [0;1[.", "spans": [{"start": 15, "end": 34, "label": "MATH"}], "lang": "en"}
+{"text": "Considérons exists y appartient N.", "spans": [{"start": 12, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "E n N, u_n > M", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit [0;1] inter [0.5;2].", "spans": [{"start": 5, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que forall n N, u_n ≤ M.", "spans": [{"start": 17, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "]0;1[", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "V y R", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Letter V in the alphabet comes after U.", "spans": [], "lang": "en"}
+{"text": "By definition, forall n in Z.", "spans": [{"start": 15, "end": 28, "label": "MATH"}], "lang": "en"}
+{"text": "Montrer que ∀ x ∈ N.", "spans": [{"start": 12, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que forall x in R*.", "spans": [{"start": 17, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "V n N*, 1/n > 0", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemma: ∀ x ∈ N.", "spans": [{"start": 7, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "Proposition : E x [0,1].", "spans": [{"start": 14, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "By definition, V x in N.", "spans": [{"start": 15, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "Soit V ≠ 0 un réel.", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "V x ]0,1[", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that [0;1] inter [0.5;2].", "spans": [{"start": 10, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "On en déduit forall x in [0;1[.", "spans": [{"start": 13, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "V x ]-inf,0]", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : forall x ]0;1[.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "E x [0,1[", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "On a V x R+, sqrt(x) ≥ 0.", "spans": [{"start": 5, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "For example, consider the case x = 0.", "spans": [], "lang": "en"}
+{"text": "Montrer que ∃ n ∈ N*.", "spans": [{"start": 12, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie V x [0;1].", "spans": [{"start": 11, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "exists y in N tel que y > 0", "spans": [{"start": 0, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer ∃ x ∈ R.", "spans": [{"start": 10, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, forall x R, |x| ≥ 0.", "spans": [{"start": 18, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "E x [0;1[, x^2 = 1/2", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Pause d'un quart d'heure entre les deux cours.", "spans": [], "lang": "fr"}
+{"text": "Démontrer que forall x in R, x + 0 = x.", "spans": [{"start": 14, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : A U B inter C.", "spans": [{"start": 8, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit exists n N*.", "spans": [{"start": 13, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie exists n N, u_n > M.", "spans": [{"start": 11, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que V ≤ M.", "spans": [{"start": 14, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "On suppose V x [0,1[.", "spans": [{"start": 11, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons E x [0;1[, x^2 = 1/2.", "spans": [{"start": 12, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que V x [a;b].", "spans": [{"start": 17, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit E ≥ 0 un réel.", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Le volume V est constant dans cette pièce.", "spans": [], "lang": "fr"}
+{"text": "On a exists x R, f(x) = 0.", "spans": [{"start": 5, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Une intervention immédiate était nécessaire.", "spans": [], "lang": "fr"}
+{"text": "V x in R+", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que E y dans N.", "spans": [{"start": 12, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit ]0,1[.", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "[0,1]", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "On suppose forall x dans R, x = x.", "spans": [{"start": 11, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer E n N, u_n > M.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "[0;+∞[", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, [a;b[.", "spans": [{"start": 16, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that exists ! x [0,1].", "spans": [{"start": 10, "end": 26, "label": "MATH"}], "lang": "en"}
+{"text": "Il existe encore des classes vides.", "spans": [], "lang": "fr"}
+{"text": "All hands on deck for the cleanup.", "spans": [], "lang": "en"}
+{"text": "Rappelons que forall x [0;1] U [2;3].", "spans": [{"start": 14, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que ]-∞;+∞[.", "spans": [{"start": 14, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons exists x ]0,1[.", "spans": [{"start": 12, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : [a,b[.", "spans": [{"start": 14, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "V x [0,1[ U [2,3]", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que [0,1] U [2,3].", "spans": [{"start": 12, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "exists n N, u_n > M", "spans": [{"start": 0, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "On suppose V x N.", "spans": [{"start": 11, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "exists y appartient N", "spans": [{"start": 0, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, [0;1[.", "spans": [{"start": 18, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "V x [0;1]", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "On note V x [0;1[ U [2;3].", "spans": [{"start": 8, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "V x [0,1[", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that forall x ]0,1[.", "spans": [{"start": 10, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "Soit V < 10.", "spans": [{"start": 5, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Rappelons que ∀ y ∈ Z.", "spans": [{"start": 14, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie forall y in N.", "spans": [{"start": 11, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "E x in R", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Toutes les voies ferrées ont été électrifiées.", "spans": [], "lang": "fr"}
+{"text": "Démontrer que V x [0;1[.", "spans": [{"start": 14, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "exists y dans N", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, V x ]0;1[.", "spans": [{"start": 16, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "On suppose V x R+.", "spans": [{"start": 11, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer [a,b].", "spans": [{"start": 10, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que E x [0,+inf[.", "spans": [{"start": 14, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit V > x un nombre.", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : V x R, x^2 ≥ 0.", "spans": [{"start": 13, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Théorème : V x in N.", "spans": [{"start": 11, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "On a exists x ]0,1[.", "spans": [{"start": 5, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que V x in R, |x| ≥ 0.", "spans": [{"start": 17, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "V x [a;b]", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Note E rendue en cours de SVT.", "spans": [], "lang": "fr"}
+{"text": "Il est clair que exists ! x in R.", "spans": [{"start": 17, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "Théorème : A U B.", "spans": [{"start": 11, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que forall x ]0,1[.", "spans": [{"start": 12, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "V x [0;1[", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons forall (x,y) R^2.", "spans": [{"start": 12, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemma: ∃ ! x ∈ R.", "spans": [{"start": 7, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "Theorem: exists x R+, x^2 = 2.", "spans": [{"start": 9, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "On en déduit ∃ y ∈ N tel que y > 5.", "spans": [{"start": 13, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "forall n Z", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Section U des étudiants en première année.", "spans": [], "lang": "fr"}
+{"text": "Rappelons que exists x in R+.", "spans": [{"start": 14, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer forall y N.", "spans": [{"start": 10, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie forall n N*, 1/n > 0.", "spans": [{"start": 11, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "forall n in Z", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "E x [0,+inf[", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "On suppose exists x [0,1].", "spans": [{"start": 11, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit forall epsilon in R+.", "spans": [{"start": 13, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "Rappelons que E n N*.", "spans": [{"start": 14, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons forall x [0,1] inter [2,3].", "spans": [{"start": 12, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose ∀ x ∈ R, x^2 ≥ 0.", "spans": [{"start": 8, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que ]a,b[.", "spans": [{"start": 12, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons exists x ]-inf,0].", "spans": [{"start": 7, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que [-1;1].", "spans": [{"start": 17, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "E y in N tel que y > 0", "spans": [{"start": 0, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que E > 0.", "spans": [{"start": 14, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer V x in R, |x| ≥ 0.", "spans": [{"start": 10, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit V x [0,+inf[.", "spans": [{"start": 5, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, E x [0;1[.", "spans": [{"start": 18, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Note that exists y N.", "spans": [{"start": 10, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "We have V x [0,1].", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "V ≥ 0", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose V > 0.", "spans": [{"start": 8, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "On note V x [0,1], x^2 ≤ x.", "spans": [{"start": 8, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit E x R+.", "spans": [{"start": 5, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition: [a,b[.", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "We have V x ]0;1[.", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "[0;1] inter [0.5;2]", "spans": [{"start": 0, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que E x ]0,1[.", "spans": [{"start": 17, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "E x [0,1], f(x) = 0", "spans": [{"start": 0, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit [a;b].", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit E ≥ 0.", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "V > x", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Échelle E du laboratoire de physique.", "spans": [], "lang": "fr"}
+{"text": "Théorème : V x ]0,1[.", "spans": [{"start": 11, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit ∃ ! x ∈ R.", "spans": [{"start": 13, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit forall n N, n+1 > n.", "spans": [{"start": 5, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer forall x [0,1[ U [2,3].", "spans": [{"start": 8, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "For all practical purposes this is fine.", "spans": [], "lang": "en"}
+{"text": "Considérons V x in R.", "spans": [{"start": 12, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "We note E x [0,1[.", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "On considère V x R.", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "]-∞;0] U [1;+∞[", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "V n N", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "We note E x [0,1].", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "We note exists x in [0,1].", "spans": [{"start": 8, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "On vérifie forall x appartient R.", "spans": [{"start": 11, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "On note [0;1[ U ]2;3].", "spans": [{"start": 8, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie forall y R.", "spans": [{"start": 11, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère E x R+, x^2 = 2.", "spans": [{"start": 13, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit forall x R.", "spans": [{"start": 13, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : forall x ]0;1].", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie E x [0;1[.", "spans": [{"start": 11, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, exists ! x R.", "spans": [{"start": 18, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "Rappelons que forall x R.", "spans": [{"start": 14, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Vitamin E is found in nuts and almonds.", "spans": [], "lang": "en"}
+{"text": "Note that forall x [0;1] U [2;3].", "spans": [{"start": 10, "end": 32, "label": "MATH"}], "lang": "en"}
+{"text": "On vérifie exists n N tel que 2^n > n^2.", "spans": [{"start": 11, "end": 39, "label": "MATH"}], "lang": "fr"}
+{"text": "forall y N", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que exists y dans N.", "spans": [{"start": 12, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie forall x [0,+inf[.", "spans": [{"start": 11, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que [0,1].", "spans": [{"start": 12, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "All things considered, we move on.", "spans": [], "lang": "en"}

@@ -27,13 +27,9 @@
     <div class="container">
       <a href="#" class="brand">MathCursor</a>
       <nav class="nav">
-        <a href="#pour-qui" data-i18n="nav_for">Pour qui</a>
-        <a href="#fonctionnement" data-i18n="nav_how">Fonctionnement</a>
-        <a href="#exemples" data-i18n="nav_examples">Exemples</a>
-        <a href="#installation" data-i18n="nav_install">Installation</a>
+        <a href="demo/" data-i18n="nav_demo">Démo</a>
         <a href="releases.html" data-i18n="nav_downloads">Téléchargements</a>
-        <a href="#inscription" data-i18n="nav_signup">Inscription</a>
-        <a href="#faq">FAQ</a>
+        <a href="#installation" data-i18n="nav_install">Installation</a>
         <div class="lang-toggle" role="group" aria-label="Language">
           <button type="button" data-lang="fr" class="active">FR</button>
           <button type="button" data-lang="en">EN</button>
@@ -58,8 +54,8 @@
         <span data-i18n="hero_lead_post">— un raccourci convertit la zone.</span>
       </p>
       <div class="cta-row">
-        <a href="#inscription" class="button button--primary" data-i18n="cta_join">Rejoindre la bêta</a>
-        <a href="#fonctionnement" class="button button--secondary" data-i18n="cta_learn">Voir comment ça marche</a>
+        <a href="demo/" class="button button--primary" data-i18n="cta_demo">Tester en ligne</a>
+        <a href="releases.html" class="button button--secondary" data-i18n="cta_dl">Télécharger pour Word</a>
       </div>
       <div class="hero-badges">
         <span class="badge">Windows 10 / 11</span>
@@ -99,71 +95,66 @@
         <h2 data-i18n="how_h">Comment ça marche</h2>
         <ol class="steps">
           <li>
-            <h3 data-i18n="how_1_h">Tu tapes normalement</h3>
-            <p data-i18n="how_1_p">Dans ta phrase, tu écris <code>La dérivée de x^2 est 2x</code> ou <code>On a 1/2 + 1/3 = 5/6</code>. Aucune manipulation.</p>
+            <h3 data-i18n="how_1_h">Tu tapes</h3>
+            <p data-i18n="how_1_p">Notation clavier naturelle dans ta phrase : <code>x^2 + 1/2</code>, <code>lim x 0 sin x / x</code>, <code>somme k 1 n k^2</code>. Pas de menu, pas de souris.</p>
           </li>
           <li>
-            <h3 data-i18n="how_2_h">Tu déclenches la conversion</h3>
-            <p data-i18n="how_2_p">Un raccourci clavier (<code>Ctrl + Espace</code>) ou un bouton convertit la zone math détectée en équation Word formatée. Pas de conversion automatique agressive : tu gardes le contrôle.</p>
+            <h3 data-i18n="how_2_h">Tu déclenches</h3>
+            <p data-i18n="how_2_p"><code>Ctrl + Espace</code> ou un bouton du ruban convertit la zone math en équation Word formatée. Pas de transformation surprise — tu gardes la main.</p>
           </li>
           <li>
-            <h3 data-i18n="how_3_h">Tu peux rééditer</h3>
-            <p data-i18n="how_3_p">Repositionne-toi dans une équation existante : MathCursor te ramène à la notation clavier. Tu modifies, tu reconvertis.</p>
+            <h3 data-i18n="how_3_h">Tu rééditiles</h3>
+            <p data-i18n="how_3_p">Curseur dans une équation existante → MathCursor te ramène à la notation clavier. Tu modifies, tu reconvertis.</p>
           </li>
         </ol>
+        <div class="cta-row" style="margin-top: 24px; justify-content: center;">
+          <a href="demo/" class="button button--primary" data-i18n="how_cta">Essayer dans le navigateur</a>
+        </div>
       </div>
     </section>
 
-    <!-- Exemples multilingues -->
+    <!-- Exemples multilingues — court, renvoie à la démo -->
     <section id="exemples" class="section">
       <div class="container">
-        <h2 data-i18n="ex_h">Exemples multilingues</h2>
-        <p data-i18n="ex_p">MathCursor reconnaît les mots-clés math dans les quatre langues supportées. Voici ce que donne la conversion sur quelques phrases typiques.</p>
+        <h2 data-i18n="ex_h">Quelques exemples</h2>
+        <p data-i18n="ex_p">MathCursor reconnaît les mots-clés math en français, anglais, allemand et espagnol. Voici trois cas typiques.</p>
         <div class="examples">
           <article class="example">
             <div class="example-lang">Français</div>
             <div class="example-input">
               <span class="example-label" data-i18n="ex_typed">Tapé :</span>
-              <code>La dérivée de x^2 est 2x</code>
+              <code>somme k 1 n k^2 = n(n+1)(2n+1)/6</code>
             </div>
             <div class="example-output">
               <span class="example-label" data-i18n="ex_rendered">Rendu :</span>
-              La dérivée de <span data-math="x^2"></span> est <span data-math="2x"></span>
+              <span data-math="\sum_{k=1}^{n} k^2 = \frac{n(n+1)(2n+1)}{6}"></span>
             </div>
           </article>
           <article class="example">
             <div class="example-lang">English</div>
             <div class="example-input">
               <span class="example-label" data-i18n="ex_typed">Tapé :</span>
-              <code>We have 1/2 + 1/3 = 5/6</code>
+              <code>lim x -&gt; 0 sin(x) / x = 1</code>
             </div>
             <div class="example-output">
               <span class="example-label" data-i18n="ex_rendered">Rendu :</span>
-              We have <span data-math="\frac{1}{2} + \frac{1}{3} = \frac{5}{6}"></span>
-            </div>
-          </article>
-          <article class="example">
-            <div class="example-lang">Deutsch</div>
-            <div class="example-input">
-              <span class="example-label" data-i18n="ex_typed">Tapé :</span>
-              <code>Die Wurzel von 2 ist sqrt(2)</code>
-            </div>
-            <div class="example-output">
-              <span class="example-label" data-i18n="ex_rendered">Rendu :</span>
-              Die Wurzel von 2 ist <span data-math="\sqrt{2}"></span>
+              <span data-math="\lim_{x \to 0} \frac{\sin(x)}{x} = 1"></span>
             </div>
           </article>
           <article class="example">
             <div class="example-lang">Español</div>
             <div class="example-input">
               <span class="example-label" data-i18n="ex_typed">Tapé :</span>
-              <code>Sea x = (1 + sqrt(5)) / 2</code>
+              <code>forall x in R, x^2 &gt;= 0</code>
             </div>
             <div class="example-output">
               <span class="example-label" data-i18n="ex_rendered">Rendu :</span>
-              Sea <span data-math="x = \frac{1 + \sqrt{5}}{2}"></span>
+              <span data-math="\forall x \in \mathbb{R}, x^2 \geq 0"></span>
             </div>
           </article>
+        </div>
+        <div class="cta-row" style="margin-top: 28px; justify-content: center;">
+          <a href="demo/" class="button button--primary" data-i18n="ex_cta">Tester d'autres exemples en ligne</a>
         </div>
       </div>
     </section>
@@ -407,21 +398,18 @@
   <script>
     const I18N = {
       en: {
-        nav_for: "Who it's for",
-        nav_how: "How it works",
-        nav_examples: "Examples",
+        nav_demo: "Demo",
         nav_install: "Install",
         nav_downloads: "Downloads",
-        nav_signup: "Sign up",
 
-        tag: "Project MathCursor · Beta 0.1",
+        tag: "Project MathCursor · Beta 0.5",
         hero_h1_pre: "Type math",
         hero_h1_hl:  "in plain language",
         hero_h1_post: ", right in Word.",
         hero_lead_pre: "MathCursor turns the math you type on your keyboard into clean Word equations, on demand. Type",
         hero_lead_post: "— a shortcut converts the zone.",
-        cta_join: "Join the beta",
-        cta_learn: "See how it works",
+        cta_demo: "Try it online",
+        cta_dl: "Download for Word",
         badge_langs: "Français · English · Deutsch · Español",
         badge_free: "Free during beta · 100% local · No cloud",
 
@@ -437,17 +425,19 @@
         for_3_q: "\"No more fighting with Word's equation editor.\"",
 
         how_h: "How it works",
-        how_1_h: "You type normally",
-        how_1_p: "In your sentence, you write <code>The derivative of x^2 is 2x</code> or <code>We have 1/2 + 1/3 = 5/6</code>. No manipulation.",
-        how_2_h: "You trigger the conversion",
-        how_2_p: "A keyboard shortcut (<code>Ctrl + Space</code>) or a ribbon button converts the detected math zone into a formatted Word equation. No aggressive auto-convert: you stay in control.",
-        how_3_h: "You can re-edit",
-        how_3_p: "Place your cursor back inside an existing equation: MathCursor brings it back to the keyboard notation. You edit, you re-convert.",
+        how_1_h: "You type",
+        how_1_p: "Natural keyboard notation in your sentence: <code>x^2 + 1/2</code>, <code>lim x 0 sin x / x</code>, <code>somme k 1 n k^2</code>. No menus, no mouse.",
+        how_2_h: "You trigger",
+        how_2_p: "<code>Ctrl + Space</code> or a ribbon button converts the math zone into a formatted Word equation. No surprise transforms — you stay in control.",
+        how_3_h: "You re-edit",
+        how_3_p: "Place your cursor inside an existing equation → MathCursor brings it back to keyboard notation. You edit, you re-convert.",
+        how_cta: "Try it in your browser",
 
-        ex_h: "Multilingual examples",
-        ex_p: "MathCursor recognises math keywords in the four supported languages. Here's what the conversion looks like on a few typical sentences.",
+        ex_h: "A few examples",
+        ex_p: "MathCursor recognises math keywords in French, English, German and Spanish. Three typical cases below.",
         ex_typed: "Typed:",
         ex_rendered: "Rendered:",
+        ex_cta: "Try more examples online",
 
         feat_h: "Features",
         feat_1_h: "Natural keyboard notation.",

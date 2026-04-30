@@ -45,11 +45,20 @@ pfx-base64.txt
 # Cloudflare local state (caches + miniflare state, regenerated à la volée)
 .wrangler/
 
+# Stats locales (HTML généré par tools/cloudflare/stats.sh html — privé, jamais commiter)
+stats-local/
+
 # Artifacts de build installer (regenerables via adapter-vsto/installer/build.ps1 ;
 # les .exe finaux sont hébergés sur R2, pas sur git)
 adapter-vsto/installer/payload/
 adapter-vsto/installer/output/
 adapter-vsto/installer/after-install.txt
+# VC++ Redist téléchargé localement par build.ps1 (regenerable, ~25 Mo)
+adapter-vsto/installer/vc_redist.x64.exe
+
+# Output intermédiaire de `dotnet publish` du projet WASM démo. Le bundle
+# final est mirroré dans docs/demo/ (qui lui est commit pour Pages deploy).
+web-demo/publish/
 
 # Modèle ML — gros fichiers binaires, distribués hors git
 models/

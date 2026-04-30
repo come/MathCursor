@@ -55,7 +55,10 @@ Après l'upload :
 |-----------|------|
 | Pages project `mathcursor` | Sert le site statique sur `mathcursor.pages.dev` |
 | R2 bucket `mathcursor-releases` | Stockage des `.exe` (trop gros pour Pages) |
+| R2 bucket `mathcursor-reports` | Stockage des rapports "Signaler une erreur" (1 JSON + 1 PNG par bug) |
+| KV namespace `RATE_LIMIT_KV` | Compteur reports/IP/heure (anti-flood) |
 | Pages Function `/download/*` | Log + stream depuis R2 vers le client |
+| Pages Function `/api/v1/report` | Reçoit les rapports de bug, écrit dans R2 + KV |
 | AE dataset `mathcursor_downloads` | Métriques par download |
 
 Détail de l'architecture : voir ADR
@@ -84,6 +87,58 @@ Schéma des blobs écrits par la Function :
 - `blob6` : referer
 - `double1` : taille du fichier en bytes
 - `index1` : filename (pour filtrage SQL rapide)
+
+## Setup backend "Signaler une erreur" (one-shot)
+
+L'endpoint `POST /api/v1/report` (cf.
+`docs/functions/api/v1/report.js`) écrit dans le bucket R2
+`mathcursor-reports` et utilise la KV `RATE_LIMIT_KV` pour le
+rate-limit. À créer une fois (commandes wrangler) :
+
+```bash
+source ~/.mathcursor/cloudflare.env
+
+# 1) Bucket R2 pour les rapports
+npx wrangler r2 bucket create mathcursor-reports
+
+# 2) KV namespace pour le rate limit
+#    Note l'ID retourné, à mettre dans le binding Pages
+npx wrangler kv namespace create RATE_LIMIT_KV
+```
+
+Puis dans le dashboard Cloudflare Pages → projet `mathcursor` →
+Settings → Functions → ajouter les bindings (ou via wrangler CLI si
+disponible pour Pages) :
+
+| Variable | Type | Cible |
+|---|---|---|
+| `REPORTS_BUCKET` | R2 bucket | `mathcursor-reports` |
+| `RATE_LIMIT_KV` | KV namespace | l'ID retourné par la commande ci-dessus |
+
+Une fois bindés, redéployer (`tools/cloudflare/deploy.sh site`) puis
+tester :
+
+```bash
+# Test manuel POST — doit répondre {"ok": true, "id": "..."}
+curl -X POST https://mathcursor.pages.dev/api/v1/report \
+  -H "Content-Type: application/json" \
+  -d '{
+    "version": "0.5.3",
+    "ts": "2026-04-30T14:30:00Z",
+    "source_text": "test source",
+    "user_comment": "test depuis curl"
+  }'
+
+# Lister les reports stockés
+npx wrangler r2 object list mathcursor-reports --prefix=reports/$(date +%Y-%m-%d)/
+
+# Lire un report précis
+npx wrangler r2 object get mathcursor-reports reports/2026-04-30/<id>.json
+```
+
+Si la response renvoie `{"ok": false, "error": "backend_misconfigured"}`,
+c'est que les bindings ne sont pas appliqués → vérifier dans le
+dashboard et redéployer.
 
 ## Sécurité
 
