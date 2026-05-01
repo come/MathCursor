@@ -624,6 +624,76 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.Contains("2x^{2}", result);
         }
 
+        // ============================================================
+        // Brief 30-04 multiline-systems-equivalences — Phase 1 align*
+        // ============================================================
+
+        [Fact]
+        public void MultiLine_equivalence_chain_renders_align_star()
+        {
+            // Chaîne d'équivalences : `2x+1=5\n<=> 2x=4\n<=> x=2` →
+            // align* avec \Leftrightarrow en début de chaque ligne sauf la 1re,
+            // et `&` qui aligne sur le `=` de chaque ligne.
+            var result = RenderTop("2x+1=5\n<=> 2x=4\n<=> x=2");
+            Assert.Contains("\\begin{align*}", result);
+            Assert.Contains("\\end{align*}", result);
+            Assert.Contains("\\Leftrightarrow", result);
+            // Alignement sur `=` via `&`
+            Assert.Contains("&=", result);
+        }
+
+        [Fact]
+        public void MultiLine_equality_chain_renders_align_star_no_arrow()
+        {
+            // Chaîne d'égalités algébriques : `f(x)=2x+1\n= 2(x+0.5)` →
+            // align* avec `&=` aligné, pas de \Leftrightarrow (chaîne `=` pure).
+            var result = RenderTop("f(x)=2x+1\n= 2x");
+            Assert.Contains("\\begin{align*}", result);
+            Assert.DoesNotContain("\\Leftrightarrow", result);
+            Assert.Contains("&=", result);
+        }
+
+        [Fact]
+        public void MultiLine_implication_chain_renders_rightarrow()
+        {
+            // Implication : `x>0\n=> x^2>0` → align* avec \Rightarrow
+            var result = RenderTop("x>0\n=> x^2>0");
+            Assert.Contains("\\begin{align*}", result);
+            Assert.Contains("\\Rightarrow", result);
+        }
+
+        [Fact]
+        public void Single_line_no_marker_no_multilineblock()
+        {
+            // Pas de \n, pas de marqueur → pas de MultiLineBlock, AST normal
+            var result = RenderTop("2x+1=5");
+            Assert.DoesNotContain("\\begin{align*}", result);
+            Assert.Equal("2x+1=5", result);
+        }
+
+        [Fact]
+        public void Multiline_without_marker_falls_back_no_multilineblock()
+        {
+            // 2 lignes mais ligne 2 sans marqueur align → pas de MultiLineBlock
+            // (Phase 1 = align uniquement, system Phase 2)
+            var result = RenderTop("f(x)=1\ng(x)=2");
+            Assert.DoesNotContain("\\begin{align*}", result);
+        }
+
+        [Fact]
+        public void MultiLine_alignment_uses_two_ampersand_cols()
+        {
+            // Validation visuelle de l'alignement : préfixe à GAUCHE (colonne 1),
+            // lhs au MILIEU (colonne 2), `=` aligné EN COLONNE (col 3).
+            // Cf. brief 30-04 multiline-systems §2.1 + demande user 01-05
+            // « il faut aligner à gauche les <=> et les = c'est nickel ».
+            var result = RenderTop("2x+1=5\n<=> 2x=4");
+            // Première ligne : col1 vide, col2 = `2x+1`, col3 = `= 5`
+            Assert.Contains("& 2x+1 &= 5", result);
+            // Seconde ligne : col1 = \Leftrightarrow, col2 = `2x`, col3 = `= 4`
+            Assert.Contains("\\Leftrightarrow & 2x &= 4", result);
+        }
+
         [Fact]
         public void Asterisk_tight_chain_left_assoc()
             // 1*2*3 tight : visuellement identique en gauche-assoc ou droite-assoc

@@ -281,6 +281,26 @@ namespace MathCursor.Core.Tests
 
         // ---- Pipeline complet : bug image (1/2 x → ½ x) ----
 
+        // ---- ADR/brief 30-04 multiline-systems Phase 1 — align* ----
+
+        [Theory]
+        // \begin{align*} ... \end{align*} → █(...) avec & et @ pour alignement.
+        // Format à 2 `&` par ligne (col1=préfixe, col2=lhs, col3=`=` rhs)
+        // pour alignement gauche des flèches logiques + alignement en
+        // colonne du `=`. Cf. brief 30-04 §2.1 + demande user 01-05.
+        [InlineData(
+            "\\begin{align*}  & 2x+1 &= 5 \\\\ \\Leftrightarrow & 2x &= 4 \\end{align*}",
+            "█(&2x+1&= 5@⇔&2x&= 4)")]
+        [InlineData(
+            "\\begin{align*}  & f(x) &= 2x+1 \\\\  & &= 2x \\end{align*}",
+            "█(&f(x)&= 2x+1@&&= 2x)")]
+        public void Align_star_environment_converts_to_unicodemath(string latex, string expected)
+        {
+            var got = LatexToUnicodeMath.Convert(latex);
+            _log.WriteLine($"ALIGN*\nLaTeX: \"{latex}\"\n=> \"{got}\"\nexpected: \"{expected}\"");
+            Assert.Equal(expected, got);
+        }
+
         [Fact]
         public void End_to_end_bug_image_frac_does_not_absorb_x()
         {

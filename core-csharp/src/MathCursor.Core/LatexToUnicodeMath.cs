@@ -70,6 +70,16 @@ namespace MathCursor.Core
             @"\\begin\{matrix\}(?<body>.*?)\\end\{matrix\}",
             RegexOptions.Singleline | RegexOptions.Compiled);
 
+        // align* (chaînes d'équivalences/égalités, brief 30-04 multiline-systems).
+        // Word UnicodeMath utilise █(...) pour les piles d'équations alignées,
+        // avec & comme marqueur d'alignement (column separator) et @ comme
+        // séparateur de lignes (row separator). Le rendu produit du LaTeX
+        // \\begin{align*} ... &= ... \\\\ \\Leftrightarrow ... &= ... \\end{align*},
+        // qu'on convertit en █(... &= ... @ \Leftrightarrow ... &= ...).
+        private static readonly Regex AlignStarEnvironmentRegex = new Regex(
+            @"\\begin\{align\*\}(?<body>.*?)\\end\{align\*\}",
+            RegexOptions.Singleline | RegexOptions.Compiled);
+
         private static string NormalizeMatrixBody(string body)
         {
             body = body.Trim();
@@ -96,6 +106,8 @@ namespace MathCursor.Core
                 "|■(" + NormalizeMatrixBody(m.Groups["body"].Value) + ")|");
             src = MatrixEnvironmentRegex.Replace(src, m =>
                 "■(" + NormalizeMatrixBody(m.Groups["body"].Value) + ")");
+            src = AlignStarEnvironmentRegex.Replace(src, m =>
+                "█(" + NormalizeMatrixBody(m.Groups["body"].Value) + ")");
             return src;
         }
 

@@ -49,6 +49,7 @@ namespace MathCursor.Core.Lattice
             Interval iv => RenderInterval(iv),
             FuncDef fd => RenderFuncDef(fd),
             VectorCoordinates vc => RenderVectorCoordinates(vc),
+            MultiLineBlock mb => RenderMultiLineBlock(mb),
             _ => string.Empty,
         };
 
@@ -170,6 +171,71 @@ namespace MathCursor.Core.Lattice
             var rightBr = iv.RightClosed ? "]" : "[";
             return $"{leftBr}{Render(Unwrap(iv.Low))},{Render(Unwrap(iv.High))}{rightBr}";
         }
+
+        // MultiLineBlock : système (\begin{cases}) ou chaîne d'équivalences/
+        // égalités (\begin{align*}). Cf. brief 30-04 multiline-systems.
+        // Phase 1 : uniquement le mode "align". Phase 2 ajoutera "cases".
+        //
+        // Pour le mode align, on utilise DEUX marqueurs `&` par ligne :
+        //   prefix & lhs &op rhs
+        // - Col 1 (à gauche) : `\Leftrightarrow` / `\Rightarrow` / vide
+        //   (alignement à GAUCHE des flèches logiques cf. demande user 01-05)
+        // - Col 2 (au milieu) : lhs de la relation
+        // - Col 3 (à droite) : opérateur + rhs (l'`=` aligné en colonne)
+        //
+        // Sans cette double colonne, les flèches `\Leftrightarrow` se
+        // colleraient au lhs et ne s'aligneraient pas verticalement entre lignes.
+        private static string RenderMultiLineBlock(MultiLineBlock mb)
+        {
+            if (mb.Mode == "align")
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.Append("\\begin{align*} ");
+                for (int i = 0; i < mb.Lines.Count; i++)
+                {
+                    if (i > 0) sb.Append(" \\\\ ");
+                    string prefix = (i < mb.LinePrefix.Count) ? mb.LinePrefix[i].TrimEnd() : "";
+                    sb.Append(RenderAlignLineWithPrefix(prefix, mb.Lines[i]));
+                }
+                sb.Append(" \\end{align*}");
+                return sb.ToString();
+            }
+            // Phase 2 : cases. Pour l'instant fallback simple.
+            if (mb.Mode == "cases")
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.Append("\\begin{cases} ");
+                for (int i = 0; i < mb.Lines.Count; i++)
+                {
+                    if (i > 0) sb.Append(" \\\\ ");
+                    sb.Append(Render(mb.Lines[i]));
+                }
+                sb.Append(" \\end{cases}");
+                return sb.ToString();
+            }
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// Rendu d'une ligne de bloc align* avec 2 colonnes d'alignement :
+        ///   prefix &amp; lhs &amp;op rhs
+        /// La 1re colonne aligne les préfixes (flèches logiques) à gauche,
+        /// la 2e colonne aligne le `=` (ou autre relation) en colonne. Si la
+        /// ligne n'a pas de relation, on rend `prefix &amp; expr` (1 col seulement).
+        /// </summary>
+        private static string RenderAlignLineWithPrefix(string prefix, AstNode line)
+        {
+            if (line is Bin b && IsAlignRelationOp(b.Op))
+            {
+                return $"{prefix} & {Render(b.Lhs)} &{b.Op} {Render(b.Rhs)}";
+            }
+            return $"{prefix} & {Render(line)}";
+        }
+
+        private static bool IsAlignRelationOp(string op)
+            => op == "=" || op == "<" || op == ">"
+               || op == "<=" || op == ">=" || op == "!=" || op == "<>"
+               || op == "≤" || op == "≥" || op == "≠";
 
         // VectorCoordinates : 4 combinaisons (col/row × vec/point).
         //   layout=column, isPoint=false : \vec{name} \begin{pmatrix} v1 \\ v2 [\\ v3] \end{pmatrix}

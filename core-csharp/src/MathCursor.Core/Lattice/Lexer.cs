@@ -37,6 +37,23 @@ namespace MathCursor.Core.Lattice
                 // car Word AutoCorrect insère une espace insécable avant les
                 // ponctuations doubles françaises (`:`, `;`, `?`, `!`). Sans
                 // ce traitement, le DAG du Lexer est cassé sur ces chars
+                // Saut de ligne explicite : separe les lignes d'un MultiLineBlock
+                // (cf. brief 30-04 multiline-systems-equivalences). Le Parser detecte
+                // le pattern `expr LF marker expr` et construit un MultiLineBlock.
+                // Hors de ce contexte, le LineBreak est filtre comme un Space par
+                // le constructor Parser.
+                if (c == '\n' || c == '\r')
+                {
+                    if (c == '\r' && i + 1 < n && input[i + 1] == '\n')
+                    {
+                        edges.Add(new LatticeEdge(i, i + 2, EdgeType.LineBreak, "\n", 0));
+                        i++;
+                        continue;
+                    }
+                    edges.Add(new LatticeEdge(i, i + 1, EdgeType.LineBreak, "\n", 0));
+                    continue;
+                }
+
                 // → ConvertWithAmbiguity retourne empty.
                 if (c == ' ' || c == '\t' || c == ' ')
                 {

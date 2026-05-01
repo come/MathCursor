@@ -32,6 +32,11 @@ namespace MathCursor.Core.Lattice
         // le filtrage des Spaces. Sans ce flag, on ne pourrait pas distinguer
         // `u(1 2)` (espace = colonne) de `u(12)` (un seul number).
         private readonly bool[] _hasSpaceBefore;
+        // _hasLineBreakBefore[i] = true si l'arête LineBreak précédait
+        // immédiatement le i-e token filtré dans la liste brute. Sert à
+        // TryParseMultiLineBlock pour détecter les frontières de ligne dans
+        // un source multi-ligne (cf. brief 30-04 multiline-systems).
+        private readonly bool[] _hasLineBreakBefore;
         private int _i;
 
         /// <summary>
@@ -68,21 +73,38 @@ namespace MathCursor.Core.Lattice
 
         public Parser(IReadOnlyList<LatticeEdge> tokens)
         {
-            // Filtrer les Space ici plutôt que d'imposer au caller — moins fragile.
-            // En parallèle, on mémorise par token filtré si une arête Space le
-            // précédait dans le flux brut (cf. _hasSpaceBefore plus haut).
+            // Filtrer les Space ET les LineBreak ici — moins fragile que d'imposer
+            // au caller. En parallèle, on mémorise par token filtré :
+            // - si une arête Space le précédait (`_hasSpaceBefore`)
+            // - si une arête LineBreak le précédait (`_hasLineBreakBefore`)
+            // Le LineBreak est un Space "fort" : il sert au pattern
+            // MultiLineBlock pour identifier les frontières de ligne. Hors de
+            // ce pattern, il est traité comme un Space ordinaire par le reste
+            // du parser (les drapeaux Tight des Op sont déjà false sur des
+            // ops adjacents à `\n` cf. IsTightOp côté Lexer).
             var filtered = new List<LatticeEdge>(tokens.Count);
             var spaceFlags = new List<bool>(tokens.Count);
+            var lineBreakFlags = new List<bool>(tokens.Count);
             bool pendingSpace = false;
+            bool pendingLineBreak = false;
             foreach (var t in tokens)
             {
                 if (t.Type == EdgeType.Space) { pendingSpace = true; continue; }
+                if (t.Type == EdgeType.LineBreak)
+                {
+                    pendingSpace = true;       // LineBreak est aussi un Space
+                    pendingLineBreak = true;
+                    continue;
+                }
                 filtered.Add(t);
                 spaceFlags.Add(pendingSpace);
+                lineBreakFlags.Add(pendingLineBreak);
                 pendingSpace = false;
+                pendingLineBreak = false;
             }
             _toks = filtered;
             _hasSpaceBefore = spaceFlags.ToArray();
+            _hasLineBreakBefore = lineBreakFlags.ToArray();
             _i = 0;
         }
 
@@ -148,7 +170,13 @@ namespace MathCursor.Core.Lattice
 
         public AstNode Parse()
         {
-            // Tente d'abord de reconnaître une définition de fonction au pattern
+            // Tente d'abord MultiLineBlock (système, équivalences, chaîne `=`)
+            // Cf. brief 30-04 multiline-systems-equivalences. Détecte un pattern
+            // `expr LF marker expr (...)` et construit un MultiLineBlock unifié.
+            var mb = TryParseMultiLineBlock();
+            if (mb != null) return mb;
+
+            // Tente ensuite de reconnaître une définition de fonction au pattern
             // `Ident ':' Ident (',' Ident)* '->' body` (ADR 29-04). Si match,
             // on consomme et retourne FuncDef. Si pas match (échec à n'importe
             // quelle étape), _i est restauré et ParseRelation prend le relais.
@@ -156,6 +184,122 @@ namespace MathCursor.Core.Lattice
             if (fd != null) return fd;
             var e = ParseRelation();
             return e ?? Hole(1);
+        }
+
+        /// <summary>
+        /// Détecte un pattern multi-ligne et construit un MultiLineBlock.
+        /// Phase 1 (cf. brief 30-04 §10) : align* uniquement (équivalences
+        /// `<=>`/`=>`/`<=` et chaîne d'égalités `=`). Phase 2 ajoutera
+        /// `cases` (système `{`).
+        ///
+        /// <para>Stratégie spéculative : sauvegarde <c>_i</c>, tente le
+        /// pattern, restaure en cas d'échec pour laisser ParseRelation
+        /// traiter normalement la source comme une ligne unique.</para>
+        ///
+        /// <para>Pattern align* :</para>
+        /// <list type="bullet">
+        /// <item>Ligne 1 : expression quelconque</item>
+        /// <item>Ligne 2+ : commence par marqueur align (`&lt;=&gt;`, `=&gt;`,
+        ///   `&lt;=`, ou `=`) puis expression</item>
+        /// <item>Au moins 2 lignes pour considérer comme bloc (sinon 1 ligne
+        ///   = pas un MultiLineBlock, fallback ParseRelation).</item>
+        /// </list>
+        /// </summary>
+        private MultiLineBlock? TryParseMultiLineBlock()
+        {
+            int save = _i;
+            // Trouver toutes les positions de LineBreak dans le flux des
+            // tokens filtrés. Une frontière de ligne est un index i tel que
+            // _hasLineBreakBefore[i] == true (= un LineBreak précédait le
+            // i-e token dans le flux brut).
+            var lineStarts = new List<int> { 0 };
+            for (int i = 1; i < _toks.Count; i++)
+            {
+                if (_hasLineBreakBefore[i]) lineStarts.Add(i);
+            }
+            // Pas de LineBreak → pas de MultiLineBlock possible
+            if (lineStarts.Count < 2) return null;
+
+            // Pour chaque ligne 2+, vérifier qu'elle commence par un marqueur
+            // align. Si UNE SEULE ligne 2+ ne commence pas par marqueur align,
+            // ce n'est pas un align block (peut-être un bloc cases en V2).
+            // Phase 1 = tout ou rien sur les marqueurs align.
+            var prefixes = new List<string> { "" }; // Première ligne = pas de préfixe
+            for (int li = 1; li < lineStarts.Count; li++)
+            {
+                var firstTokenOfLine = _toks[lineStarts[li]];
+                var prefix = MapAlignMarkerToLatex(firstTokenOfLine);
+                if (prefix == null) { _i = save; return null; }
+                prefixes.Add(prefix);
+            }
+
+            // Parser chaque ligne via une sous-séquence (ParseSubrangeLine).
+            // Pour les lignes 2+, on consomme le marqueur en tête (1 token)
+            // puisqu'il est porté par LinePrefix, pas dans l'AST de la ligne.
+            var lines = new List<AstNode>();
+            for (int li = 0; li < lineStarts.Count; li++)
+            {
+                int s = lineStarts[li];
+                int e = (li + 1 < lineStarts.Count) ? lineStarts[li + 1] : _toks.Count;
+                if (li > 0)
+                {
+                    // Skip le marqueur en tête (1 token)
+                    s++;
+                }
+                if (s >= e) { _i = save; return null; }
+                var lineAst = ParseSubrangeLine(s, e);
+                lines.Add(lineAst);
+            }
+
+            // Avancer _i au-delà de tous les tokens consommés
+            _i = _toks.Count;
+            return new MultiLineBlock("align", lines, prefixes);
+        }
+
+        /// <summary>
+        /// Mappe un token de marqueur align vers son préfixe LaTeX. Retourne
+        /// null si le token n'est pas un marqueur align reconnu.
+        /// Marqueurs supportés : `=`, `<=>`, `=>`, `<=`, et leurs variants
+        /// Unicode (`⇔`, `⇒`, `⇐`).
+        /// </summary>
+        private static string? MapAlignMarkerToLatex(LatticeEdge tok)
+        {
+            if (tok.Type != EdgeType.Op) return null;
+            switch (tok.Value)
+            {
+                case "=": return ""; // Chaîne d'égalités : pas de préfixe (= aligné via &)
+                case "<=>": case "<==>": case "⇔": case "↔": case "⟺":
+                    return "\\Leftrightarrow ";
+                case "=>": case "==>": case "⇒": case "⟹":
+                    return "\\Rightarrow ";
+                case "<==": case "⇐": case "⟸":
+                    return "\\Leftarrow ";
+                default: return null;
+            }
+        }
+
+        /// <summary>
+        /// Parse la sous-séquence [start, end) comme une expression complète
+        /// (ParseRelation). Sauvegarde/restaure _i pour ne pas perturber le
+        /// parser englobant.
+        /// </summary>
+        private AstNode ParseSubrangeLine(int start, int end)
+        {
+            if (start >= end) return Hole(1);
+            int saveI = _i;
+            var slice = new List<LatticeEdge>(end - start);
+            var sliceSpaces = new List<bool>(end - start);
+            var sliceLineBreaks = new List<bool>(end - start);
+            for (int i = start; i < end; i++)
+            {
+                slice.Add(_toks[i]);
+                sliceSpaces.Add(i == start ? false : _hasSpaceBefore[i]);
+                sliceLineBreaks.Add(false); // pas de LineBreak interne dans une ligne
+            }
+            var sub = new Parser(slice, sliceSpaces, sliceLineBreaks);
+            var ast = sub.ParseRelation() ?? (AstNode)Hole(1);
+            _i = saveI;
+            return ast;
         }
 
         /// <summary>
@@ -1073,11 +1217,17 @@ namespace MathCursor.Core.Lattice
         }
 
         // Ctor interne utilisé par ParseSubrange : on a déjà la liste filtrée
-        // (sans Spaces) et le tableau parallèle de flags, pas besoin de re-filtrer.
-        private Parser(List<LatticeEdge> filtered, List<bool> spaceFlags)
+        // (sans Spaces ni LineBreaks) et les tableaux parallèles de flags,
+        // pas besoin de re-filtrer. Le caller doit fournir des LineBreakFlags
+        // cohérents (typiquement tous false pour une sous-séquence VectorCoords
+        // qui ne traverse pas de ¶).
+        private Parser(List<LatticeEdge> filtered, List<bool> spaceFlags, List<bool>? lineBreakFlags = null)
         {
             _toks = filtered;
             _hasSpaceBefore = spaceFlags.ToArray();
+            _hasLineBreakBefore = lineBreakFlags != null
+                ? lineBreakFlags.ToArray()
+                : new bool[filtered.Count];  // tous false par défaut
             _i = 0;
         }
 

@@ -691,10 +691,17 @@ namespace MathCursor.Host
                 try { om.Range.Delete(); } catch { }
 
                 var range = doc.Range(omStart, Math.Min(omEnd, doc.Content.End));
-                range.Text = source;
+                // Le source brut peut contenir \n (séparateurs de lignes d'un
+                // MultiLineBlock système ou align*, cf. brief 30-04
+                // multiline-systems-equivalences). Au revert, on convertit
+                // chaque \n en paragraph mark Word (\r) pour recréer la
+                // structure multi-paragraphe d'origine. Length 1:1, donc le
+                // calcul de caret ci-dessous reste valide.
+                string revertText = source.Replace("\n", "\r");
+                range.Text = revertText;
 
                 // Caret en fin du texte inséré
-                int newEnd = omStart + source.Length;
+                int newEnd = omStart + revertText.Length;
                 try { _app.Selection.SetRange(newEnd, newEnd); } catch { }
 
                 // Click sur la popup WPF a volé le focus à Word. Sans ça, le
@@ -1352,9 +1359,20 @@ namespace MathCursor.Host
 
             // Merge avec OMaths adjacents (ADR 29-04). Pas en mode édition
             // (le mode revert remplace l'OMath en cours, pas de fusion).
+            // ORDRE :
+            //  1. Intra-paragraphe (TryMergeWithAdjacentOMaths) — gagne toujours
+            //     quand applicable (cf. brief 30-04 §3.1 précédence).
+            //  2. Cross-paragraphe (TryMergeWithPreviousParagraphOMath) — Phase 1
+            //     align* uniquement, déclenché si ligne courante = marqueur align
+            //     ET ¶ précédent termine par OMath à nous.
             if (editing == null)
             {
                 var merged = TryMergeWithAdjacentOMaths(_lastZoneAbsStart, _lastZoneAbsEnd, source);
+                if (merged == null)
+                {
+                    // Pas d'intra-merge → tenter cross-paragraphe (brief 30-04)
+                    merged = TryMergeWithPreviousParagraphOMath(_lastZoneAbsStart, _lastZoneAbsEnd, source);
+                }
                 if (merged != null)
                 {
                     _lastZoneAbsStart = merged.AbsStart;
@@ -1752,6 +1770,151 @@ namespace MathCursor.Host
             catch (Exception ex)
             {
                 LogDiag("try_merge_error: " + ex.Message);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Marqueurs en début de ligne courante qui déclenchent le cross-paragraphe
+        /// merge align* (cf. brief 30-04 multiline-systems-equivalences §3.2).
+        /// `<=>`, `=>`, `<=` (et leurs variantes ASCII multi-char) + `=` solo.
+        /// `{` (cases) est Phase 2, pas en V1.
+        /// </summary>
+        private static readonly string[] AlignMarkers = { "<==>", "<=>", "==>", "=>", "<==", "<=", "=" };
+
+        /// <summary>
+        /// Tentative de merge cross-paragraphe (brief 30-04 multiline-systems §3.2).
+        /// Conditions :
+        /// 1. La source courante (la ligne qu'on commit) commence par un marqueur align.
+        /// 2. Le paragraphe IMMÉDIATEMENT au-dessus contient un OMath à nous (bookmark).
+        /// 3. Pas de paragraphe vide entre.
+        /// 4. Pas de texte significatif entre la fin de l'OMath précédent et le ¶ break,
+        ///    ni entre le ¶ break et le début de la zone courante (que du whitespace).
+        ///
+        /// Si OK, retourne un MergeResult dont le range englobe :
+        ///   [prev_OMath.Start, current_zone_end]
+        /// Le source mergé = `prev_source\ncurrent_source`. Le pipeline core va
+        /// le détecter comme MultiLineBlock align* et produire un LaTeX
+        /// \begin{align*}...\end{align*}.
+        ///
+        /// Au moment de l'insertion (InsertOMathAt avec ce range), Word Range.Text =
+        /// "..." remplace tout, y compris le paragraph break entre les 2 ¶ → les
+        /// 2 paragraphes sont collapsés en 1 contenant l'OMath multi-ligne.
+        /// </summary>
+        private MergeResult TryMergeWithPreviousParagraphOMath(int absStart, int absEnd, string currentSource)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(currentSource)) return null;
+                // Condition 1 : source courante commence par marqueur align ?
+                string trimmed = currentSource.TrimStart();
+                string matchedMarker = null;
+                foreach (var m in AlignMarkers)
+                {
+                    if (trimmed.StartsWith(m, StringComparison.Ordinal))
+                    {
+                        // Le `=` doit être suivi d'un caractère qui n'est pas `=`
+                        // (sinon `==` qui est un cas bizarre). `<=`/`<==` etc.
+                        // sont déjà filtrés par l'ordre de AlignMarkers (plus
+                        // longs en premier).
+                        matchedMarker = m;
+                        break;
+                    }
+                }
+                if (matchedMarker == null) { LogDiag("xparMerge: no align marker at start"); return null; }
+                LogDiag($"xparMerge: found marker `{matchedMarker}` in current source");
+
+                var doc = _app.ActiveDocument;
+                if (doc == null) { LogDiag("xparMerge: no doc"); return null; }
+
+                // Trouver le paragraphe courant (celui qui contient absStart)
+                var currentRange = doc.Range(absStart, absStart);
+                Word.Paragraph currentPara = currentRange.Paragraphs[1];
+                int currentParaStart = currentPara.Range.Start;
+                if (currentParaStart >= absStart) { /* OK, the zone is in this paragraph */ }
+
+                // Condition 4a : entre currentParaStart et absStart, que du whitespace ?
+                if (absStart > currentParaStart)
+                {
+                    string between = doc.Range(currentParaStart, absStart).Text ?? "";
+                    if (!string.IsNullOrEmpty(between) && between.Trim().Length > 0)
+                    {
+                        LogDiag($"xparMerge: text before zone in current ¶ = \"{Preview(between)}\", abort");
+                        return null;
+                    }
+                }
+
+                // Trouver le paragraphe précédent
+                if (currentParaStart <= 0) { LogDiag("xparMerge: at doc start, no previous ¶"); return null; }
+                int prevParaEnd = currentParaStart;          // = position du ¶ mark de fin du précédent + 1
+                Word.Paragraph prevPara;
+                try { prevPara = doc.Range(prevParaEnd - 1, prevParaEnd - 1).Paragraphs[1]; }
+                catch { LogDiag("xparMerge: cannot resolve previous ¶"); return null; }
+                int prevParaStart = prevPara.Range.Start;
+                int prevParaContentEnd = prevPara.Range.End - 1; // exclut le ¶ mark
+                if (prevParaContentEnd <= prevParaStart) { LogDiag("xparMerge: previous ¶ empty, barrier"); return null; }
+
+                // Condition 3 : barrière paragraphe vide. Si prevPara est vide ou
+                // que sa "fin de contenu" === ¶ mark, c'est une barrière.
+                string prevText = doc.Range(prevParaStart, prevParaContentEnd).Text ?? "";
+                if (string.IsNullOrWhiteSpace(prevText)) { LogDiag("xparMerge: previous ¶ whitespace-only, barrier"); return null; }
+
+                // Condition 2 : trouver l'OMath à nous qui termine le paragraphe précédent
+                Word.OMath prevOMath = null;
+                string prevHandle = null;
+                string prevSource = null;
+                foreach (Word.OMath om in doc.OMaths)
+                {
+                    var rng = om.Range;
+                    // OMath dans le ¶ précédent
+                    if (rng.Start < prevParaStart || rng.End > prevParaContentEnd) continue;
+                    // On veut celui qui termine le ¶ (= rien après lui sauf whitespace)
+                    if (rng.End < prevParaContentEnd)
+                    {
+                        // Vérifier que ce qui suit jusqu'au ¶ mark est whitespace only
+                        string afterOMath = doc.Range(rng.End, prevParaContentEnd).Text ?? "";
+                        if (afterOMath.Trim().Length > 0) continue; // pas le dernier OMath utile
+                    }
+                    var h = FindOurHandleForOMath(om);
+                    if (h == null) continue;
+                    try
+                    {
+                        var stored = _store.RetrieveAsync(new EquationHandle(h)).GetAwaiter().GetResult();
+                        if (stored != null && !string.IsNullOrEmpty(stored.Source))
+                        {
+                            prevOMath = om;
+                            prevHandle = h;
+                            prevSource = stored.Source;
+                        }
+                    }
+                    catch (Exception ex) { LogDiag($"xparMerge: retrieve_error: {ex.Message}"); }
+                }
+                if (prevOMath == null) { LogDiag("xparMerge: no OMath at end of previous ¶"); return null; }
+
+                LogDiag($"xparMerge: prev OMath range=[{prevOMath.Range.Start},{prevOMath.Range.End}] source=\"{Preview(prevSource)}\"");
+
+                // Construire le source mergé : prev + \n + current.
+                // Le \n source sera tokenisé comme LineBreak par le Lexer et
+                // le Parser détectera le pattern MultiLineBlock align*.
+                string mergedSource = prevSource + "\n" + currentSource;
+
+                // Range englobant : [prev OMath start, current zone end].
+                // Tout ce qui est entre (¶ mark inclus) sera remplacé par
+                // l'OMath multi-ligne lors de InsertOMathAt.
+                int newAbsStart = prevOMath.Range.Start;
+                int newAbsEnd = absEnd;
+
+                return new MergeResult
+                {
+                    AbsStart = newAbsStart,
+                    AbsEnd = newAbsEnd,
+                    MergedSource = mergedSource,
+                    RemovedHandles = new List<string> { prevHandle },
+                };
+            }
+            catch (Exception ex)
+            {
+                LogDiag("xparMerge_error: " + ex.Message);
                 return null;
             }
         }

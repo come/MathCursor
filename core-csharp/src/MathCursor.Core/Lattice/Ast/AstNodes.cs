@@ -214,4 +214,35 @@ namespace MathCursor.Core.Lattice.Ast
             Name = name; Values = values; Layout = layout; IsPoint = isPoint;
         }
     }
+
+    /// <summary>
+    /// Bloc multi-ligne — système d'équations (`\begin{cases}`) ou chaîne
+    /// d'équivalences/égalités (`\begin{align*}` avec alignement sur `=`).
+    /// Cf. brief 2026-04-30-multiline-systems-equivalences.md.
+    ///
+    /// <para><see cref="Mode"/> = `"cases"` ou `"align"`. Détermine
+    /// l'environnement LaTeX de rendu.</para>
+    ///
+    /// <para><see cref="Lines"/> = AST de chaque ligne (équation ou
+    /// expression). Au moins 2 entrées (un seul élément serait juste un
+    /// OMath simple, pas un MultiLineBlock).</para>
+    ///
+    /// <para><see cref="LinePrefix"/> = pour le mode `"align"`, le préfixe
+    /// LaTeX ajouté en début de chaque ligne (typiquement la flèche logique
+    /// `\Leftrightarrow`, `\Rightarrow`, `\Leftarrow`, ou chaîne vide pour
+    /// la 1re ligne et la chaîne d'égalités). Pour `"cases"`, toujours `""`
+    /// (les lignes sont juxtaposées dans l'accolade gauche, pas de préfixe
+    /// par ligne). <c>LinePrefix.Count</c> doit être égal à
+    /// <c>Lines.Count</c>.</para>
+    /// </summary>
+    public sealed class MultiLineBlock : AstNode
+    {
+        public string Mode { get; }
+        public IReadOnlyList<AstNode> Lines { get; }
+        public IReadOnlyList<string> LinePrefix { get; }
+        public MultiLineBlock(string mode, IReadOnlyList<AstNode> lines, IReadOnlyList<string> linePrefix)
+        {
+            Mode = mode; Lines = lines; LinePrefix = linePrefix;
+        }
+    }
 }
