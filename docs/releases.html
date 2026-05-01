@@ -54,7 +54,7 @@
 
         <div class="cta-row" style="margin: 24px 0 40px;">
           <a href="/download/latest.exe" class="button button--primary" download data-i18n="dl_cta_latest">
-            Télécharger la dernière version (0.5.4)
+            Télécharger la dernière version (0.5.5)
           </a>
           <a href="index.html#installation" class="button button--secondary" data-i18n="dl_cta_guide">
             Guide d'installation
@@ -62,6 +62,17 @@
         </div>
 
         <h2 data-i18n="dl_history_h">Historique des versions</h2>
+
+        <article class="card" style="margin-bottom: 20px;">
+          <h3>0.5.5 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_055_date">— 30 avril 2026</span></h3>
+          <p data-i18n="dl_055_intro"><strong>Refonte du système de remontée de bugs</strong> : envoi automatique vers le backend Cloudflare en un clic, plus de zip à attacher manuellement.</p>
+          <ul>
+            <li data-i18n="dl_055_1"><strong>Signaler une erreur en un clic</strong> : envoi HTTP direct vers le backend (<code>feedback.mathcursor.app</code>), plus besoin de fichier à attacher au mail. Un clic, ton retour part en arrière-plan.</li>
+            <li data-i18n="dl_055_2"><strong>Plus de WhatsApp / email manuel</strong> : le bundle (logs + source brute + LaTeX rendu) est packagé et envoyé automatiquement. Toujours opt-in : on n'envoie rien sans ton clic explicite sur le bouton.</li>
+            <li data-i18n="dl_055_3"><strong>Confidentialité préservée</strong> : aucun contenu du document n'est envoyé — uniquement la zone math en cours et les logs techniques nécessaires au diagnostic.</li>
+          </ul>
+          <a href="/download/MathCursor-Setup-0.5.5.exe" class="button button--secondary" download data-i18n="dl_055_btn">Télécharger 0.5.5</a>
+        </article>
 
         <article class="card" style="margin-bottom: 20px;">
           <h3>0.5.4 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_054_date">— 30 avril 2026</span></h3>
@@ -76,7 +87,7 @@
             <li data-i18n="dl_054_7"><strong>Fix NER post-équation</strong> : quand une équation est déjà placée avant, les conjonctions (<code>et</code>, <code>donc</code>…) ne sont plus aspirées dans la zone math suivante.</li>
             <li data-i18n="dl_054_8"><strong>Fix fonction trigo + exposant</strong> : <code>cos2(x)+1</code> rend <code>$\cos(x)^2+1$</code> sans aspirer la suite.</li>
           </ul>
-          <a href="/download/MathCursor-Setup-0.5.4.exe" class="button button--secondary" download data-i18n="dl_054_btn">Télécharger 0.5.4</a>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.5 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -90,7 +101,7 @@
             <li data-i18n="dl_053_5"><strong>Désambiguïsation popup</strong> : <code>f(1, 2)</code> propose function call (défaut) ou vecteur en alt ; <code>u*v</code> propose <code>u·v</code> (défaut) ou <code>$\vec{u} \cdot \vec{v}$</code> (produit scalaire) en alt.</li>
             <li data-i18n="dl_053_6"><strong>Fix critique installer</strong> : déploiement de la DLL native <code>onnxruntime.dll</code> qui manquait sur certaines machines (l'add-in plantait au démarrage avec une <code>TypeInitializationException</code>).</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.4 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.5 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -99,7 +110,7 @@
             <li data-i18n="dl_05x_1"><strong>0.5.2</strong> : fix critique <code>\int</code> rendu <code>∈t</code> au lieu de <code>∫</code>. Ordre des règles dans <code>LatexToUnicodeMath</code> qui appliquait <code>\in → ∈</code> avant <code>\int → ∫</code>.</li>
             <li data-i18n="dl_05x_2"><strong>0.5.1</strong> : numéro de version dynamique dans le ruban Word, icône « Signaler » distincte, ruban en français/anglais selon la locale Word.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.4 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.5 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -118,7 +129,7 @@
             <li data-i18n="dl_050_10"><strong>ABC → angle / triangle</strong> en désambig.</li>
             <li data-i18n="dl_050_11"><strong>Fix NBSP</strong> : les espaces insécables collés par Word ne cassent plus la conversion.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.4 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.5 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -130,7 +141,7 @@
             <li data-i18n="dl_040_3"><strong>Détection plus précise</strong> : nouveau modèle NER (DistilBERT-multilingual) entraîné sur corpus enrichi.</li>
             <li data-i18n="dl_040_4"><strong>Compat matérielle élargie</strong> : Bay Trail 2014+, VC++ Redist embarqué.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.4 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.5 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -142,7 +153,7 @@
             <li data-i18n="dl_03x_4">Sum / product / integral sans mot-clé : <code>Sum k 1 n f(x)</code>.</li>
             <li data-i18n="dl_03x_5">Angle <code>ABC</code> en notation <code>∠ABC</code>.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Versions archivées — utilise la 0.5.4 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Versions archivées — utilise la 0.5.5 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -150,7 +161,7 @@
           <ul>
             <li data-i18n="dl_01x_1">Premières bêta internes : détection NER, popup, insertion OMath, Ctrl+Espace, signaler un souci, alignement, fixes rendu.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Versions archivées — utilise la 0.5.4 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Versions archivées — utilise la 0.5.5 qui inclut ces changements.</div>
         </article>
 
         <p class="install-note" style="margin-top: 40px;" data-i18n="dl_note">
@@ -180,7 +191,15 @@
         dl_h1: "Downloads",
         dl_lead: "MathCursor installer for Windows + Word Desktop. The <code>latest.exe</code> link always points to the current stable release.",
         dl_beta_banner: "<strong>Beta in progress:</strong> hit a bug or a case that doesn't work? Click <strong>\"Report an issue\"</strong> in the MathCursor popup — one click is enough, your feedback is sent automatically and helps us fix things fast.",
-        dl_cta_latest: "Download the latest version (0.5.4)",
+        dl_cta_latest: "Download the latest version (0.5.5)",
+
+        dl_055_date: "— April 30, 2026",
+        dl_055_intro: "<strong>Bug reporting overhaul</strong>: automatic submission to the Cloudflare backend in one click, no more zip to attach manually.",
+        dl_055_1: "<strong>One-click bug report</strong>: direct HTTP send to the backend (<code>feedback.mathcursor.app</code>), no email attachment needed. One click and your feedback ships in the background.",
+        dl_055_2: "<strong>No more manual WhatsApp / email</strong>: the bundle (logs + raw source + rendered LaTeX) is packaged and sent automatically. Always opt-in: nothing is sent without your explicit click on the button.",
+        dl_055_3: "<strong>Privacy preserved</strong>: no document content is sent — only the current math zone and the technical logs needed for diagnosis.",
+        dl_055_btn: "Download 0.5.5",
+
         dl_cta_guide: "Install guide",
         dl_history_h: "Version history",
 
@@ -241,7 +260,7 @@
         dl_01x_date: "— April 22-23, 2026",
         dl_01x_1: "First internal betas: NER zone detection, popup, OMath insertion, Ctrl+Space, report-an-issue, alignment, render fixes.",
 
-        dl_retired: "Archived version — use 0.5.4 which includes these changes.",
+        dl_retired: "Archived version — use 0.5.5 which includes these changes.",
         dl_note: "One-click install: no account, no cloud, no document is sent anywhere. See the <a href=\"index.html#installation\">install guide</a> for details.",
         dl_foot: "© 2026 MathCursor · <a href=\"mailto:come2percin@gmail.com\">Contact</a>"
       }

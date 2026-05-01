@@ -59,6 +59,9 @@ Après l'upload :
 | KV namespace `RATE_LIMIT_KV` | Compteur reports/IP/heure (anti-flood) |
 | Pages Function `/download/*` | Log + stream depuis R2 vers le client |
 | Pages Function `/api/v1/report` | Reçoit les rapports de bug, écrit dans R2 + KV |
+| Pages Function `/admin/_middleware.js` | Basic Auth gate sur `/admin/*` |
+| Pages Function `/admin/api/reports/*` | Proxies R2 pour le dashboard admin online |
+| Pages Function `/admin/api/stats` | Proxy Analytics Engine SQL pour le dashboard stats |
 | AE dataset `mathcursor_downloads` | Métriques par download |
 
 Détail de l'architecture : voir ADR
@@ -129,16 +132,56 @@ curl -X POST https://mathcursor.pages.dev/api/v1/report \
     "user_comment": "test depuis curl"
   }'
 
-# Lister les reports stockés
-npx wrangler r2 object list mathcursor-reports --prefix=reports/$(date +%Y-%m-%d)/
+# Lire un report précis (syntaxe bucket/key combinée + flag --remote)
+npx wrangler r2 object get mathcursor-reports/reports/2026-04-30/<id>.json --remote --pipe
 
-# Lire un report précis
-npx wrangler r2 object get mathcursor-reports reports/2026-04-30/<id>.json
+# Lister les reports : pas de commande wrangler 4.x pour ça → passer par
+# le dashboard https://dash.cloudflare.com → R2 → mathcursor-reports →
+# Browse → naviguer dans reports/<date>/. Ou API REST Cloudflare directe.
 ```
 
 Si la response renvoie `{"ok": false, "error": "backend_misconfigured"}`,
 c'est que les bindings ne sont pas appliqués → vérifier dans le
 dashboard et redéployer.
+
+## Setup backoffice admin online (`/admin/*`)
+
+Le dashboard admin (`https://mathcursor.pages.dev/admin/`) est protégé par
+Basic Auth via `docs/functions/admin/_middleware.js`. Routes :
+- `/admin/` — landing
+- `/admin/reports.html` — master/detail des rapports « Signaler une erreur »
+- `/admin/stats.html` — dashboard téléchargements (Analytics Engine)
+- `/admin/api/reports/list|get|screenshot` — APIs proxy R2 (Function-side)
+- `/admin/api/stats` — API proxy Analytics Engine SQL
+
+Configuration **une fois** via dashboard CF Pages → projet `mathcursor` →
+Settings → Environment variables → **Production** :
+
+| Variable | Type | Valeur |
+|---|---|---|
+| `ADMIN_USER` | text | username choisi (ex: `admin`) |
+| `ADMIN_PASS` | secret | mot de passe (encrypted, ne ressort pas) |
+| `CLOUDFLARE_ACCOUNT_ID` | text | ton account ID (déjà dans `~/.mathcursor/cloudflare.env`) |
+| `CLOUDFLARE_API_TOKEN_READ` | secret | token CF dédié read-only (cf. ci-dessous) |
+
+**Token CF dédié** (à créer via https://dash.cloudflare.com/profile/api-tokens
+→ Create Token → Custom token) :
+
+- Permissions :
+  - Account → **Workers R2 Storage** → **Read** (uniquement Read, PAS Edit)
+  - Account → **Account Analytics** → **Read** (pour la future migration stats)
+- Account Resources : **Include → ton compte** uniquement
+- TTL : 1 an raisonnable
+
+Principe de moindre privilège : ce token sera côté Pages côté server, donc
+moins exposé que le token Edit utilisé en dev local. Mais quand même, on lui
+retire Edit pour qu'un éventuel leak ne permette pas la suppression d'objets.
+
+Une fois set, redéployer (`tools/cloudflare/deploy.sh site`) puis ouvrir :
+```
+https://mathcursor.pages.dev/admin/
+```
+Le browser pop la fenêtre login native. Login avec ADMIN_USER / ADMIN_PASS.
 
 ## Sécurité
 

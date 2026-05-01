@@ -18,6 +18,10 @@ namespace MathCursor
         private SuggestionService _suggestions;
         private KeyboardInterceptor _keyboard;
 
+        /// <summary>Accès au service pour le ribbon (bouton "Signaler une erreur").
+        /// Null si l'add-in a échoué à démarrer.</summary>
+        internal SuggestionService Suggestions => _suggestions;
+
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
             try

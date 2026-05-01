@@ -64,3 +64,10 @@ web-demo/publish/
 models/
 *.onnx
 *.bpe.model
+
+# Local reports dump (screenshots utilisateur, ne pas committer)
+reports-local/
+
+# Python cache
+__pycache__/
+*.pyc

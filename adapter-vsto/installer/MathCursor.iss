@@ -14,7 +14,7 @@
 ;   - Visual Studio Tools for Office Runtime (livré avec Office 2016+)
 
 #define MyAppName "MathCursor"
-#define MyAppVersion "0.5.4"
+#define MyAppVersion "0.5.5"
 #define MyAppPublisher "MathCursor"
 #define MyAppExeName "MathCursor.dll"
 #define MyAppId "{{6E4B3A1E-7F2D-4B8C-9A0E-2C5D6F7A8B90}"
@@ -72,6 +72,14 @@ Source: "payload\System.Runtime.CompilerServices.Unsafe.dll"; DestDir: "{app}"; 
 
 ; Modèle NER (volumineux — copier dans payload/models/ avant de compiler)
 Source: "payload\models\*";                               DestDir: "{app}\models"; Flags: ignoreversion recursesubdirs
+
+; URL endpoint pour le bouton "Signaler une erreur" (déposée dans %AppData%
+; pour que FeedbackSenderFactory la trouve, sinon fallback clipboard).
+; Toujours écrasée à l'install : permet de migrer l'URL à la prochaine
+; release sans intervention user. Les devs qui veulent override ponctuel
+; utilisent la variable d'env `MATHCURSOR_FEEDBACK_URL` qui prime sur le
+; fichier. `uninsneveruninstall` : on garde le fichier après désinstall.
+Source: "feedback.url";                                   DestDir: "{userappdata}\MathCursor"; Flags: ignoreversion uninsneveruninstall
 
 ; Certificat public, extrait temporairement pour être importé dans le user
 ; trust store via [Run] ci-dessous. `deleteafterinstall` supprime le fichier

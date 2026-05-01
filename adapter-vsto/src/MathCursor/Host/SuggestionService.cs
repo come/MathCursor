@@ -1164,8 +1164,12 @@ namespace MathCursor.Host
         /// </summary>
         public Feedback.FeedbackReport BuildFeedbackReport()
         {
+            // Word.Application.Version = "16.0" (peu utile pour le triage),
+            // Word.Application.Build = "16.0.18526.20144" (build complet =
+            // précieux pour distinguer les bugs spécifiques à un build OMath).
+            // On préfère Build et on tombe sur Version en fallback.
             string wordVersion = "?";
-            try { wordVersion = _app?.Version ?? "?"; } catch { }
+            try { wordVersion = _app?.Build ?? _app?.Version ?? "?"; } catch { }
 
             string version = "?";
             try { version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "?"; } catch { }

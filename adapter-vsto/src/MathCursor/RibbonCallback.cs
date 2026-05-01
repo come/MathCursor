@@ -97,59 +97,50 @@ namespace MathCursor
         }
 
         /// <summary>
-        /// Crée un zip avec log + screenshot Word + contexte (paragraphe,
-        /// versions), le met dans le presse-papier comme fichier droppable,
-        /// et affiche un dialogue expliquant comment l'envoyer (WhatsApp ou
-        /// email). Un bouton "Ouvrir le dossier" comme plan B si le clipboard
-        /// ne marche pas.
+        /// Ouvre la fenêtre WPF "Signaler une erreur" pré-remplie depuis le
+        /// dernier <see cref="MathCursor.Host.LastActionSnapshot"/> (saisie /
+        /// proposé / inséré). 3 actions dans la fenêtre : Annuler, Copier
+        /// dans un mail, Envoyer (POST direct vers /api/v1/report).
+        ///
+        /// Cf. ADR 2026-04-30-Feat-feedback-form-cloudflare-backend.
         /// </summary>
         public void OnReportIssueClicked(IRibbonControl control)
         {
-            string zipPath;
             try
             {
-                var app = Globals.ThisAddIn?.Application;
-                zipPath = FeedbackBundle.Create(app);
+                var suggestions = Globals.ThisAddIn?.Suggestions;
+                if (suggestions == null)
+                {
+                    MessageBox.Show(
+                        Strings.ReportFailedBody(FeedbackBundle.ContactEmail),
+                        Strings.ReportFailedTitle,
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+                // Capture le screen AVANT de cacher la popup (la popup de
+                // suggestion fait partie du contexte du bug et est utile à
+                // voir). Ensuite on cache la popup pour ne pas qu'elle se
+                // superpose au dialog. Le dialog est ouvert APRÈS capture
+                // donc n'apparaît jamais dans le screenshot.
+                byte[] preScreenshot = null;
+                try { preScreenshot = MathCursor.Host.FeedbackBundle.CaptureScreenshotPng(); } catch { }
+                try { suggestions.HidePopup(); } catch { }
+                var report = suggestions.BuildFeedbackReport();
+                if (preScreenshot != null && preScreenshot.Length > 0)
+                    report.ScreenshotPngBase64 = Convert.ToBase64String(preScreenshot);
+                var sender = MathCursor.Host.Feedback.FeedbackSenderFactory.Create();
+                var dialog = new MathCursor.UI.FeedbackDialog(report, sender);
+                dialog.ShowDialog();
             }
             catch (Exception ex)
             {
-                LogDebug("report_create_error: " + ex.Message);
-                zipPath = null;
-            }
-
-            if (string.IsNullOrEmpty(zipPath) || !File.Exists(zipPath))
-            {
+                LogDebug("report_dialog_error: " + ex.Message);
                 MessageBox.Show(
                     Strings.ReportFailedBody(FeedbackBundle.ContactEmail),
                     Strings.ReportFailedTitle,
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
-                return;
-            }
-
-            FeedbackBundle.CopyToClipboardAsFile(zipPath);
-
-            var result = MessageBox.Show(
-                Strings.ReportReadyBody(FeedbackBundle.WhatsAppGroupUrl, FeedbackBundle.ContactEmail, zipPath),
-                Strings.ReportReadyTitle,
-                MessageBoxButton.YesNoCancel,
-                MessageBoxImage.Information);
-
-            if (result == MessageBoxResult.Yes)
-            {
-                try
-                {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = FeedbackBundle.WhatsAppGroupUrl,
-                        UseShellExecute = true,
-                    });
-                }
-                catch (Exception ex) { LogDebug("wa_open_error: " + ex.Message); }
-            }
-            else if (result == MessageBoxResult.No)
-            {
-                FeedbackBundle.RevealInExplorer(zipPath);
             }
         }
     }
