@@ -638,19 +638,19 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.Contains("\\begin{align*}", result);
             Assert.Contains("\\end{align*}", result);
             Assert.Contains("\\Leftrightarrow", result);
-            // Alignement sur `=` via `&`
-            Assert.Contains("&=", result);
+            // Alignement sur `=` via `&` (avec espace entre & et =)
+            Assert.Contains("& =", result);
         }
 
         [Fact]
         public void MultiLine_equality_chain_renders_align_star_no_arrow()
         {
             // Chaîne d'égalités algébriques : `f(x)=2x+1\n= 2(x+0.5)` →
-            // align* avec `&=` aligné, pas de \Leftrightarrow (chaîne `=` pure).
+            // align* avec `& =` aligné, pas de \Leftrightarrow (chaîne `=` pure).
             var result = RenderTop("f(x)=2x+1\n= 2x");
             Assert.Contains("\\begin{align*}", result);
             Assert.DoesNotContain("\\Leftrightarrow", result);
-            Assert.Contains("&=", result);
+            Assert.Contains("& =", result);
         }
 
         [Fact]
@@ -681,17 +681,16 @@ namespace MathCursor.Core.Tests.Lattice
         }
 
         [Fact]
-        public void MultiLine_alignment_uses_two_ampersand_cols()
+        public void MultiLine_alignment_uses_three_ampersand_cols()
         {
-            // Validation visuelle de l'alignement : préfixe à GAUCHE (colonne 1),
-            // lhs au MILIEU (colonne 2), `=` aligné EN COLONNE (col 3).
-            // Cf. brief 30-04 multiline-systems §2.1 + demande user 01-05
-            // « il faut aligner à gauche les <=> et les = c'est nickel ».
+            // Validation visuelle de l'alignement à 4 colonnes (3 `&`) :
+            //   col1 (r, préfixe) | col2 (l, vide) | col3 (r, lhs) | col4 (l, =rhs)
+            // Format `\eqarray`-like (cf. validation user 02-05).
             var result = RenderTop("2x+1=5\n<=> 2x=4");
-            // Première ligne : col1 vide, col2 = `2x+1`, col3 = `= 5`
-            Assert.Contains("& 2x+1 &= 5", result);
-            // Seconde ligne : col1 = \Leftrightarrow, col2 = `2x`, col3 = `= 4`
-            Assert.Contains("\\Leftrightarrow & 2x &= 4", result);
+            // Première ligne : col1 vide (pas de préfixe), col2 vide, col3=`2x+1`, col4=`= 5`
+            Assert.Contains(" & & 2x+1 & = 5", result);
+            // Seconde ligne : col1=\Leftrightarrow, col2 vide, col3=`2x`, col4=`= 4`
+            Assert.Contains("\\Leftrightarrow & & 2x & = 4", result);
         }
 
         [Fact]
@@ -805,5 +804,32 @@ namespace MathCursor.Core.Tests.Lattice
             // filtrés par le parser). Régression : voir logs où top="" pour
             // "f :x->x+1" alors que "f:x->x+1" rend correctement.
             => Assert.Equal("f: x \\mapsto x+1", RenderTop("f :x->x+1"));
+
+        // ------------------ RelationOp avec Hole LHS (ADR 04-05 cross-merge-pipeline) ------------------
+        // Quand une zone ouvre par un opérateur de relation (`<=> 2x` tapé
+        // après un OMath déjà converti, en attente de cross-merge), le parser
+        // injecte un Hole en LHS pour ne pas crasher (sinon ParseExpr retourne
+        // null et on tombe sur \square seul). Le renderer DOIT omettre ce Hole
+        // pour ne pas polluer la popup avec un `\square` parasite — la
+        // relation orpheline (`\Leftrightarrow 2x`) reflète l'intention user.
+
+        [Fact]
+        public void RenderBin_Leftrightarrow_with_hole_lhs_strips_hole()
+            => Assert.Equal("\\Leftrightarrow 2x", RenderTop("<=> 2x"));
+
+        [Fact]
+        public void RenderBin_equals_with_hole_lhs_strips_hole()
+            => Assert.Equal("= X=2-1", RenderTop("= X = 2-1"));
+
+        [Fact]
+        public void RenderBin_Rightarrow_with_hole_lhs_strips_hole()
+            => Assert.Equal("\\Rightarrow x+1", RenderTop("=> x+1"));
+
+        [Fact]
+        public void RenderBin_chain_only_outermost_hole_at_start_is_stripped()
+            // Chaîne `<=> X = 2` : AST = Bin(=, Bin(<=>, Hole, X), 2). Le Hole
+            // direct sous Bin(<=>) est strippé ; le Bin(<=>, ...) lui-même
+            // n'est pas un Hole donc reste. Résultat : `\Leftrightarrow X=2`.
+            => Assert.Equal("\\Leftrightarrow X=2", RenderTop("<=> X = 2"));
     }
 }

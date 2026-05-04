@@ -339,8 +339,22 @@ namespace MathCursor.Core.Lattice
         // classique : on n'écrit pas "lim x 0 (f(x) = 1)" mais "lim x 0 f(x)").
         private AstNode? ParseRelation()
         {
-            var lhs = ParseExpr();
-            if (lhs == null) return null;
+            AstNode lhs;
+            if (IsRelOp())
+            {
+                // Zone qui ouvre par un opérateur de relation (ex. `<=> 4x = 2`
+                // après un OMath déjà converti — destiné au cross-merge). LHS
+                // implicite = Hole pour que le LaTeX rendu soit cohérent
+                // (`\square \Leftrightarrow 4x = 2`) plutôt que tronqué à
+                // `\square `.
+                lhs = Hole(1);
+            }
+            else
+            {
+                var parsed = ParseExpr();
+                if (parsed == null) return null;
+                lhs = parsed;
+            }
             while (IsRelOp())
             {
                 var op = Consume();

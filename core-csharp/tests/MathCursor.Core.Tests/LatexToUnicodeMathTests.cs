@@ -284,16 +284,15 @@ namespace MathCursor.Core.Tests
         // ---- ADR/brief 30-04 multiline-systems Phase 1 — align* ----
 
         [Theory]
-        // \begin{align*} ... \end{align*} → █(...) avec & et @ pour alignement.
-        // Format à 2 `&` par ligne (col1=préfixe, col2=lhs, col3=`=` rhs)
-        // pour alignement gauche des flèches logiques + alignement en
-        // colonne du `=`. Cf. brief 30-04 §2.1 + demande user 01-05.
+        // \begin{align*} ... \end{align*} → █(...) avec & (colonne) et @ (ligne).
+        // Format col1=préfixe, col2=vide, col3=lhs, col4==rhs (3 ampersands).
+        // `\eqarray` testé le 02-05 → non reconnu par BuildUp Word, retour à `█`.
         [InlineData(
-            "\\begin{align*}  & 2x+1 &= 5 \\\\ \\Leftrightarrow & 2x &= 4 \\end{align*}",
-            "█(&2x+1&= 5@⇔&2x&= 4)")]
+            "\\begin{align*}  & & 2x+1 & = 5 \\\\ \\Leftrightarrow & & 2x & = 4 \\end{align*}",
+            "█(&&2x+1&= 5@⇔&&2x&= 4)")]
         [InlineData(
-            "\\begin{align*}  & f(x) &= 2x+1 \\\\  & &= 2x \\end{align*}",
-            "█(&f(x)&= 2x+1@&&= 2x)")]
+            "\\begin{align*}  & & f(x) & = 2x+1 \\\\  & & & = 2x \\end{align*}",
+            "█(&&f(x)&= 2x+1@&&&= 2x)")]
         public void Align_star_environment_converts_to_unicodemath(string latex, string expected)
         {
             var got = LatexToUnicodeMath.Convert(latex);

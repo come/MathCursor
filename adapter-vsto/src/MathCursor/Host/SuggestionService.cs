@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using MathCursor.Core;
@@ -1355,6 +1356,31 @@ namespace MathCursor.Host
         private bool CommitLatexAndOMath(string latex, string source)
         {
             if (string.IsNullOrWhiteSpace(latex)) return false;
+
+            // Suspend le repaint Word pour TOUTE la durée du commit (insertion,
+            // BuildUp, bookmark, store, finalize cross-merge). Sans ça
+            // l'utilisateur voit les états intermédiaires : OMath qui apparaît,
+            // ¶ qui se crée, caret qui saute. ScreenUpdating=false → Word
+            // batch les mutations, repaint atomique au moment du restore.
+            // Cf. user 04-05 « micro saut du caret ».
+            bool prevScreenUpdating = true;
+            try { prevScreenUpdating = _app.ScreenUpdating; _app.ScreenUpdating = false; } catch { }
+            try
+            {
+                return CommitLatexAndOMathCore(latex, source);
+            }
+            finally
+            {
+                try { _app.ScreenUpdating = prevScreenUpdating; } catch { }
+            }
+        }
+
+        /// <summary>
+        /// Corps du commit (séparé de l'enveloppe ScreenUpdating). Cf.
+        /// <see cref="CommitLatexAndOMath"/> pour le wrapper.
+        /// </summary>
+        private bool CommitLatexAndOMathCore(string latex, string source)
+        {
             var editing = _editHandle;
 
             // Merge avec OMaths adjacents (ADR 29-04). Pas en mode édition
@@ -1362,16 +1388,18 @@ namespace MathCursor.Host
             // ORDRE :
             //  1. Intra-paragraphe (TryMergeWithAdjacentOMaths) — gagne toujours
             //     quand applicable (cf. brief 30-04 §3.1 précédence).
-            //  2. Cross-paragraphe (TryMergeWithPreviousParagraphOMath) — Phase 1
-            //     align* uniquement, déclenché si ligne courante = marqueur align
-            //     ET ¶ précédent termine par OMath à nous.
+            //  2. Cross-paragraphe (TryFindCrossMergeAbove) — Phase 1 align*
+            //     uniquement, déclenché si ligne courante = marqueur align ET
+            //     ¶ précédent termine par OMath à nous.
+            bool wasCrossParagraphMerge = false;
             if (editing == null)
             {
                 var merged = TryMergeWithAdjacentOMaths(_lastZoneAbsStart, _lastZoneAbsEnd, source);
                 if (merged == null)
                 {
                     // Pas d'intra-merge → tenter cross-paragraphe (brief 30-04)
-                    merged = TryMergeWithPreviousParagraphOMath(_lastZoneAbsStart, _lastZoneAbsEnd, source);
+                    merged = TryFindCrossMergeAbove(_lastZoneAbsStart, _lastZoneAbsEnd, source);
+                    if (merged != null) wasCrossParagraphMerge = true;
                 }
                 if (merged != null)
                 {
@@ -1454,6 +1482,15 @@ namespace MathCursor.Host
                     catch (Exception ex) { LogDiag("store_save_error: " + ex.Message); }
                     LogDiag($"insert commit handle={handle.Id} range=[{newStart},{newEnd}] latex=\"{latex}\" source=\"{source}\"");
                 }
+
+                // Phase 4 du pipeline cross-merge (cf. ADR 04-05) : finalise
+                // le layout (strip ¶ vide / align / append ¶ après / caret).
+                // Encapsulé dans une méthode dédiée pour découpler les étapes.
+                if (insertionSucceeded && wasCrossParagraphMerge)
+                {
+                    var doc = _app.ActiveDocument;
+                    if (doc != null) FinalizeCrossMergeLayout(doc, ref newStart, ref newEnd);
+                }
             }
             catch (Exception ex)
             {
@@ -1471,108 +1508,194 @@ namespace MathCursor.Host
             return true;
         }
 
+        // ─────────────────────────────────────────────────────────────────
+        //  Pipeline cross-merge : Phase 4 (finalisation layout)
+        //  Cf. ADR 2026-05-04-Meta-cross-merge-pipeline-refactor.md
+        // ─────────────────────────────────────────────────────────────────
+
         /// <summary>
-        /// Aligne l'OMath sur l'alignement du paragraphe texte qui le contient.
-        /// Word centre par défaut les équations via OMath.Justification et
-        /// OMathPara.Justification (wdOMathJcCenterGroup). On récupère l'alignement
-        /// paragraphe (Left/Center/Right/Justify), on le mappe vers la valeur
-        /// WdOMathJc correspondante, et on l'applique :
-        ///   1. à l'OMath lui-même (r.Start &lt;= pos &lt; r.End)
-        ///   2. à l'OMathPara parent (via doc.Content.OMathParagraphs) si présent
-        /// Ne TOUCHE PAS au paragraphe texte : on respecte le choix utilisateur.
+        /// Phase 4 du pipeline cross-merge : finalise le layout après l'insertion
+        /// brute de l'OMath multi-ligne. Orchestre 4 sous-étapes séquentielles :
+        /// <list type="number">
+        /// <item>Strip du <c>¶</c> vide en tête (résidu du paragraphe remplacé
+        /// par BuildUp Word sur <c>█(...)</c>).</item>
+        /// <item>Application de l'alignement OOXML sur le paragraphe OMath
+        /// (<c>m:oMathParaPr/m:jc</c>).</item>
+        /// <item>Création d'un nouveau paragraphe vide APRÈS l'OMath
+        /// (<see cref="Word.Range.InsertParagraphAfter"/>, API native).</item>
+        /// <item>Positionnement du caret dans ce nouveau paragraphe, hors
+        /// zone math.</item>
+        /// </list>
+        /// <para>
+        /// Note : <c>ScreenUpdating=false</c> est géré par le wrapper
+        /// <see cref="CommitLatexAndOMath"/> qui couvre tout le commit (pas
+        /// que la phase 4) — sans ça l'utilisateur voyait les états
+        /// intermédiaires de l'insertion (cf. user 04-05).
+        /// </para>
+        /// <paramref name="newStart"/> et <paramref name="newEnd"/> sont mis
+        /// à jour si le strip décale les positions, ce qui permet au caller
+        /// de continuer à les utiliser.
+        /// </summary>
+        private void FinalizeCrossMergeLayout(Word.Document doc, ref int newStart, ref int newEnd)
+        {
+            try
+            {
+                StripLeadingResidualEmptyParagraph(doc, ref newStart, ref newEnd);
+                EnforceOMathParagraphAlignment(doc, newStart);
+                int caretPos = AppendEmptyParagraphAfterOMath(doc, newStart);
+                if (caretPos >= 0) SetCaretAtPosition(caretPos);
+            }
+            catch (Exception ex) { LogDiag("xparMerge_finalize_error: " + ex.Message); }
+        }
+
+        /// <summary>
+        /// Phase 4.1 : supprime le <c>¶</c> vide qui peut subsister juste avant
+        /// l'OMath après cross-merge. Word's BuildUp sur <c>█(...)</c> crée
+        /// l'OMathPara dans son propre paragraphe et laisse parfois un <c>¶</c>
+        /// orphelin du paragraphe remplacé. On vérifie que le paragraphe
+        /// candidat est bien vide ET qu'il ne contient PAS d'OMath (un OMath
+        /// inline a <c>Text=""</c> mais ne doit pas être supprimé).
+        /// <paramref name="newStart"/> et <paramref name="newEnd"/> sont
+        /// décalés du nombre de chars supprimés.
+        /// </summary>
+        private void StripLeadingResidualEmptyParagraph(Word.Document doc, ref int newStart, ref int newEnd)
+        {
+            if (newStart <= doc.Content.Start) return;
+            try
+            {
+                var prevRange = doc.Range(newStart - 1, newStart - 1).Paragraphs[1].Range;
+                bool hasOMath = false;
+                try { hasOMath = prevRange.OMaths != null && prevRange.OMaths.Count > 0; } catch { }
+                if (hasOMath) return;
+                string prevText = prevRange.Text ?? "";
+                if (prevText.Replace("\r", "").Replace("\n", "").Trim().Length > 0) return;
+                int delLen = prevRange.End - prevRange.Start;
+                prevRange.Delete();
+                newStart -= delLen;
+                newEnd -= delLen;
+            }
+            catch (Exception ex) { LogDiag("xparMerge_strip_lead_para_error: " + ex.Message); }
+        }
+
+        /// <summary>
+        /// Phase 4.2 (réutilisable) : applique l'alignement du paragraphe Word
+        /// sur l'OMath qui le contient. Délègue à
+        /// <see cref="SyncOMathJustificationToParagraph"/>. Appelable depuis
+        /// d'autres flows (mode édition, single-eq) sans dupliquer le wrapping
+        /// try/catch.
+        /// </summary>
+        private void EnforceOMathParagraphAlignment(Word.Document doc, int pos)
+        {
+            try { SyncOMathJustificationToParagraph(doc, pos, pos); }
+            catch (Exception ex) { LogDiag("xparMerge_enforce_align_error: " + ex.Message); }
+        }
+
+        /// <summary>
+        /// Phase 4.3 (réutilisable) : insère un paragraphe vide APRÈS celui
+        /// qui contient l'OMath couvrant <paramref name="posInOMath"/>.
+        /// Utilise <see cref="Word.Range.InsertParagraphAfter"/> (API Word
+        /// native, gère correctement le dernier <c>¶</c> du document
+        /// contrairement à un <c>Range.Text = "\r"</c> manuel qui peut être
+        /// normalisé/bouffé à la frontière fin de doc).
+        /// Retourne la position de début du nouveau paragraphe (où placer
+        /// le caret), ou <c>-1</c> si aucun OMath ne couvre la position.
+        /// </summary>
+        private int AppendEmptyParagraphAfterOMath(Word.Document doc, int posInOMath)
+        {
+            try
+            {
+                foreach (Word.OMath om in doc.OMaths)
+                {
+                    if (om.Range.Start > posInOMath || om.Range.End <= posInOMath) continue;
+                    var omPara = om.Range.Paragraphs[1];
+                    omPara.Range.InsertParagraphAfter();
+                    return omPara.Range.End;
+                }
+            }
+            catch (Exception ex) { LogDiag("xparMerge_append_para_error: " + ex.Message); }
+            return -1;
+        }
+
+        /// <summary>
+        /// Phase 4.4 (réutilisable) : positionne le caret à la position donnée.
+        /// Utilisé après <see cref="AppendEmptyParagraphAfterOMath"/> pour
+        /// déposer le caret dans le nouveau paragraphe vide. La position est
+        /// supposée être hors zone math (le paragraphe vient juste d'être
+        /// créé indépendamment de l'OMath par <c>InsertParagraphAfter</c>).
+        /// </summary>
+        private void SetCaretAtPosition(int caretPos)
+        {
+            try { _app.Selection.SetRange(caretPos, caretPos); }
+            catch (Exception ex) { LogDiag("xparMerge_setcaret_error: " + ex.Message); }
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        //  Alignement OMath ↔ paragraphe (réutilisable)
+        // ─────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Aligne l'OMath couvrant <paramref name="pos"/> sur l'alignement du
+        /// paragraphe Word qui le contient.
+        /// <para>
+        /// Word centre par défaut les équations display via
+        /// <c>OMathPara.Justification = wdOMathJcCenterGroup</c>, ce qui ne
+        /// respecte pas le choix utilisateur. On lit l'alignement du paragraphe
+        /// (<c>Left/Center/Right/Justify</c>), on le map vers
+        /// <see cref="Word.WdOMathJc"/>, puis :
+        /// </para>
+        /// <list type="number">
+        /// <item>Typed setter sur <see cref="Word.OMath.Justification"/>
+        /// (couvre les OMath inline qui ne sont pas wrappés dans un OMathPara
+        /// display — l'inline suit naturellement l'alignement paragraphe, le
+        /// setter est ceinture-bretelles).</item>
+        /// <item>Patch direct du WordOpenXML pour OMathPara : la PIA Office15
+        /// n'expose pas la collection <c>OMathParagraphs</c> ni en typé ni en
+        /// IDispatch sur ce Word (vérifié <c>DISP_E_UNKNOWNNAME</c> dans tous
+        /// les logs). Le patch injecte
+        /// <c>&lt;m:oMathParaPr&gt;&lt;m:jc m:val="..."/&gt;&lt;/m:oMathParaPr&gt;</c>
+        /// après <c>&lt;m:oMathPara&gt;</c> — exactement ce que le bouton
+        /// « Aligner à gauche » du ribbon ajoute (vérifié sur align.docx).</item>
+        /// </list>
+        /// Ne modifie JAMAIS le paragraphe texte lui-même : on respecte le
+        /// choix utilisateur.
         /// </summary>
         private void SyncOMathJustificationToParagraph(Word.Document doc, int pos, int spanEnd)
         {
             try
             {
-                // 1) Lit l'alignment du paragraphe contenant la position
-                int paraAlign = 0; // wdAlignParagraphLeft par défaut
-                try
+                int omathJc = MapParagraphAlignToOMathJc(ReadParagraphAlignment(doc, pos));
+
+                // 1) Typed OMath.Justification setter
+                foreach (Word.OMath om in doc.OMaths)
                 {
-                    var para = doc.Range(pos, pos).Paragraphs[1];
-                    paraAlign = (int)para.Format.GetType().InvokeMember(
-                        "Alignment",
-                        System.Reflection.BindingFlags.GetProperty,
-                        null, para.Format, null);
+                    var r = om.Range;
+                    if (r.Start > pos || r.End <= pos) continue;
+                    try { om.Justification = (Word.WdOMathJc)omathJc; } catch { }
+                    break;
                 }
-                catch (Exception ex) { LogDiag("para_align_read_error: " + ex.Message); }
 
-                int omathJc = MapParagraphAlignToOMathJc(paraAlign);
-                LogDiag($"align_sync paraAlign={paraAlign} → omathJc={omathJc}");
-
-                // 2) Applique sur l'OMath couvrant pos
-                try
-                {
-                    foreach (Word.OMath om in doc.OMaths)
-                    {
-                        var r = om.Range;
-                        if (r.Start > pos || r.End <= pos) continue;
-                        try
-                        {
-                            om.GetType().InvokeMember(
-                                "Justification",
-                                System.Reflection.BindingFlags.SetProperty,
-                                null, om, new object[] { omathJc });
-                        }
-                        // API non dispo dans certaines PIA Word — silencieux,
-                        // l'OMath garde son alignement par défaut. Pas un bug
-                        // côté nous.
-                        catch { }
-                        break;
-                    }
-                }
-                catch (Exception ex) { LogDiag("omath_scan_error: " + ex.Message); }
-
-                // 3) Applique sur l'OMathPara parent (seulement si display-mode).
-                //    OMathParagraphs vit sur Range, pas sur Document (DISP_E_UNKNOWNNAME
-                //    direct sur Document). Itération indexée Count+Item : l'IEnumerable
-                //    des collections COM Word rate parfois les derniers éléments ajoutés.
-                try
-                {
-                    var contentRange = doc.Content;
-                    if (contentRange == null) return;
-                    object omathParas = contentRange.GetType().InvokeMember(
-                        "OMathParagraphs",
-                        System.Reflection.BindingFlags.GetProperty,
-                        null, contentRange, null);
-                    if (omathParas == null) return;
-
-                    var parasType = omathParas.GetType();
-                    int count = (int)parasType.InvokeMember(
-                        "Count",
-                        System.Reflection.BindingFlags.GetProperty,
-                        null, omathParas, null);
-                    for (int i = 1; i <= count; i++)
-                    {
-                        try
-                        {
-                            object omp = parasType.InvokeMember(
-                                "Item",
-                                System.Reflection.BindingFlags.InvokeMethod | System.Reflection.BindingFlags.GetProperty,
-                                null, omathParas, new object[] { i });
-                            if (omp == null) continue;
-                            var ompType = omp.GetType();
-                            object range = ompType.InvokeMember(
-                                "Range",
-                                System.Reflection.BindingFlags.GetProperty,
-                                null, omp, null);
-                            if (range == null) continue;
-                            var rangeType = range.GetType();
-                            int rStart = (int)rangeType.InvokeMember("Start", System.Reflection.BindingFlags.GetProperty, null, range, null);
-                            int rEnd = (int)rangeType.InvokeMember("End", System.Reflection.BindingFlags.GetProperty, null, range, null);
-                            if (rEnd < pos || rStart > spanEnd) continue;
-
-                            ompType.InvokeMember(
-                                "Justification",
-                                System.Reflection.BindingFlags.SetProperty,
-                                null, omp, new object[] { omathJc });
-                        }
-                        catch { } // API absente sur cette PIA — silencieux
-                    }
-                }
-                catch { } // OMathParagraphs pas exposé sur cette PIA — silencieux
+                // 2) Patch OOXML pour OMathPara (seul path qui marche sur cette PIA/Word)
+                PatchOMathParaJustificationViaXml(doc, pos, omathJc);
             }
             catch (Exception ex) { LogDiag("align_sync_error: " + ex.Message); }
+        }
+
+        /// <summary>
+        /// Lit l'alignement du paragraphe Word à la position donnée. Retourne
+        /// <c>0</c> (Left) par défaut si la lecture échoue. Utilise reflection
+        /// (InvokeMember) car certaines PIA exposent <c>ParagraphFormat.Alignment</c>
+        /// uniquement en late-binding.
+        /// </summary>
+        private static int ReadParagraphAlignment(Word.Document doc, int pos)
+        {
+            try
+            {
+                var format = doc.Range(pos, pos).Paragraphs[1].Format;
+                return (int)format.GetType().InvokeMember(
+                    "Alignment", System.Reflection.BindingFlags.GetProperty,
+                    null, format, null);
+            }
+            catch { return 0; }
         }
 
         /// <summary>
@@ -1589,6 +1712,117 @@ namespace MathCursor.Host
                 case 2: return 4; // Right
                 default: return 3; // Left (couvre Left, Justify, et les variantes rares)
             }
+        }
+
+        /// <summary>
+        /// Patch OOXML : injecte/remplace &lt;m:oMathParaPr&gt;&lt;m:jc m:val="..."/&gt;&lt;/m:oMathParaPr&gt;
+        /// après &lt;m:oMathPara&gt; dans le paragraphe contenant pos. C'est exactement
+        /// ce que le bouton « Aligner à gauche » du ribbon Word ajoute (vérifié
+        /// sur docx test : centré = pas de m:oMathParaPr / aligné gauche =
+        /// m:oMathParaPr présent avec m:jc). Utilisé quand OMathParagraphs n'est
+        /// exposé ni par la PIA ni par IDispatch.
+        /// </summary>
+        private void PatchOMathParaJustificationViaXml(Word.Document doc, int pos, int omathJc)
+        {
+            string targetVal = OMathJcToOoxmlVal(omathJc);
+            if (targetVal == null) return;
+            try
+            {
+                var probeRange = doc.Range(pos, pos);
+                var paras = probeRange.Paragraphs;
+                if (paras == null || paras.Count == 0) return;
+                var paraRange = paras[1].Range;
+                string xml = paraRange.WordOpenXML;
+                if (string.IsNullOrEmpty(xml)) return;
+                if (xml.IndexOf("<m:oMathPara", StringComparison.Ordinal) < 0) return;
+                bool changed;
+                string patched = PatchOMathParaJc(xml, targetVal, out changed);
+                // Réinsertion forcée même si contenu identique : le set typé
+                // OMath.Justification met à jour le XML mais ne déclenche pas
+                // de re-layout. InsertXML re-process le paragraphe et force le
+                // repaint (équivalent du clic ribbon).
+                paraRange.InsertXML(patched);
+            }
+            catch (Exception ex) { LogDiag("align_sync_xml_error: " + ex.Message); }
+        }
+
+        private static string OMathJcToOoxmlVal(int jc)
+        {
+            switch (jc)
+            {
+                case 1: return "centerGroup";
+                case 2: return "center";
+                case 3: return "left";
+                case 4: return "right";
+                default: return null;
+            }
+        }
+
+        // Patch les attributs de justification OMathPara dans l'OOXML d'un
+        // paragraphe. Trois cas couverts (cas 4 = cas réel observé sur docx user) :
+        //   1. <m:oMathParaPr>...<m:jc m:val="X"/>...</m:oMathParaPr> → remplace X
+        //   2. <m:oMathParaPr/> auto-fermant → remplace par bloc complet
+        //   3. <m:oMathParaPr> ouvert sans m:jc → injecte m:jc en tête
+        //   4. <m:oMathPara> sans m:oMathParaPr (cas par défaut Word) → injecte tout
+        private static readonly Regex _rxJcVal = new Regex(
+            @"(<m:oMathParaPr[^>]*>(?:(?!</m:oMathParaPr>).)*?<m:jc\s+m:val="")[^""]*("")",
+            RegexOptions.Singleline | RegexOptions.Compiled);
+        private static readonly Regex _rxParaPrSelfClosing = new Regex(
+            @"<m:oMathParaPr\s*/>",
+            RegexOptions.Singleline | RegexOptions.Compiled);
+        private static readonly Regex _rxParaPrNoJc = new Regex(
+            @"<m:oMathParaPr\s*>(?!\s*<m:jc)",
+            RegexOptions.Singleline | RegexOptions.Compiled);
+        private static readonly Regex _rxParaNoParaPr = new Regex(
+            @"<m:oMathPara\s*>(?!\s*<m:oMathParaPr)",
+            RegexOptions.Singleline | RegexOptions.Compiled);
+
+        internal static string PatchOMathParaJc(string xml, string targetVal, out bool changed)
+        {
+            changed = false;
+            if (string.IsNullOrEmpty(xml) || string.IsNullOrEmpty(targetVal)) return xml;
+
+            // Cas 1 : m:jc existe déjà — remplace le val (s'il diffère)
+            if (_rxJcVal.IsMatch(xml))
+            {
+                bool needsChange = false;
+                string updated = _rxJcVal.Replace(xml, m =>
+                {
+                    string current = m.Value;
+                    int valStart = current.IndexOf("m:val=\"", StringComparison.Ordinal) + 7;
+                    int valEnd = current.IndexOf('"', valStart);
+                    string currentVal = current.Substring(valStart, valEnd - valStart);
+                    if (currentVal != targetVal) needsChange = true;
+                    return m.Groups[1].Value + targetVal + m.Groups[2].Value;
+                });
+                changed = needsChange;
+                return needsChange ? updated : xml;
+            }
+
+            string injection = "<m:oMathParaPr><m:jc m:val=\"" + targetVal + "\"/></m:oMathParaPr>";
+
+            // Cas 2 : <m:oMathParaPr/> auto-fermant
+            if (_rxParaPrSelfClosing.IsMatch(xml))
+            {
+                changed = true;
+                return _rxParaPrSelfClosing.Replace(xml, injection, 1);
+            }
+
+            // Cas 3 : <m:oMathParaPr> ouvert sans m:jc — injecte m:jc juste après le tag
+            if (_rxParaPrNoJc.IsMatch(xml))
+            {
+                changed = true;
+                return _rxParaPrNoJc.Replace(xml, "<m:oMathParaPr><m:jc m:val=\"" + targetVal + "\"/>", 1);
+            }
+
+            // Cas 4 : <m:oMathPara> sans m:oMathParaPr du tout (default Word)
+            if (_rxParaNoParaPr.IsMatch(xml))
+            {
+                changed = true;
+                return _rxParaNoParaPr.Replace(xml, "<m:oMathPara>" + injection, 1);
+            }
+
+            return xml;
         }
 
         private static bool IsWhitespaceCharAt(Word.Document doc, int pos)
@@ -1783,25 +2017,36 @@ namespace MathCursor.Host
         private static readonly string[] AlignMarkers = { "<==>", "<=>", "==>", "=>", "<==", "<=", "=" };
 
         /// <summary>
-        /// Tentative de merge cross-paragraphe (brief 30-04 multiline-systems §3.2).
-        /// Conditions :
-        /// 1. La source courante (la ligne qu'on commit) commence par un marqueur align.
-        /// 2. Le paragraphe IMMÉDIATEMENT au-dessus contient un OMath à nous (bookmark).
-        /// 3. Pas de paragraphe vide entre.
-        /// 4. Pas de texte significatif entre la fin de l'OMath précédent et le ¶ break,
-        ///    ni entre le ¶ break et le début de la zone courante (que du whitespace).
+        /// Phase 2 du pipeline cross-merge : détecte si la zone courante
+        /// (ligne en cours de commit) doit fusionner avec un OMath situé sur
+        /// le paragraphe immédiatement au-dessus, formant un bloc align*
+        /// multi-ligne (cf. brief 30-04 multiline-systems §3.2).
         ///
-        /// Si OK, retourne un MergeResult dont le range englobe :
-        ///   [prev_OMath.Start, current_zone_end]
-        /// Le source mergé = `prev_source\ncurrent_source`. Le pipeline core va
-        /// le détecter comme MultiLineBlock align* et produire un LaTeX
-        /// \begin{align*}...\end{align*}.
+        /// <para>Conditions cumulées :</para>
+        /// <list type="number">
+        /// <item>La source courante commence par un marqueur align (<c>=</c>,
+        /// <c>&lt;=&gt;</c>, <c>=&gt;</c>, <c>&lt;=</c> et variantes).</item>
+        /// <item>Le paragraphe immédiatement au-dessus contient un OMath à
+        /// nous (bookmark <c>mcEq_*</c>).</item>
+        /// <item>Pas de paragraphe vide entre.</item>
+        /// <item>Pas de texte significatif entre la fin de l'OMath précédent
+        /// et le <c>¶</c> break, ni entre le <c>¶</c> break et le début de
+        /// la zone courante (que du whitespace).</item>
+        /// </list>
         ///
-        /// Au moment de l'insertion (InsertOMathAt avec ce range), Word Range.Text =
-        /// "..." remplace tout, y compris le paragraph break entre les 2 ¶ → les
-        /// 2 paragraphes sont collapsés en 1 contenant l'OMath multi-ligne.
+        /// <para>Si OK, retourne un <see cref="MergeResult"/> dont le range
+        /// englobe <c>[prev_OMath.Start, current_zone_end]</c> et le source
+        /// mergé est <c>prev_source\ncurrent_source</c>. Le pipeline core
+        /// (lattice engine) détectera le <c>\n</c> comme LineBreak et
+        /// produira un LaTeX <c>\begin{align*}...\end{align*}</c>.</para>
+        ///
+        /// <para>Au moment de l'insertion (Phase 3 = <see cref="InsertOMathAt"/>),
+        /// le <c>Range.Text="..."</c> remplace tout y compris le paragraph
+        /// break entre les 2 <c>¶</c> → les 2 paragraphes sont collapsés en 1
+        /// contenant l'OMath multi-ligne. Phase 4 finalise (cf.
+        /// <see cref="FinalizeCrossMergeLayout"/>).</para>
         /// </summary>
-        private MergeResult TryMergeWithPreviousParagraphOMath(int absStart, int absEnd, string currentSource)
+        private MergeResult TryFindCrossMergeAbove(int absStart, int absEnd, string currentSource)
         {
             try
             {

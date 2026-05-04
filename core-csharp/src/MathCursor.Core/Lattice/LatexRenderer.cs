@@ -64,8 +64,33 @@ namespace MathCursor.Core.Lattice
             _ => a.Value,
         };
 
+        /// <summary>
+        /// Rendu LaTeX d'un noeud <see cref="Bin"/>.
+        /// <para>
+        /// Contrat parser → renderer pour le cas <c>Hole LHS + opérateur de
+        /// relation</c> (cf. ADR 2026-05-04 cross-merge pipeline) :
+        /// </para>
+        /// <list type="bullet">
+        /// <item>Le parser injecte un <see cref="Hole"/> en LHS quand une zone
+        /// ouvre par un RelOp (`&lt;=&gt; 2x`, `=&gt; x+1`, `= X = 2`...) — sans
+        /// ça <see cref="Parser.ParseRelation"/> retournerait null et on tomberait
+        /// sur <c>\square</c> seul.</item>
+        /// <item>Le renderer DOIT omettre ce Hole — sinon la popup affiche
+        /// <c>\square \Leftrightarrow 2x</c>, polluant. Le rendu correct est
+        /// la relation orpheline : <c>\Leftrightarrow 2x</c>, qui reflète
+        /// l'intention user (« je tape la suite d'une chaîne d'équivalences »).</item>
+        /// <item>Cas chaîné <c>&lt;=&gt; X = 2</c> = <c>Bin(=, Bin(&lt;=&gt;, Hole, X), 2)</c> :
+        /// seul le Hole DIRECT sous le Bin interne est strippé. Le Bin externe
+        /// voit son LHS = un Bin (pas un Hole), pas de strip à ce niveau.</item>
+        /// </list>
+        /// Tests : <c>LatexRendererTests.RenderBin_*_with_hole_lhs_strips_hole</c>.
+        /// </summary>
         private static string RenderBin(Bin b)
         {
+            // Hole LHS + RelOp : relation orpheline (cf. doc XML ci-dessus).
+            if (b.Lhs is Hole && IsRelationOp(b.Op))
+                return $"{RelationOpAlone(b.Op)} {Render(b.Rhs)}";
+
             var lhs = Render(b.Lhs);
             var rhs = Render(b.Rhs);
             // `.` saisi par l'utilisateur → toujours `\cdot` (lecture littérale,
@@ -122,6 +147,26 @@ namespace MathCursor.Core.Lattice
             return $"{lhs}{b.Op}{rhs}";
         }
 
+        private static bool IsRelationOp(string op) => op switch
+        {
+            "=" or "<" or ">" or "<=" or ">=" or "!=" or "<>" or
+            "=>" or "==>" or "⇒" or "⟹" or
+            "<=>" or "<==>" or "⇔" or "↔" or "⟺" or
+            "<==" or "⇐" or "⟸" => true,
+            _ => false,
+        };
+
+        private static string RelationOpAlone(string op) => op switch
+        {
+            "<=" => "\\leq",
+            ">=" => "\\geq",
+            "!=" or "<>" => "\\neq",
+            "=>" or "==>" or "⇒" or "⟹" => "\\Rightarrow",
+            "<=>" or "<==>" or "⇔" or "↔" or "⟺" => "\\Leftrightarrow",
+            "<==" or "⇐" or "⟸" => "\\Leftarrow",
+            _ => op,
+        };
+
         private static string RenderFunc(Func fn)
         {
             // Convention typographique française : exp(x), exp(x+1) sont
@@ -176,15 +221,19 @@ namespace MathCursor.Core.Lattice
         // égalités (\begin{align*}). Cf. brief 30-04 multiline-systems.
         // Phase 1 : uniquement le mode "align". Phase 2 ajoutera "cases".
         //
-        // Pour le mode align, on utilise DEUX marqueurs `&` par ligne :
-        //   prefix & lhs &op rhs
-        // - Col 1 (à gauche) : `\Leftrightarrow` / `\Rightarrow` / vide
-        //   (alignement à GAUCHE des flèches logiques cf. demande user 01-05)
-        // - Col 2 (au milieu) : lhs de la relation
-        // - Col 3 (à droite) : opérateur + rhs (l'`=` aligné en colonne)
-        //
-        // Sans cette double colonne, les flèches `\Leftrightarrow` se
-        // colleraient au lhs et ne s'aligneraient pas verticalement entre lignes.
+        // Format `\eqarray`-like à 3 `&` par ligne (4 cellules) :
+        //   {prefix} & & {lhs} & {op} {rhs}
+        // - Col 1 (r) : préfixe (flèche logique) ou vide
+        //   → r-aligned, mais comme tous les préfixes ont la même largeur
+        //     ils s'alignent visuellement (équivalent gauche-aligné)
+        // - Col 2 (l) : vide (padding entre préfixe et lhs)
+        // - Col 3 (r) : lhs de la relation
+        //   → r-aligned, finit JUSTE AVANT le `=`
+        // - Col 4 (l) : opérateur + rhs (`= ...`)
+        //   → l-aligned, commence par `=` à la même position pour toutes
+        //     les lignes
+        // Cf. validation user 02-05 (« \eqarray(&&f(x)&=...@⇒&&g(x)&=...) c'est
+        // ca que tu as fait ? ») — on aligne sur ce format.
         private static string RenderMultiLineBlock(MultiLineBlock mb)
         {
             if (mb.Mode == "align")
@@ -217,19 +266,22 @@ namespace MathCursor.Core.Lattice
         }
 
         /// <summary>
-        /// Rendu d'une ligne de bloc align* avec 2 colonnes d'alignement :
-        ///   prefix &amp; lhs &amp;op rhs
-        /// La 1re colonne aligne les préfixes (flèches logiques) à gauche,
-        /// la 2e colonne aligne le `=` (ou autre relation) en colonne. Si la
-        /// ligne n'a pas de relation, on rend `prefix &amp; expr` (1 col seulement).
+        /// Rendu d'une ligne de bloc align* avec 4 colonnes (3 `&`) :
+        ///   {prefix} &amp; &amp; {lhs} &amp; {op} {rhs}
+        /// - Col 1 (r) : préfixe (flèche logique) ou vide pour 1re ligne
+        /// - Col 2 (l) : vide (padding)
+        /// - Col 3 (r) : lhs de la relation (finit juste avant `=`)
+        /// - Col 4 (l) : `op rhs` (commence par `=` aligné en colonne)
+        /// Si la ligne n'a pas de relation, col3 vide et expression en col4.
         /// </summary>
         private static string RenderAlignLineWithPrefix(string prefix, AstNode line)
         {
             if (line is Bin b && IsAlignRelationOp(b.Op))
             {
-                return $"{prefix} & {Render(b.Lhs)} &{b.Op} {Render(b.Rhs)}";
+                return $"{prefix} & & {Render(b.Lhs)} & {b.Op} {Render(b.Rhs)}";
             }
-            return $"{prefix} & {Render(line)}";
+            // Ligne sans relation : col3 vide, expression en col4
+            return $"{prefix} & & & {Render(line)}";
         }
 
         private static bool IsAlignRelationOp(string op)

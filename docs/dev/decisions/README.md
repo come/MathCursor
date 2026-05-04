@@ -19,6 +19,9 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-05-04
+- `[molle]` Meta — [Refactor du pipeline cross-merge (4 phases séquentielles)](2026-05-04-Meta-cross-merge-pipeline-refactor.md)
+
 ### 2026-05-01
 - `[molle]` Feat — [Backoffice admin (reports + stats) en ligne sur Cloudflare avec Basic Auth](2026-05-01-Feat-admin-backoffice-cloudflare.md)
 

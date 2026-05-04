@@ -71,11 +71,11 @@ namespace MathCursor.Core
             RegexOptions.Singleline | RegexOptions.Compiled);
 
         // align* (chaînes d'équivalences/égalités, brief 30-04 multiline-systems).
-        // Word UnicodeMath utilise █(...) pour les piles d'équations alignées,
-        // avec & comme marqueur d'alignement (column separator) et @ comme
-        // séparateur de lignes (row separator). Le rendu produit du LaTeX
-        // \\begin{align*} ... &= ... \\\\ \\Leftrightarrow ... &= ... \\end{align*},
-        // qu'on convertit en █(... &= ... @ \Leftrightarrow ... &= ...).
+        // Word UnicodeMath : `█(...)` (U+2588 BLACK SQUARE) est le shorthand
+        // matrix Word qui marche en BuildUp. `\eqarray(...)` testé le 02-05
+        // → rendu littéralement comme texte (non reconnu par BuildUp dans
+        // certaines versions Word). On reste donc sur `█(...)`.
+        // `&` = column separator, `@` = row separator.
         private static readonly Regex AlignStarEnvironmentRegex = new Regex(
             @"\\begin\{align\*\}(?<body>.*?)\\end\{align\*\}",
             RegexOptions.Singleline | RegexOptions.Compiled);
