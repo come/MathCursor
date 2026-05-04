@@ -31,8 +31,8 @@ export async function onRequestGet({ env, request }) {
     if (hit) return hit;
   }
 
-  // Lance les 5 queries en parallèle
-  const [total, versions, countries, days, referers] = await Promise.all([
+  // Lance les 6 queries en parallèle
+  const [total, versions, countries, days, referers, recent] = await Promise.all([
     runSql(env, `SELECT count() AS total FROM mathcursor_downloads
                  WHERE timestamp > NOW() - INTERVAL '30' DAY`),
     runSql(env, `SELECT blob1 AS file, count() AS downloads
@@ -52,15 +52,56 @@ export async function onRequestGet({ env, request }) {
                  FROM mathcursor_downloads
                  WHERE blob6 != '' AND timestamp > NOW() - INTERVAL '30' DAY
                  GROUP BY referer ORDER BY hits DESC LIMIT 20`),
+    // Derniers événements bruts (pas d'agrégation) — pour voir qui a DL quoi
+    runSql(env, `SELECT timestamp, blob1 AS file, blob3 AS country,
+                        blob4 AS colo, blob5 AS user_agent
+                 FROM mathcursor_downloads
+                 ORDER BY timestamp DESC LIMIT 10`),
   ]);
+
+  // Fill : `days` ne contient que les jours avec ≥1 DL. Sans ça, Chart.js
+  // lisse entre 2 points distants en sautant les 0 → trompeur. On insère
+  // une entrée {day, downloads:0} pour chaque jour manquant des 30
+  // derniers, en se calant sur le format `toStartOfInterval` (ISO 8601
+  // début de jour UTC).
+  const filledDays = fillMissingDays(days, 30);
 
   const response = jsonOk({
     generated_at: new Date().toISOString(),
-    total, versions, countries, days, referers,
+    total, versions, countries, days: filledDays, referers, recent,
   });
   response.headers.set('Cache-Control', `public, max-age=${CACHE_SECONDS}`);
   await cache.put(cacheKey, response.clone());
   return response;
+}
+
+/**
+ * Comble les jours manquants des N derniers jours par {day, downloads:0}
+ * pour que la courbe affiche les zéros au lieu d'être lissée entre les
+ * jours non-zéro. Tri ASC final (= comme la query d'origine).
+ *
+ * AE retourne `day` au format ISO `2026-05-01T00:00:00Z` (start of day UTC
+ * via toStartOfInterval). On compare par préfixe `YYYY-MM-DD`.
+ */
+function fillMissingDays(rows, nDays) {
+  const byDate = new Map();
+  for (const r of (rows || [])) {
+    const key = (r.day || '').slice(0, 10);
+    if (key) byDate.set(key, Number(r.downloads) || 0);
+  }
+  const out = [];
+  const today = new Date();
+  // On part de today - (nDays - 1) jours pour inclure exactement nDays
+  for (let i = nDays - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setUTCDate(d.getUTCDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    out.push({
+      day: key + 'T00:00:00Z',
+      downloads: byDate.get(key) || 0,
+    });
+  }
+  return out;
 }
 
 /**

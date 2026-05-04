@@ -126,6 +126,17 @@
         </table>
         <div id="referers-empty" class="empty" hidden>(aucun referer enregistré)</div>
       </div>
+
+      <div class="card full">
+        <h3>10 derniers téléchargements</h3>
+        <table class="referers" id="table-recent">
+          <thead><tr>
+            <th>Quand</th><th>Fichier</th><th>Pays</th><th>Colo</th><th>User-Agent</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+        <div id="recent-empty" class="empty" hidden>(aucun téléchargement)</div>
+      </div>
     </div>
   </div>
 
@@ -240,6 +251,43 @@
                + '<td class="num">' + escape(r.hits) + '</td></tr>';
         }).join('');
       }
+
+      // 10 derniers downloads (événements bruts)
+      const recentBody = document.querySelector('#table-recent tbody');
+      const recentEmpty = document.getElementById('recent-empty');
+      const recentTable = document.getElementById('table-recent');
+      if (!data.recent || data.recent.length === 0) {
+        recentEmpty.hidden = false;
+        recentTable.hidden = true;
+      } else {
+        recentEmpty.hidden = true;
+        recentTable.hidden = false;
+        recentBody.innerHTML = data.recent.map(r => {
+          const ua = (r.user_agent || '').slice(0, 80);
+          return '<tr>'
+               + '<td>' + escape(formatTs(r.timestamp)) + '</td>'
+               + '<td>' + escape(r.file || '?') + '</td>'
+               + '<td>' + escape(r.country || '??') + '</td>'
+               + '<td>' + escape(r.colo || '??') + '</td>'
+               + '<td class="url" title="' + escape(r.user_agent || '') + '">' + escape(ua) + '</td>'
+               + '</tr>';
+        }).join('');
+      }
+    }
+
+    function formatTs(iso) {
+      if (!iso) return '?';
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return iso;
+      const now = new Date();
+      const diffMin = Math.floor((now - d) / 60000);
+      if (diffMin < 1) return "à l'instant";
+      if (diffMin < 60) return 'il y a ' + diffMin + ' min';
+      const diffH = Math.floor(diffMin / 60);
+      if (diffH < 24) return 'il y a ' + diffH + ' h';
+      const diffD = Math.floor(diffH / 24);
+      if (diffD < 30) return 'il y a ' + diffD + ' j';
+      return d.toLocaleDateString('fr-FR');
     }
 
     function renderEmpty(name, arr) {
