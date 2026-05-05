@@ -2,20 +2,25 @@
 <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="OnRibbonLoad">
   <ribbon>
     <tabs>
-      <tab idMso="TabHome">
-        <group id="MathCursorGroup" getLabel="OnGetGroupLabel">
+      <!--
+        Onglet dédié MathCursor (cf. ADR 2026-05-05-Feat-ribbon-refactor-cheatsheet).
+        L'onglet n'est PAS l'onglet actif au démarrage (Word reste sur Accueil).
+        L'utilisateur clique sur l'onglet ou utilise Alt + lettre auto-affectée.
+      -->
+      <tab id="MathCursorTab" getLabel="OnGetTabLabel">
+        <group id="MathCursorToolsGroup" getLabel="OnGetToolsGroupLabel">
+          <button id="CheatsheetButton"
+                  getLabel="OnGetCheatsheetButtonLabel"
+                  getScreentip="OnGetCheatsheetButtonScreentip"
+                  size="large"
+                  imageMso="HelpIndex"
+                  onAction="OnCheatsheetClicked" />
           <button id="ReportIssueButton"
                   getLabel="OnGetReportButtonLabel"
                   getScreentip="OnGetReportButtonScreentip"
                   size="large"
                   imageMso="WarningOriginal"
                   onAction="OnReportIssueClicked" />
-          <button id="AboutButton"
-                  getLabel="OnGetAboutButtonLabel"
-                  getScreentip="OnGetAboutButtonScreentip"
-                  size="large"
-                  imageMso="Help"
-                  onAction="OnAboutClicked" />
         </group>
       </tab>
     </tabs>

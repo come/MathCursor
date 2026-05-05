@@ -59,7 +59,7 @@ namespace MathCursor.Host
                 int paraStart = paraRange.Start;
                 int paraEnd = paraRange.End;
                 if (paraStart >= paraEnd) return empty;
-                var rawText = doc.Range(paraStart, paraEnd).Text ?? "";
+                var rawText = AutocorrectNormalizer.Normalize(doc.Range(paraStart, paraEnd).Text ?? "");
 
                 var regions = new List<(int start, int end)>();
                 string text = rawText;
@@ -112,6 +112,20 @@ namespace MathCursor.Host
                 return empty;
             }
         }
+
+        /// <summary>
+        /// Normalise les caractères "joliifiés" par l'AutoCorrect Office en
+        /// leur équivalent ASCII, **1 char pour 1 char** (les offsets entre
+        /// Word doc et notre texte interne restent alignés). Sans ça :
+        ///   - `–` (en-dash, U+2013) inséré à la place de `-` casse la
+        ///     détection NER (corpus tokenisé sur `-` ASCII) et le lex
+        ///     (token unknown) → l'expression n'est pas vue comme math.
+        ///   - Idem pour les autres "smart" caractères.
+        /// On garde le NBSP traité côté Lexer comme avant pour ne pas changer
+        /// le comportement sur les espaces insécables.
+        /// </summary>
+        // NormalizeAutocorrect a été extrait dans AutocorrectNormalizer.cs
+        // pour rester testable sans dépendance Word interop.
 
         private static string Preview(string s)
         {

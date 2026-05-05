@@ -3,6 +3,10 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security;
 
+// Permet aux tests xUnit d'accéder aux helpers `internal` (ex. les
+// classes `WordContextReader`, `ListModeMarkerInjector`...).
+[assembly: InternalsVisibleTo("MathCursor.Tests")]
+
 // Les informations générales relatives à un assembly dépendent de 
 // l'ensemble d'attributs suivant. Changez les valeurs de ces attributs pour modifier les informations
 // associées à un assembly.
@@ -33,6 +37,6 @@ using System.Security;
 // Vous pouvez spécifier toutes les valeurs ou utiliser par défaut les numéros de build et de révision 
 // en utilisant '*', comme indiqué ci-dessous :
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("0.5.5.0")]
-[assembly: AssemblyFileVersion("0.5.5.0")]
+[assembly: AssemblyVersion("0.5.6.0")]
+[assembly: AssemblyFileVersion("0.5.6.0")]
 

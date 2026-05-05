@@ -253,6 +253,7 @@
     <Compile Include="Strings.cs" />
     <Compile Include="Host\VstoEquationStore.cs" />
     <Compile Include="Host\KeyboardInterceptor.cs" />
+    <Compile Include="Host\AutocorrectNormalizer.cs" />
     <Compile Include="Host\CaretPositionCalculator.cs" />
     <Compile Include="Host\CasesCascadeMerger.cs" />
     <Compile Include="Host\ListModeMarkerInjector.cs" />

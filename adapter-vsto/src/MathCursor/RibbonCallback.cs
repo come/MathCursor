@@ -72,8 +72,17 @@ namespace MathCursor
         private static string CurrentVersion()
             => Strings.FormatVersion(Assembly.GetExecutingAssembly().GetName().Version);
 
-        public string OnGetGroupLabel(IRibbonControl control)
-            => Strings.GroupLabel(CurrentVersion());
+        public string OnGetTabLabel(IRibbonControl control)
+            => Strings.TabLabel;
+
+        public string OnGetToolsGroupLabel(IRibbonControl control)
+            => Strings.ToolsGroupLabel(CurrentVersion());
+
+        public string OnGetCheatsheetButtonLabel(IRibbonControl control)
+            => Strings.CheatsheetButtonLabel;
+
+        public string OnGetCheatsheetButtonScreentip(IRibbonControl control)
+            => Strings.CheatsheetButtonScreentip;
 
         public string OnGetReportButtonLabel(IRibbonControl control)
             => Strings.ReportButtonLabel;
@@ -81,17 +90,15 @@ namespace MathCursor
         public string OnGetReportButtonScreentip(IRibbonControl control)
             => Strings.ReportButtonScreentip;
 
-        public string OnGetAboutButtonLabel(IRibbonControl control)
-            => Strings.AboutButtonLabel;
-
-        public string OnGetAboutButtonScreentip(IRibbonControl control)
-            => Strings.AboutButtonScreentip;
-
-        public void OnAboutClicked(IRibbonControl control)
+        /// <summary>
+        /// Toggle du panneau Cheatsheet (cf. ADR 2026-05-05-Feat-ribbon-refactor-cheatsheet).
+        /// Stub V1 = MessageBox « Coming soon ». Le pane WPF arrive en étape 2 du dev.
+        /// </summary>
+        public void OnCheatsheetClicked(IRibbonControl control)
         {
             MessageBox.Show(
-                Strings.HelpDialogBody(CurrentVersion()),
-                Strings.HelpDialogTitle,
+                Strings.CheatsheetComingSoonBody,
+                Strings.CheatsheetComingSoonTitle,
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
         }

@@ -63,6 +63,27 @@
         <span class="badge" data-i18n="badge_langs">Français · English · Deutsch · Español</span>
         <span class="badge badge--soft" data-i18n="badge_free">Gratuit en bêta · 100 % local · Sans cloud</span>
       </div>
+
+      <!-- Démo vidéo (carousel auto-rotate) -->
+      <figure class="hero-media" aria-label="Démonstrations MathCursor">
+        <div class="hero-media-frame">
+          <video class="hero-video is-active" muted loop playsinline autoplay preload="auto" data-label-i18n="hero_video_systeme" data-label="Système d'équations multi-ligne">
+            <source src="assets/hero/ml_systeme.mp4" type="video/mp4">
+          </video>
+          <video class="hero-video" muted loop playsinline preload="auto" data-label-i18n="hero_video_equiv" data-label="Chaîne d'équivalences">
+            <source src="assets/hero/ml_equiv.mp4" type="video/mp4">
+          </video>
+          <video class="hero-video" muted loop playsinline preload="auto" data-label-i18n="hero_video_egalites" data-label="Chaîne d'égalités">
+            <source src="assets/hero/ml_egality.mp4" type="video/mp4">
+          </video>
+        </div>
+        <figcaption class="hero-media-caption" aria-live="polite">Système d'équations multi-ligne</figcaption>
+        <div class="hero-media-dots" role="tablist">
+          <button class="hero-media-dot is-active" type="button" data-idx="0" role="tab" aria-label="Système d'équations"></button>
+          <button class="hero-media-dot" type="button" data-idx="1" role="tab" aria-label="Chaîne d'équivalences"></button>
+          <button class="hero-media-dot" type="button" data-idx="2" role="tab" aria-label="Chaîne d'égalités"></button>
+        </div>
+      </figure>
     </section>
 
     <!-- Pour qui -->
@@ -361,6 +382,71 @@
 
       if (document.readyState === 'complete') runDemo();
       else window.addEventListener('load', runDemo);
+    })();
+  </script>
+
+  <!-- Hero media carousel : rotation auto entre les 3 vidéos de démo -->
+  <script>
+    (function () {
+      const ROTATE_MS = 7000;
+
+      function setupHeroMedia() {
+        const videos = Array.from(document.querySelectorAll('.hero-video'));
+        const dots = Array.from(document.querySelectorAll('.hero-media-dot'));
+        const caption = document.querySelector('.hero-media-caption');
+        if (videos.length === 0) return;
+
+        let current = 0;
+        let timer = null;
+
+        function show(idx) {
+          if (idx === current) return;
+          videos.forEach((v, i) => {
+            const active = i === idx;
+            v.classList.toggle('is-active', active);
+            try { active ? v.play() : v.pause(); } catch (_) { /* ignore */ }
+          });
+          dots.forEach((d, i) => d.classList.toggle('is-active', i === idx));
+          if (caption) {
+            const lbl = videos[idx].getAttribute('data-label') || '';
+            caption.textContent = lbl;
+          }
+          current = idx;
+        }
+
+        function next() { show((current + 1) % videos.length); }
+
+        function startAutoRotate() {
+          stopAutoRotate();
+          timer = setInterval(next, ROTATE_MS);
+        }
+        function stopAutoRotate() {
+          if (timer) { clearInterval(timer); timer = null; }
+        }
+
+        dots.forEach(d => d.addEventListener('click', () => {
+          show(parseInt(d.getAttribute('data-idx'), 10));
+          startAutoRotate(); // restart timer pour donner du temps après un click
+        }));
+
+        // Pause rotation au hover (desktop) — pas critique sur mobile
+        const frame = document.querySelector('.hero-media-frame');
+        if (frame) {
+          frame.addEventListener('mouseenter', stopAutoRotate);
+          frame.addEventListener('mouseleave', startAutoRotate);
+        }
+
+        // Respect prefers-reduced-motion : pas de rotation auto, juste l'active
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          videos.forEach((v, i) => { if (i !== 0) try { v.pause(); } catch (_) {} });
+          return;
+        }
+
+        startAutoRotate();
+      }
+
+      if (document.readyState === 'complete') setupHeroMedia();
+      else window.addEventListener('load', setupHeroMedia);
     })();
   </script>
 

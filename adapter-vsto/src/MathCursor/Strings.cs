@@ -56,10 +56,30 @@ namespace MathCursor
 
         // ---------- Ribbon ----------
 
-        public static string GroupLabel(string version) => Lang switch
+        /// <summary>Label de l'onglet ruban MathCursor (top-level tab).</summary>
+        public static string TabLabel => Lang switch
         {
-            "fr" => $"MathCursor v{version}",
-            _    => $"MathCursor v{version}",
+            "fr" => "MathCursor",
+            _    => "MathCursor",
+        };
+
+        /// <summary>Label du group "Outils" dans l'onglet MathCursor.</summary>
+        public static string ToolsGroupLabel(string version) => Lang switch
+        {
+            "fr" => $"Outils — v{version}",
+            _    => $"Tools — v{version}",
+        };
+
+        public static string CheatsheetButtonLabel => Lang switch
+        {
+            "fr" => "Cheatsheet",
+            _    => "Cheatsheet",
+        };
+
+        public static string CheatsheetButtonScreentip => Lang switch
+        {
+            "fr" => "Ouvre/ferme le panneau des raccourcis MathCursor (steno math + raccourcis clavier)",
+            _    => "Open/close the MathCursor shortcuts panel (math steno + keyboard shortcuts)",
         };
 
         public static string ReportButtonLabel => Lang switch
@@ -74,19 +94,25 @@ namespace MathCursor
             _    => "Builds a report (log + screenshot + context) ready to send",
         };
 
-        public static string AboutButtonLabel => Lang switch
+        // ---------- Cheatsheet (stub Coming Soon en attendant le pane WPF) ----------
+
+        public static string CheatsheetComingSoonTitle => Lang switch
         {
-            "fr" => "Aide",
-            _    => "Help",
+            "fr" => "MathCursor — Cheatsheet",
+            _    => "MathCursor — Cheatsheet",
         };
 
-        public static string AboutButtonScreentip => Lang switch
+        public static string CheatsheetComingSoonBody => Lang switch
         {
-            "fr" => "Guide rapide MathCursor",
-            _    => "MathCursor quick guide",
+            "fr" => "Le panneau Cheatsheet arrive dans une prochaine version. " +
+                    "Tu pourras y consulter tous les raccourcis MathCursor pendant " +
+                    "que tu tapes ton cours, sans quitter Word.",
+            _    => "The Cheatsheet panel is coming in an upcoming release. " +
+                    "It will let you check all MathCursor shortcuts while you " +
+                    "type your lesson, without leaving Word.",
         };
 
-        // ---------- Dialog Aide ----------
+        // ---------- Dialog Aide (legacy, à dégager quand le pane Cheatsheet aura absorbé le contenu) ----------
 
         public static string HelpDialogTitle => Lang switch
         {

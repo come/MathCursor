@@ -20,6 +20,7 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-05-05
+- `[molle]` Feat — [Refonte du ruban : ajout d'un panneau Cheatsheet](2026-05-05-Feat-ribbon-refactor-cheatsheet.md)
 - `[forte]` Limit — [OMath display recentre après fusion ¶ via Backspace (limite Word)](2026-05-05-Limit-omath-jc-stripped-on-fusion.md)
 - `[molle]` Feat — [Mode liste cases `{` Phase 2 (multi-ligne + list-mode visible)](2026-05-05-Feat-cases-multiline-phase2.md)
 - `[molle]` Feat — [Mode liste multi-ligne visible (auto-injection du marker en texte)](2026-05-05-Feat-multiline-list-mode-visible.md) (Supersedes multiline-list-mode du même jour)
