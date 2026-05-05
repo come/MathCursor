@@ -74,6 +74,8 @@
     <Compile Include="..\..\src\MathCursor\Host\ListModeStateMachine.cs" Link="adapter-sources\Host\ListModeStateMachine.cs" />
     <Compile Include="..\..\src\MathCursor\Host\ListModeMarkerInjector.cs" Link="adapter-sources\Host\ListModeMarkerInjector.cs" />
     <Compile Include="..\..\src\MathCursor\Host\CasesCascadeMerger.cs" Link="adapter-sources\Host\CasesCascadeMerger.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\CaretPositionCalculator.cs" Link="adapter-sources\Host\CaretPositionCalculator.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\OMathParaJcPatcher.cs" Link="adapter-sources\Host\OMathParaJcPatcher.cs" />
   </ItemGroup>
 
 </Project>

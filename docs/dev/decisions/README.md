@@ -7,7 +7,7 @@ Format et conventions : voir
 [2026-04-24-Meta-adr-format.md](2026-04-24-Meta-adr-format.md).
 
 ## Kinds
-`Feat-` · `Fix-` · `UX-` · `Release-` · `Meta-` · `Test-`
+`Feat-` · `Fix-` · `UX-` · `Release-` · `Meta-` · `Test-` · `Limit-`
 
 ## Températures
 - **[forte]** — structurelle, coûte cher à changer. On n'y revient qu'avec un très bon argument.
@@ -20,6 +20,7 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-05-05
+- `[forte]` Limit — [OMath display recentre après fusion ¶ via Backspace (limite Word)](2026-05-05-Limit-omath-jc-stripped-on-fusion.md)
 - `[molle]` Feat — [Mode liste cases `{` Phase 2 (multi-ligne + list-mode visible)](2026-05-05-Feat-cases-multiline-phase2.md)
 - `[molle]` Feat — [Mode liste multi-ligne visible (auto-injection du marker en texte)](2026-05-05-Feat-multiline-list-mode-visible.md) (Supersedes multiline-list-mode du même jour)
 - `[molle]` Feat — [Mode liste invisible pour multi-ligne (préfixage auto du marker)](2026-05-05-Feat-multiline-list-mode.md) `retracté`

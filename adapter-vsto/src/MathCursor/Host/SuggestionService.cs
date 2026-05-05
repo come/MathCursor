@@ -2144,72 +2144,9 @@ namespace MathCursor.Host
             }
         }
 
-        // Patch les attributs de justification OMathPara dans l'OOXML d'un
-        // paragraphe. Trois cas couverts (cas 4 = cas réel observé sur docx user) :
-        //   1. <m:oMathParaPr>...<m:jc m:val="X"/>...</m:oMathParaPr> → remplace X
-        //   2. <m:oMathParaPr/> auto-fermant → remplace par bloc complet
-        //   3. <m:oMathParaPr> ouvert sans m:jc → injecte m:jc en tête
-        //   4. <m:oMathPara> sans m:oMathParaPr (cas par défaut Word) → injecte tout
-        private static readonly Regex _rxJcVal = new Regex(
-            @"(<m:oMathParaPr[^>]*>(?:(?!</m:oMathParaPr>).)*?<m:jc\s+m:val="")[^""]*("")",
-            RegexOptions.Singleline | RegexOptions.Compiled);
-        private static readonly Regex _rxParaPrSelfClosing = new Regex(
-            @"<m:oMathParaPr\s*/>",
-            RegexOptions.Singleline | RegexOptions.Compiled);
-        private static readonly Regex _rxParaPrNoJc = new Regex(
-            @"<m:oMathParaPr\s*>(?!\s*<m:jc)",
-            RegexOptions.Singleline | RegexOptions.Compiled);
-        private static readonly Regex _rxParaNoParaPr = new Regex(
-            @"<m:oMathPara\s*>(?!\s*<m:oMathParaPr)",
-            RegexOptions.Singleline | RegexOptions.Compiled);
-
+        // Patch m:jc sur OMathPara — délégué à OMathParaJcPatcher (helper pur testable).
         internal static string PatchOMathParaJc(string xml, string targetVal, out bool changed)
-        {
-            changed = false;
-            if (string.IsNullOrEmpty(xml) || string.IsNullOrEmpty(targetVal)) return xml;
-
-            // Cas 1 : m:jc existe déjà — remplace le val (s'il diffère)
-            if (_rxJcVal.IsMatch(xml))
-            {
-                bool needsChange = false;
-                string updated = _rxJcVal.Replace(xml, m =>
-                {
-                    string current = m.Value;
-                    int valStart = current.IndexOf("m:val=\"", StringComparison.Ordinal) + 7;
-                    int valEnd = current.IndexOf('"', valStart);
-                    string currentVal = current.Substring(valStart, valEnd - valStart);
-                    if (currentVal != targetVal) needsChange = true;
-                    return m.Groups[1].Value + targetVal + m.Groups[2].Value;
-                });
-                changed = needsChange;
-                return needsChange ? updated : xml;
-            }
-
-            string injection = "<m:oMathParaPr><m:jc m:val=\"" + targetVal + "\"/></m:oMathParaPr>";
-
-            // Cas 2 : <m:oMathParaPr/> auto-fermant
-            if (_rxParaPrSelfClosing.IsMatch(xml))
-            {
-                changed = true;
-                return _rxParaPrSelfClosing.Replace(xml, injection, 1);
-            }
-
-            // Cas 3 : <m:oMathParaPr> ouvert sans m:jc — injecte m:jc juste après le tag
-            if (_rxParaPrNoJc.IsMatch(xml))
-            {
-                changed = true;
-                return _rxParaPrNoJc.Replace(xml, "<m:oMathParaPr><m:jc m:val=\"" + targetVal + "\"/>", 1);
-            }
-
-            // Cas 4 : <m:oMathPara> sans m:oMathParaPr du tout (default Word)
-            if (_rxParaNoParaPr.IsMatch(xml))
-            {
-                changed = true;
-                return _rxParaNoParaPr.Replace(xml, "<m:oMathPara>" + injection, 1);
-            }
-
-            return xml;
-        }
+            => OMathParaJcPatcher.Patch(xml, targetVal, out changed);
 
         private static bool IsWhitespaceCharAt(Word.Document doc, int pos)
         {
@@ -3081,21 +3018,22 @@ namespace MathCursor.Host
                         catch { }
                     }
 
-                    // 3. Build l'OMath en zone isolée + pré-patch m:jc
+                    // 3. Build l'OMath en zone isolée + force m:jc=left.
+                    //    Si captured XML a déjà <m:oMathPara> (ex. cases/align
+                    //    multi-ligne), patch m:jc=left dedans. Si captured est
+                    //    inline pur (ex. single-line `Y=2X+1`), on enrobe
+                    //    pré-emptivement avec <m:oMathPara><m:oMathParaPr>
+                    //    <m:jc=left> — sinon Word auto-promote standalone-in-¶
+                    //    en display sans m:jc → centré par défaut (cf. bug user
+                    //    05-05 « formules une ligne s'auto-centrent »).
                     string capturedXml = BuildOMathXmlIsolated(doc, textBefore, latex, textAfter);
                     if (!string.IsNullOrEmpty(capturedXml))
                     {
                         try
                         {
-                            int paraAlign = ReadParagraphAlignment(doc, absStart);
-                            int omathJc = MapParagraphAlignToOMathJc(paraAlign);
-                            string targetVal = OMathJcToOoxmlVal(omathJc);
-                            if (!string.IsNullOrEmpty(targetVal))
-                            {
-                                capturedXml = PatchOMathParaJc(capturedXml, targetVal, out _);
-                            }
+                            capturedXml = OMathParaJcPatcher.EnsureDisplayWithLeftJc(capturedXml, out _);
                         }
-                        catch (Exception ex) { LogDiag("insert_transplant_prepatch_error: " + ex.Message); }
+                        catch (Exception ex) { LogDiag("insert_transplant_ensure_error: " + ex.Message); }
 
                         // 4. SINGLE ROUND-TRIP XML : valider sur Python que la
                         //    manipulation pur XML est sound (cf. test
@@ -3129,31 +3067,45 @@ namespace MathCursor.Host
                         }
                         catch (Exception ex) { LogDiag("insert_transplant_fulldoc_error: " + ex.Message); }
 
-                        // 5. Find OMath inséré + diag fusion
+                        // 5. Find OMath inséré : identifier par PARAGRAPHE cible
+                        //    (pas par position fuzzy). Le transplant a remplacé
+                        //    les paragraphes [firstTargetIdx0 .. firstTargetIdx0+targetCount)
+                        //    par UN seul nouveau paragraphe. On cherche l'OMath
+                        //    dedans. Sinon, l'ancienne tolérance `>= firstParaStart - 5`
+                        //    matchait à tort un OMath en fin de ¶ précédent (cf. bug
+                        //    user 05-05 « soit f » caret monte/descend après insertion).
                         if (usedXmlTransplant)
                         {
                             int omathCountAfter = 0;
                             try { omathCountAfter = doc.OMaths.Count; } catch { }
-                            foreach (Word.OMath om in doc.OMaths)
+                            try
                             {
-                                var rng = om.Range;
-                                if (rng.Start >= firstParaStart - 5 && rng.End > rng.Start)
+                                // doc.Paragraphs est 1-based ; targetIdx0 est 0-based.
+                                // Le nouveau ¶ unique est à l'index 1-based targetIdx0+1.
+                                int newParaIdx = firstTargetIdx0 + 1;
+                                if (newParaIdx >= 1 && newParaIdx <= doc.Paragraphs.Count)
                                 {
-                                    int eqArrCount = 0;
-                                    try
+                                    var newPara = doc.Paragraphs[newParaIdx];
+                                    foreach (Word.OMath om in newPara.Range.OMaths)
                                     {
-                                        string omXml = om.Range.WordOpenXML ?? "";
-                                        eqArrCount = System.Text.RegularExpressions.Regex.Matches(omXml, "<m:eqArr>").Count;
+                                        var rng = om.Range;
+                                        int eqArrCount = 0;
+                                        try
+                                        {
+                                            string omXml = om.Range.WordOpenXML ?? "";
+                                            eqArrCount = System.Text.RegularExpressions.Regex.Matches(omXml, "<m:eqArr>").Count;
+                                        }
+                                        catch { }
+                                        LogDiag($"insert_transplant: OMaths.Count={omathCountAfter} matched [{rng.Start},{rng.End}] in ¶[{newParaIdx}] eqArrs={eqArrCount}");
+                                        newStart = rng.Start;
+                                        newEnd = rng.End;
+                                        omathCreated = true;
+                                        break;
                                     }
-                                    catch { }
-                                    LogDiag($"insert_transplant: OMaths.Count={omathCountAfter} matched [{rng.Start},{rng.End}] eqArrs={eqArrCount}");
-                                    newStart = rng.Start;
-                                    newEnd = rng.End;
-                                    omathCreated = true;
-                                    break;
                                 }
                             }
-                            if (!omathCreated) LogDiag("insert: transplant ok but OMath not found");
+                            catch (Exception ex) { LogDiag("insert_transplant_locate_error: " + ex.Message); }
+                            if (!omathCreated) LogDiag($"insert: transplant ok but OMath not found in ¶[{firstTargetIdx0 + 1}]");
                         }
                     }
                     else { LogDiag("insert: build-isolated returned null"); }
@@ -3224,10 +3176,33 @@ namespace MathCursor.Host
             // PAS resté dans l'éditeur math (Word interprète parfois "pile après"
             // comme "encore dedans", surtout en display-mode). Nudge jusqu'à 3 fois
             // pour sortir proprement sur une zone de texte libre.
-            int afterPos = Math.Min(newEnd + 1, doc.Content.End);
+            int afterPos = ComputeAfterOMathCaret(doc, newEnd);
             try { _app.Selection.SetRange(afterPos, afterPos); } catch { }
             NudgeCursorOutOfMath(doc, maxAttempts: 3);
             return (newStart, newEnd);
+        }
+
+        /// <summary>
+        /// Position où placer le caret juste après un OMath, sans déborder dans
+        /// le ¶ suivant. Bug user 05-05 « soit f » Ctrl+Espace → cursor descend :
+        /// quand l'OMath est en fin de ¶, <c>omEnd + 1</c> tombe sur le ¶ mark
+        /// (= start du ¶ suivant). On clamp à <c>paraContentEnd</c> (= juste
+        /// avant le ¶ mark). La logique pure est dans <see cref="CaretPositionCalculator"/>.
+        /// </summary>
+        private int ComputeAfterOMathCaret(Word.Document doc, int omEnd)
+        {
+            int paraContentEnd;
+            try
+            {
+                var paraRange = doc.Range(omEnd, omEnd).Paragraphs[1].Range;
+                paraContentEnd = Math.Max(paraRange.Start, paraRange.End - 1);
+            }
+            catch (Exception ex)
+            {
+                LogDiag("compute_after_omath_para_error: " + ex.Message);
+                paraContentEnd = omEnd; // fallback : pas de débordement
+            }
+            return CaretPositionCalculator.ClampAfterOMathToParagraph(omEnd, paraContentEnd, doc.Content.End);
         }
 
         /// <summary>
@@ -3250,9 +3225,12 @@ namespace MathCursor.Host
                     var sel = _app.Selection;
                     if (sel.OMaths == null || sel.OMaths.Count == 0) return;
 
-                    // Niveau 1 : SetRange juste après la fin de l'OMath courant
+                    // Niveau 1 : SetRange juste après la fin de l'OMath courant.
+                    // Clamp au ¶ courant (= juste avant le ¶ mark) sinon on
+                    // déborde dans le ¶ suivant quand l'OMath est en fin de
+                    // ligne (cf. bug user 05-05).
                     int omEnd = sel.OMaths[1].Range.End;
-                    int target = Math.Min(omEnd + 1, doc.Content.End);
+                    int target = ComputeAfterOMathCaret(doc, omEnd);
                     if (target > sel.Start) _app.Selection.SetRange(target, target);
 
                     // Niveau 2 : si toujours dans un OMath, EndKey(wdLine) pour
