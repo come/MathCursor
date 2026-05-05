@@ -46,16 +46,22 @@ namespace MathCursor.UI
             // 4) \begin{cases}…\end{cases} : empile les lignes via \stackrel,
             //    pas de vraie accolade gauche. Visuel dégradé mais lisible.
             //    Format LaTeX d'entrée : "\begin{cases} A \\ B \end{cases}".
+            //    Depuis ADR 05-05 cases-multiline (alignement), le renderer
+            //    émet `&` pour aligner les colonnes côté Word OMath. WpfMath
+            //    ne supporte pas `&` hors environnement matrix → on strip
+            //    les `&` (le stacking n'aligne pas de toute façon, c'est
+            //    juste un visuel popup).
             s = CasesRegex.Replace(s, m =>
             {
                 var body = m.Groups["body"].Value.Trim();
-                // \\ → @ pour découper, espaces nettoyés
+                // Strip les `&` (column separators) → espace simple
+                body = Regex.Replace(body, @"\s*&\s*", " ");
                 var lines = Regex.Split(body, @"\s*\\\\\s*");
                 if (lines.Length == 0) return m.Value;
                 // Empilement via \stackrel (au-dessus / en-dessous) — pour 2 lignes
                 if (lines.Length == 2)
                     return "\\{\\stackrel{" + lines[0].Trim() + "}{" + lines[1].Trim() + "}";
-                // Plus de 2 : on fait des \stackrel imbriqués
+                // 1 ligne (single-line cases) ou 3+ : stackrel imbriqués
                 string acc = lines[lines.Length - 1].Trim();
                 for (int i = lines.Length - 2; i >= 0; i--)
                     acc = "\\stackrel{" + lines[i].Trim() + "}{" + acc + "}";

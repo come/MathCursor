@@ -244,12 +244,17 @@ namespace MathCursor.Core.Lattice
                 {
                     if (i > 0) sb.Append(" \\\\ ");
                     string prefix = (i < mb.LinePrefix.Count) ? mb.LinePrefix[i].TrimEnd() : "";
-                    sb.Append(RenderAlignLineWithPrefix(prefix, mb.Lines[i]));
+                    sb.Append(RenderAlignLineWithPrefix(prefix, mb.Lines[i], i));
                 }
                 sb.Append(" \\end{align*}");
                 return sb.ToString();
             }
-            // Phase 2 : cases. Pour l'instant fallback simple.
+            // Phase 2 : cases (système d'équations) avec alignement intra-bloc
+            // sur la relation `=` (cf. user feedback 05-05 « manque juste un
+            // alignement à l'interieur »). Format Word matrix avec 2 colonnes :
+            //   Col 1 (r) : lhs (ou expression complète si pas de relation)
+            //   Col 2 (l) : `op rhs` (= alignement vertical sur `=`)
+            // Ligne sans relation : col2 vide pour cohérence matricielle.
             if (mb.Mode == "cases")
             {
                 var sb = new System.Text.StringBuilder();
@@ -257,7 +262,7 @@ namespace MathCursor.Core.Lattice
                 for (int i = 0; i < mb.Lines.Count; i++)
                 {
                     if (i > 0) sb.Append(" \\\\ ");
-                    sb.Append(Render(mb.Lines[i]));
+                    sb.Append(RenderCasesLine(mb.Lines[i]));
                 }
                 sb.Append(" \\end{cases}");
                 return sb.ToString();
@@ -266,21 +271,51 @@ namespace MathCursor.Core.Lattice
         }
 
         /// <summary>
+        /// Rendu d'une ligne de bloc cases avec 2 colonnes (1 <c>&amp;</c>) :
+        ///   {lhs} &amp; {op} {rhs}
+        /// pour aligner les <c>=</c> verticalement. Lignes sans relation : col1
+        /// porte l'expression complète, col2 reste vide. Cf. ADR 05-05 cases.
+        /// </summary>
+        private static string RenderCasesLine(AstNode line)
+        {
+            if (line is Bin b && IsAlignRelationOp(b.Op))
+            {
+                return $"{Render(b.Lhs)} & {b.Op} {Render(b.Rhs)}";
+            }
+            // Pas de relation : col2 vide pour matrice uniforme à 2 colonnes
+            return $"{Render(line)} &";
+        }
+
+        /// <summary>
         /// Rendu d'une ligne de bloc align* avec 4 colonnes (3 `&`) :
         ///   {prefix} &amp; &amp; {lhs} &amp; {op} {rhs}
-        /// - Col 1 (r) : préfixe (flèche logique) ou vide pour 1re ligne
+        /// - Col 1 (r) : préfixe (flèche logique) ou vide pour 1re ligne / chaîne `=`
         /// - Col 2 (l) : vide (padding)
         /// - Col 3 (r) : lhs de la relation (finit juste avant `=`)
         /// - Col 4 (l) : `op rhs` (commence par `=` aligné en colonne)
-        /// Si la ligne n'a pas de relation, col3 vide et expression en col4.
+        /// <para>
+        /// Cas spécial chaîne `=` (cf. bug user 04-05 « = mangé en multi-ligne ») :
+        /// quand le marker était `=`, le parser consomme le `=` (col1 prefix
+        /// devient vide) et la ligne AST est juste le rhs. Pour rendre le `=`
+        /// visible en col4, on détecte (lineIndex &gt; 0 ET prefix vide ET
+        /// ligne pas de Bin relation) ⇒ préfixer col4 avec `=`.
+        /// </para>
         /// </summary>
-        private static string RenderAlignLineWithPrefix(string prefix, AstNode line)
+        private static string RenderAlignLineWithPrefix(string prefix, AstNode line, int lineIndex)
         {
             if (line is Bin b && IsAlignRelationOp(b.Op))
             {
                 return $"{prefix} & & {Render(b.Lhs)} & {b.Op} {Render(b.Rhs)}";
             }
-            // Ligne sans relation : col3 vide, expression en col4
+            // Ligne sans relation. Cas chaîne `=` : marker consommé, lineIndex>0
+            // et prefix vide → c'est le rhs d'une chaîne d'égalités, on préfixe
+            // col4 avec `= ` pour que le `=` soit visible.
+            if (lineIndex > 0 && string.IsNullOrEmpty(prefix))
+            {
+                return $"{prefix} & & & = {Render(line)}";
+            }
+            // Sinon (1re ligne, ou marker non-`=` mais pas de relation) :
+            // col3 vide, expression brute en col4.
             return $"{prefix} & & & {Render(line)}";
         }
 

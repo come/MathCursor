@@ -680,6 +680,49 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.DoesNotContain("\\begin{align*}", result);
         }
 
+        [Fact(DisplayName = "BUG : `=` ligne 2 mangé en multi-ligne avec marqueur `=`")]
+        public void MultiLine_equality_marker_line_2_must_render_equals_in_rhs_col()
+        {
+            // Bug user 04-05 : `12/3+12/4 = 32/8\n= 4` → multi-ligne mais le `=`
+            // de la ligne 2 disparaît. Le parser consomme le `=` comme marker
+            // align (col1 vide pour chaîne d'égalités), puis la ligne 2 = juste
+            // `4`, qui rend `& & 4` (pas de `=` dans col4).
+            // Comportement attendu : la ligne 2 doit garder un `=` visible
+            // dans la colonne 4 (= rhs), comme `& & & = 4`.
+            var result = RenderTop("X+1=0\n= 0");
+            // Doit produire un align*
+            Assert.Contains("\\begin{align*}", result);
+            // Ligne 1 : col1 vide, col2 vide, col3=X+1, col4==0
+            Assert.Contains("& & X+1 & = 0", result);
+            // Ligne 2 : col1 vide (= chaîne `=`), col2 vide, col3 vide, col4==0
+            // C'est CE pattern qui doit être préservé : `& & & = 0`
+            Assert.Contains("& & & = 0", result);
+        }
+
+        [Fact(DisplayName = "Chaîne `=` : source revert+reconvert doit produire align* propagé up")]
+        public void MultiLine_equals_chain_revert_then_reconvert_propagates_up()
+        {
+            // Bug user 05-05 : multi-ligne créé via chaîne `=` (`X+1=0\n= 0`),
+            // puis revert (texte multi-paragraphe) puis reconvert via cascade
+            // Mode 2. Le source mergé qu'on enverra au lattice est exactement
+            // `X+1=0\n= 0`. Le pipeline DOIT le détecter comme un MultiLineBlock
+            // align* (PAS comme une ligne unique avec une expression bizarre).
+            //
+            // Si ce test passe : le lattice est OK, le bug est dans le cascade
+            // Mode 2 / SuggestionService côté adapter.
+            // Si ce test échoue : le lattice ne détecte pas la chaîne `=`
+            // multi-ligne quand la 1re ligne a déjà une relation `=` interne.
+            var result = RenderTop("X+1=0\n= 0");
+            Assert.Contains("\\begin{align*}", result);
+            Assert.Contains("\\end{align*}", result);
+            // Ligne 1 : equation complète X+1=0 → ` & & X+1 & = 0`
+            Assert.Contains("& & X+1 & = 0", result);
+            // Ligne 2 : juste `= 0` après consume du marker → ` & & & = 0`
+            Assert.Contains("& & & = 0", result);
+            // Il n'y a PAS de \Leftrightarrow (pas une chaîne d'équivalences)
+            Assert.DoesNotContain("\\Leftrightarrow", result);
+        }
+
         [Fact]
         public void MultiLine_alignment_uses_three_ampersand_cols()
         {
@@ -691,6 +734,93 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.Contains(" & & 2x+1 & = 5", result);
             // Seconde ligne : col1=\Leftrightarrow, col2 vide, col3=`2x`, col4=`= 4`
             Assert.Contains("\\Leftrightarrow & & 2x & = 4", result);
+        }
+
+        // ============================================================
+        // Brief 30-04 + ADR 05-05 cases-multiline-phase2 — Cases mode `{`
+        // ============================================================
+
+        [Fact(DisplayName = "Cases multi-ligne : `{ x+y=5\\n{ 2x-y=1` → \\begin{cases}")]
+        public void MultiLine_cases_renders_begin_cases()
+        {
+            // Système d'équations 2 lignes : marker `{` en début de chaque ligne
+            // → MultiLineBlock(mode="cases") → \begin{cases}...\end{cases}
+            var result = RenderTop("{ x+y=5\n{ 2x-y=1");
+            Assert.Contains("\\begin{cases}", result);
+            Assert.Contains("\\end{cases}", result);
+            // Pas un align*
+            Assert.DoesNotContain("\\begin{align*}", result);
+        }
+
+        [Fact(DisplayName = "Cases 3 lignes : chaque ligne séparée par \\\\")]
+        public void MultiLine_cases_three_lines_separated_by_double_backslash()
+        {
+            var result = RenderTop("{ x=1\n{ y=2\n{ z=3");
+            Assert.Contains("\\begin{cases}", result);
+            Assert.Contains("\\end{cases}", result);
+            // 2 séparateurs `\\` pour 3 lignes
+            int sepCount = 0; int idx = 0;
+            while ((idx = result.IndexOf("\\\\", idx)) >= 0) { sepCount++; idx += 2; }
+            Assert.Equal(2, sepCount);
+        }
+
+        [Fact(DisplayName = "Single-line cases `{ x=1` → \\begin{cases} x=1 \\end{cases}")]
+        public void SingleLine_cases_renders_begin_cases()
+        {
+            // Single-line cases : pas de \n mais le source commence par `{ ` →
+            // doit aussi rendre comme cases (l'user qui tape `{ x=1` Ctrl+Espace
+            // veut un système, même à 1 ligne, pour pouvoir l'étendre ensuite).
+            var result = RenderTop("{ x=1");
+            Assert.Contains("\\begin{cases}", result);
+            Assert.Contains("\\end{cases}", result);
+        }
+
+        [Fact(DisplayName = "Pas de mix cases ↔ align : ligne 1 `{ x=1`, ligne 2 `<=> z=0` → ni cases ni align*")]
+        public void NoMix_cases_and_align()
+        {
+            // Le brief 30-04 §3.4 stipule que cases et align ne se mélangent pas.
+            // Ici, ligne 1 commence par `{ ` (cases), ligne 2 par `<=>` (align).
+            // Aucun des deux modes ne matche TOUTES les lignes → fallback.
+            var result = RenderTop("{ x+y=5\n<=> z=0");
+            Assert.DoesNotContain("\\begin{cases}", result);
+            Assert.DoesNotContain("\\begin{align*}", result);
+        }
+
+        [Fact(DisplayName = "Cases sans espace après `{` : pas de match (set en extension)")]
+        public void Cases_strict_space_required()
+        {
+            // `{1, 2}` est un set en extension, PAS un système.
+            // La règle « { + espace » du parser cases doit refuser ce match.
+            var result = RenderTop("{1, 2}");
+            Assert.DoesNotContain("\\begin{cases}", result);
+        }
+
+        [Fact(DisplayName = "Cases avec relations : alignement sur `=` via `&` (user feedback 05-05)")]
+        public void Cases_with_relations_aligns_on_equals()
+        {
+            // User feedback : « top ! manque juste un alignement à l'interieur ».
+            // Les lignes avec relation (`=`, `<`, `>`, etc.) doivent émettre `&op`
+            // pour que Word matrix aligne les `=` verticalement.
+            var result = RenderTop("{ y=x+2\n{ z=x+2\n{ z+1=4x+4");
+            Assert.Contains("\\begin{cases}", result);
+            // Chaque ligne avec relation a un `&=`
+            Assert.Contains("y & =", result);
+            Assert.Contains("z & =", result);
+            Assert.Contains("z+1 & =", result);
+        }
+
+        [Fact(DisplayName = "Cases mix : ligne 1 sans relation, lignes 2+ avec → 2 colonnes uniformes")]
+        public void Cases_mixed_lines_uniform_two_columns()
+        {
+            // Si une ligne n'a pas de relation (ex: `x + 1`), elle doit quand
+            // même avoir 2 colonnes (col1=expr, col2 vide) pour la cohérence
+            // matricielle. Sinon Word's BuildUp produit un layout cassé.
+            var result = RenderTop("{ x+1\n{ y=x+2");
+            Assert.Contains("\\begin{cases}", result);
+            // Ligne 1 : col2 vide → "x+1 &" ou "x+1 & "
+            Assert.Matches(@"x\+1\s*&", result);
+            // Ligne 2 : "y &= x+2"
+            Assert.Contains("y & =", result);
         }
 
         [Fact]

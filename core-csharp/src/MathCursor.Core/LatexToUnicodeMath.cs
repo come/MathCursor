@@ -93,10 +93,13 @@ namespace MathCursor.Core
         {
             src = CasesEnvironmentRegex.Replace(src, m =>
             {
-                string body = m.Groups["body"].Value.Trim();
-                body = Regex.Replace(body, @"\\\\", "@");
-                body = Regex.Replace(body, @"\s*@\s*", "@");
-                return "{█(" + body + ")┤";
+                // Espace après `{` pour séparation visuelle entre l'accolade
+                // et les lignes (cf. user feedback 05-05 « plus un petit espace
+                // entre l'accolade et les lignes »).
+                // NormalizeMatrixBody collapse les espaces autour de `&` et `@`
+                // pour le rendu Word OMath, supportant ainsi l'alignement
+                // intra-cases via `&` (Phase 2 ADR 05-05 cases-multiline).
+                return "{ █(" + NormalizeMatrixBody(m.Groups["body"].Value) + ")┤";
             });
             src = PmatrixEnvironmentRegex.Replace(src, m =>
                 "(■(" + NormalizeMatrixBody(m.Groups["body"].Value) + "))");

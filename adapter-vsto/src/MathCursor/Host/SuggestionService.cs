@@ -93,6 +93,32 @@ namespace MathCursor.Host
         private int _dismissedZoneStart = -1;
         private int _dismissedZoneEnd = -1;
 
+        // Zone reverted d'un OMath multi-ligne (cf. ADR 04-05 multiline-edit-cascade).
+        // Set par OnRevertRequested quand source contient `\n`. Lu par
+        // TryFindCrossMergeAbove pour activer le Mode 2 : cascade absorbe
+        // tous les paragraphes de la zone (y compris ligne 1 sans marker).
+        // Reset sur : commit succès, caret hors zone, edit-mode annulé.
+        // -1 = inactif.
+        private int _revertedMultiLineZoneStart = -1;
+        private int _revertedMultiLineZoneEnd = -1;
+
+        // Mode liste invisible (cf. ADR 05-05 multiline-list-mode). Activé
+        // après un cross-merge multi-ligne réussi. Quand l'user appuie sur
+        // Enter sur une nouvelle ligne sans marker, on préfixe silencieusement
+        // sa source par le marker actif avant de la passer au pipeline cross-merge.
+        // Logique pure dans ListModeStateMachine, testée séparément.
+        private readonly ListModeStateMachine _listMode = new ListModeStateMachine();
+        // Paragraphe d'ancrage du list-mode = ¶ juste après le multi-ligne.
+        // Si le caret quitte ce ¶, on désactive list-mode. -1 = pas d'ancre.
+        private int _listModeAnchorParaStart = -1;
+
+        // Flag : la dernière InsertOMathAt a-t-elle utilisé le pattern XML
+        // transplant ? Si oui, l'alignement (m:jc) a déjà été pré-patché dans
+        // le XML capturé avant l'unique InsertXML — pas besoin d'un 2e
+        // InsertXML via PatchOMathParaJustificationViaXml en finalize, qui
+        // causerait une fusion avec l'OMath voisin (cf. bug user 04-05).
+        private bool _lastInsertUsedXmlTransplant;
+
         // État d'extension itérative (ADR 29-04). Activé au 1er Ctrl+Espace
         // qui ouvre la popup ; chaque appui suivant tant que la popup est
         // ouverte étend la zone d'un cran vers la gauche.
@@ -238,6 +264,13 @@ namespace MathCursor.Host
                 // (cf. ADR 29-04) : le prochain Ctrl+Espace repart d'une détection
                 // neuve. Le polling CheckAndUpdate continue normalement.
                 ResetIterativeExpansion();
+                // Mode 2 cascade (ADR 04-05) : invalide la zone reverted si
+                // l'utilisateur a quitté la zone (clic ailleurs, scroll).
+                try { InvalidateRevertedMultiLineZoneIfCaretLeft(sel?.Start ?? -1); } catch { }
+                // List-mode (ADR 05-05) : si le caret quitte le ¶ d'ancrage,
+                // désactive le mode liste invisible. Tant qu'on tape dans le
+                // même ¶, le start ne change pas → le mode reste actif.
+                try { InvalidateListModeIfCaretLeftAnchor(sel); } catch { }
                 CheckAndUpdate();
             }
             catch (Exception ex)
@@ -687,23 +720,39 @@ namespace MathCursor.Host
                 catch (Exception ex) { LogDiag("revert_cc_scan_error: " + ex.Message); }
 
                 // Supprime explicitement l'OMath (sinon Word peut garder
-                // l'enveloppe math autour du nouveau texte). Puis remplace
-                // le range par le texte source brut.
+                // l'enveloppe math autour du nouveau texte).
                 try { om.Range.Delete(); } catch { }
 
-                var range = doc.Range(omStart, Math.Min(omEnd, doc.Content.End));
+                // ⚠ Après Delete(), positions du doc shiftées : omEnd est stale.
+                // Utiliser [omStart, omEnd] comme range pour Text = ... ferait
+                // ÉCRASER le contenu qui suivait l'OMath. → On insère via range
+                // collapsé à omStart : pure insertion, pas de remplacement.
                 // Le source brut peut contenir \n (séparateurs de lignes d'un
-                // MultiLineBlock système ou align*, cf. brief 30-04
-                // multiline-systems-equivalences). Au revert, on convertit
-                // chaque \n en paragraph mark Word (\r) pour recréer la
-                // structure multi-paragraphe d'origine. Length 1:1, donc le
-                // calcul de caret ci-dessous reste valide.
+                // MultiLineBlock align*, cf. brief 30-04). On convertit chaque
+                // \n en paragraph mark Word (\r) pour recréer la structure
+                // multi-paragraphe d'origine.
                 string revertText = source.Replace("\n", "\r");
-                range.Text = revertText;
+                doc.Range(omStart, omStart).Text = revertText;
 
                 // Caret en fin du texte inséré
                 int newEnd = omStart + revertText.Length;
                 try { _app.Selection.SetRange(newEnd, newEnd); } catch { }
+
+                // Mode 2 cascade (ADR 04-05) : si source était multi-ligne, on
+                // mémorise la zone pour que TryFindCrossMergeAbove absorbe
+                // TOUS les paragraphes de la zone au prochain commit, y
+                // compris la première ligne qui n'a pas de marker.
+                if (source.IndexOf('\n') >= 0)
+                {
+                    _revertedMultiLineZoneStart = omStart;
+                    _revertedMultiLineZoneEnd = newEnd;
+                    LogDiag($"revert: multi-ligne zone tracked [{omStart},{newEnd}]");
+                }
+                else
+                {
+                    _revertedMultiLineZoneStart = -1;
+                    _revertedMultiLineZoneEnd = -1;
+                }
 
                 // Click sur la popup WPF a volé le focus à Word. Sans ça, le
                 // tick polling qui suivra ne trouvera pas le caret via Win32
@@ -1322,6 +1371,129 @@ namespace MathCursor.Host
         ///    conserve le même handle/bookmark (la source brute ne change pas).
         /// Retourne true si le commit a été fait (Enter consommé), false sinon.
         /// </summary>
+        /// <summary>
+        /// Mode visible (ADR 05-05 visible) : si le list-mode est actif, traite
+        /// l'Enter selon l'action calculée par <see cref="ListModeStateMachine"/> :
+        /// <list type="bullet">
+        /// <item><b>ExitListMode</b> (ligne vide ou marker-only) → strip le
+        /// marker visible si présent, consume Enter (caret reste sur ¶ vide).
+        /// Comportement Word bullet list.</item>
+        /// <item><b>ValidateAsIs</b> (marker + contenu) → trigger conversion,
+        /// cross-merge absorbe dans le bloc, re-injecte marker sur le ¶ suivant.</item>
+        /// <item><b>PrefixWithActiveMarker</b> (contenu sans marker = user a
+        /// backspacé le marker) → exit silencieux, on laisse Enter passer.</item>
+        /// <item><b>Passthrough</b> → no-op.</item>
+        /// </list>
+        /// Retourne true si l'Enter a été consommé.
+        /// </summary>
+        public bool TryHandleListModeEnter()
+        {
+            if (_listMode.ActiveMarker == null) return false;
+            try
+            {
+                var paragraph = _contextReader.ReadCurrentParagraph();
+                string lineText = paragraph.Text ?? string.Empty;
+                // Strip ¶-mark trailing chars (\r, \v, \n) — la state machine
+                // veut le contenu pur, pas les marqueurs de fin de ¶ Word.
+                string lineForDecision = lineText.TrimEnd('\r', '\n', '\v');
+
+                var action = _listMode.OnEnterPressed(lineForDecision);
+                LogDiag($"list_mode_enter: line=\"{Preview(lineForDecision)}\" → {action}");
+
+                switch (action)
+                {
+                    case EnterAction.Passthrough:
+                        return false;
+
+                    case EnterAction.ExitListMode:
+                        // Strip le marker visible auto-injecté (si présent)
+                        // pour que le ¶ devienne vraiment vide. Ensuite consume
+                        // l'Enter : caret reste sur le ¶ désormais vide.
+                        StripListModeMarkerFromCurrentLine();
+                        _listMode.Reset();
+                        _listModeAnchorParaStart = -1;
+                        return true;
+
+                    case EnterAction.ValidateAsIs:
+                        return CommitCurrentLineForListMode();
+
+                    case EnterAction.PrefixWithActiveMarker:
+                        // User a backspacé notre injection puis tapé du contenu.
+                        // Exit silencieux : on laisse Enter créer un ¶ normal.
+                        _listMode.Reset();
+                        _listModeAnchorParaStart = -1;
+                        return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogDiag("list_mode_enter_error: " + ex.Message);
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Supprime le marker auto-injecté du ¶ courant (= remplace le contenu
+        /// du ¶ par chaîne vide). Appelé sur ExitListMode quand l'user fait
+        /// Enter sur une ligne marker-only.
+        /// </summary>
+        private void StripListModeMarkerFromCurrentLine()
+        {
+            try
+            {
+                var doc = _app.ActiveDocument;
+                if (doc == null) return;
+                var sel = _app.Selection;
+                if (sel == null) return;
+                var paraRange = sel.Paragraphs[1].Range;
+                int contentStart = paraRange.Start;
+                int contentEnd = Math.Max(contentStart, paraRange.End - 1);
+                if (contentEnd <= contentStart) return;
+                var stripRange = doc.Range(contentStart, contentEnd);
+                stripRange.Text = string.Empty;
+                doc.Range(contentStart, contentStart).Select();
+                LogDiag($"list_mode: stripped marker from ¶[{contentStart},{contentEnd}]");
+            }
+            catch (Exception ex) { LogDiag("list_mode_strip_error: " + ex.Message); }
+        }
+
+        /// <summary>
+        /// Pour le list-mode : place le caret en fin de ¶ courant, déclenche
+        /// la conversion manuelle (TriggerManual remontera depuis la fin de
+        /// ligne jusqu'au début car aucun délim/OMath sur cette ligne fraîche),
+        /// puis commit immédiatement le candidat sélectionné. La cascade
+        /// cross-merge (Mode 1 marker chain) absorbera la ligne dans le bloc
+        /// multi-ligne au-dessus, puis re-injectera un marker sur le ¶ suivant.
+        /// </summary>
+        private bool CommitCurrentLineForListMode()
+        {
+            try
+            {
+                var doc = _app.ActiveDocument;
+                if (doc == null) return false;
+                var sel = _app.Selection;
+                if (sel == null) return false;
+
+                // Place le caret en fin du contenu du ¶ (avant le \r mark).
+                var paraRange = sel.Paragraphs[1].Range;
+                int contentEnd = Math.Max(paraRange.Start, paraRange.End - 1);
+                doc.Range(contentEnd, contentEnd).Select();
+
+                TriggerManual();
+                if (IsPopupVisible)
+                {
+                    return CommitSelected();
+                }
+                LogDiag("list_mode_enter: TriggerManual ne montre pas de popup, abort");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                LogDiag("list_mode_commit_error: " + ex.Message);
+                return false;
+            }
+        }
+
         public bool CommitSelected()
         {
             // Mode édition : Enter passe à Word (édition math native). Le
@@ -1392,6 +1564,7 @@ namespace MathCursor.Host
             //     uniquement, déclenché si ligne courante = marqueur align ET
             //     ¶ précédent termine par OMath à nous.
             bool wasCrossParagraphMerge = false;
+            string crossMergeMarker = null;
             if (editing == null)
             {
                 var merged = TryMergeWithAdjacentOMaths(_lastZoneAbsStart, _lastZoneAbsEnd, source);
@@ -1399,7 +1572,13 @@ namespace MathCursor.Host
                 {
                     // Pas d'intra-merge → tenter cross-paragraphe (brief 30-04)
                     merged = TryFindCrossMergeAbove(_lastZoneAbsStart, _lastZoneAbsEnd, source);
-                    if (merged != null) wasCrossParagraphMerge = true;
+                    if (merged != null)
+                    {
+                        wasCrossParagraphMerge = true;
+                        // Extrait le marker dominant pour activer le list-mode
+                        // après l'insertion réussie (cf. ADR 05-05).
+                        crossMergeMarker = ExtractMarkerFromMergedSource(merged.MergedSource);
+                    }
                 }
                 if (merged != null)
                 {
@@ -1457,6 +1636,7 @@ namespace MathCursor.Host
 
             try
             {
+                int replaceStart = _lastZoneAbsStart;
                 var (newStart, newEnd) = InsertOMathAt(_lastZoneAbsStart, _lastZoneAbsEnd, latex);
                 bool insertionSucceeded = newEnd > newStart;
                 if (!insertionSucceeded)
@@ -1486,10 +1666,51 @@ namespace MathCursor.Host
                 // Phase 4 du pipeline cross-merge (cf. ADR 04-05) : finalise
                 // le layout (strip ¶ vide / align / append ¶ après / caret).
                 // Encapsulé dans une méthode dédiée pour découpler les étapes.
+                bool finalizedAnchorIsOursAndEmpty = false;
                 if (insertionSucceeded && wasCrossParagraphMerge)
                 {
                     var doc = _app.ActiveDocument;
-                    if (doc != null) FinalizeCrossMergeLayout(doc, ref newStart, ref newEnd);
+                    if (doc != null) FinalizeCrossMergeLayout(doc, replaceStart, ref newStart, ref newEnd, out finalizedAnchorIsOursAndEmpty);
+                }
+
+                // List-mode visible (ADR 05-05 visible) : si on vient de
+                // réussir un cross-merge multi-ligne, mémorise le marker ET
+                // l'injecte comme texte plain au début du ¶ d'ancrage. L'user
+                // voit le marker, comprend qu'il continue la chaîne en tapant
+                // juste son équation. Sinon (commit non cross-merge), désactive.
+                //
+                // ⚠ "anchorIsOursAndEmpty" ↦ injection sans \r (ne crée pas
+                // de ¶ supplémentaire). Sinon (¶ user pré-existant) on insère
+                // un \r pour préserver l'intégrité du contenu user — bug
+                // user 05-05 : « verifie bien que l'auto nouvelle ligne ne
+                // vient pas manger un espace interparagraphe ».
+                if (insertionSucceeded && wasCrossParagraphMerge && crossMergeMarker != null)
+                {
+                    _listMode.OnCrossMergeSucceeded(crossMergeMarker);
+                    InjectListModeMarker(crossMergeMarker, finalizedAnchorIsOursAndEmpty);
+                }
+                else if (insertionSucceeded && !wasCrossParagraphMerge && IsCasesLatex(latex))
+                {
+                    // Phase 2 cases (ADR 05-05) : single-line cases activé dès
+                    // la 1re conversion `{ x=1`. On finalise le layout (place
+                    // caret après l'OMath, crée un ¶ vide si dernier ¶) puis
+                    // on injecte `{ ` pour indiquer à l'user qu'il est dans le
+                    // système et peut continuer à étendre.
+                    var doc2 = _app.ActiveDocument;
+                    if (doc2 != null)
+                    {
+                        bool didCreateAnchorPara;
+                        int caretPos = AppendEmptyParagraphAfterOMath(doc2, newStart, out didCreateAnchorPara);
+                        if (caretPos >= 0) SetCaretAtPosition(caretPos);
+                        _listMode.OnCrossMergeSucceeded("{");
+                        InjectListModeMarker("{", didCreateAnchorPara);
+                        LogDiag("list_mode_cases: activated on single-line conversion");
+                    }
+                }
+                else
+                {
+                    _listMode.Reset();
+                    _listModeAnchorParaStart = -1;
                 }
             }
             catch (Exception ex)
@@ -1503,9 +1724,131 @@ namespace MathCursor.Host
             _lastZoneSource = "";
             _editHandle = null;
             _editingOMathStart = -1;
+            _revertedMultiLineZoneStart = -1;
+            _revertedMultiLineZoneEnd = -1;
             _lastCommitUtc = DateTime.UtcNow;
             HidePopup();
             return true;
+        }
+
+        /// <summary>
+        /// Extrait le marker dominant d'un merged source (= chaîne de lignes
+        /// jointes par <c>\n</c> issue d'un cross-merge align* ou cases). Le
+        /// marker dominant est le premier marker rencontré en parcourant les
+        /// lignes du haut vers le bas. Reconnaît les markers align (Phase 1)
+        /// ET le marker cases <c>{</c> (Phase 2, ADR 05-05). Retourne null si
+        /// aucune ligne ne commence par un marker connu.
+        /// </summary>
+        private static string ExtractMarkerFromMergedSource(string mergedSource)
+        {
+            if (string.IsNullOrEmpty(mergedSource)) return null;
+            foreach (var line in mergedSource.Split('\n'))
+            {
+                if (StartsWithAlignMarker(line, out string m)) return m;
+                if (CasesCascadeMerger.StartsWithCasesMarker(line)) return "{";
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// True si le LaTeX émis commence par <c>\begin{cases}</c> (single-line
+        /// ou multi-line cases). Utilisé pour activer le list-mode cases sur
+        /// une conversion single-line non-cross-merge (Phase 2 ADR 05-05) :
+        /// l'user tape <c>{ x=1</c> Ctrl+Espace, le pipeline produit un cases,
+        /// on injecte <c>{ </c> sur le ¶ suivant pour permettre extension.
+        /// </summary>
+        private static bool IsCasesLatex(string latex)
+            => !string.IsNullOrEmpty(latex)
+               && latex.TrimStart().StartsWith(@"\begin{cases}", System.StringComparison.Ordinal);
+
+        /// <summary>
+        /// Mode visible (ADR 05-05 visible) : injecte le marker en texte plain
+        /// au début du ¶ d'ancrage post cross-merge, puis place le caret
+        /// juste après l'espace de séparation.
+        /// <para>
+        /// Si le ¶ d'ancrage a été créé fraîchement par
+        /// <see cref="AppendEmptyParagraphAfterOMath"/> (= OMath était dernier
+        /// ¶ du doc), on injecte directement sans <c>\r</c>. Sinon (¶ user
+        /// pré-existant : séparateur, contenu, etc.), on insère AVEC <c>\r</c>
+        /// pour créer un ¶ neuf au marker tout en préservant le ¶ user.
+        /// </para>
+        /// <para>
+        /// Plan calculé par <see cref="ListModeMarkerInjector.Plan"/> (testé
+        /// séparément). Définit <see cref="_listModeAnchorParaStart"/> pour
+        /// la détection caret-leave côté <see cref="OnSelectionChange"/>.
+        /// </para>
+        /// </summary>
+        private void InjectListModeMarker(string marker, bool hostParaIsOursAndEmpty)
+        {
+            try
+            {
+                var doc = _app.ActiveDocument;
+                if (doc == null) { _listModeAnchorParaStart = -1; return; }
+                var sel = _app.Selection;
+                if (sel == null) { _listModeAnchorParaStart = -1; return; }
+
+                int paraStart = sel.Paragraphs[1].Range.Start;
+                var plan = ListModeMarkerInjector.Plan(marker, hostParaIsOursAndEmpty);
+
+                var insertRange = doc.Range(paraStart, paraStart);
+                insertRange.Text = plan.TextToInsert;
+
+                int caretAfter = paraStart + plan.CaretOffset;
+                doc.Range(caretAfter, caretAfter).Select();
+
+                _listModeAnchorParaStart = paraStart;
+                LogDiag($"list_mode: injected \"{plan.TextToInsert.Replace("\r", "\\r")}\" at ¶[{paraStart}], caret=[{caretAfter}], marker=\"{marker}\", createsNewPara={plan.CreatesNewParagraph}");
+            }
+            catch (Exception ex)
+            {
+                LogDiag("list_mode_inject_error: " + ex.Message);
+                _listModeAnchorParaStart = -1;
+            }
+        }
+
+        /// <summary>
+        /// Vérifie si la zone reverted multi-ligne est encore active et que
+        /// le caret est dedans. Si non, invalide la zone (caret hors zone =
+        /// abandon de l'édition cascade). Appelée à chaque tick de selection.
+        /// </summary>
+        private void InvalidateRevertedMultiLineZoneIfCaretLeft(int caretPos)
+        {
+            if (_revertedMultiLineZoneStart < 0) return;
+            // Tolérance d'un char à la fin (caret juste après la zone reste OK)
+            if (caretPos < _revertedMultiLineZoneStart || caretPos > _revertedMultiLineZoneEnd + 1)
+            {
+                LogDiag($"revert_zone: caret={caretPos} hors zone [{_revertedMultiLineZoneStart},{_revertedMultiLineZoneEnd}], invalidée");
+                _revertedMultiLineZoneStart = -1;
+                _revertedMultiLineZoneEnd = -1;
+            }
+        }
+
+        /// <summary>
+        /// Si le caret a quitté le ¶ d'ancrage du list-mode (ex. clic ailleurs,
+        /// flèches haut/bas vers une autre ligne), désactive le mode liste.
+        /// Tant qu'on tape dans le même ¶, <c>Range.Start</c> du paragraphe
+        /// ne change pas → le mode reste actif. Cf. ADR 05-05.
+        /// </summary>
+        private void InvalidateListModeIfCaretLeftAnchor(Word.Selection sel)
+        {
+            if (_listMode.ActiveMarker == null) return;
+            if (_listModeAnchorParaStart < 0) return;
+            try
+            {
+                int currentParaStart = sel?.Paragraphs?[1]?.Range.Start ?? -1;
+                if (currentParaStart != _listModeAnchorParaStart)
+                {
+                    LogDiag($"list_mode: caret ¶[{currentParaStart}] hors anchor ¶[{_listModeAnchorParaStart}], désactivé");
+                    _listMode.OnSelectionMoved();
+                    _listModeAnchorParaStart = -1;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogDiag("list_mode_invalidate_error: " + ex.Message);
+                _listMode.OnSelectionMoved();
+                _listModeAnchorParaStart = -1;
+            }
         }
 
         // ─────────────────────────────────────────────────────────────────
@@ -1532,17 +1875,31 @@ namespace MathCursor.Host
         /// que la phase 4) — sans ça l'utilisateur voyait les états
         /// intermédiaires de l'insertion (cf. user 04-05).
         /// </para>
+        /// <para>
+        /// <paramref name="replaceStart"/> = position de début du range remplacé
+        /// par <see cref="InsertOMathAt"/>. Sert de borne basse pour le strip
+        /// du <c>¶</c> résiduel : on ne strip que si le <c>¶</c> candidat
+        /// était DANS le range remplacé (= vraiment un résidu de notre
+        /// insertion), pas si c'est un séparateur visuel utilisateur préservé
+        /// au-dessus (cf. bug user 04-05 sur revert d'un 2nd multi-ligne).
+        /// </para>
         /// <paramref name="newStart"/> et <paramref name="newEnd"/> sont mis
         /// à jour si le strip décale les positions, ce qui permet au caller
         /// de continuer à les utiliser.
         /// </summary>
-        private void FinalizeCrossMergeLayout(Word.Document doc, ref int newStart, ref int newEnd)
+        private void FinalizeCrossMergeLayout(Word.Document doc, int replaceStart, ref int newStart, ref int newEnd, out bool didCreateAnchorPara)
         {
+            didCreateAnchorPara = false;
             try
             {
-                StripLeadingResidualEmptyParagraph(doc, ref newStart, ref newEnd);
-                EnforceOMathParagraphAlignment(doc, newStart);
-                int caretPos = AppendEmptyParagraphAfterOMath(doc, newStart);
+                StripLeadingResidualEmptyParagraph(doc, replaceStart, ref newStart, ref newEnd);
+                // Skip alignment si le transplant XML l'a déjà pré-patché (cf.
+                // bug user 04-05 : 2e InsertXML ici causait fusion avec voisin).
+                if (!_lastInsertUsedXmlTransplant)
+                {
+                    EnforceOMathParagraphAlignment(doc, newStart);
+                }
+                int caretPos = AppendEmptyParagraphAfterOMath(doc, newStart, out didCreateAnchorPara);
                 if (caretPos >= 0) SetCaretAtPosition(caretPos);
             }
             catch (Exception ex) { LogDiag("xparMerge_finalize_error: " + ex.Message); }
@@ -1552,18 +1909,32 @@ namespace MathCursor.Host
         /// Phase 4.1 : supprime le <c>¶</c> vide qui peut subsister juste avant
         /// l'OMath après cross-merge. Word's BuildUp sur <c>█(...)</c> crée
         /// l'OMathPara dans son propre paragraphe et laisse parfois un <c>¶</c>
-        /// orphelin du paragraphe remplacé. On vérifie que le paragraphe
-        /// candidat est bien vide ET qu'il ne contient PAS d'OMath (un OMath
-        /// inline a <c>Text=""</c> mais ne doit pas être supprimé).
-        /// <paramref name="newStart"/> et <paramref name="newEnd"/> sont
-        /// décalés du nombre de chars supprimés.
+        /// orphelin du paragraphe remplacé.
+        /// <para>
+        /// On strip UNIQUEMENT si le <c>¶</c> candidat est DANS le range qu'on
+        /// a remplacé (= <paramref name="replaceStart"/> ou plus tard) — c'est
+        /// alors vraiment un résidu de notre insertion. Sinon c'est un
+        /// séparateur visuel utilisateur (ex. ligne vide entre 2 multi-lignes
+        /// distincts) qu'il faut préserver. Cf. bug user 04-05.
+        /// </para>
+        /// On vérifie aussi que le paragraphe candidat est bien vide ET qu'il
+        /// ne contient PAS d'OMath (un OMath inline a <c>Text=""</c> mais ne
+        /// doit pas être supprimé).
         /// </summary>
-        private void StripLeadingResidualEmptyParagraph(Word.Document doc, ref int newStart, ref int newEnd)
+        private void StripLeadingResidualEmptyParagraph(Word.Document doc, int replaceStart, ref int newStart, ref int newEnd)
         {
             if (newStart <= doc.Content.Start) return;
             try
             {
                 var prevRange = doc.Range(newStart - 1, newStart - 1).Paragraphs[1].Range;
+                // Garde-fou anti-faux-positif : ne pas stripper un ¶ utilisateur
+                // qui était hors du range remplacé. Le résidu BuildUp est
+                // toujours À CHEVAL ou DANS le range remplacé.
+                if (prevRange.Start < replaceStart)
+                {
+                    LogDiag($"xparMerge_strip: ¶ at [{prevRange.Start},{prevRange.End}] hors range remplacé (start={replaceStart}), preserved");
+                    return;
+                }
                 bool hasOMath = false;
                 try { hasOMath = prevRange.OMaths != null && prevRange.OMaths.Count > 0; } catch { }
                 if (hasOMath) return;
@@ -1591,25 +1962,40 @@ namespace MathCursor.Host
         }
 
         /// <summary>
-        /// Phase 4.3 (réutilisable) : insère un paragraphe vide APRÈS celui
-        /// qui contient l'OMath couvrant <paramref name="posInOMath"/>.
-        /// Utilise <see cref="Word.Range.InsertParagraphAfter"/> (API Word
-        /// native, gère correctement le dernier <c>¶</c> du document
-        /// contrairement à un <c>Range.Text = "\r"</c> manuel qui peut être
-        /// normalisé/bouffé à la frontière fin de doc).
-        /// Retourne la position de début du nouveau paragraphe (où placer
-        /// le caret), ou <c>-1</c> si aucun OMath ne couvre la position.
+        /// Phase 4.3 (réutilisable) : positionne le caret juste APRÈS le
+        /// paragraphe OMath (= début du paragraphe suivant, vide ou pas).
+        /// On ne crée un nouveau <c>¶</c> QUE si l'OMath est le dernier
+        /// paragraphe du document (= rien après pour accueillir le caret).
+        /// <para>
+        /// Cf. user 05-05 : « si paragraphe d'après a du contenu, laisser le
+        /// caret juste après l'OMath ; ne créer un ¶ que s'il n'y a rien en
+        /// dessous ». Évite de polluer le doc avec des ¶ vides parasites.
+        /// </para>
+        /// Retourne la position où placer le caret, ou <c>-1</c> si aucun
+        /// OMath ne couvre la position.
         /// </summary>
-        private int AppendEmptyParagraphAfterOMath(Word.Document doc, int posInOMath)
+        private int AppendEmptyParagraphAfterOMath(Word.Document doc, int posInOMath, out bool didCreateNewPara)
         {
+            didCreateNewPara = false;
             try
             {
                 foreach (Word.OMath om in doc.OMaths)
                 {
                     if (om.Range.Start > posInOMath || om.Range.End <= posInOMath) continue;
                     var omPara = om.Range.Paragraphs[1];
-                    omPara.Range.InsertParagraphAfter();
-                    return omPara.Range.End;
+                    int afterOMathPara = omPara.Range.End;
+
+                    // Si l'OMath est le dernier paragraphe du doc → créer un
+                    // ¶ vide pour que le caret ait un endroit où atterrir.
+                    // Sinon : rien à faire, position caret = début du paragraphe
+                    // suivant (qui existe déjà, vide ou avec contenu).
+                    if (afterOMathPara >= doc.Content.End)
+                    {
+                        omPara.Range.InsertParagraphAfter();
+                        didCreateNewPara = true;
+                        LogDiag("append_para: OMath était last para, ¶ vide créé pour caret");
+                    }
+                    return afterOMathPara;
                 }
             }
             catch (Exception ex) { LogDiag("xparMerge_append_para_error: " + ex.Message); }
@@ -2018,150 +2404,361 @@ namespace MathCursor.Host
 
         /// <summary>
         /// Phase 2 du pipeline cross-merge : détecte si la zone courante
-        /// (ligne en cours de commit) doit fusionner avec un OMath situé sur
-        /// le paragraphe immédiatement au-dessus, formant un bloc align*
-        /// multi-ligne (cf. brief 30-04 multiline-systems §3.2).
-        ///
-        /// <para>Conditions cumulées :</para>
-        /// <list type="number">
-        /// <item>La source courante commence par un marqueur align (<c>=</c>,
-        /// <c>&lt;=&gt;</c>, <c>=&gt;</c>, <c>&lt;=</c> et variantes).</item>
-        /// <item>Le paragraphe immédiatement au-dessus contient un OMath à
-        /// nous (bookmark <c>mcEq_*</c>).</item>
-        /// <item>Pas de paragraphe vide entre.</item>
-        /// <item>Pas de texte significatif entre la fin de l'OMath précédent
-        /// et le <c>¶</c> break, ni entre le <c>¶</c> break et le début de
-        /// la zone courante (que du whitespace).</item>
+        /// (ligne en cours de commit) doit fusionner avec ce qui est au-dessus
+        /// pour former un bloc align* multi-ligne. Deux modes :
+        /// <list type="bullet">
+        /// <item><b>Mode 2 (revert)</b> : si l'utilisateur vient de revert un
+        /// OMath multi-ligne (cf. <see cref="_revertedMultiLineZoneStart"/>),
+        /// on absorbe TOUS les paragraphes de la zone reverted, y compris la
+        /// 1re ligne sans marker. Cf. ADR 04-05 multiline-edit-cascade.</item>
+        /// <item><b>Mode 1 (default)</b> : cascade montante conservatrice.
+        /// La source courante doit commencer par un marker align
+        /// (<c>=</c>/<c>&lt;=&gt;</c>/<c>=&gt;</c>/<c>&lt;=</c>). On absorbe
+        /// les paragraphes au-dessus tant qu'ils ont aussi un marker en tête,
+        /// et on s'arrête sur un OMath à nous (absorbé) ou un paragraphe sans
+        /// marker (non absorbé). Cf. brief 30-04 §3.2 + ADR 04-05.</item>
         /// </list>
         ///
-        /// <para>Si OK, retourne un <see cref="MergeResult"/> dont le range
-        /// englobe <c>[prev_OMath.Start, current_zone_end]</c> et le source
-        /// mergé est <c>prev_source\ncurrent_source</c>. Le pipeline core
-        /// (lattice engine) détectera le <c>\n</c> comme LineBreak et
-        /// produira un LaTeX <c>\begin{align*}...\end{align*}</c>.</para>
-        ///
-        /// <para>Au moment de l'insertion (Phase 3 = <see cref="InsertOMathAt"/>),
-        /// le <c>Range.Text="..."</c> remplace tout y compris le paragraph
-        /// break entre les 2 <c>¶</c> → les 2 paragraphes sont collapsés en 1
-        /// contenant l'OMath multi-ligne. Phase 4 finalise (cf.
-        /// <see cref="FinalizeCrossMergeLayout"/>).</para>
+        /// <para>Si match, retourne un <see cref="MergeResult"/> dont le range
+        /// englobe <c>[chainStart, currentZoneEnd]</c> et le source mergé est
+        /// <c>line1\nline2\n...\ncurrentSource</c>. Le pipeline core (lattice
+        /// engine) détectera les <c>\n</c> comme LineBreaks et produira un
+        /// LaTeX <c>\begin{align*}...\end{align*}</c>.</para>
         /// </summary>
         private MergeResult TryFindCrossMergeAbove(int absStart, int absEnd, string currentSource)
         {
             try
             {
                 if (string.IsNullOrEmpty(currentSource)) return null;
-                // Condition 1 : source courante commence par marqueur align ?
-                string trimmed = currentSource.TrimStart();
-                string matchedMarker = null;
-                foreach (var m in AlignMarkers)
-                {
-                    if (trimmed.StartsWith(m, StringComparison.Ordinal))
-                    {
-                        // Le `=` doit être suivi d'un caractère qui n'est pas `=`
-                        // (sinon `==` qui est un cas bizarre). `<=`/`<==` etc.
-                        // sont déjà filtrés par l'ordre de AlignMarkers (plus
-                        // longs en premier).
-                        matchedMarker = m;
-                        break;
-                    }
-                }
-                if (matchedMarker == null) { LogDiag("xparMerge: no align marker at start"); return null; }
-                LogDiag($"xparMerge: found marker `{matchedMarker}` in current source");
-
                 var doc = _app.ActiveDocument;
-                if (doc == null) { LogDiag("xparMerge: no doc"); return null; }
+                if (doc == null) return null;
 
-                // Trouver le paragraphe courant (celui qui contient absStart)
-                var currentRange = doc.Range(absStart, absStart);
-                Word.Paragraph currentPara = currentRange.Paragraphs[1];
-                int currentParaStart = currentPara.Range.Start;
-                if (currentParaStart >= absStart) { /* OK, the zone is in this paragraph */ }
+                // Mode 2 prioritaire : édition d'un multi-ligne reverted.
+                var mode2 = TryAbsorbRevertedMultiLineZone(doc, absStart, absEnd, currentSource);
+                if (mode2 != null) return mode2;
 
-                // Condition 4a : entre currentParaStart et absStart, que du whitespace ?
-                if (absStart > currentParaStart)
-                {
-                    string between = doc.Range(currentParaStart, absStart).Text ?? "";
-                    if (!string.IsNullOrEmpty(between) && between.Trim().Length > 0)
-                    {
-                        LogDiag($"xparMerge: text before zone in current ¶ = \"{Preview(between)}\", abort");
-                        return null;
-                    }
-                }
-
-                // Trouver le paragraphe précédent
-                if (currentParaStart <= 0) { LogDiag("xparMerge: at doc start, no previous ¶"); return null; }
-                int prevParaEnd = currentParaStart;          // = position du ¶ mark de fin du précédent + 1
-                Word.Paragraph prevPara;
-                try { prevPara = doc.Range(prevParaEnd - 1, prevParaEnd - 1).Paragraphs[1]; }
-                catch { LogDiag("xparMerge: cannot resolve previous ¶"); return null; }
-                int prevParaStart = prevPara.Range.Start;
-                int prevParaContentEnd = prevPara.Range.End - 1; // exclut le ¶ mark
-                if (prevParaContentEnd <= prevParaStart) { LogDiag("xparMerge: previous ¶ empty, barrier"); return null; }
-
-                // Condition 3 : barrière paragraphe vide. Si prevPara est vide ou
-                // que sa "fin de contenu" === ¶ mark, c'est une barrière.
-                string prevText = doc.Range(prevParaStart, prevParaContentEnd).Text ?? "";
-                if (string.IsNullOrWhiteSpace(prevText)) { LogDiag("xparMerge: previous ¶ whitespace-only, barrier"); return null; }
-
-                // Condition 2 : trouver l'OMath à nous qui termine le paragraphe précédent
-                Word.OMath prevOMath = null;
-                string prevHandle = null;
-                string prevSource = null;
-                foreach (Word.OMath om in doc.OMaths)
-                {
-                    var rng = om.Range;
-                    // OMath dans le ¶ précédent
-                    if (rng.Start < prevParaStart || rng.End > prevParaContentEnd) continue;
-                    // On veut celui qui termine le ¶ (= rien après lui sauf whitespace)
-                    if (rng.End < prevParaContentEnd)
-                    {
-                        // Vérifier que ce qui suit jusqu'au ¶ mark est whitespace only
-                        string afterOMath = doc.Range(rng.End, prevParaContentEnd).Text ?? "";
-                        if (afterOMath.Trim().Length > 0) continue; // pas le dernier OMath utile
-                    }
-                    var h = FindOurHandleForOMath(om);
-                    if (h == null) continue;
-                    try
-                    {
-                        var stored = _store.RetrieveAsync(new EquationHandle(h)).GetAwaiter().GetResult();
-                        if (stored != null && !string.IsNullOrEmpty(stored.Source))
-                        {
-                            prevOMath = om;
-                            prevHandle = h;
-                            prevSource = stored.Source;
-                        }
-                    }
-                    catch (Exception ex) { LogDiag($"xparMerge: retrieve_error: {ex.Message}"); }
-                }
-                if (prevOMath == null) { LogDiag("xparMerge: no OMath at end of previous ¶"); return null; }
-
-                LogDiag($"xparMerge: prev OMath range=[{prevOMath.Range.Start},{prevOMath.Range.End}] source=\"{Preview(prevSource)}\"");
-
-                // Construire le source mergé : prev + \n + current.
-                // Le \n source sera tokenisé comme LineBreak par le Lexer et
-                // le Parser détectera le pattern MultiLineBlock align*.
-                string mergedSource = prevSource + "\n" + currentSource;
-
-                // Range englobant : [prev OMath start, current zone end].
-                // Tout ce qui est entre (¶ mark inclus) sera remplacé par
-                // l'OMath multi-ligne lors de InsertOMathAt.
-                int newAbsStart = prevOMath.Range.Start;
-                int newAbsEnd = absEnd;
-
-                return new MergeResult
-                {
-                    AbsStart = newAbsStart,
-                    AbsEnd = newAbsEnd,
-                    MergedSource = mergedSource,
-                    RemovedHandles = new List<string> { prevHandle },
-                };
+                // Mode 1 : dispatch selon marker du current source.
+                // - Cases (Phase 2 ADR 05-05) : ligne courante commence par `{ `
+                // - Align (Phase 1) : marker align (`<=>`, `=>`, `<=`, `=`)
+                // Pas de mix : chaque cascade reconnaît exclusivement son marker.
+                if (CasesCascadeMerger.StartsWithCasesMarker(currentSource))
+                    return TryCascadeAbsorbCasesChain(doc, absStart, absEnd, currentSource);
+                return TryCascadeAbsorbMarkerChain(doc, absStart, absEnd, currentSource);
             }
             catch (Exception ex)
             {
                 LogDiag("xparMerge_error: " + ex.Message);
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Mode 2 du cross-merge (cf. ADR 04-05 multiline-edit-cascade) :
+        /// si l'user a fait « Revenir à la saisie » sur un OMath multi-ligne
+        /// et que le commit courant est dans la zone reverted, on absorbe
+        /// TOUS les paragraphes de la zone (y compris la 1re ligne sans
+        /// marker). Le source mergé = concat des textes paragraphe par
+        /// paragraphe, séparés par <c>\n</c>.
+        /// </summary>
+        private MergeResult TryAbsorbRevertedMultiLineZone(Word.Document doc, int absStart, int absEnd, string currentSource)
+        {
+            if (_revertedMultiLineZoneStart < 0) return null;
+            if (absStart < _revertedMultiLineZoneStart || absStart > _revertedMultiLineZoneEnd + 1) return null;
+
+            try
+            {
+                var zoneRange = doc.Range(_revertedMultiLineZoneStart, Math.Min(_revertedMultiLineZoneEnd, doc.Content.End));
+                var paras = zoneRange.Paragraphs;
+                if (paras == null || paras.Count == 0) return null;
+
+                var paragraphTexts = new List<string>();
+                var paragraphStarts = new List<int>();
+                int chainStart = int.MaxValue;
+                int chainEnd = int.MinValue;
+                foreach (Word.Paragraph p in paras)
+                {
+                    var r = p.Range;
+                    if (r.Start < chainStart) chainStart = r.Start;
+                    if (r.End - 1 > chainEnd) chainEnd = r.End - 1; // exclut ¶ mark
+                    int contentEnd = Math.Max(r.Start, r.End - 1);
+                    string txt = doc.Range(r.Start, contentEnd).Text ?? "";
+                    paragraphTexts.Add(txt);
+                    paragraphStarts.Add(r.Start);
+                }
+                if (paragraphTexts.Count < 2) return null;
+
+                // Replace la ligne où le user a committé (= identifiée par
+                // absStart vs paragraphStarts) avec currentSource. Cf. bug user
+                // 05-05 : commit sur ligne 1 d'un revert 3-lignes ne doit PAS
+                // remplacer la dernière ligne (ancien comportement hardcodé).
+                // Logique extraite et testée dans RevertedZoneMerger.
+                string mergedSource = RevertedZoneMerger.BuildMergedSource(
+                    paragraphTexts, paragraphStarts, absStart, currentSource);
+                // ⚠ newAbsEnd = chainEnd (PAS chainEnd + 1) : on ne consomme PAS
+                // le ¶ qui termine la dernière ligne du zone reverted. Sinon
+                // BuildUp Word fusionne l'OMath avec le paragraphe suivant et
+                // mange le ¶ vide qu'on avait au-dessus du Block B (cf. bug
+                // user 04-05 : « ligne à la fin du paragraphe supprimée »).
+                int newAbsEnd = Math.Max(chainEnd, absEnd);
+                LogDiag($"xparMerge_mode2: revert zone absorbed {paragraphTexts.Count} paragraphs, range=[{chainStart},{newAbsEnd}]");
+
+                return new MergeResult
+                {
+                    AbsStart = chainStart,
+                    AbsEnd = newAbsEnd,
+                    MergedSource = mergedSource,
+                    RemovedHandles = new List<string>(),
+                };
+            }
+            catch (Exception ex)
+            {
+                LogDiag("xparMerge_mode2_error: " + ex.Message);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Mode 1 du cross-merge : cascade montante conservatrice.
+        /// La source courante doit commencer par un marker align. On itère
+        /// vers le haut paragraphe par paragraphe :
+        /// <list type="bullet">
+        /// <item>Paragraphe vide → barrier, stop sans absorber.</item>
+        /// <item>Paragraphe contient un OMath à nous en fin → ABSORBÉ comme
+        /// sommet de la cascade, on stoppe.</item>
+        /// <item>Paragraphe texte commence par marker align → ABSORBÉ, on
+        /// continue plus haut.</item>
+        /// <item>Paragraphe texte sans marker → stop sans absorber.</item>
+        /// </list>
+        /// </summary>
+        private MergeResult TryCascadeAbsorbMarkerChain(Word.Document doc, int absStart, int absEnd, string currentSource)
+        {
+            if (!StartsWithAlignMarker(currentSource, out string matchedMarker)) return null;
+            LogDiag($"xparMerge_mode1: found marker `{matchedMarker}` in current source");
+
+            // Trouver le paragraphe courant
+            var currentPara = doc.Range(absStart, absStart).Paragraphs[1];
+            int currentParaStart = currentPara.Range.Start;
+
+            // Vérif : entre currentParaStart et absStart, que du whitespace ?
+            if (absStart > currentParaStart)
+            {
+                string between = doc.Range(currentParaStart, absStart).Text ?? "";
+                if (!string.IsNullOrEmpty(between) && between.Trim().Length > 0)
+                {
+                    LogDiag($"xparMerge_mode1: text before zone in current ¶, abort");
+                    return null;
+                }
+            }
+
+            // Cascade montante. On accumule les lignes en ordre TOP→BOTTOM
+            // (le source mergé doit être ligne1\nligne2\n...\ncurrent).
+            var chainLines = new List<string> { currentSource };
+            var removedHandles = new List<string>();
+            int chainStart = currentParaStart;
+            int cursor = currentParaStart;
+
+            while (cursor > 0)
+            {
+                Word.Paragraph prev;
+                try { prev = doc.Range(cursor - 1, cursor - 1).Paragraphs[1]; }
+                catch { break; }
+                int prevStart = prev.Range.Start;
+                int prevContentEnd = prev.Range.End - 1; // exclut ¶ mark
+                if (prevContentEnd <= prevStart) break; // ¶ vide = barrier
+
+                string prevText = doc.Range(prevStart, prevContentEnd).Text ?? "";
+                if (string.IsNullOrWhiteSpace(prevText)) break;
+
+                // Tente OMath à nous en fin de ¶ → sommet de la cascade
+                var omathTop = FindOwnedOMathAtEndOfParagraph(doc, prevStart, prevContentEnd);
+                if (omathTop.HasValue)
+                {
+                    chainLines.Insert(0, omathTop.Value.source);
+                    removedHandles.Add(omathTop.Value.handle);
+                    chainStart = omathTop.Value.omStart;
+                    LogDiag($"xparMerge_mode1: absorbed OMath top range=[{omathTop.Value.omStart},{prevContentEnd}] source=\"{Preview(omathTop.Value.source)}\"");
+                    break;
+                }
+
+                // Tente texte avec marker en tête → continue cascade
+                if (StartsWithAlignMarker(prevText, out _))
+                {
+                    chainLines.Insert(0, prevText);
+                    chainStart = prevStart;
+                    cursor = prevStart;
+                    LogDiag($"xparMerge_mode1: cascaded text ¶ [{prevStart},{prevContentEnd}] = \"{Preview(prevText)}\"");
+                    continue;
+                }
+
+                // Texte sans marker = stop sans absorber
+                break;
+            }
+
+            if (chainLines.Count < 2) return null;
+
+            string mergedSource = string.Join("\n", chainLines);
+            return new MergeResult
+            {
+                AbsStart = chainStart,
+                AbsEnd = absEnd,
+                MergedSource = mergedSource,
+                RemovedHandles = removedHandles,
+            };
+        }
+
+        /// <summary>
+        /// Cascade cases (Phase 2, ADR 05-05) : la source courante commence
+        /// par <c>{ </c>. Itère vers le haut paragraphe par paragraphe :
+        /// <list type="bullet">
+        /// <item>¶ vide → barrier, stop</item>
+        /// <item>OMath à nous en fin de ¶ avec source qui commence aussi par
+        /// <c>{ </c> → absorbé comme sommet de cascade, stop</item>
+        /// <item>¶ texte commence par <c>{ </c> → absorbé, continue</item>
+        /// <item>Sinon (texte sans <c>{ </c>, marker align...) → stop sans
+        /// absorber. Pas de mix avec align.</item>
+        /// </list>
+        /// La logique de merge effective est déléguée à <see cref="CasesCascadeMerger"/>
+        /// (helper pur testé séparément).
+        /// </summary>
+        private MergeResult TryCascadeAbsorbCasesChain(Word.Document doc, int absStart, int absEnd, string currentSource)
+        {
+            if (!CasesCascadeMerger.StartsWithCasesMarker(currentSource)) return null;
+            LogDiag($"xparMerge_cases: found cases marker `{{ ` in current source");
+
+            // Trouver le paragraphe courant
+            var currentPara = doc.Range(absStart, absStart).Paragraphs[1];
+            int currentParaStart = currentPara.Range.Start;
+
+            // Vérif : entre currentParaStart et absStart, que du whitespace ?
+            if (absStart > currentParaStart)
+            {
+                string between = doc.Range(currentParaStart, absStart).Text ?? "";
+                if (!string.IsNullOrEmpty(between) && between.Trim().Length > 0)
+                {
+                    LogDiag("xparMerge_cases: text before zone in current ¶, abort");
+                    return null;
+                }
+            }
+
+            // Cascade montante. paragraphsAbove en ordre TOP→BOTTOM.
+            var paragraphsAbove = new List<string>();
+            var removedHandles = new List<string>();
+            int chainStart = currentParaStart;
+            int cursor = currentParaStart;
+
+            while (cursor > 0)
+            {
+                Word.Paragraph prev;
+                try { prev = doc.Range(cursor - 1, cursor - 1).Paragraphs[1]; }
+                catch { break; }
+                int prevStart = prev.Range.Start;
+                int prevContentEnd = prev.Range.End - 1; // exclut ¶ mark
+                if (prevContentEnd <= prevStart) break; // ¶ vide = barrier
+
+                // OMath à nous en fin de ¶ → potentiel sommet de cascade.
+                // On absorbe SEULEMENT si sa source est un cases (commence par `{ `).
+                var omathTop = FindOwnedOMathAtEndOfParagraph(doc, prevStart, prevContentEnd);
+                if (omathTop.HasValue)
+                {
+                    if (CasesCascadeMerger.StartsWithCasesMarker(omathTop.Value.source))
+                    {
+                        paragraphsAbove.Insert(0, omathTop.Value.source);
+                        removedHandles.Add(omathTop.Value.handle);
+                        chainStart = omathTop.Value.omStart;
+                        LogDiag($"xparMerge_cases: absorbed OMath top range=[{omathTop.Value.omStart},{prevContentEnd}] source=\"{Preview(omathTop.Value.source)}\"");
+                    }
+                    else
+                    {
+                        LogDiag($"xparMerge_cases: OMath above is not cases, stop");
+                    }
+                    break;
+                }
+
+                string prevText = doc.Range(prevStart, prevContentEnd).Text ?? "";
+                if (string.IsNullOrWhiteSpace(prevText)) break;
+
+                if (CasesCascadeMerger.StartsWithCasesMarker(prevText))
+                {
+                    paragraphsAbove.Insert(0, prevText);
+                    chainStart = prevStart;
+                    cursor = prevStart;
+                    LogDiag($"xparMerge_cases: cascaded text ¶ [{prevStart},{prevContentEnd}] = \"{Preview(prevText)}\"");
+                    continue;
+                }
+
+                // Texte non-cases (ou marker align) → stop sans mix
+                break;
+            }
+
+            // Délègue le merge final au helper pur (testé séparément).
+            var cascade = CasesCascadeMerger.BuildCascade(paragraphsAbove, currentSource);
+            if (cascade == null) return null;
+
+            return new MergeResult
+            {
+                AbsStart = chainStart,
+                AbsEnd = absEnd,
+                MergedSource = cascade.MergedSource,
+                RemovedHandles = removedHandles,
+            };
+        }
+
+        /// <summary>
+        /// Vérifie si la chaîne (après TrimStart) commence par un des markers
+        /// align. Retourne le marker matché via le out param.
+        /// </summary>
+        private static bool StartsWithAlignMarker(string s, out string matchedMarker)
+        {
+            matchedMarker = null;
+            if (string.IsNullOrEmpty(s)) return false;
+            string trimmed = s.TrimStart();
+            foreach (var m in AlignMarkers)
+            {
+                if (trimmed.StartsWith(m, StringComparison.Ordinal))
+                {
+                    matchedMarker = m;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Cherche un OMath à nous (= avec un bookmark <c>mcEq_*</c>) qui
+        /// termine le paragraphe défini par <paramref name="paraStart"/> et
+        /// <paramref name="paraContentEnd"/> (= position du dernier char avant
+        /// le ¶ mark). Retourne <c>(omStart, source, handle)</c> si trouvé,
+        /// sinon null.
+        /// </summary>
+        private (int omStart, string source, string handle)? FindOwnedOMathAtEndOfParagraph(Word.Document doc, int paraStart, int paraContentEnd)
+        {
+            try
+            {
+                foreach (Word.OMath om in doc.OMaths)
+                {
+                    var rng = om.Range;
+                    if (rng.Start < paraStart || rng.End > paraContentEnd) continue;
+                    // Doit terminer le ¶ : ce qui suit l'OMath jusqu'au ¶ doit être whitespace
+                    if (rng.End < paraContentEnd)
+                    {
+                        string after = doc.Range(rng.End, paraContentEnd).Text ?? "";
+                        if (after.Trim().Length > 0) continue;
+                    }
+                    string h = FindOurHandleForOMath(om);
+                    if (h == null) continue;
+                    try
+                    {
+                        var stored = _store.RetrieveAsync(new EquationHandle(h)).GetAwaiter().GetResult();
+                        if (stored != null && !string.IsNullOrEmpty(stored.Source))
+                        {
+                            return (rng.Start, stored.Source, h);
+                        }
+                    }
+                    catch (Exception ex) { LogDiag($"xparMerge_owned_omath_retrieve_error: {ex.Message}"); }
+                }
+            }
+            catch (Exception ex) { LogDiag("xparMerge_owned_omath_scan_error: " + ex.Message); }
+            return null;
         }
 
         private static string NewHandleId()
@@ -2245,6 +2842,146 @@ namespace MathCursor.Host
         }
 
         /// <summary>
+        /// Extrait le premier élément <c>&lt;w:p ... &gt;...&lt;/w:p&gt;</c>
+        /// d'un XML WordOpenXML package. Utilisé pour récupérer juste le
+        /// paragraphe (sans pkg:package wrapper) à splicer dans un autre
+        /// fullDocXml.
+        /// </summary>
+        private static string ExtractFirstWPElement(string xml)
+        {
+            if (string.IsNullOrEmpty(xml)) return null;
+            var m = System.Text.RegularExpressions.Regex.Match(
+                xml,
+                @"<w:p[\s>](?:(?!</w:p>).)*?</w:p>",
+                System.Text.RegularExpressions.RegexOptions.Singleline);
+            return m.Success ? m.Value : null;
+        }
+
+        /// <summary>
+        /// Remplace <paramref name="targetCount"/> paragraphes consécutifs à
+        /// l'index <paramref name="targetIdx0"/> (0-based) dans le full doc XML
+        /// par un seul nouveau paragraphe <paramref name="newParaWp"/>.
+        /// Manipulation pur structurelle (regex sur <c>&lt;w:p&gt;</c>),
+        /// pas d'API Word. Cf. test offline xmltest_modified.docx 04-05 :
+        /// produit un doc structurellement clean (pas de fusion possible).
+        /// </summary>
+        private static string ReplaceParagraphsInDocXml(string fullDocXml, int targetIdx0, int targetCount, string newParaWp)
+        {
+            if (string.IsNullOrEmpty(fullDocXml) || string.IsNullOrEmpty(newParaWp)) return null;
+            if (targetIdx0 < 0 || targetCount < 1) return null;
+            var paraRegex = new System.Text.RegularExpressions.Regex(
+                @"<w:p[\s>](?:(?!</w:p>).)*?</w:p>",
+                System.Text.RegularExpressions.RegexOptions.Singleline);
+            var matches = paraRegex.Matches(fullDocXml);
+            if (targetIdx0 + targetCount > matches.Count) return null;
+            var firstMatch = matches[targetIdx0];
+            var lastMatch = matches[targetIdx0 + targetCount - 1];
+            var sb = new System.Text.StringBuilder(fullDocXml.Length);
+            sb.Append(fullDocXml, 0, firstMatch.Index);
+            sb.Append(newParaWp);
+            sb.Append(fullDocXml, lastMatch.Index + lastMatch.Length, fullDocXml.Length - (lastMatch.Index + lastMatch.Length));
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Pattern build-isolated → transplant XML (cf. ADR 04-05). Construit
+        /// l'OMath dans une zone temporaire isolée à la fin du document, en
+        /// l'entourant de <paramref name="textBefore"/> et
+        /// <paramref name="textAfter"/> (vides pour multi-ligne display, =
+        /// contenu du paragraphe cible avant/après le math zone pour inline).
+        /// Capture le <b>full WordOpenXML package</b> du paragraphe résultant
+        /// (avec <c>&lt;pkg:package&gt;</c> wrapper + namespaces, format
+        /// requis par <c>Range.InsertXML</c>) puis nettoie la zone temporaire.
+        /// <para>
+        /// Le XML capturé peut ensuite être inséré via <c>Range.InsertXML</c>
+        /// pour remplacer le paragraphe cible — sans BuildUp, donc sans
+        /// risque d'absorption d'OMaths voisins.
+        /// </para>
+        /// </summary>
+        private string BuildOMathXmlIsolated(Word.Document doc, string textBefore, string latex, string textAfter)
+        {
+            string unicodeMath;
+            try { unicodeMath = LatexToUnicodeMath.Convert(latex); }
+            catch (Exception ex) { LogDiag("iso_l2um_error: " + ex.Message); return null; }
+            if (string.IsNullOrEmpty(unicodeMath)) return null;
+            textBefore ??= "";
+            textAfter ??= "";
+
+            int origContentEnd = doc.Content.End;
+            int insertPos = origContentEnd - 1; // avant le ¶ final du doc
+            // Layout temporaire :
+            //   [insertPos] \r [textBefore] [unicodeMath] [textAfter] \r [final ¶]
+            int paraStart = origContentEnd;
+            int unicodeStart = paraStart + textBefore.Length;
+            int unicodeEnd = unicodeStart + unicodeMath.Length;
+            string capturedXml = null;
+
+            try
+            {
+                // 1. Insert "\r" + textBefore + unicodeMath + textAfter + "\r"
+                string toInsert = "\r" + textBefore + unicodeMath + textAfter + "\r";
+                doc.Range(insertPos, insertPos).Text = toInsert;
+
+                // 2. BuildUp UNIQUEMENT sur la portion unicodeMath (pas
+                //    textBefore/After — c'est du texte normal qu'on préserve).
+                var mathRange = doc.Range(unicodeStart, unicodeEnd);
+                mathRange.OMaths.Add(mathRange);
+                mathRange.OMaths.BuildUp();
+
+                // 3. Find the new OMath (couvre unicodeStart)
+                Word.OMath newOMath = null;
+                foreach (Word.OMath om in doc.OMaths)
+                {
+                    var rng = om.Range;
+                    if (rng.Start <= unicodeStart && rng.End > unicodeStart)
+                    {
+                        newOMath = om;
+                        break;
+                    }
+                }
+                if (newOMath == null) { LogDiag("iso_build: OMath not found after BuildUp"); return null; }
+
+                Word.Paragraph omPara = null;
+                try { omPara = newOMath.Range.Paragraphs[1]; } catch { }
+                if (omPara == null) return null;
+
+                // 4. Capture FULL WordOpenXML package du paragraphe (= avec
+                //    pkg:package wrapper + namespaces). InsertXML demande ce
+                //    format complet, sinon « Impossible d'insérer le code XML ».
+                capturedXml = omPara.Range.WordOpenXML;
+                if (string.IsNullOrEmpty(capturedXml))
+                {
+                    LogDiag("iso_build: empty WordOpenXML capture");
+                    capturedXml = null;
+                }
+                else
+                {
+                    // Diag : check si la BuildUp en zone temp a accidentellement
+                    // pulled in un autre OMath du doc (cas absorption).
+                    int omathCount = System.Text.RegularExpressions.Regex.Matches(capturedXml, "<m:oMath\\b(?!Pa)").Count;
+                    int eqArrCount = System.Text.RegularExpressions.Regex.Matches(capturedXml, "<m:eqArr\\b").Count;
+                    LogDiag($"iso_capture: xml_len={capturedXml.Length} omathCount={omathCount} eqArrCount={eqArrCount}");
+                }
+            }
+            catch (Exception ex) { LogDiag("iso_build_error: " + ex.Message); }
+            finally
+            {
+                // 5. Cleanup : supprime tout ce qu'on a ajouté à la fin du doc.
+                //    diff = ce que le doc a gagné en chars = exactement ce qu'on
+                //    a inséré (post-BuildUp). On le supprime depuis insertPos.
+                try
+                {
+                    int currentEnd = doc.Content.End;
+                    int diff = currentEnd - origContentEnd;
+                    if (diff > 0) doc.Range(insertPos, insertPos + diff).Delete();
+                }
+                catch (Exception ex) { LogDiag("iso_cleanup_error: " + ex.Message); }
+            }
+
+            return capturedXml;
+        }
+
+        /// <summary>
         /// Remplace le range [absStart, absEnd) du document par un OMath construit
         /// à partir du LaTeX fourni. Word's BuildUp ne parse pas le LaTeX nativement,
         /// on convertit donc d'abord en UnicodeMath (le format natif qu'il comprend).
@@ -2269,85 +3006,219 @@ namespace MathCursor.Host
             while (absEnd > absStart && IsWhitespaceCharAt(doc, absEnd - 1)) absEnd--;
             if (absEnd <= absStart) return (absStart, absEnd);
 
-            // Conversion LaTeX → UnicodeMath : Word's OMaths.BuildUp parse
-            // l'UnicodeMath (\frac{a}{b} → (a)/(b), \sqrt{x} → √(x), etc.).
-            string unicodeMath = LatexToUnicodeMath.Convert(latex);
-            LogDiag($"latex→umath \"{latex}\" → \"{unicodeMath}\"");
-
             // SAUVEGARDE du texte original avant remplacement, pour rollback si
-            // l'OMath n'est pas vraiment créé par BuildUp. Règle dure : on ne
-            // doit JAMAIS laisser dans Word du texte technique (UnicodeMath ou
-            // LaTeX brut) si la conversion en équation a échoué.
+            // l'insertion échoue. Règle dure : on ne doit JAMAIS laisser dans
+            // Word du texte technique (UnicodeMath ou LaTeX brut) si la conversion
+            // en équation a échoué.
             string originalText;
             try { originalText = doc.Range(absStart, absEnd).Text ?? ""; }
             catch { originalText = ""; }
 
-            // Espace trailing : seulement si le caractère suivant n'est pas déjà
-            // un whitespace (sinon on se retrouve avec des doubles espaces).
-            bool nextIsWs = absEnd < docEnd && IsWhitespaceCharAt(doc, absEnd);
-            string insertText = nextIsWs ? unicodeMath : unicodeMath + " ";
+            // === PATTERN UNIFIÉ XML TRANSPLANT (cf. ADR 04-05) ===
+            // Construit l'OMath en zone isolée fin de doc avec textBefore +
+            // unicodeMath + textAfter, capture le full paragraph WordOpenXML,
+            // remplace le paragraphe cible via InsertXML. Pour multi-ligne
+            // display (latex contient \begin{...}), on ne préserve pas de
+            // surround : la cible est remplacée intégralement par la zone
+            // math. Pour inline single-eq, on préserve le texte du paragraphe
+            // avant absStart et après absEnd. Aucun BuildUp à la cible →
+            // aucune absorption possible des OMaths voisins.
+            //
+            // Fallback : .doc legacy (CompatibilityMode < 14) → ancien pattern
+            // API in-place.
+            bool isDocxOoxml = false;
+            try { isDocxOoxml = doc.CompatibilityMode >= 14; } catch { }
+            bool isDisplayMath = latex.IndexOf("\\begin{align", StringComparison.Ordinal) >= 0
+                              || latex.IndexOf("\\begin{cases", StringComparison.Ordinal) >= 0;
 
-            var replaceRange = doc.Range(absStart, absEnd);
-            replaceRange.Text = insertText;
-
-            int insertedLen = unicodeMath.Length;
-            var mathRange = doc.Range(absStart, absStart + insertedLen);
-            bool buildUpThrew = false;
-            try
-            {
-                mathRange.OMaths.Add(mathRange);
-                mathRange.OMaths.BuildUp();
-            }
-            catch (Exception ex)
-            {
-                LogDiag("omath_add_error: " + ex.Message);
-                buildUpThrew = true;
-            }
-
-            // VÉRIFICATION : un OMath couvre-t-il vraiment notre plage ? Si non,
-            // BuildUp a échoué silencieusement (il n'a pas su parser l'UnicodeMath)
-            // et on a laissé le texte technique dans le doc — INADMISSIBLE.
-            // Rollback vers le texte original (ce que l'utilisateur avait tapé).
             int newStart = absStart;
-            int newEnd = absStart + insertedLen;
+            int newEnd = absStart;
             bool omathCreated = false;
-            try
-            {
-                foreach (Word.OMath om in doc.OMaths)
-                {
-                    var rng = om.Range;
-                    if (rng.Start <= absStart && rng.End > absStart)
-                    {
-                        newStart = rng.Start;
-                        newEnd = rng.End;
-                        omathCreated = true;
-                        break;
-                    }
-                }
-            }
-            catch { }
+            bool usedXmlTransplant = false;
 
-            if (!omathCreated)
+            if (isDocxOoxml)
             {
-                LogDiag($"omath NOT created (buildUpThrew={buildUpThrew}) — rollback texte technique \"{insertText}\" → original \"{originalText}\"");
                 try
                 {
-                    var fallbackRange = doc.Range(absStart, absStart + insertText.Length);
-                    fallbackRange.Text = originalText;
-                    // Repositionne le caret à la fin de la zone restaurée
-                    int restoredEnd = absStart + originalText.Length;
-                    try { _app.Selection.SetRange(restoredEnd, restoredEnd); } catch { }
+                    // 1. Identifier les paragraphes cibles. Probe à absStart+1 / absEnd-1
+                    //    pour être strictement DANS les paragraphes cibles.
+                    int safeProbeStart = Math.Min(absStart + 1, doc.Content.End - 1);
+                    int safeProbeEnd = Math.Max(absStart, Math.Min(absEnd - 1, doc.Content.End - 1));
+                    if (safeProbeStart > safeProbeEnd) safeProbeStart = safeProbeEnd;
+                    var firstPara = doc.Range(safeProbeStart, safeProbeStart).Paragraphs[1];
+                    var lastPara = doc.Range(safeProbeEnd, safeProbeEnd).Paragraphs[1];
+                    int firstParaStart = firstPara.Range.Start;
+                    int lastParaStart = lastPara.Range.Start;
+
+                    // Identifier les indices 0-based des paragraphes cibles dans
+                    // l'ordre du document (correspond aux <w:p> dans WordOpenXML).
+                    int firstTargetIdx0 = -1;
+                    int targetCount = 0;
+                    int totalParas = doc.Paragraphs.Count;
+                    for (int i = 1; i <= totalParas; i++)
+                    {
+                        var p = doc.Paragraphs[i];
+                        if (p.Range.Start >= firstParaStart && p.Range.Start <= lastParaStart)
+                        {
+                            if (firstTargetIdx0 < 0) firstTargetIdx0 = i - 1; // 0-based
+                            targetCount++;
+                        }
+                    }
+                    LogDiag($"insert_transplant: target idx0={firstTargetIdx0} count={targetCount} (totalParas={totalParas})");
+
+                    // 2. textBefore/textAfter pour inline single-eq
+                    string textBefore = "";
+                    string textAfter = "";
+                    if (!isDisplayMath && targetCount == 1)
+                    {
+                        try
+                        {
+                            int paraStart = firstPara.Range.Start;
+                            int paraContentEnd = firstPara.Range.End - 1;
+                            if (absStart > paraStart) textBefore = doc.Range(paraStart, absStart).Text ?? "";
+                            if (absEnd < paraContentEnd) textAfter = doc.Range(absEnd, paraContentEnd).Text ?? "";
+                        }
+                        catch { }
+                    }
+
+                    // 3. Build l'OMath en zone isolée + pré-patch m:jc
+                    string capturedXml = BuildOMathXmlIsolated(doc, textBefore, latex, textAfter);
+                    if (!string.IsNullOrEmpty(capturedXml))
+                    {
+                        try
+                        {
+                            int paraAlign = ReadParagraphAlignment(doc, absStart);
+                            int omathJc = MapParagraphAlignToOMathJc(paraAlign);
+                            string targetVal = OMathJcToOoxmlVal(omathJc);
+                            if (!string.IsNullOrEmpty(targetVal))
+                            {
+                                capturedXml = PatchOMathParaJc(capturedXml, targetVal, out _);
+                            }
+                        }
+                        catch (Exception ex) { LogDiag("insert_transplant_prepatch_error: " + ex.Message); }
+
+                        // 4. SINGLE ROUND-TRIP XML : valider sur Python que la
+                        //    manipulation pur XML est sound (cf. test
+                        //    xmltest_modified.docx 04-05). Plutôt que paragraph
+                        //    par paragraph (qui cause fusion), on lit le full
+                        //    doc XML, on remplace les paragraphes cibles in-memory,
+                        //    on réécrit en un seul doc.Content.InsertXML.
+                        try
+                        {
+                            string fullDocXml = doc.Content.WordOpenXML;
+                            string newParaWp = ExtractFirstWPElement(capturedXml);
+                            if (string.IsNullOrEmpty(newParaWp))
+                            {
+                                LogDiag("insert_transplant: failed to extract <w:p> from captured");
+                            }
+                            else
+                            {
+                                string modifiedDocXml = ReplaceParagraphsInDocXml(
+                                    fullDocXml, firstTargetIdx0, targetCount, newParaWp);
+                                if (string.IsNullOrEmpty(modifiedDocXml))
+                                {
+                                    LogDiag("insert_transplant: failed to splice doc XML");
+                                }
+                                else
+                                {
+                                    doc.Content.InsertXML(modifiedDocXml);
+                                    usedXmlTransplant = true;
+                                    LogDiag($"insert_transplant: full-doc InsertXML ok, len={modifiedDocXml.Length}");
+                                }
+                            }
+                        }
+                        catch (Exception ex) { LogDiag("insert_transplant_fulldoc_error: " + ex.Message); }
+
+                        // 5. Find OMath inséré + diag fusion
+                        if (usedXmlTransplant)
+                        {
+                            int omathCountAfter = 0;
+                            try { omathCountAfter = doc.OMaths.Count; } catch { }
+                            foreach (Word.OMath om in doc.OMaths)
+                            {
+                                var rng = om.Range;
+                                if (rng.Start >= firstParaStart - 5 && rng.End > rng.Start)
+                                {
+                                    int eqArrCount = 0;
+                                    try
+                                    {
+                                        string omXml = om.Range.WordOpenXML ?? "";
+                                        eqArrCount = System.Text.RegularExpressions.Regex.Matches(omXml, "<m:eqArr>").Count;
+                                    }
+                                    catch { }
+                                    LogDiag($"insert_transplant: OMaths.Count={omathCountAfter} matched [{rng.Start},{rng.End}] eqArrs={eqArrCount}");
+                                    newStart = rng.Start;
+                                    newEnd = rng.End;
+                                    omathCreated = true;
+                                    break;
+                                }
+                            }
+                            if (!omathCreated) LogDiag("insert: transplant ok but OMath not found");
+                        }
+                    }
+                    else { LogDiag("insert: build-isolated returned null"); }
                 }
-                catch (Exception ex) { LogDiag("rollback_error: " + ex.Message); }
-                // On signale au caller que rien n'a été inséré : zone vide.
-                return (absStart, absStart);
+                catch (Exception ex) { LogDiag("insert_xml_transplant_error: " + ex.Message); }
             }
 
-            // On aligne l'OMath sur l'alignement du paragraphe texte — par défaut
-            // Word centre les équations (wdOMathJcCenterGroup), ce qui ne respecte
-            // pas le choix utilisateur. On touche uniquement OMath.Justification et
-            // OMathPara.Justification, jamais le paragraphe texte.
-            SyncOMathJustificationToParagraph(doc, absStart, absStart + insertedLen);
+            // Fallback API in-place (legacy .doc OU si transplant XML a échoué)
+            if (!omathCreated)
+            {
+                string unicodeMath = LatexToUnicodeMath.Convert(latex);
+                LogDiag($"insert: fallback API in-place. latex→umath \"{latex}\" → \"{unicodeMath}\"");
+                bool nextIsWs = absEnd < docEnd && IsWhitespaceCharAt(doc, absEnd);
+                string insertText = nextIsWs ? unicodeMath : unicodeMath + " ";
+                try { doc.Range(absStart, absEnd).Text = insertText; } catch (Exception ex) { LogDiag("insert_replace_error: " + ex.Message); }
+                int insertedLen = unicodeMath.Length;
+                var mathRange = doc.Range(absStart, absStart + insertedLen);
+                try
+                {
+                    mathRange.OMaths.Add(mathRange);
+                    mathRange.OMaths.BuildUp();
+                }
+                catch (Exception ex) { LogDiag("omath_add_error: " + ex.Message); }
+                newEnd = absStart + insertedLen;
+                try
+                {
+                    foreach (Word.OMath om in doc.OMaths)
+                    {
+                        var rng = om.Range;
+                        if (rng.Start <= absStart && rng.End > absStart)
+                        {
+                            newStart = rng.Start;
+                            newEnd = rng.End;
+                            omathCreated = true;
+                            break;
+                        }
+                    }
+                }
+                catch { }
+                if (!omathCreated)
+                {
+                    // Rollback : restore le texte original
+                    LogDiag($"omath NOT created — rollback to original=\"{originalText}\"");
+                    try
+                    {
+                        var fallbackRange = doc.Range(absStart, Math.Min(absStart + insertText.Length, doc.Content.End));
+                        fallbackRange.Text = originalText;
+                        int restoredEnd = absStart + originalText.Length;
+                        try { _app.Selection.SetRange(restoredEnd, restoredEnd); } catch { }
+                    }
+                    catch (Exception ex) { LogDiag("rollback_error: " + ex.Message); }
+                    return (absStart, absStart);
+                }
+            }
+
+            // On aligne l'OMath sur l'alignement du paragraphe texte. Skipped
+            // si on a utilisé le transplant XML car le m:jc a déjà été pré-patché
+            // dans le XML capturé avant l'unique InsertXML (cf. bug user 04-05 :
+            // un 2e InsertXML via PatchOMathParaJustificationViaXml ICI causait
+            // une fusion avec l'OMath voisin).
+            _lastInsertUsedXmlTransplant = usedXmlTransplant;
+            if (!usedXmlTransplant)
+            {
+                SyncOMathJustificationToParagraph(doc, newStart, newEnd);
+            }
 
             // Positionne le curseur juste après l'OMath, puis vérifie qu'on n'est
             // PAS resté dans l'éditeur math (Word interprète parfois "pile après"

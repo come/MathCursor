@@ -300,6 +300,27 @@ namespace MathCursor.Core.Tests
             Assert.Equal(expected, got);
         }
 
+        // ---- ADR 05-05 cases-multiline Phase 2 — système avec alignement ----
+
+        [Theory]
+        // Cases avec alignement intra-bloc : col1=lhs, col2=`= rhs`
+        // (& sépare les colonnes, \\ → @ pour les lignes).
+        // Espace après `{` pour séparation visuelle entre accolade et lignes
+        // (cf. user feedback 05-05 « plus un petit espace entre l'accolade
+        // et les lignes »).
+        [InlineData(
+            "\\begin{cases} y & = x+2 \\\\ z & = x+2 \\end{cases}",
+            "{ █(y&= x+2@z&= x+2)┤")]
+        [InlineData(
+            "\\begin{cases} x+1 & \\\\ y & = x+2 \\end{cases}",
+            "{ █(x+1&@y&= x+2)┤")]
+        public void Cases_environment_converts_with_alignment_and_padding(string latex, string expected)
+        {
+            var got = LatexToUnicodeMath.Convert(latex);
+            _log.WriteLine($"CASES\nLaTeX: \"{latex}\"\n=> \"{got}\"\nexpected: \"{expected}\"");
+            Assert.Equal(expected, got);
+        }
+
         [Fact]
         public void End_to_end_bug_image_frac_does_not_absorb_x()
         {

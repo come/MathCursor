@@ -73,6 +73,35 @@ namespace MathCursor.Tests.UI
             Assert.Contains("\\{", got);
         }
 
+        [Fact(DisplayName = "Cases avec `&` (alignement intra-bloc) : strip les `&` pour WpfMath")]
+        public void Cases_with_ampersand_strips_for_wpfmath()
+        {
+            // Régression user 05-05 : depuis l'ajout de l'alignement intra-cases
+            // (renderer émet `&` pour aligner sur `=`), WpfMath rejetait le LaTeX
+            // car `&` est invalide hors environnement matrix → popup ne rendait
+            // plus la formule. Fix : strip les `&` dans WpfMathAdapter (le
+            // stacking ne supporte pas l'alignement de toute façon).
+            var got = WpfMathAdapter.Adapt("\\begin{cases} v & = \\square \\end{cases}");
+            // Plus de `&` dans la sortie envoyée à WpfMath
+            Assert.DoesNotContain("&", got);
+            // Le contenu est préservé
+            Assert.Contains("v", got);
+            Assert.Contains("\\square", got);
+            // Toujours une accolade gauche
+            Assert.Contains("\\{", got);
+        }
+
+        [Fact(DisplayName = "Cases multi-ligne avec `&` : strip + stackrel")]
+        public void Cases_multiline_with_ampersand_stacks_correctly()
+        {
+            // 2 lignes avec `&` d'alignement → stacker sans les `&`.
+            var got = WpfMathAdapter.Adapt("\\begin{cases} y & = x+2 \\\\ z & = x+2 \\end{cases}");
+            Assert.DoesNotContain("&", got);
+            Assert.Contains("\\stackrel", got);
+            Assert.Contains("y", got);
+            Assert.Contains("z", got);
+        }
+
         // ---- \begin{pmatrix}/bmatrix/vmatrix → \binom / \genfrac ----
 
         [Fact]

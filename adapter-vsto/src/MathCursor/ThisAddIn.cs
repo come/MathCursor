@@ -174,13 +174,21 @@ namespace MathCursor
             return _suggestions.MoveSelectionHorizontal(+1);
         }
 
-        // Enter : si popup visible + NavMode → commit du candidat sélectionné,
-        // sinon pass-through (Word insère un saut de ligne normal).
+        // Enter : (1) si popup visible + NavMode → commit du candidat
+        // sélectionné, sinon (2) si list-mode actif (ADR 05-05) → préfixage
+        // automatique du marker + commit cross-merge, sinon (3) pass-through
+        // (Word insère un saut de ligne normal).
         private bool HandleEnterPressed()
         {
-            if (_suggestions?.IsPopupVisible != true) return false;
-            if (!_suggestions.IsNavMode) return false;
-            return _suggestions.CommitSelected();
+            if (_suggestions?.IsPopupVisible == true && _suggestions.IsNavMode)
+            {
+                return _suggestions.CommitSelected();
+            }
+            // Liste invisible : si une chaîne multi-ligne vient d'être créée
+            // ou étendue, l'utilisateur peut taper sa nouvelle équation sans
+            // re-saisir le marker. Voir ListModeStateMachine.
+            if (_suggestions?.TryHandleListModeEnter() == true) return true;
+            return false;
         }
 
         protected override IRibbonExtensibility CreateRibbonExtensibilityObject()

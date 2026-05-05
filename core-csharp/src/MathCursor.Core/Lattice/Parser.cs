@@ -188,22 +188,18 @@ namespace MathCursor.Core.Lattice
 
         /// <summary>
         /// Détecte un pattern multi-ligne et construit un MultiLineBlock.
-        /// Phase 1 (cf. brief 30-04 §10) : align* uniquement (équivalences
-        /// `<=>`/`=>`/`<=` et chaîne d'égalités `=`). Phase 2 ajoutera
-        /// `cases` (système `{`).
-        ///
+        /// Deux modes supportés :
+        /// <list type="bullet">
+        /// <item><b>align*</b> (Phase 1, brief 30-04 §10) : ligne 1 expression
+        /// quelconque, lignes 2+ commencent par marker align (<c>&lt;=&gt;</c>,
+        /// <c>=&gt;</c>, <c>&lt;=</c>, <c>=</c>).</item>
+        /// <item><b>cases</b> (Phase 2, ADR 05-05) : TOUTES les lignes
+        /// commencent par <c>{ </c> (avec espace obligatoire). Multi-ligne ou
+        /// single-line. Pas de mix avec align (cf. brief 30-04 §3.4).</item>
+        /// </list>
         /// <para>Stratégie spéculative : sauvegarde <c>_i</c>, tente le
         /// pattern, restaure en cas d'échec pour laisser ParseRelation
         /// traiter normalement la source comme une ligne unique.</para>
-        ///
-        /// <para>Pattern align* :</para>
-        /// <list type="bullet">
-        /// <item>Ligne 1 : expression quelconque</item>
-        /// <item>Ligne 2+ : commence par marqueur align (`&lt;=&gt;`, `=&gt;`,
-        ///   `&lt;=`, ou `=`) puis expression</item>
-        /// <item>Au moins 2 lignes pour considérer comme bloc (sinon 1 ligne
-        ///   = pas un MultiLineBlock, fallback ParseRelation).</item>
-        /// </list>
         /// </summary>
         private MultiLineBlock? TryParseMultiLineBlock()
         {
@@ -217,13 +213,33 @@ namespace MathCursor.Core.Lattice
             {
                 if (_hasLineBreakBefore[i]) lineStarts.Add(i);
             }
-            // Pas de LineBreak → pas de MultiLineBlock possible
+
+            // Si la 1re ligne commence par marker cases (`{ `), on tente
+            // cases en priorité — pas de mix avec align (cf. brief 30-04 §3.4).
+            if (StartsWithCasesMarkerAt(lineStarts[0]))
+            {
+                var cases = TryParseCasesBlock(lineStarts);
+                if (cases != null) return cases;
+                _i = save;
+                return null;
+            }
+
+            // Single-line non-cases → pas de MultiLineBlock
             if (lineStarts.Count < 2) return null;
 
+            // Multi-ligne align* (Phase 1)
+            return TryParseAlignBlock(lineStarts, save);
+        }
+
+        /// <summary>
+        /// Phase 1 align* : chaque ligne 2+ doit commencer par un marker align.
+        /// Extrait de <see cref="TryParseMultiLineBlock"/> pour clarté.
+        /// </summary>
+        private MultiLineBlock? TryParseAlignBlock(List<int> lineStarts, int save)
+        {
             // Pour chaque ligne 2+, vérifier qu'elle commence par un marqueur
             // align. Si UNE SEULE ligne 2+ ne commence pas par marqueur align,
-            // ce n'est pas un align block (peut-être un bloc cases en V2).
-            // Phase 1 = tout ou rien sur les marqueurs align.
+            // ce n'est pas un align block.
             var prefixes = new List<string> { "" }; // Première ligne = pas de préfixe
             for (int li = 1; li < lineStarts.Count; li++)
             {
@@ -254,6 +270,56 @@ namespace MathCursor.Core.Lattice
             // Avancer _i au-delà de tous les tokens consommés
             _i = _toks.Count;
             return new MultiLineBlock("align", lines, prefixes);
+        }
+
+        /// <summary>
+        /// Phase 2 cases : TOUTES les lignes doivent commencer par <c>{ </c>
+        /// (espace obligatoire, cf. ADR 05-05). Single-line ou multi-line.
+        /// Le <c>{</c> en tête est consommé (1 token) puisqu'il est implicite
+        /// dans <c>\begin{cases}</c>. <c>LinePrefix</c> = <c>""</c> pour
+        /// chaque ligne (pas de préfixe inline en mode cases).
+        /// </summary>
+        private MultiLineBlock? TryParseCasesBlock(List<int> lineStarts)
+        {
+            int save = _i;
+
+            // Toutes les lignes doivent commencer par marker cases `{ `
+            for (int li = 0; li < lineStarts.Count; li++)
+            {
+                if (!StartsWithCasesMarkerAt(lineStarts[li])) { _i = save; return null; }
+            }
+
+            var lines = new List<AstNode>();
+            var prefixes = new List<string>();
+            for (int li = 0; li < lineStarts.Count; li++)
+            {
+                // Skip le `{` en tête (1 token, l'espace après est déjà filtrée)
+                int s = lineStarts[li] + 1;
+                int e = (li + 1 < lineStarts.Count) ? lineStarts[li + 1] : _toks.Count;
+                if (s >= e) { _i = save; return null; }
+                var lineAst = ParseSubrangeLine(s, e);
+                lines.Add(lineAst);
+                prefixes.Add("");
+            }
+
+            _i = _toks.Count;
+            return new MultiLineBlock("cases", lines, prefixes);
+        }
+
+        /// <summary>
+        /// True si le token à <paramref name="lineStart"/> est l'op <c>{</c>
+        /// suivi (dans le flux brut) d'un espace. Sinon le <c>{</c> est traité
+        /// comme un délimiteur de set ou autre, pas comme marker système.
+        /// </summary>
+        private bool StartsWithCasesMarkerAt(int lineStart)
+        {
+            if (lineStart >= _toks.Count) return false;
+            var tok = _toks[lineStart];
+            if (tok.Type != EdgeType.Op || tok.Value != "{") return false;
+            // Le token suivant doit avoir un espace AVANT (= entre le `{` et lui)
+            int next = lineStart + 1;
+            if (next >= _toks.Count) return false;
+            return _hasSpaceBefore[next];
         }
 
         /// <summary>

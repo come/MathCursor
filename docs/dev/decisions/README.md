@@ -19,7 +19,14 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-05-05
+- `[molle]` Feat — [Mode liste cases `{` Phase 2 (multi-ligne + list-mode visible)](2026-05-05-Feat-cases-multiline-phase2.md)
+- `[molle]` Feat — [Mode liste multi-ligne visible (auto-injection du marker en texte)](2026-05-05-Feat-multiline-list-mode-visible.md) (Supersedes multiline-list-mode du même jour)
+- `[molle]` Feat — [Mode liste invisible pour multi-ligne (préfixage auto du marker)](2026-05-05-Feat-multiline-list-mode.md) `retracté`
+
 ### 2026-05-04
+- `[molle]` Meta — [Refactor insertion OMath via build isolé + transplant XML (anti-absorption BuildUp)](2026-05-04-Refactor-omath-via-xml-transplant.md)
+- `[molle]` Feat — [Édition multi-ligne via cascade cross-merge (2 modes)](2026-05-04-Feat-multiline-edit-cascade-merge.md)
 - `[molle]` Meta — [Refactor du pipeline cross-merge (4 phases séquentielles)](2026-05-04-Meta-cross-merge-pipeline-refactor.md)
 
 ### 2026-05-01
