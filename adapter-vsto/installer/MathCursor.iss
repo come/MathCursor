@@ -14,7 +14,7 @@
 ;   - Visual Studio Tools for Office Runtime (livré avec Office 2016+)
 
 #define MyAppName "MathCursor"
-#define MyAppVersion "0.5.6"
+#define MyAppVersion "0.5.7"
 #define MyAppPublisher "MathCursor"
 #define MyAppExeName "MathCursor.dll"
 #define MyAppId "{{6E4B3A1E-7F2D-4B8C-9A0E-2C5D6F7A8B90}"
@@ -58,10 +58,13 @@ Source: "payload\FuzzySharp.dll";                         DestDir: "{app}"; Flag
 Source: "payload\YamlDotNet.dll";                         DestDir: "{app}"; Flags: ignoreversion
 Source: "payload\Google.Protobuf.dll";                    DestDir: "{app}"; Flags: ignoreversion
 Source: "payload\Microsoft.ML.OnnxRuntime.dll";           DestDir: "{app}"; Flags: ignoreversion
-; Native ORT DLLs : pas copiées par MSBuild (PlatformTarget non défini).
-; Indispensables : NativeMethods..cctor() crashe sans onnxruntime.dll.
-Source: "payload\onnxruntime.dll";                        DestDir: "{app}"; Flags: ignoreversion
-Source: "payload\onnxruntime_providers_shared.dll";       DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+; Native ORT DLLs : multi-arch (cf. commit cca4712, Word peut être 32 ou 64 bits).
+; ThisAddIn.ConfigureOnnxRuntimeNativeDir() appelle SetDllDirectory sur
+; {app}\onnxruntime-{x86|x64} selon IntPtr.Size avant le 1er SessionOptions.
+Source: "payload\onnxruntime-x86\onnxruntime.dll";                  DestDir: "{app}\onnxruntime-x86"; Flags: ignoreversion
+Source: "payload\onnxruntime-x86\onnxruntime_providers_shared.dll"; DestDir: "{app}\onnxruntime-x86"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "payload\onnxruntime-x64\onnxruntime.dll";                  DestDir: "{app}\onnxruntime-x64"; Flags: ignoreversion
+Source: "payload\onnxruntime-x64\onnxruntime_providers_shared.dll"; DestDir: "{app}\onnxruntime-x64"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "payload\Microsoft.Office.Tools.Common.v4.0.Utilities.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 ; Runtimes .NET (ne-gênent-pas si présents dans GAC aussi)
@@ -86,10 +89,11 @@ Source: "feedback.url";                                   DestDir: "{userappdata
 ; une fois l'installation terminée.
 Source: "payload\mathcursor.cer";                         DestDir: "{tmp}"; Flags: deleteafterinstall
 
-; Visual C++ Redistributable x64 — requis par le DLL natif onnxruntime.dll.
+; Visual C++ Redistributables x86 + x64 — requis par les DLLs natives ONNX
+; (1 par arch). Word 32-bit a besoin du x86 ; Word 64-bit a besoin du x64.
 ; `skipifsourcedoesntexist` : si build.ps1 n'a pas pu télécharger, on skippe
-; sans casser le build (l'installer fonctionnera mais l'utilisateur devra
-; avoir VC++ Redist 2015-2022 installé manuellement).
+; sans casser le build (l'utilisateur devra avoir VC++ Redist installé).
+Source: "payload\vc_redist.x86.exe";                      DestDir: "{tmp}"; Flags: deleteafterinstall skipifsourcedoesntexist
 Source: "payload\vc_redist.x64.exe";                      DestDir: "{tmp}"; Flags: deleteafterinstall skipifsourcedoesntexist
 
 [Run]
@@ -99,10 +103,14 @@ Source: "payload\vc_redist.x64.exe";                      DestDir: "{tmp}"; Flag
 ; UNE FOIS pour autoriser l'install machine-wide.
 ; skipifdoesntexist : si le fichier n'a pas été inclus (DL échoué), on
 ; n'essaie pas de l'exécuter.
+Filename: "{tmp}\vc_redist.x86.exe"; \
+    Parameters: "/install /quiet /norestart"; \
+    Flags: waituntilterminated skipifdoesntexist; \
+    StatusMsg: "Vérification du runtime Visual C++ (x86)..."
 Filename: "{tmp}\vc_redist.x64.exe"; \
     Parameters: "/install /quiet /norestart"; \
     Flags: waituntilterminated skipifdoesntexist; \
-    StatusMsg: "Vérification du runtime Visual C++..."
+    StatusMsg: "Vérification du runtime Visual C++ (x64)..."
 
 ; Import du certificat auto-signé UNIQUEMENT dans TrustedPublisher.
 ; - Pas de Root : l'import dans Cert:\CurrentUser\Root déclenche un popup UAC-like

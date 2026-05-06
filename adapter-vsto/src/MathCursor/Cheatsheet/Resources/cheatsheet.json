@@ -1,0 +1,236 @@
+{
+  "schema_version": 2,
+  "categories": [
+    {
+      "id": "simple-equations",
+      "label_fr": "Équations simples",
+      "label_en": "Simple equations",
+      "order": 1,
+      "entries": [
+        {
+          "title_fr": "Fraction",
+          "title_en": "Fraction",
+          "stenos": ["1/2"],
+          "rendered_latex": "\\frac{1}{2}",
+          "tags": ["fraction", "demi", "half"]
+        },
+        {
+          "title_fr": "Puissance",
+          "title_en": "Power",
+          "stenos": ["x^2", "x²"],
+          "rendered_latex": "x^2",
+          "tags": ["puissance", "carre", "exposant", "power"]
+        },
+        {
+          "title_fr": "Racine carrée",
+          "title_en": "Square root",
+          "stenos": ["racine x+1", "sqrt x+1"],
+          "rendered_latex": "\\sqrt{x+1}",
+          "tags": ["racine", "sqrt"]
+        },
+        {
+          "title_fr": "Équation du second degré",
+          "title_en": "Quadratic equation",
+          "stenos": ["x^2 + 3x - 1 = 0", "x² + 3x - 1 = 0"],
+          "rendered_latex": "x^2 + 3x - 1 = 0",
+          "tags": ["polynome", "quadratic"]
+        }
+      ]
+    },
+    {
+      "id": "systems",
+      "label_fr": "Systèmes",
+      "label_en": "Systems",
+      "order": 2,
+      "entries": [
+        {
+          "title_fr": "Système d'équations",
+          "title_en": "System of equations",
+          "stenos": ["{ x+y=1\n{ x-y=3"],
+          "rendered_latex": "\\begin{cases} x+y = 1 \\\\ x-y = 3 \\end{cases}",
+          "tags": ["systeme", "system", "accolade"]
+        },
+        {
+          "title_fr": "Égalités en chaîne",
+          "title_en": "Chained equalities",
+          "stenos": ["x+1=2\n= 2x-3\n= 2x-3"],
+          "rendered_latex": "\\begin{align*} x+1 & = 2 \\\\ & = 2x - 3 \\end{align*}",
+          "tags": ["egalite", "chaine", "align"]
+        },
+        {
+          "title_fr": "Équivalences / implications",
+          "title_en": "Equivalences / implications",
+          "stenos": ["<=> x=1\n=> x>0", "<==> x=1\n==> x>0"],
+          "rendered_latex": "\\begin{align*} & \\Leftrightarrow x = 1 \\\\ & \\Rightarrow x > 0 \\end{align*}",
+          "tags": ["equivalence", "implication", "fleche", "arrow"]
+        }
+      ]
+    },
+    {
+      "id": "geometry",
+      "label_fr": "Géométrie",
+      "label_en": "Geometry",
+      "order": 3,
+      "entries": [
+        {
+          "title_fr": "Vecteur AB",
+          "title_en": "Vector AB",
+          "stenos": ["vec AB", "vecteur AB"],
+          "rendered_latex": "\\vec{AB}",
+          "tags": ["vecteur", "vector"]
+        },
+        {
+          "title_fr": "Vecteur avec coordonnées",
+          "title_en": "Vector with coordinates",
+          "stenos": ["vec u (1; 2)", "vecteur u (1, 2)"],
+          "rendered_latex": "\\vec{u}\\,(1\\,;\\,2)",
+          "tags": ["vecteur", "vector", "coord", "coordonnees"]
+        },
+        {
+          "title_fr": "Segment, droite, longueur",
+          "title_en": "Segment, line, length",
+          "stenos": ["[AB]", "(AB)", "AB"],
+          "rendered_latex": "[AB],\\ (AB),\\ AB",
+          "tags": ["segment", "droite", "line", "longueur"]
+        },
+        {
+          "title_fr": "Angle ABC",
+          "title_en": "Angle ABC",
+          "stenos": ["angle ABC"],
+          "rendered_latex": "\\widehat{ABC}",
+          "tags": ["angle", "chapeau", "hat"]
+        }
+      ]
+    },
+    {
+      "id": "functions-derivatives",
+      "label_fr": "Fonctions et dérivées",
+      "label_en": "Functions and derivatives",
+      "order": 4,
+      "entries": [
+        {
+          "title_fr": "Définition de fonction",
+          "title_en": "Function definition",
+          "stenos": ["f: x -> x^2", "f : x -> x²"],
+          "rendered_latex": "f : x \\mapsto x^2",
+          "tags": ["fonction", "function", "definition", "mapsto"]
+        },
+        {
+          "title_fr": "Dérivée",
+          "title_en": "Derivative",
+          "stenos": ["f'(x)", "f''(x)"],
+          "rendered_latex": "f'(x),\\ f''(x)",
+          "tags": ["derivee", "derivative", "prime"]
+        },
+        {
+          "title_fr": "Composition",
+          "title_en": "Composition",
+          "stenos": ["f o g"],
+          "rendered_latex": "f \\circ g",
+          "tags": ["composee", "composition", "rond"]
+        },
+        {
+          "title_fr": "exp et e^x",
+          "title_en": "exp and e^x",
+          "stenos": ["exp(x)", "e^x"],
+          "rendered_latex": "e^{x}",
+          "tags": ["exponentielle", "exp", "exponential"]
+        }
+      ]
+    },
+    {
+      "id": "limits",
+      "label_fr": "Limites",
+      "label_en": "Limits",
+      "order": 5,
+      "entries": [
+        {
+          "title_fr": "Limite",
+          "title_en": "Limit",
+          "stenos": ["lim x 0 sin(x)/x"],
+          "rendered_latex": "\\lim_{x \\to 0} \\frac{\\sin(x)}{x}",
+          "tags": ["limite", "limit", "lim"]
+        },
+        {
+          "title_fr": "Infini",
+          "title_en": "Infinity",
+          "stenos": ["+inf", "-inf"],
+          "rendered_latex": "+\\infty,\\ -\\infty",
+          "tags": ["infini", "infinity", "infty"]
+        },
+        {
+          "title_fr": "Suite indexée",
+          "title_en": "Indexed sequence",
+          "stenos": ["(u_n)"],
+          "rendered_latex": "(u_n)",
+          "tags": ["suite", "sequence", "indice"]
+        }
+      ]
+    },
+    {
+      "id": "probabilities",
+      "label_fr": "Probabilités",
+      "label_en": "Probabilities",
+      "order": 6,
+      "entries": [
+        {
+          "title_fr": "Probabilité conditionnelle",
+          "title_en": "Conditional probability",
+          "stenos": ["P(A|B)"],
+          "rendered_latex": "P(A \\mid B)",
+          "tags": ["probabilite", "probability", "conditionnelle"]
+        },
+        {
+          "title_fr": "Espérance, variance",
+          "title_en": "Expectation, variance",
+          "stenos": ["E(X)", "V(X)"],
+          "rendered_latex": "E(X),\\ V(X)",
+          "tags": ["esperance", "expectation", "variance"]
+        },
+        {
+          "title_fr": "Moyenne empirique",
+          "title_en": "Sample mean",
+          "stenos": ["bar x"],
+          "rendered_latex": "\\bar{x}",
+          "tags": ["moyenne", "mean", "barre"]
+        }
+      ]
+    },
+    {
+      "id": "sets-logic",
+      "label_fr": "Ensembles et logique",
+      "label_en": "Sets and logic",
+      "order": 7,
+      "entries": [
+        {
+          "title_fr": "Ensemble des réels",
+          "title_en": "Real numbers",
+          "stenos": ["R", "bbR"],
+          "rendered_latex": "\\mathbb{R}",
+          "tags": ["reel", "real", "ensemble"]
+        },
+        {
+          "title_fr": "Appartient à",
+          "title_en": "Belongs to",
+          "stenos": ["x appartient R", "x in R"],
+          "rendered_latex": "x \\in \\mathbb{R}",
+          "tags": ["appartient", "in", "ensemble"]
+        },
+        {
+          "title_fr": "Intervalle",
+          "title_en": "Interval",
+          "stenos": ["[0;1]", "]0;1["],
+          "rendered_latex": "[0\\,;\\,1],\\ ]0\\,;\\,1[",
+          "tags": ["intervalle", "interval", "ferme", "ouvert"]
+        },
+        {
+          "title_fr": "Pour tout, il existe",
+          "title_en": "For all, there exists",
+          "stenos": ["forall x in R", "exists x in R"],
+          "rendered_latex": "\\forall x \\in \\mathbb{R},\\ \\exists x \\in \\mathbb{R}",
+          "tags": ["forall", "exists", "quantificateur"]
+        }
+      ]
+    }
+  ]
+}

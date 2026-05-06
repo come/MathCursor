@@ -3,18 +3,19 @@
   <ribbon>
     <tabs>
       <!--
-        Onglet dédié MathCursor (cf. ADR 2026-05-05-Feat-ribbon-refactor-cheatsheet).
-        L'onglet n'est PAS l'onglet actif au démarrage (Word reste sur Accueil).
-        L'utilisateur clique sur l'onglet ou utilise Alt + lettre auto-affectée.
+        Group MathCursor placé dans l'onglet Accueil de Word (cf. ADR
+        2026-05-06-Feat-ribbon-pane-examples-pivot, qui supersede 2026-05-05).
+        Onglet dédié écarté car visuellement vide (2 boutons), pivot vers
+        intégration discrète dans TabHome.
       -->
-      <tab id="MathCursorTab" getLabel="OnGetTabLabel">
+      <tab idMso="TabHome">
         <group id="MathCursorToolsGroup" getLabel="OnGetToolsGroupLabel">
-          <button id="CheatsheetButton"
-                  getLabel="OnGetCheatsheetButtonLabel"
-                  getScreentip="OnGetCheatsheetButtonScreentip"
-                  size="large"
-                  imageMso="HelpIndex"
-                  onAction="OnCheatsheetClicked" />
+          <!-- Bouton Cheatsheet retiré temporairement : le pane planté en
+               l'état (refonte galerie d'exemples en cours, cf. ADR
+               2026-05-06-Feat-ribbon-pane-examples-pivot). Réintégrer en
+               "Exemples" quand la refonte sera livrée. Icône mortier
+               préservée dans Resources/cheatsheet{16,32}.png + script de
+               régénération dans tools/icons/. -->
           <button id="ReportIssueButton"
                   getLabel="OnGetReportButtonLabel"
                   getScreentip="OnGetReportButtonScreentip"

@@ -54,7 +54,7 @@
 
         <div class="cta-row" style="margin: 24px 0 40px;">
           <a href="/download/latest.exe" class="button button--primary" download data-i18n="dl_cta_latest">
-            Télécharger la dernière version (0.5.6)
+            Télécharger la dernière version (0.5.7)
           </a>
           <a href="index.html#installation" class="button button--secondary" data-i18n="dl_cta_guide">
             Guide d'installation
@@ -62,6 +62,21 @@
         </div>
 
         <h2 data-i18n="dl_history_h">Historique des versions</h2>
+
+        <article class="card" style="margin-bottom: 20px;">
+          <h3>0.5.7 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_057_date">— 6 mai 2026</span></h3>
+          <p data-i18n="dl_057_intro">Cette version corrige plusieurs bugs autour des vecteurs en saisie multi-ligne et améliore la robustesse de la désambiguïsation. Compatible Word 32 bits et 64 bits.</p>
+          <ul>
+            <li data-i18n="dl_057_1"><strong>Word 32 bits supporté</strong> : l'installer embarque maintenant les runtimes ONNX et VC++ Redistributable pour les deux architectures (x86 + x64). Plus de crash au démarrage sur Word 32 bits.</li>
+            <li data-i18n="dl_057_2"><strong>Vecteur colonne sur séparateur virgule/point-virgule</strong> : <code>AB(1,2)</code> et <code>AB(1;2)</code> proposent maintenant le vecteur colonne en alternative dans la popup (avant : seulement <code>AB(1 2)</code> avec espace).</li>
+            <li data-i18n="dl_057_3"><strong>Vecteurs préservés en saisie multi-ligne</strong> : systèmes <code>{ … </code> et chaînes <code>=</code> / <code>&lt;=&gt;</code> conservent les choix vec/forall/etc. quand on enchaîne plusieurs lignes.</li>
+            <li data-i18n="dl_057_4"><strong>Vecteurs préservés au revert</strong> : « Revenir à la saisie » sur un OMath multi-ligne avec vecteurs, puis re-validation, ne fait plus disparaître les vec.</li>
+            <li data-i18n="dl_057_5"><strong>Fix flèches multiples empilées</strong> : plus de <code>\vec{\vec{AB}}</code> visible dans certaines combinaisons d'OMaths similaires fusionnés.</li>
+            <li data-i18n="dl_057_6"><strong>Reconnaissance de coordonnées dès la frappe</strong> : <code>AB(1,2)</code> est désormais reconnu comme coordonnées de vecteur dès le premier rendu (avant : function call par défaut, alt vec en cascade).</li>
+            <li data-i18n="dl_057_7"><strong>Sous le capot</strong> : refactor de l'architecture interne (pipeline de commit explicite, état session encapsulé) pour faciliter les futurs ajouts.</li>
+          </ul>
+          <a href="/download/MathCursor-Setup-0.5.7.exe" class="button button--secondary" download data-i18n="dl_057_btn">Télécharger 0.5.7</a>
+        </article>
 
         <article class="card" style="margin-bottom: 20px;">
           <h3>0.5.6 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_056_date">— 5 mai 2026</span></h3>
@@ -74,7 +89,7 @@
             <li data-i18n="dl_056_5"><strong>Fix curseur monte avec contenu existant</strong> : quand un OMath existait au-dessus, l'identification post-insertion pouvait pointer sur le mauvais OMath et faire monter le curseur.</li>
             <li data-i18n="dl_056_6"><strong>Fix alignement à gauche</strong> : les formules autonomes (sans texte autour) ne s'auto-centrent plus, elles restent alignées à gauche par défaut.</li>
           </ul>
-          <a href="/download/MathCursor-Setup-0.5.6.exe" class="button button--secondary" download data-i18n="dl_056_btn">Télécharger 0.5.6</a>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.7 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -85,7 +100,7 @@
             <li data-i18n="dl_055_2"><strong>Plus de WhatsApp / email manuel</strong> : le bundle (logs + source brute + LaTeX rendu) est packagé et envoyé automatiquement. Toujours opt-in : on n'envoie rien sans ton clic explicite sur le bouton.</li>
             <li data-i18n="dl_055_3"><strong>Confidentialité préservée</strong> : aucun contenu du document n'est envoyé — uniquement la zone math en cours et les logs techniques nécessaires au diagnostic.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.6 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.7 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -101,7 +116,7 @@
             <li data-i18n="dl_054_7"><strong>Fix NER post-équation</strong> : quand une équation est déjà placée avant, les conjonctions (<code>et</code>, <code>donc</code>…) ne sont plus aspirées dans la zone math suivante.</li>
             <li data-i18n="dl_054_8"><strong>Fix fonction trigo + exposant</strong> : <code>cos2(x)+1</code> rend <code>$\cos(x)^2+1$</code> sans aspirer la suite.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.6 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.7 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -115,7 +130,7 @@
             <li data-i18n="dl_053_5"><strong>Désambiguïsation popup</strong> : <code>f(1, 2)</code> propose function call (défaut) ou vecteur en alt ; <code>u*v</code> propose <code>u·v</code> (défaut) ou <code>$\vec{u} \cdot \vec{v}$</code> (produit scalaire) en alt.</li>
             <li data-i18n="dl_053_6"><strong>Fix critique installer</strong> : déploiement de la DLL native <code>onnxruntime.dll</code> qui manquait sur certaines machines (l'add-in plantait au démarrage avec une <code>TypeInitializationException</code>).</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.6 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.7 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -124,7 +139,7 @@
             <li data-i18n="dl_05x_1"><strong>0.5.2</strong> : fix critique <code>\int</code> rendu <code>∈t</code> au lieu de <code>∫</code>. Ordre des règles dans <code>LatexToUnicodeMath</code> qui appliquait <code>\in → ∈</code> avant <code>\int → ∫</code>.</li>
             <li data-i18n="dl_05x_2"><strong>0.5.1</strong> : numéro de version dynamique dans le ruban Word, icône « Signaler » distincte, ruban en français/anglais selon la locale Word.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.6 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.7 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -143,7 +158,7 @@
             <li data-i18n="dl_050_10"><strong>ABC → angle / triangle</strong> en désambig.</li>
             <li data-i18n="dl_050_11"><strong>Fix NBSP</strong> : les espaces insécables collés par Word ne cassent plus la conversion.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.6 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.7 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -155,7 +170,7 @@
             <li data-i18n="dl_040_3"><strong>Détection plus précise</strong> : nouveau modèle NER (DistilBERT-multilingual) entraîné sur corpus enrichi.</li>
             <li data-i18n="dl_040_4"><strong>Compat matérielle élargie</strong> : Bay Trail 2014+, VC++ Redist embarqué.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.6 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.7 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -167,7 +182,7 @@
             <li data-i18n="dl_03x_4">Sum / product / integral sans mot-clé : <code>Sum k 1 n f(x)</code>.</li>
             <li data-i18n="dl_03x_5">Angle <code>ABC</code> en notation <code>∠ABC</code>.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Versions archivées — utilise la 0.5.6 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Versions archivées — utilise la 0.5.7 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -175,7 +190,7 @@
           <ul>
             <li data-i18n="dl_01x_1">Premières bêta internes : détection NER, popup, insertion OMath, Ctrl+Espace, signaler un souci, alignement, fixes rendu.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Versions archivées — utilise la 0.5.6 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Versions archivées — utilise la 0.5.7 qui inclut ces changements.</div>
         </article>
 
         <p class="install-note" style="margin-top: 40px;" data-i18n="dl_note">
@@ -205,7 +220,18 @@
         dl_h1: "Downloads",
         dl_lead: "MathCursor installer for Windows + Word Desktop. The <code>latest.exe</code> link always points to the current stable release.",
         dl_beta_banner: "<strong>Beta in progress:</strong> hit a bug or a case that doesn't work? Click <strong>\"Report an issue\"</strong> in the MathCursor popup — one click is enough, your feedback is sent automatically and helps us fix things fast.",
-        dl_cta_latest: "Download the latest version (0.5.6)",
+        dl_cta_latest: "Download the latest version (0.5.7)",
+
+        dl_057_date: "— May 6, 2026",
+        dl_057_intro: "This release fixes several bugs around vectors in multi-line input and improves disambiguation robustness. Compatible with both Word 32-bit and 64-bit.",
+        dl_057_1: "<strong>Word 32-bit supported</strong>: the installer now bundles ONNX runtimes and VC++ Redistributable for both architectures (x86 + x64). No more startup crash on Word 32-bit.",
+        dl_057_2: "<strong>Column vector on comma/semicolon separator</strong>: <code>AB(1,2)</code> and <code>AB(1;2)</code> now propose the column vector as an alternative in the popup (before: only <code>AB(1 2)</code> with space).",
+        dl_057_3: "<strong>Vectors preserved in multi-line input</strong>: <code>{ … </code> systems and <code>=</code> / <code>&lt;=&gt;</code> chains keep vec/forall/etc. choices when chaining multiple lines.",
+        dl_057_4: "<strong>Vectors preserved on revert</strong>: « Revert to original input » on a multi-line OMath with vectors, then re-validate, no longer makes the vec disappear.",
+        dl_057_5: "<strong>Stacked arrows fix</strong>: no more <code>\\vec{\\vec{AB}}</code> visible in some combinations of similar OMaths merged together.",
+        dl_057_6: "<strong>Coordinate recognition from first character</strong>: <code>AB(1,2)</code> is now recognized as vector coordinates from the first render (before: function call by default, vec in cascade alt).",
+        dl_057_7: "<strong>Under the hood</strong>: refactor of internal architecture (explicit commit pipeline, encapsulated session state) to ease future additions.",
+        dl_057_btn: "Download 0.5.7",
 
         dl_056_date: "— May 5, 2026",
         dl_056_intro: "<strong>Multi-line keyboard editing</strong> for systems of equations and chains of equivalences/equalities, plus fixes on caret positioning after conversion.",
@@ -283,7 +309,7 @@
         dl_01x_date: "— April 22-23, 2026",
         dl_01x_1: "First internal betas: NER zone detection, popup, OMath insertion, Ctrl+Space, report-an-issue, alignment, render fixes.",
 
-        dl_retired: "Archived version — use 0.5.6 which includes these changes.",
+        dl_retired: "Archived version — use 0.5.7 which includes these changes.",
         dl_note: "One-click install: no account, no cloud, no document is sent anywhere. See the <a href=\"index.html#installation\">install guide</a> for details.",
         dl_foot: "© 2026 MathCursor · <a href=\"mailto:come2percin@gmail.com\">Contact</a>"
       }

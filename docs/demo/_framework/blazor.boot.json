@@ -1,12 +1,12 @@
 {
   "mainAssemblyName": "MathCursor.Demo.WebAssembly",
   "resources": {
-    "hash": "sha256-9Dp8dR6bRU0z1eoNZDJgFV3+P/l6yNfLeNkhLtTZGII=",
+    "hash": "sha256-DBTKQwHsKDwEx/IUJLNl8uv4oIeNEe1ldlL5qSaWvzg=",
     "fingerprinting": {
       "FuzzySharp.cg8ehpbweh.wasm": "FuzzySharp.wasm",
-      "MathCursor.Core.l3bbcmj9wx.wasm": "MathCursor.Core.wasm",
-      "MathCursor.Demo.WebAssembly.9aeaq6k6p8.wasm": "MathCursor.Demo.WebAssembly.wasm",
-      "MathCursor.HostContract.90khxei18b.wasm": "MathCursor.HostContract.wasm",
+      "MathCursor.Core.fvbsli6agi.wasm": "MathCursor.Core.wasm",
+      "MathCursor.Demo.WebAssembly.gcmz7kyzpl.wasm": "MathCursor.Demo.WebAssembly.wasm",
+      "MathCursor.HostContract.pfsctzigw4.wasm": "MathCursor.HostContract.wasm",
       "Microsoft.AspNetCore.Authorization.qe23mgxr71.wasm": "Microsoft.AspNetCore.Authorization.wasm",
       "Microsoft.AspNetCore.Components.Forms.thhw8cz9wu.wasm": "Microsoft.AspNetCore.Components.Forms.wasm",
       "Microsoft.AspNetCore.Components.flveird317.wasm": "Microsoft.AspNetCore.Components.wasm",
@@ -227,9 +227,9 @@
     },
     "assembly": {
       "FuzzySharp.cg8ehpbweh.wasm": "sha256-TIen2oHWnNk1fnQ+lYSzxw/vFAaDRanR8IySMtoZYpk=",
-      "MathCursor.Core.l3bbcmj9wx.wasm": "sha256-8SBIJmZqv9EIHiKVwMpZQwIud0exYYgxA+3PzJJi+dI=",
-      "MathCursor.Demo.WebAssembly.9aeaq6k6p8.wasm": "sha256-L6cSvE+fog//QQmh0kNPWUWYXEwgPmhLPQtc89VGdsQ=",
-      "MathCursor.HostContract.90khxei18b.wasm": "sha256-iZhwzKhZ1Jg0vn1N1b0SCNFbWDJXOEOwN2TItLlShY8=",
+      "MathCursor.Core.fvbsli6agi.wasm": "sha256-5Tdhb/TdsGmYY58LAw256/NRNOF7Q4tIxl2+ozYGQIc=",
+      "MathCursor.Demo.WebAssembly.gcmz7kyzpl.wasm": "sha256-4HJRS8gQGe9By6uquvOeqBr6KoD6ErjsVenDkvuet+Q=",
+      "MathCursor.HostContract.pfsctzigw4.wasm": "sha256-9eNH/JrqKa1BZ+Zsevi12VVGBTt6QrY6VY1V5r3C0s4=",
       "Microsoft.AspNetCore.Authorization.qe23mgxr71.wasm": "sha256-8hTdrmR59LAJRrDu8LLRlNn641/iWIAjzG1GcCsAhR0=",
       "Microsoft.AspNetCore.Components.Forms.thhw8cz9wu.wasm": "sha256-b7dkg8tMPT2fEN10cgvga1DuG4BElomG5PE4E8Bv5B8=",
       "Microsoft.AspNetCore.Components.flveird317.wasm": "sha256-jTpt9y+Fzn6JeLtdS0PwW+fzVCyw2aJ8kFuDQAMFdcE=",

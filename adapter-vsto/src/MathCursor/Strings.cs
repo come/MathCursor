@@ -56,30 +56,12 @@ namespace MathCursor
 
         // ---------- Ribbon ----------
 
-        /// <summary>Label de l'onglet ruban MathCursor (top-level tab).</summary>
-        public static string TabLabel => Lang switch
-        {
-            "fr" => "MathCursor",
-            _    => "MathCursor",
-        };
-
-        /// <summary>Label du group "Outils" dans l'onglet MathCursor.</summary>
+        /// <summary>Label du group MathCursor dans l'onglet Accueil de Word
+        /// (cf. ADR 2026-05-06-Feat-ribbon-pane-examples-pivot).</summary>
         public static string ToolsGroupLabel(string version) => Lang switch
         {
-            "fr" => $"Outils — v{version}",
-            _    => $"Tools — v{version}",
-        };
-
-        public static string CheatsheetButtonLabel => Lang switch
-        {
-            "fr" => "Cheatsheet",
-            _    => "Cheatsheet",
-        };
-
-        public static string CheatsheetButtonScreentip => Lang switch
-        {
-            "fr" => "Ouvre/ferme le panneau des raccourcis MathCursor (steno math + raccourcis clavier)",
-            _    => "Open/close the MathCursor shortcuts panel (math steno + keyboard shortcuts)",
+            "fr" => $"MathCursor — v{version}",
+            _    => $"MathCursor — v{version}",
         };
 
         public static string ReportButtonLabel => Lang switch
@@ -92,24 +74,6 @@ namespace MathCursor
         {
             "fr" => "Prépare un rapport (log + screenshot + contexte) prêt à envoyer",
             _    => "Builds a report (log + screenshot + context) ready to send",
-        };
-
-        // ---------- Cheatsheet (stub Coming Soon en attendant le pane WPF) ----------
-
-        public static string CheatsheetComingSoonTitle => Lang switch
-        {
-            "fr" => "MathCursor — Cheatsheet",
-            _    => "MathCursor — Cheatsheet",
-        };
-
-        public static string CheatsheetComingSoonBody => Lang switch
-        {
-            "fr" => "Le panneau Cheatsheet arrive dans une prochaine version. " +
-                    "Tu pourras y consulter tous les raccourcis MathCursor pendant " +
-                    "que tu tapes ton cours, sans quitter Word.",
-            _    => "The Cheatsheet panel is coming in an upcoming release. " +
-                    "It will let you check all MathCursor shortcuts while you " +
-                    "type your lesson, without leaving Word.",
         };
 
         // ---------- Examples pane (cf. ADR 06-05 ribbon-pane-examples-pivot) ----------

@@ -72,36 +72,15 @@ namespace MathCursor
         private static string CurrentVersion()
             => Strings.FormatVersion(Assembly.GetExecutingAssembly().GetName().Version);
 
-        public string OnGetTabLabel(IRibbonControl control)
-            => Strings.TabLabel;
-
         public string OnGetToolsGroupLabel(IRibbonControl control)
             => Strings.ToolsGroupLabel(CurrentVersion());
 
-        public string OnGetCheatsheetButtonLabel(IRibbonControl control)
-            => Strings.CheatsheetButtonLabel;
-
-        public string OnGetCheatsheetButtonScreentip(IRibbonControl control)
-            => Strings.CheatsheetButtonScreentip;
 
         public string OnGetReportButtonLabel(IRibbonControl control)
             => Strings.ReportButtonLabel;
 
         public string OnGetReportButtonScreentip(IRibbonControl control)
             => Strings.ReportButtonScreentip;
-
-        /// <summary>
-        /// Toggle du panneau Cheatsheet (cf. ADR 2026-05-05-Feat-ribbon-refactor-cheatsheet).
-        /// Stub V1 = MessageBox « Coming soon ». Le pane WPF arrive en étape 2 du dev.
-        /// </summary>
-        public void OnCheatsheetClicked(IRibbonControl control)
-        {
-            MessageBox.Show(
-                Strings.CheatsheetComingSoonBody,
-                Strings.CheatsheetComingSoonTitle,
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-        }
 
         /// <summary>
         /// Ouvre la fenêtre WPF "Signaler une erreur" pré-remplie depuis le
