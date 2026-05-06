@@ -135,12 +135,22 @@ namespace MathCursor.Tests.UI
         [Theory]
         [InlineData("\\setminus", "\\backslash")]
         [InlineData("\\mapsto", "\\to")]
-        [InlineData("\\iint", "∬")]
-        [InlineData("\\iiint", "∭")]
-        [InlineData("\\oint", "∮")]
         [InlineData("\\bmod", "\\,\\mathrm{mod}\\,")]
         public void Literal_substitution(string input, string expected)
             => Assert.Equal(expected, WpfMathAdapter.Adapt(input));
+
+        // \iint, \iiint, \oint : NE doivent PAS être substitués en Unicode
+        // par WpfMathAdapter (cf. brief 2026-05-06-wpfmath-fallback-renderer).
+        // - \iint, \iiint sont gérés en amont par MixedLatexRenderer (TextBlock
+        //   Unicode ∬ / ∭) — si l'un arrive ici c'est qu'il était nesté, on
+        //   le passe à WpfMath qui le rendra "." mais c'est mieux que rien.
+        // - \oint est rendu natively par WpfMath, donc pass-through.
+        [Theory]
+        [InlineData("\\iint")]
+        [InlineData("\\iiint")]
+        [InlineData("\\oint")]
+        public void Integrals_passthrough(string input)
+            => Assert.Equal(input, WpfMathAdapter.Adapt(input));
 
         [Fact]
         public void Limsup_decomposes()

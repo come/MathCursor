@@ -25,15 +25,12 @@ namespace MathCursor.UI
 
             string s = latex;
 
-            // 1) \mathbb{X} → |X pour la popup. Préfixe `|` qui simule la
-            //    double barre du blackboard : `|R`, `|N`, `|Z`. Distinctif
-            //    visuellement de la variable italique R/N/Z, et clair pour
-            //    l'utilisateur que c'est l'ensemble. Compromis temporaire en
-            //    attendant une vraie font math compatible blackboard.
-            //
-            //    Conversion finale Word OMath garde \mathbb{X} (vrai ℝ avec
-            //    double barre) — le path SuggestionService.InsertOMathAt ne
-            //    passe pas par Adapt.
+            // 1) \mathbb{X} : géré désormais par MixedLatexRenderer qui
+            //    substitue `\mathbb{R}` → `ℝ` (TextBlock Cambria Math) avant
+            //    d'appeler ce Adapt. Si on arrive ici avec un `\mathbb{X}`
+            //    persistant, c'est qu'il était nesté dans un sous-groupe
+            //    (`\frac{\mathbb{R}}{2}`) — on garde l'ancienne dégradation
+            //    `|X` comme fallback. Cf. brief 2026-05-06-wpfmath-fallback-renderer.
             s = MathbbRegex.Replace(s, "|$1");
 
             // 2) \widehat{X} → \hat{X}. Perd le chapeau étendu pour multi-char,
@@ -176,15 +173,16 @@ namespace MathCursor.UI
         {
             // Différence d'ensembles
             ("\\setminus", "\\backslash"),
-            // Flèche fonction : \mapsto (↦ U+21A6) n'est pas dans la font math
-            // de WpfMath (rend un point placeholder, idem \mathbb). On dégrade
-            // en \to (flèche simple →) qui est supporté natively. La conversion
-            // finale Word OMath garde \mapsto (vrai ↦ avec barre verticale).
+            // Flèche fonction : `\mapsto` géré désormais par MixedLatexRenderer
+            // (TextBlock Unicode ↦). Si on arrive ici avec un `\mapsto` (cas
+            // nesté `\frac{\mapsto}{...}`), on dégrade en `\to` qui est
+            // supporté natively par WpfMath.
             ("\\mapsto", "\\to"),
-            // Intégrales doubled / contour
-            ("\\iint",  "∬"), // ∬
-            ("\\iiint", "∭"), // ∭
-            ("\\oint",  "∮"), // ∮
+            // Intégrales doubled : `\iint` / `\iiint` gérés désormais par
+            // MixedLatexRenderer (TextBlock Unicode ∬ / ∭). Substitutions
+            // Unicode retirées : WpfMath ne sait pas rendre les caractères
+            // Unicode (cf. brief 2026-05-06-wpfmath-fallback-renderer).
+            // `\oint` reste en pass-through : WpfMath le rend natively.
             // Limite sup/inf : composer deux macros supportées
             ("\\limsup", "\\lim\\sup"),
             ("\\liminf", "\\lim\\inf"),

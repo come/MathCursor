@@ -6,7 +6,6 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using WpfMath.Controls;
 
 namespace MathCursor.UI
 {
@@ -273,39 +272,14 @@ namespace MathCursor.UI
         }
 
         /// <summary>
-        /// Rendu LaTeX → UIElement via WpfMath. Substitutions cosmétiques
-        /// (mathbb, widehat, cases…) via WpfMathAdapter.
+        /// Rendu LaTeX → UIElement via MixedLatexRenderer (mixed-rendering
+        /// FormulaControl + TextBlock Unicode pour <c>\mathbb</c>, <c>\mapsto</c>,
+        /// <c>\iint</c>, <c>\iiint</c>). Cf. brief 2026-05-06-wpfmath-fallback-renderer.
         /// </summary>
         private UIElement RenderMath(string latex)
         {
-            string adapted = WpfMathAdapter.Adapt(latex ?? "");
             var container = new Grid { Margin = new Thickness(8, 4, 12, 4) };
-            if (string.IsNullOrWhiteSpace(adapted))
-            {
-                container.Children.Add(new TextBlock { Text = "", FontSize = 14 });
-                return container;
-            }
-            try
-            {
-                var formula = new FormulaControl
-                {
-                    Formula = adapted,
-                    Scale = 18,
-                    VerticalAlignment = VerticalAlignment.Center,
-                };
-                container.Children.Add(formula);
-            }
-            catch
-            {
-                container.Children.Add(new TextBlock
-                {
-                    Text = adapted,
-                    FontSize = 14,
-                    FontFamily = new FontFamily("Cambria Math, Cambria, Segoe UI Symbol, Segoe UI"),
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Foreground = new SolidColorBrush(Color.FromRgb(50, 50, 50)),
-                });
-            }
+            container.Children.Add(MixedLatexRenderer.Render(latex ?? "", 18));
             return container;
         }
 
