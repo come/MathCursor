@@ -90,6 +90,98 @@ namespace MathCursor.Core.Tests.Lattice
         // Image bug 06-05 (user) : u(1,2) vec colonne commit puis v(1,2) vec
         // colonne commit → résultat absurde "u(1,2v⃗(1;2))" → merger ou
         // re-parse qui mélange les 2 vecteurs.
+        [Fact(DisplayName = "Bug parser : `u(1,2) v(1,2)` ne doit pas être parsé comme `u(1, 2v(1,2))` (mult implicite parasite)")]
+        public void Parser_uv_coords_with_space_must_not_merge_via_implicit_mult()
+        {
+            // L'user voit `u(1, 2v⃗(1/2))` quand 2 OMaths vec col adjacents
+            // sont mergés. Cause : la mergedSource `u(1,2) v(1,2)` est
+            // mal-parsée — le `2 v` est juxtaposition (mult implicite) et
+            // `v(1,2)` devient un sous-arg de `u(...)`.
+            //
+            // Comportement attendu : 2 patterns coords distincts.
+            var top = _engine.Convert("u(1,2) v(1,2)")[0].Latex;
+
+            // Pas de \vec{v} à l'intérieur d'une cell de u.
+            // Pattern bug : `u(...,...{vec_v...})` → on cherche `2\vec{v}`.
+            Assert.DoesNotContain("2\\vec{v}", top);
+            // Idéalement : `\vec{u}(1 ; 2)` et `\vec{v}(1 ; 2)` distincts
+            // (séparateur espace ou autre).
+        }
+
+        [Fact(DisplayName = "Diagnostic ABS : top default de AB(1;2) doit être \\vec{AB}(1 ; 2)")]
+        public void Diagnostic_AB_semicolon_top_default()
+        {
+            var top = _engine.Convert("AB(1;2)")[0].Latex;
+            // Si la DLL est à jour, top = "\\vec{AB}(1 ; 2)" (row VC reconnu).
+            // Si la DLL est obsolète, top = "AB\\left(1\\right)" (function call).
+            Assert.Equal("\\vec{AB}(1 ; 2)", top);
+        }
+
+        [Fact(DisplayName = "Diagnostic ALT : alt VectorLayoutFlip pour AB(1;2) doit contenir \\begin{pmatrix}")]
+        public void Diagnostic_AB_semicolon_flip_alt_is_column_pmatrix()
+        {
+            var resolved = _resolver.Resolve("AB(1;2)");
+            // Liste tous les alts pour debug
+            var allAlts = resolved.AllMatches
+                .SelectMany(m => m.Spot.Alternatives)
+                .Select(a => a.Latex)
+                .ToList();
+
+            // L'alt VectorLayoutFlip = column = \vec{AB}\begin{pmatrix}1 \\ 2\end{pmatrix}
+            bool hasColumnAlt = allAlts.Any(a => a.Contains("\\begin{pmatrix}"));
+            Assert.True(hasColumnAlt,
+                $"Pas d'alt avec \\begin{{pmatrix}}. Alts vues = [{string.Join(" | ", allAlts)}]");
+        }
+
+        [Fact(DisplayName = "Diagnostic comparatif : u(1;2) et AB(1;2) doivent tous deux avoir l'alt column")]
+        public void Diagnostic_comparison_u_vs_AB_column_alt()
+        {
+            var u = _resolver.Resolve("u(1;2)");
+            var AB = _resolver.Resolve("AB(1;2)");
+
+            var uAlts = u.AllMatches.SelectMany(m => m.Spot.Alternatives).Select(a => a.Latex).ToList();
+            var ABAlts = AB.AllMatches.SelectMany(m => m.Spot.Alternatives).Select(a => a.Latex).ToList();
+
+            bool uHasColumn = uAlts.Any(a => a.Contains("\\begin{pmatrix}"));
+            bool ABHasColumn = ABAlts.Any(a => a.Contains("\\begin{pmatrix}"));
+
+            Assert.True(uHasColumn, $"u(1;2) sans column. Alts: {string.Join(" | ", uAlts)}");
+            Assert.True(ABHasColumn, $"AB(1;2) sans column. Alts: {string.Join(" | ", ABAlts)}");
+        }
+
+        [Fact(DisplayName = "Diagnostic : que produit le pipeline pour `u(1,2) v(1,2)` avec sidecar pin column flip ?")]
+        public void Diagnostic_dump_top_with_column_flip_pin()
+        {
+            // L'user a 2 OMaths : `u(1,2)` flip column, puis `v(1,2)` flip column.
+            // Au merge, mergedSource = `u(1,2) v(1,2)`. Le sidecar fusionné a
+            // 2 pins VectorLayoutFlip.
+            // On dump ce que produit ZoneResolver.Resolve avec ce sidecar.
+
+            const string source = "u(1,2) v(1,2)";
+
+            // Simule le sidecar fusionné post-merge (2 pins VectorLayoutFlip)
+            var sidecar = new MathCursor.Core.Resolution.ResolutionSidecar(
+                new[]
+                {
+                    new MathCursor.Core.Resolution.SpanPin(
+                        AlternativeGenerator.RuleVectorLayoutFlip,
+                        offset: 0, len: 6, altIdx: 1), // u(1,2) → column
+                    new MathCursor.Core.Resolution.SpanPin(
+                        AlternativeGenerator.RuleVectorLayoutFlip,
+                        offset: 7, len: 6, altIdx: 1), // v(1,2) → column
+                },
+                new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IReadOnlyDictionary<int, int>>());
+
+            var resolved = _resolver.Resolve(source, sidecar);
+
+            // Diagnostic : fail le test pour voir le TopLatex dans l'output.
+            // Si le test passe, c'est que le résultat est cohérent. Sinon
+            // on voit le bug exact.
+            Assert.False(resolved.TopLatex.Contains("2\\vec{v}"),
+                $"BUG REPRO : Top contient `2\\vec{{v}}` → mult implicite parasite. " +
+                $"TopLatex actuel = \"{resolved.TopLatex}\"");
+        }
+
         [Fact(DisplayName = "Bug image : intra-merge `u(1,2) v(1,2)` ne doit pas produire de vec imbriqué dans coords")]
         public void IntraMerge_two_vec_coords_should_not_nest_anomalously()
         {

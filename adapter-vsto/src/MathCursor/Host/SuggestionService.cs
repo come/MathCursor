@@ -157,6 +157,13 @@ namespace MathCursor.Host
 
         public SuggestionService(Word.Application app, MathNerDetector ner, Engine engine, IEquationStore store)
         {
+            // CANARY LOG (Phase 4 + bug fixes 06-05) : log distinctif au
+            // démarrage pour confirmer que la DLL chargée est la version
+            // courante. Si tu vois ce log dans mathcursor.log, mes derniers
+            // fix (splice position-aware, semicolon `;`, suppression
+            // consumed[i] dans flip) sont actifs.
+            LogDiag("[CANARY 2026-05-06 v3] SuggestionService ctor — splice+semicolon+flip-consumed-removed");
+
             _app = app ?? throw new ArgumentNullException(nameof(app));
             _ner = ner ?? throw new ArgumentNullException(nameof(ner));
             _engine = engine ?? throw new ArgumentNullException(nameof(engine));

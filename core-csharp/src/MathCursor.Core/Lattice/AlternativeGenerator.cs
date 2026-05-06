@@ -271,11 +271,18 @@ namespace MathCursor.Core.Lattice
             // structurante (function call vs vecteur de coords) — l'élève
             // doit trancher avant qu'on touche aux locales.
             RuleVectorCoordsVsCall => 2,
-            // Col↔ligne : priorité basse (juste un layout, pas un changement
-            // sémantique). Les autres ambig l'emportent en cas de coexistence
-            // (= rightmost wins entre ambig de priorité égale ; ici on est en
-            // dernier).
-            RuleVectorLayoutFlip => 4,
+            // Col↔ligne : priorité 2 (HAUTE) — quand un span `AB(1,2)` est
+            // détecté comme VectorCoordinates, le user veut choisir le
+            // layout (column/row) plutôt que la nature lexicale (vec/paren/
+            // crochet). Le flip tourne EN PREMIER, consume tout le span du
+            // top, et TwoUppercase scan ensuite voit consumed → skip.
+            // Conséquence pratique :
+            //   `AB` seul          → flip pas applicable, TwoUppercase propose vec/paren/crochet
+            //   `AB(1,2)` (avec coords) → flip propose row/column en alts, TwoUppercase skip
+            //   `u(1,2)` (1 lettre)     → flip propose row/column (pas de TwoUppercase)
+            // Bug Etienne 30-04 : sans cette priorité, AB(1,2) montrait
+            // vec/paren/crochet mais pas le column en alt cliquable.
+            RuleVectorLayoutFlip => 2,
             // Tight chain extension : priorité basse (juste un regroupement
             // alternatif, pas un changement sémantique). Les ambig structurelles
             // (AB, V/E) gardent la main.
