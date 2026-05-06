@@ -389,11 +389,12 @@ namespace MathCursor.Core.Lattice
             List<AmbiguityMatch> output, bool[] consumed)
         {
             if (!(topAst is VectorCoordinates vc)) return;
-            // Vérifier qu'aucun match précédent n'a déjà consommé tout ou
-            // partie du topLatex — sinon collision avec un ambig plus
-            // structurant (V/E à l'intérieur d'une cell, par exemple).
-            for (int i = 0; i < topLatex.Length; i++)
-                if (consumed[i]) return;
+            // Note (bug Etienne 30-04) : on NE check PLUS `consumed[i]` ici.
+            // Le flip layout est une désambig orthogonale aux désambigs
+            // lexicales (AB→vec/paren via RuleTwoUppercase consume `AB` du
+            // top). Les 2 alts coexistent légitimement dans la popup —
+            // l'une décide le layout column/row, l'autre décide vec/paren.
+            // Avant ce fix, RuleTwoUppercase bloquait le flip pour AB(1,2).
 
             string flippedLayout = vc.Layout == "column" ? "row" : "column";
             var altVc = new VectorCoordinates(vc.Name, vc.Values, flippedLayout, vc.IsPoint);

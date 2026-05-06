@@ -1193,7 +1193,13 @@ namespace MathCursor.Core.Lattice
             // (sans virgule attenante) existe au top-level. Pour `(1, 2)`,
             // l'espace après la virgule n'est PAS un séparateur — c'est juste
             // de la mise en forme. On filtre donc les boundaries dont le
-            // token précédent (ou suivant immédiat sans espace) est `,`.
+            // token précédent (ou suivant immédiat sans espace) est `,` ou `;`.
+            //
+            // Note FR : `;` est traité comme alias de `,` pour les coordonnées
+            // (cf. ADR 30-04 french-semicolon-coordinates + bug Etienne 30-04
+            // « AB(1;2) doit proposer vec colonne »). Les Français écrivent
+            // (1 ; 2) avec des points-virgules — la virgule est ambiguë avec
+            // le séparateur décimal.
             var spaceBoundaries = new List<int>();
             int depth = 0;
             for (int i = start; i < end; i++)
@@ -1203,17 +1209,20 @@ namespace MathCursor.Core.Lattice
                 {
                     if (tok.Value == "(" || tok.Value == "[") { depth++; continue; }
                     if (tok.Value == ")" || tok.Value == "]") { depth--; continue; }
-                    if (depth == 0 && tok.Value == ",") { commaPositions.Add(i); continue; }
+                    if (depth == 0 && (tok.Value == "," || tok.Value == ";"))
+                    { commaPositions.Add(i); continue; }
                 }
                 if (depth == 0 && i > start && _hasSpaceBefore[i])
                 {
-                    // Ignore les espaces qui suivent immédiatement un `,` ou
-                    // qui précèdent un `,` (ces espaces sont du whitespace de
+                    // Ignore les espaces qui suivent immédiatement un `,`/`;` ou
+                    // qui précèdent un `,`/`;` (ces espaces sont du whitespace de
                     // mise en forme, pas un séparateur de cellule colonne).
                     var prev = _toks[i - 1];
-                    bool prevIsComma = prev.Type == EdgeType.Op && prev.Value == ",";
-                    bool nextIsComma = tok.Type == EdgeType.Op && tok.Value == ",";
-                    if (!prevIsComma && !nextIsComma)
+                    bool prevIsSep = prev.Type == EdgeType.Op
+                        && (prev.Value == "," || prev.Value == ";");
+                    bool nextIsSep = tok.Type == EdgeType.Op
+                        && (tok.Value == "," || tok.Value == ";");
+                    if (!prevIsSep && !nextIsSep)
                         spaceBoundaries.Add(i);
                 }
             }
