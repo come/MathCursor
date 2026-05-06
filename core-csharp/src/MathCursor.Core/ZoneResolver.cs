@@ -159,19 +159,27 @@ namespace MathCursor.Core
             //     nouveau span 2-uppercase tombe auto sur vec).
             //
             // Conséquence : 3 pins identiques (cas bug 06-05) → last-write
-            // gagne, 1 seul Replace. Pas de \vec{\vec{\vec{...}}}.
+            // gagne, 1 seul splice. Pas de \vec{\vec{\vec{...}}}.
             //
-            // Dédup par (rule, defaultLatex) : si la source a 2 occurrences
-            // du même token (`AB+AB`), AllMatches retourne 2 matches mais le
-            // Replace est global → on ne doit pas le rappeler une 2e fois
-            // (sinon empilement sur la 1re passe : `\vec{AB}` → `\vec{\vec{AB}}`).
-            var processedSpans = new System.Collections.Generic.HashSet<string>();
+            // **Splice position-aware** (bug user 06-05 « u(1,2) v(1,2) ») :
+            // utilise <c>match.Start/End</c> (positions dans topLatex) pour
+            // remplacer IN-PLACE. Empêche la cross-pollution entre 2 spans
+            // similaires (avant : <c>topLatex.Replace</c> global remplaçait
+            // toutes les occurrences du <c>defaultLatex</c>, pollution
+            // garantie quand 2 OMaths similaires sont mergés).
+            //
+            // Dédup par <c>(start, end)</c> : si 2 matches pointent au même
+            // span (rare, cas où plusieurs rules matchent le même span), on
+            // garde le dernier seulement (last-write-wins par span).
+            //
+            // Apply right-to-left : les splices décalent les positions des
+            // chars à droite, donc on traite d'abord ceux à droite.
+            var splices = new System.Collections.Generic.List<(int Start, int End, string AltLatex)>();
 
             foreach (var match in baseResolved.AllMatches)
             {
                 if (match.Spot == null || string.IsNullOrEmpty(match.Spot.RuleId)) continue;
-                string spanKey = match.Spot.RuleId + "" + (match.Spot.DefaultLatex ?? string.Empty);
-                if (!processedSpans.Add(spanKey)) continue;
+                if (match.Start < 0 || match.End > topLatex.Length || match.Start >= match.End) continue;
 
                 // 1) Cherche le dernier pin matchant ce span (last-write-wins).
                 int lastPinAlt = -1;
@@ -214,7 +222,20 @@ namespace MathCursor.Core
                 }
 
                 string altLatex = match.Spot.Alternatives[bestAlt].Latex;
-                topLatex = topLatex.Replace(match.Spot.DefaultLatex, altLatex);
+                // Last-write-wins par span (start, end) : si plusieurs matches
+                // (rare) pointent au même span, on garde le dernier.
+                splices.RemoveAll(s => s.Start == match.Start && s.End == match.End);
+                splices.Add((match.Start, match.End, altLatex));
+            }
+
+            // Apply right-to-left pour préserver les positions des splices
+            // restants (un splice qui change la longueur d'un span décale
+            // tous les chars à droite — donc on traite d'abord ceux à droite).
+            splices.Sort((a, b) => b.Start.CompareTo(a.Start));
+            foreach (var s in splices)
+            {
+                if (s.Start < 0 || s.End > topLatex.Length || s.Start >= s.End) continue;
+                topLatex = topLatex.Substring(0, s.Start) + s.AltLatex + topLatex.Substring(s.End);
             }
 
             return new ResolvedZone(

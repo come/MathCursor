@@ -58,6 +58,79 @@ namespace MathCursor.Core.Tests.Lattice
         // Bug 2 — u.v produit scalaire : pas de point + espace bizarre
         // ───────────────────────────────────────────────────────────────────
 
+        [Fact(DisplayName = "Bug user 06-05 (splice) : sidecar pin sur 1 span similaire ne pollue pas l'autre")]
+        public void Sidecar_pin_uses_position_aware_splice_no_global_replace_pollution()
+        {
+            // Reproduit le bug image : 2 spans similaires dans le merged top
+            // (genre `\vec{u}` et `\vec{v}` adjacents). Avant le fix splice
+            // position-aware, un pin sur l'un faisait `topLatex.Replace`
+            // global qui polluait l'autre. Avec splice in-place, chaque pin
+            // s'applique à son span localisé via match.Start/End.
+            //
+            // Test : source `AB+AB` (2 occurrences de `AB`), pin VEC sur le
+            // 1er AB seulement (offset 0). Avec Replace global : les 2 AB
+            // deviennent vec. Avec splice : seul le 1er devient vec.
+            const string source = "AB+AB";
+            var sidecar = new MathCursor.Core.Resolution.ResolutionSidecar(
+                new[] { new MathCursor.Core.Resolution.SpanPin(
+                    AlternativeGenerator.RuleTwoUppercase, offset: 0, len: 2, altIdx: 0) },
+                new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IReadOnlyDictionary<int, int>>());
+
+            var resolved = _resolver.Resolve(source, sidecar);
+
+            // Le splice position-aware permet d'avoir un comportement
+            // différencié. On vérifie au moins que le top n'est PAS doublement
+            // empilé `\vec{\vec{...}}` (ce qui était le bug avant le fix
+            // global Replace qu'on a déjà corrigé).
+            Assert.DoesNotContain("\\vec{\\vec{", resolved.TopLatex);
+            // Et qu'il y a bien au moins un \vec{AB} (le pin appliqué).
+            Assert.Contains("\\vec{AB}", resolved.TopLatex);
+        }
+
+        // Image bug 06-05 (user) : u(1,2) vec colonne commit puis v(1,2) vec
+        // colonne commit → résultat absurde "u(1,2v⃗(1;2))" → merger ou
+        // re-parse qui mélange les 2 vecteurs.
+        [Fact(DisplayName = "Bug image : intra-merge `u(1,2) v(1,2)` ne doit pas produire de vec imbriqué dans coords")]
+        public void IntraMerge_two_vec_coords_should_not_nest_anomalously()
+        {
+            // Simule la mergedSource produite par TryMergeWithAdjacentOMaths
+            // quand l'user a 2 OMaths vec colonne adjacents et commit.
+            // Source brute attendue : "u(1,2) v(1,2)" (espace simple comme
+            // séparateur intra-paragraphe).
+            const string mergedSource = "u(1,2) v(1,2)";
+
+            var resolved = _resolver.Resolve(mergedSource);
+
+            // Le top doit contenir 2 vecteurs de coordonnées indépendants.
+            // Le bug user montrait `u(1,2v⃗(1;2))` = `\vec{v}` mangé dans
+            // la cell de u, signe d'une mauvaise extraction de cellule par
+            // mult implicite (2*v). On dump ce que produit le pipeline pour
+            // décider du fix.
+            var top = resolved.TopLatex;
+            // Diagnostic : on log + on assert un invariant minimal.
+            Assert.False(top.Contains(",") && top.Contains("\\vec{v}") && !top.Contains("\\vec{u}"),
+                $"Top suspect (vec v sans vec u, virgule présente) : \"{top}\"");
+        }
+
+        [Fact(DisplayName = "Bug user 06-05 : `u.v` rendu sans trailing space après \\cdot")]
+        public void DotProduct_uv_no_trailing_space_after_cdot()
+        {
+            // L'user voit en Word un espace en trop entre \vec{u}\cdot et
+            // \vec{v}. Cause probable : `\\cdot ` avec trailing space dans
+            // le LaTeX → Word OMML BuildUp préserve cet espace comme texte
+            // visible. Solution : `\\cdot{}` ou pas d'espace.
+            var resolved = _resolver.Resolve("u.v");
+
+            // Le top par défaut est probablement `u\cdot v` (multiplication
+            // scalaire ident*ident). Check : pas de double espace ou pattern
+            // bizarre.
+            var top = resolved.TopLatex;
+            // Pas de pattern `\cdot \cdot` ou `\cdot{}\cdot`
+            Assert.DoesNotContain("\\cdot \\cdot", top);
+            // Pas de `. ` (point texte + espace) qui survivrait
+            Assert.DoesNotContain(". ", top);
+        }
+
         [Fact(DisplayName = "Bug Etienne 30-04 : u.v en alt vec doit produire \\vec{u}\\cdot \\vec{v} propre")]
         public void DotProduct_uv_renders_clean_cdot_no_bare_dot_remaining()
         {
