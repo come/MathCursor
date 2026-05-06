@@ -29,12 +29,13 @@ namespace MathCursor.Host.Pipeline.Stages
         {
             if (ctx == null) return null;
             if (string.IsNullOrEmpty(ctx.Source)) return ctx;
-            // Sidecar Empty = pas de merge (MergerStage n'a pas absorbé) →
-            // le Latex venant de la popup est déjà bon, on ne re-pipeline pas
-            // (préserve les substitutions popup qui ne sont pas dans le sidecar).
-            // Cf. comportement actuel SuggestionService : Resolve n'est appelé
-            // QUE si merged != null.
-            if (ctx.Sidecar == null || ctx.Sidecar.IsEmpty) return ctx;
+            // Re-Resolve si MergerStage a transformé le ctx (cross-merge
+            // texte-only avec Sidecar Empty mais Source mergée — bug canary 3)
+            // OU si le ctx a un sidecar non-empty (pins/votes à appliquer).
+            // Skip uniquement quand pas de merge ET sidecar empty (= rien à
+            // faire, préserve le LaTeX popup avec ses substitutions in-line).
+            if (!ctx.WasMerged && (ctx.Sidecar == null || ctx.Sidecar.IsEmpty))
+                return ctx;
 
             var resolved = _resolver.Resolve(ctx.Source, ctx.Sidecar);
             if (resolved == null || string.IsNullOrEmpty(resolved.TopLatex))

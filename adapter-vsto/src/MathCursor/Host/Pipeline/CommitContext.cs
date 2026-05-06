@@ -83,6 +83,15 @@ namespace MathCursor.Host.Pipeline
         /// avant chaque <c>Apply</c>.</summary>
         public bool IsAborted { get; }
 
+        // ─── Merge flag ─────────────────────────────────────────────
+
+        /// <summary>Vrai si <c>MergerStage</c> a transformé le ctx
+        /// (absorption d'OMath OU de paragraphe texte). Sert à
+        /// <c>ResolverStage</c> qui doit re-Resolve sur la mergedSource
+        /// même si Sidecar Empty (cas cross-merge align* texte-only — bug
+        /// canary 3 Phase 3b si pas check).</summary>
+        public bool WasMerged { get; }
+
         // ─── Bornes pré-insert (memo pour LayoutStage) ──────────────
 
         /// <summary>Position absolue de l'OMath AVANT InsertOMathAt — sert à
@@ -105,7 +114,8 @@ namespace MathCursor.Host.Pipeline
             bool wasCrossParagraphMerge = false,
             string crossMergeMarker = null,
             bool isAborted = false,
-            int replaceStart = -1)
+            int replaceStart = -1,
+            bool wasMerged = false)
         {
             AbsStart = absStart;
             AbsEnd = absEnd;
@@ -119,6 +129,7 @@ namespace MathCursor.Host.Pipeline
             CrossMergeMarker = crossMergeMarker;
             IsAborted = isAborted;
             ReplaceStart = replaceStart;
+            WasMerged = wasMerged;
         }
 
         public CommitContext WithMergeResult(
@@ -130,19 +141,20 @@ namespace MathCursor.Host.Pipeline
             => new CommitContext(
                 absStart, absEnd, mergedSource, Latex,
                 mergedSidecar, removedHandles, NewHandle, EditingHandle,
-                wasCrossParagraphMerge, crossMergeMarker, IsAborted, ReplaceStart);
+                wasCrossParagraphMerge, crossMergeMarker, IsAborted, ReplaceStart,
+                wasMerged: true);
 
         public CommitContext WithLatex(string latex)
             => new CommitContext(
                 AbsStart, AbsEnd, Source, latex, Sidecar, RemovedHandles,
                 NewHandle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker,
-                IsAborted, ReplaceStart);
+                IsAborted, ReplaceStart, WasMerged);
 
         public CommitContext WithNewHandle(EquationHandle handle)
             => new CommitContext(
                 AbsStart, AbsEnd, Source, Latex, Sidecar, RemovedHandles,
                 handle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker,
-                IsAborted, ReplaceStart);
+                IsAborted, ReplaceStart, WasMerged);
 
         /// <summary>Marque le ctx comme avorté. Les stages suivants
         /// pass-through (le pipeline les saute via short-circuit).</summary>
@@ -150,7 +162,7 @@ namespace MathCursor.Host.Pipeline
             => new CommitContext(
                 AbsStart, AbsEnd, Source, Latex, Sidecar, RemovedHandles,
                 NewHandle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker,
-                isAborted: true, replaceStart: ReplaceStart);
+                isAborted: true, replaceStart: ReplaceStart, wasMerged: WasMerged);
 
         /// <summary>Update les bornes après insertion réussie (l'OMath inséré
         /// peut avoir légèrement changé les bornes par rapport à la zone source).</summary>
@@ -158,7 +170,7 @@ namespace MathCursor.Host.Pipeline
             => new CommitContext(
                 absStart, absEnd, Source, Latex, Sidecar, RemovedHandles,
                 NewHandle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker,
-                IsAborted, ReplaceStart);
+                IsAborted, ReplaceStart, WasMerged);
 
         /// <summary>Update les bornes ET mémorise <see cref="ReplaceStart"/>
         /// (= l'AbsStart pré-insert, pour LayoutStage).</summary>
@@ -166,6 +178,6 @@ namespace MathCursor.Host.Pipeline
             => new CommitContext(
                 newStart, newEnd, Source, Latex, Sidecar, RemovedHandles,
                 NewHandle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker,
-                IsAborted, replaceStart);
+                IsAborted, replaceStart, WasMerged);
     }
 }
