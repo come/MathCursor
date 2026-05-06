@@ -7,6 +7,10 @@
     <RootNamespace>MathCursor.Tests</RootNamespace>
     <AssemblyName>MathCursor.Tests</AssemblyName>
     <Nullable>disable</Nullable>
+    <!-- WPF activé pour les probe tests WpfMath (FormulaControl rendu hors
+         Word, cf. brief 2026-05-06-wpfmath-fallback-renderer.md). Nécessite
+         un thread STA — voir UI/StaRunner.cs. -->
+    <UseWPF>true</UseWPF>
     <!-- Forcer x64 pour ONNX Runtime : la DLL native onnxruntime.dll n'est
          que x64 dans notre version pinned (1.16.3, cf. ADR Bay Trail compat). -->
     <PlatformTarget>x64</PlatformTarget>
@@ -48,6 +52,10 @@
          loader plante avec FileLoadException → TypeInitializationException
          côté OnnxRuntime. -->
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
+    <!-- WpfMath pour les probe tests : on teste directement FormulaControl
+         pour décider Branche A (substitution Unicode + Cambria Math suffit)
+         vs Branche B (archi fallback 3 classes), cf. brief 2026-05-06. -->
+    <PackageReference Include="WpfMath" Version="2.1.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -82,6 +90,13 @@
     <Compile Include="..\..\src\MathCursor\Host\ListModeMarkerInjector.cs" Link="adapter-sources\Host\ListModeMarkerInjector.cs" />
     <Compile Include="..\..\src\MathCursor\Host\CasesCascadeMerger.cs" Link="adapter-sources\Host\CasesCascadeMerger.cs" />
     <Compile Include="..\..\src\MathCursor\Host\IntraMergeSidecarBuilder.cs" Link="adapter-sources\Host\IntraMergeSidecarBuilder.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Merging\IZoneMerger.cs" Link="adapter-sources\Host\Merging\IZoneMerger.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Merging\MergeResult.cs" Link="adapter-sources\Host\Merging\MergeResult.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Merging\MergerPipeline.cs" Link="adapter-sources\Host\Merging\MergerPipeline.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Merging\IntraOMathsMerger.cs" Link="adapter-sources\Host\Merging\IntraOMathsMerger.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Merging\RevertedMultiLineMerger.cs" Link="adapter-sources\Host\Merging\RevertedMultiLineMerger.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Merging\CasesChainCascadeMerger.cs" Link="adapter-sources\Host\Merging\CasesChainCascadeMerger.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Merging\MarkerChainCascadeMerger.cs" Link="adapter-sources\Host\Merging\MarkerChainCascadeMerger.cs" />
     <Compile Include="..\..\src\MathCursor\Host\CaretPositionCalculator.cs" Link="adapter-sources\Host\CaretPositionCalculator.cs" />
     <Compile Include="..\..\src\MathCursor\Host\AutocorrectNormalizer.cs" Link="adapter-sources\Host\AutocorrectNormalizer.cs" />
     <Compile Include="..\..\src\MathCursor\Host\OMathParaJcPatcher.cs" Link="adapter-sources\Host\OMathParaJcPatcher.cs" />

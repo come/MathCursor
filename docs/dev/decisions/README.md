@@ -20,6 +20,7 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-05-06
+- `[forte]` Meta — [Pipeline de mergers L4 via interface `IZoneMerger` (no if-pile)](2026-05-06-Meta-zone-merger-pipeline.md)
 - `[forte]` Feat — [Sidecar de résolutions + doctrine d'architecture en couches](2026-05-06-Feat-resolution-sidecar-and-layers.md)
 - `[molle]` Feat — [Ruban revient dans TabHome + pane pivote vers galerie d'exemples concrets multi-syntaxes](2026-05-06-Feat-ribbon-pane-examples-pivot.md) (Supersedes ribbon-refactor-cheatsheet)
 

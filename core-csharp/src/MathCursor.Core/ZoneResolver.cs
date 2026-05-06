@@ -142,86 +142,70 @@ namespace MathCursor.Core
             string topLatex = baseResolved.TopLatex ?? string.Empty;
             string source = rawSource ?? string.Empty;
 
-            // Phase 1 : SpanPins. Pour chaque pin, on substitue le defaultLatex
-            // par l'alt[altIdx].Latex de la rule pinée, dans topLatex.
+            // Sémantique unifiée (cf. ADR 06-05) : 1 passe par span ambigu,
+            // 1 substitution max. Pas de stacking possible.
             //
-            // Limites du MVP (acceptables pour la doctrine 06-05) :
-            //   - Match par (RuleId + DefaultLatex), pas par offset précis dans
-            //     le topLatex. Si la source contient deux occurrences identiques
-            //     (`AB+AB`) avec pins divergents, le `string.Replace` les
-            //     applique au 1er match — les 2 occurrences héritent du 1er pin.
-            //     À adresser plus tard via positions exactes via AllMatches.
-            //   - Pin orphelin (rule absente, offset stale, defaultLatex
-            //     introuvable côté topLatex) → ignoré silencieusement, pas de
-            //     throw, pas de log noisy.
+            //   - SpanPins = choix explicites localisés. **Last-write-wins**
+            //     par (rule, defaultLatex) : le dernier pin chronologique
+            //     exprime l'intention courante (si user change d'avis vec→paren,
+            //     c'est paren qui doit gagner, pas une moyenne pondérée).
+            //     L'ordre dans la liste reflète l'ordre temporel — la popup
+            //     ajoute en fin, SidecarMerger préserve l'ordre des parts.
             //
-            // On collecte les `defaultLatex` pinés pour skip au boost ZoneVotes
-            // (Phase 2 ci-dessous) — éviter qu'un span déjà résolu via pin soit
-            // écrasé par un vote différent.
-            var pinnedDefaults = new System.Collections.Generic.HashSet<string>();
-
-            foreach (var pin in sidecar.SpanPins)
+            //   - ZoneVotes = boost cascade pour spans **non-pinés**. Eux
+            //     s'additionnent (cumul historique de la zone) et un argmax
+            //     tranche. Permet à un span jamais désambigué d'hériter du
+            //     choix dominant de ses voisins (3 vec dans la zone → un
+            //     nouveau span 2-uppercase tombe auto sur vec).
+            //
+            // Conséquence : 3 pins identiques (cas bug 06-05) → last-write
+            // gagne, 1 seul Replace. Pas de \vec{\vec{\vec{...}}}.
+            foreach (var match in baseResolved.AllMatches)
             {
-                if (string.IsNullOrEmpty(pin.Rule)) continue;
-                if (pin.Offset < 0 || pin.Len <= 0) continue;
-                if (pin.Offset + pin.Len > source.Length) continue;
+                if (match.Spot == null || string.IsNullOrEmpty(match.Spot.RuleId)) continue;
 
-                string defaultLatex = source.Substring(pin.Offset, pin.Len);
-
-                AmbiguityMatch? matchHit = null;
-                foreach (var m in baseResolved.AllMatches)
+                // 1) Cherche le dernier pin matchant ce span (last-write-wins).
+                int lastPinAlt = -1;
+                foreach (var pin in sidecar.SpanPins)
                 {
-                    if (m.Spot.RuleId == pin.Rule && m.Spot.DefaultLatex == defaultLatex)
-                    {
-                        matchHit = m;
-                        break;
-                    }
+                    if (pin.Rule != match.Spot.RuleId) continue;
+                    if (pin.Offset < 0 || pin.Len <= 0) continue;
+                    if (pin.Offset + pin.Len > source.Length) continue;
+                    if (source.Substring(pin.Offset, pin.Len) != match.Spot.DefaultLatex) continue;
+                    if (pin.AltIdx < 0 || pin.AltIdx >= match.Spot.Alternatives.Count) continue;
+                    lastPinAlt = pin.AltIdx; // overwrite — le dernier gagne
                 }
-                if (matchHit == null) continue;
-                if (pin.AltIdx < 0 || pin.AltIdx >= matchHit.Spot.Alternatives.Count) continue;
 
-                string altLatex = matchHit.Spot.Alternatives[pin.AltIdx].Latex;
-                topLatex = topLatex.Replace(defaultLatex, altLatex);
-                pinnedDefaults.Add(defaultLatex);
-            }
-
-            // Phase 2 : ZoneVotes — auto-résolution des ambigs non pinées.
-            // Pour chaque ambig encore en place dans le topLatex, si la zone
-            // a accumulé des votes pour son ruleId, on applique l'altIdx avec
-            // le plus grand compteur. Permet à un span nouveau (jamais résolu
-            // explicitement) de bénéficier de l'apprentissage local : 3 votes
-            // vec dans la zone → un nouveau span 2-uppercase tombe auto sur vec.
-            //
-            // Politique "majority wins" simple (pas de pondération α explicite
-            // en MVP) : on prend l'alt avec le compteur le plus haut, ties
-            // tranchés par altIdx le plus petit (= ordre de déclaration dans
-            // AlternativeGenerator, qui est déjà l'ordre de préférence par
-            // défaut).
-            if (sidecar.ZoneVotes.Count > 0)
-            {
-                foreach (var match in baseResolved.AllMatches)
+                int bestAlt;
+                if (lastPinAlt >= 0)
                 {
-                    if (match.Spot == null || string.IsNullOrEmpty(match.Spot.RuleId)) continue;
-                    if (pinnedDefaults.Contains(match.Spot.DefaultLatex)) continue;
-
-                    if (!sidecar.ZoneVotes.TryGetValue(match.Spot.RuleId, out var byAlt)) continue;
-                    if (byAlt == null || byAlt.Count == 0) continue;
-
-                    int bestAlt = -1, bestVote = 0;
+                    // Choix explicite user → domine sur les votes.
+                    bestAlt = lastPinAlt;
+                }
+                else if (sidecar.ZoneVotes.TryGetValue(match.Spot.RuleId, out var byAlt)
+                         && byAlt != null && byAlt.Count > 0)
+                {
+                    // Pas de pin local → boost cascade par votes (additionnent).
+                    bestAlt = -1;
+                    int bestVote = 0;
                     foreach (var kv in byAlt)
                     {
                         if (kv.Value > bestVote
-                            || (kv.Value == bestVote && bestAlt > kv.Key))
+                            || (kv.Value == bestVote && (bestAlt < 0 || kv.Key < bestAlt)))
                         {
                             bestVote = kv.Value;
                             bestAlt = kv.Key;
                         }
                     }
                     if (bestAlt < 0 || bestAlt >= match.Spot.Alternatives.Count) continue;
-
-                    string altLatex = match.Spot.Alternatives[bestAlt].Latex;
-                    topLatex = topLatex.Replace(match.Spot.DefaultLatex, altLatex);
                 }
+                else
+                {
+                    continue; // ni pin ni vote applicable → laisse le défaut
+                }
+
+                string altLatex = match.Spot.Alternatives[bestAlt].Latex;
+                topLatex = topLatex.Replace(match.Spot.DefaultLatex, altLatex);
             }
 
             return new ResolvedZone(

@@ -9,6 +9,7 @@ using System.Windows.Threading;
 using MathCursor.Core;
 using MathCursor.Core.Lattice;
 using MathCursor.Detection;
+using MathCursor.Host.Merging;
 using MathCursor.HostContract;
 using MathCursor.UI;
 // Moteur lattice : enchaîne Lex → TopK → Parse → Render. Façade côté core
@@ -164,7 +165,34 @@ namespace MathCursor.Host
             _resolver = new ZoneResolver(_engine);
             _store = store ?? throw new ArgumentNullException(nameof(store));
             _contextReader = new WordContextReader(_app);
+
+            // Pipeline de mergers (cf. ADR 2026-05-06-Meta-zone-merger-pipeline) :
+            // remplace l'empilement de `if (merged == null)` qui vivait dans
+            // OnPopupCommitRequested. Ordre = priorité (intra avant cross,
+            // reverted avant cases avant marker). Chaque merger est self-guarding :
+            // il retourne null si non-applicable au commit courant.
+            _mergerPipeline = new MergerPipeline(new IZoneMerger[]
+            {
+                new IntraOMathsMerger(TryMergeWithAdjacentOMaths),
+                new RevertedMultiLineMerger((s, e, src) =>
+                {
+                    var doc = _app.ActiveDocument;
+                    return doc == null ? null : TryAbsorbRevertedMultiLineZone(doc, s, e, src);
+                }),
+                new CasesChainCascadeMerger((s, e, src) =>
+                {
+                    var doc = _app.ActiveDocument;
+                    return doc == null ? null : TryCascadeAbsorbCasesChain(doc, s, e, src);
+                }),
+                new MarkerChainCascadeMerger((s, e, src) =>
+                {
+                    var doc = _app.ActiveDocument;
+                    return doc == null ? null : TryCascadeAbsorbMarkerChain(doc, s, e, src);
+                }),
+            }, log: LogDiag);
         }
+
+        private readonly MergerPipeline _mergerPipeline;
 
         /// <summary>
         /// Retourne le snapshot de la dernière action (popup + commit éventuel)
@@ -1623,18 +1651,17 @@ namespace MathCursor.Host
             MergeResult merged = null;
             if (editing == null)
             {
-                merged = TryMergeWithAdjacentOMaths(_lastZoneAbsStart, _lastZoneAbsEnd, source);
-                if (merged == null)
+                // Pipeline de mergers (ADR 06-05 + 06-05-Meta zone-merger-pipeline) :
+                // dispatch via interface IZoneMerger, plus d'if-pile.
+                merged = _mergerPipeline.Run(_lastZoneAbsStart, _lastZoneAbsEnd, source);
+                // Si le merge n'est pas un intra (les autres = cross-paragraphe),
+                // active le list-mode après l'insertion. On détecte le cross-merge
+                // par la présence d'un \n dans la mergedSource (intra-merge utilise
+                // l'espace, cross utilise \n — cf. brief 30-04 + ADR 05-05).
+                if (merged != null && merged.MergedSource != null && merged.MergedSource.IndexOf('\n') >= 0)
                 {
-                    // Pas d'intra-merge → tenter cross-paragraphe (brief 30-04)
-                    merged = TryFindCrossMergeAbove(_lastZoneAbsStart, _lastZoneAbsEnd, source);
-                    if (merged != null)
-                    {
-                        wasCrossParagraphMerge = true;
-                        // Extrait le marker dominant pour activer le list-mode
-                        // après l'insertion réussie (cf. ADR 05-05).
-                        crossMergeMarker = ExtractMarkerFromMergedSource(merged.MergedSource);
-                    }
+                    wasCrossParagraphMerge = true;
+                    crossMergeMarker = ExtractMarkerFromMergedSource(merged.MergedSource);
                 }
                 if (merged != null)
                 {
@@ -2264,26 +2291,6 @@ namespace MathCursor.Host
                 return t.Length > 0 && t[0] == ' ';
             }
             catch { return false; }
-        }
-
-        /// <summary>
-        /// Résultat d'une tentative de merge : nouvelles positions absolues
-        /// englobant les OMaths fusionnés, source mergé, handles à supprimer
-        /// du store. Null si pas de fusion possible.
-        /// </summary>
-        private sealed class MergeResult
-        {
-            public int AbsStart { get; set; }
-            public int AbsEnd { get; set; }
-            public string MergedSource { get; set; }
-            public List<string> RemovedHandles { get; set; }
-
-            /// <summary>Sidecar de résolutions fusionné des paragraphes absorbés
-            /// (offsets recalibrés sur <see cref="MergedSource"/>) + sidecar
-            /// courant de la popup. Vide si aucun OMath absorbé n'avait de
-            /// sidecar mémorisé (cas dégradé). Cf. ADR 06-05 sidecar Phase 1.6.</summary>
-            public MathCursor.Core.Resolution.ResolutionSidecar MergedSidecar { get; set; }
-                = MathCursor.Core.Resolution.ResolutionSidecar.Empty;
         }
 
         /// <summary>

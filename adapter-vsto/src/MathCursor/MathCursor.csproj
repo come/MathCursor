@@ -266,6 +266,13 @@
     <Compile Include="Host\CaretPositionCalculator.cs" />
     <Compile Include="Host\CasesCascadeMerger.cs" />
     <Compile Include="Host\IntraMergeSidecarBuilder.cs" />
+    <Compile Include="Host\Merging\IZoneMerger.cs" />
+    <Compile Include="Host\Merging\MergeResult.cs" />
+    <Compile Include="Host\Merging\MergerPipeline.cs" />
+    <Compile Include="Host\Merging\IntraOMathsMerger.cs" />
+    <Compile Include="Host\Merging\RevertedMultiLineMerger.cs" />
+    <Compile Include="Host\Merging\CasesChainCascadeMerger.cs" />
+    <Compile Include="Host\Merging\MarkerChainCascadeMerger.cs" />
     <Compile Include="Host\ListModeMarkerInjector.cs" />
     <Compile Include="Host\ListModeStateMachine.cs" />
     <Compile Include="Host\OMathParaJcPatcher.cs" />

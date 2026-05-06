@@ -226,6 +226,112 @@ namespace MathCursor.Core.Tests.Resolution
             Assert.Contains("\\vec{AC}", r.TopLatex);
         }
 
+        [Fact(DisplayName = "Bug 06-05 (user) : `AB+AC` (vec) puis `= AD` (vec) → `\\vec{AD}` (pas `\\vec{DC}`)")]
+        public void IntraMerge_AB_AC_then_eq_AD_renders_AD_not_DC()
+        {
+            // Reproduit le bug user : commit AB+AC vec, puis tape = AD vec
+            // → l'image montre \vec{DC} à la place de \vec{AD}. Test ciblé
+            // pour isoler : pipeline core ? offsets ? substitution ?
+            var resolver = MakeResolver();
+            const string mergedSource = "AB+AC = AD";
+
+            var sidecar = new ResolutionSidecar(
+                new[]
+                {
+                    new SpanPin(AlternativeGenerator.RuleTwoUppercase, 0, 2, 0),  // AB
+                    new SpanPin(AlternativeGenerator.RuleTwoUppercase, 3, 2, 0),  // AC
+                    new SpanPin(AlternativeGenerator.RuleTwoUppercase, 8, 2, 0),  // AD
+                },
+                new Dictionary<string, IReadOnlyDictionary<int, int>>
+                {
+                    [AlternativeGenerator.RuleTwoUppercase] = new Dictionary<int, int> { [0] = 3 },
+                });
+
+            var r = resolver.Resolve(mergedSource, sidecar);
+
+            Assert.Contains("\\vec{AB}", r.TopLatex);
+            Assert.Contains("\\vec{AC}", r.TopLatex);
+            Assert.Contains("\\vec{AD}", r.TopLatex);
+            Assert.DoesNotContain("\\vec{DC}", r.TopLatex);
+            Assert.DoesNotContain("DC", r.TopLatex);
+        }
+
+        [Fact(DisplayName = "Last-write-wins : 2 pins divergents sur AB (vec puis paren) → paren gagne")]
+        public void Two_divergent_pins_last_one_wins()
+        {
+            // Sémantique UX : si user désambigue AB en vec puis change d'avis
+            // pour paren, c'est paren qui doit gagner. Le dernier pin chrono
+            // exprime l'intention courante. Pas d'addition (sinon user devrait
+            // re-cliquer plusieurs fois pour faire pencher la balance).
+            //
+            // Vérifie qu'on génère bien une seule alt à choisir parmi les 2 :
+            // RuleTwoUppercase a vec (alt 0) en défaut, paren (alt 1) en alt.
+            var resolver = MakeResolver();
+            var sidecar = new ResolutionSidecar(
+                new[]
+                {
+                    new SpanPin(AlternativeGenerator.RuleTwoUppercase, 0, 2, 0), // AB → vec
+                    new SpanPin(AlternativeGenerator.RuleTwoUppercase, 0, 2, 1), // AB → paren (LAST)
+                },
+                new Dictionary<string, IReadOnlyDictionary<int, int>>());
+
+            var r = resolver.Resolve("AB", sidecar);
+
+            // Le dernier pin (alt 1 = paren) doit gagner.
+            Assert.DoesNotContain("\\vec{AB}", r.TopLatex);
+            // Note : on ne vérifie pas le LaTeX exact de l'alt paren ici
+            // (peut être `(AB)` ou similaire selon AlternativeGenerator) —
+            // l'invariant testé est juste : pas de \vec.
+        }
+
+        [Fact(DisplayName = "HYPOTHÈSE bug user : pins AB dupliqués (× 3) → flèches empilées \\vec{\\vec{\\vec{AB}}}")]
+        public void Duplicate_pins_cause_stacked_vec_substitutions()
+        {
+            // Simule une fusion de sidecars où le popup `_sessionSpanPins`
+            // n'a pas été reset entre commits → pins AB dupliqués dans le
+            // sidecar fusionné. L'image user montre 3 flèches superposées
+            // sur AB. Si l'hypothèse est correcte, ce test reproduit le
+            // bug : 3 pins AB → topLatex.Replace appelé 3× → \vec{\vec{\vec{AB}}}.
+            //
+            // Si le test échoue (top contient un seul \vec{AB}), alors la
+            // cause est ailleurs et il faut chercher autre part.
+            var resolver = MakeResolver();
+            const string source = "AB+AC = AD";
+            var sidecar = new ResolutionSidecar(
+                new[]
+                {
+                    new SpanPin(AlternativeGenerator.RuleTwoUppercase, 0, 2, 0),  // AB pin 1
+                    new SpanPin(AlternativeGenerator.RuleTwoUppercase, 0, 2, 0),  // AB pin 2 (DOUBLON)
+                    new SpanPin(AlternativeGenerator.RuleTwoUppercase, 0, 2, 0),  // AB pin 3 (DOUBLON)
+                    new SpanPin(AlternativeGenerator.RuleTwoUppercase, 3, 2, 0),  // AC
+                    new SpanPin(AlternativeGenerator.RuleTwoUppercase, 8, 2, 0),  // AD
+                },
+                new Dictionary<string, IReadOnlyDictionary<int, int>>());
+
+            var r = resolver.Resolve(source, sidecar);
+
+            // Si l'hypothèse est correcte, on observe \vec{\vec{\vec{AB}}}
+            // dans r.TopLatex. Le test échouera — ce qui prouve l'hypothèse.
+            // Le fix attendu : Resolve(source, sidecar) doit être idempotent
+            // (déduplique par defaultLatex unique avant de Replace).
+            int abVecCount = CountOccurrences(r.TopLatex, "\\vec{AB}");
+            Assert.Equal(1, abVecCount);
+            Assert.DoesNotContain("\\vec{\\vec{AB}}", r.TopLatex);
+            Assert.DoesNotContain("\\vec{\\vec{\\vec{AB}}}", r.TopLatex);
+        }
+
+        private static int CountOccurrences(string source, string needle)
+        {
+            if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(needle)) return 0;
+            int count = 0, idx = 0;
+            while ((idx = source.IndexOf(needle, idx, System.StringComparison.Ordinal)) >= 0)
+            {
+                count++;
+                idx += needle.Length;
+            }
+            return count;
+        }
+
         // ─── Stale pin (edge case) ─────────────────────────────────────
 
         [Fact(DisplayName = "Stale pin (offset hors range) → fallback default sans crash")]
