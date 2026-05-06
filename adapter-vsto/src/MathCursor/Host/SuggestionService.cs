@@ -190,9 +190,25 @@ namespace MathCursor.Host
                     return doc == null ? null : TryCascadeAbsorbMarkerChain(doc, s, e, src);
                 }),
             }, log: LogDiag);
+
+            // Pipeline du commit (cf. ADR 2026-05-06-Meta-l4-pipeline-and-session,
+            // Phase 3a). Phase 3a livre seulement les 2 stages réels (Merger,
+            // Resolver) ; les 5 autres stages (Renderer/Inserter/Store/Layout/
+            // Caret/Snapshot) sont posés en code (Phase 2.5) mais non branchés
+            // ici — ils s'intégreront en Phase 3b/4 avec l'extraction effective
+            // de la logique métier.
+            _commitPipeline = new MathCursor.Host.Pipeline.CommitPipeline(
+                new MathCursor.Host.Pipeline.ICommitStage[]
+                {
+                    new MathCursor.Host.Pipeline.Stages.MergerStage(
+                        _mergerPipeline, ExtractMarkerFromMergedSource),
+                    new MathCursor.Host.Pipeline.Stages.ResolverStage(_resolver),
+                },
+                log: LogDiag);
         }
 
         private readonly MergerPipeline _mergerPipeline;
+        private readonly MathCursor.Host.Pipeline.CommitPipeline _commitPipeline;
 
         /// <summary>
         /// Retourne le snapshot de la dernière action (popup + commit éventuel)
@@ -1635,75 +1651,50 @@ namespace MathCursor.Host
         {
             var editing = _editHandle;
 
-            // Merge avec OMaths adjacents (ADR 29-04). Pas en mode édition
-            // (le mode revert remplace l'OMath en cours, pas de fusion).
-            // ORDRE :
-            //  1. Intra-paragraphe (TryMergeWithAdjacentOMaths) — gagne toujours
-            //     quand applicable (cf. brief 30-04 §3.1 précédence).
-            //  2. Cross-paragraphe (TryFindCrossMergeAbove) — Phase 1 align*
-            //     uniquement, déclenché si ligne courante = marqueur align ET
-            //     ¶ précédent termine par OMath à nous.
-            bool wasCrossParagraphMerge = false;
-            string crossMergeMarker = null;
-            // Hors du `if (editing == null)` pour rester accessible plus bas
-            // (StashSidecarForHandle utilise `merged?.MergedSidecar` au commit
-            // insert post-cross-merge — Phase 1.6 ADR 06-05).
-            MergeResult merged = null;
-            if (editing == null)
+            // Pipeline du commit (Phase 3a — ADR 2026-05-06-Meta-l4-pipeline-and-session) :
+            // les 2 premiers stages (Merger + Resolver) sont composés via
+            // CommitPipeline. Le reste (snapshot, insert, store, layout, caret)
+            // reste imbriqué ici — sera extrait en Phase 3b avec InserterStage.
+            //
+            // En mode édition, MergerStage skip (revert remplace l'OMath, pas
+            // de fusion). ResolverStage skip si Sidecar.IsEmpty (= pas de merge,
+            // pas de re-résolution → préserve le LaTeX popup).
+            //
+            // ctx déclaré hors du flow merge pour rester accessible plus bas
+            // (StashSidecarForHandle utilise ctx.Sidecar au commit insert).
+            var ctx = new MathCursor.Host.Pipeline.CommitContext(
+                absStart: _lastZoneAbsStart,
+                absEnd: _lastZoneAbsEnd,
+                source: source,
+                latex: latex,
+                editingHandle: editing);
+            ctx = _commitPipeline.Run(ctx);
+
+            bool wasCrossParagraphMerge = ctx.WasCrossParagraphMerge;
+            string crossMergeMarker = ctx.CrossMergeMarker;
+            _lastZoneAbsStart = ctx.AbsStart;
+            _lastZoneAbsEnd = ctx.AbsEnd;
+            source = ctx.Source;
+            latex = ctx.Latex;
+
+            // Cleanup post-merge : remove handles + bookmarks + sidecars memory
+            // + DeleteOMathsInRange. Sera extrait dans MergerStage (ou un
+            // MergerCleanupStage) en Phase 3b. Pour l'instant inline.
+            if (ctx.RemovedHandles != null && ctx.RemovedHandles.Count > 0)
             {
-                // Pipeline de mergers (ADR 06-05 + 06-05-Meta zone-merger-pipeline) :
-                // dispatch via interface IZoneMerger, plus d'if-pile.
-                merged = _mergerPipeline.Run(_lastZoneAbsStart, _lastZoneAbsEnd, source);
-                // Si le merge n'est pas un intra (les autres = cross-paragraphe),
-                // active le list-mode après l'insertion. On détecte le cross-merge
-                // par la présence d'un \n dans la mergedSource (intra-merge utilise
-                // l'espace, cross utilise \n — cf. brief 30-04 + ADR 05-05).
-                if (merged != null && merged.MergedSource != null && merged.MergedSource.IndexOf('\n') >= 0)
+                foreach (var h in ctx.RemovedHandles)
                 {
-                    wasCrossParagraphMerge = true;
-                    crossMergeMarker = ExtractMarkerFromMergedSource(merged.MergedSource);
+                    try { _store.RemoveAsync(new EquationHandle(h)).GetAwaiter().GetResult(); }
+                    catch (Exception ex) { LogDiag($"merge_remove_error handle={h}: {ex.Message}"); }
+                    try { DeleteBookmarkByHandle(h); }
+                    catch (Exception ex) { LogDiag($"merge_bookmark_delete_error handle={h}: {ex.Message}"); }
+                    _sidecarsByHandle.Remove(h);
                 }
-                if (merged != null)
-                {
-                    _lastZoneAbsStart = merged.AbsStart;
-                    _lastZoneAbsEnd = merged.AbsEnd;
-                    source = merged.MergedSource;
-                    // Recalcule le LaTeX sur le source mergé via le pipeline,
-                    // EN PASSANT LE SIDECAR FUSIONNÉ (ADR 06-05 Phase 1.6) :
-                    // les choix vec/paren/etc. faits dans les paragraphes
-                    // absorbés sont préservés dans le rendu align*.
-                    try
-                    {
-                        var resolved = _resolver.Resolve(source, merged.MergedSidecar);
-                        if (!string.IsNullOrEmpty(resolved.TopLatex)) latex = resolved.TopLatex;
-                    }
-                    catch (Exception ex) { LogDiag("merge_resolve_error: " + ex.Message); }
-                    // Supprime les anciens handles du store ET les bookmarks
-                    // Word `mcEq_<handleId>` (sinon FindOurHandleForOMath
-                    // retrouve l'ancien handle fantôme au prochain merge tentative
-                    // → store retourne null/empty → log "stored null or empty source").
-                    foreach (var h in merged.RemovedHandles)
-                    {
-                        try { _store.RemoveAsync(new EquationHandle(h)).GetAwaiter().GetResult(); }
-                        catch (Exception ex) { LogDiag($"merge_remove_error handle={h}: {ex.Message}"); }
-                        try { DeleteBookmarkByHandle(h); }
-                        catch (Exception ex) { LogDiag($"merge_bookmark_delete_error handle={h}: {ex.Message}"); }
-                        // Nettoie aussi le sidecar mémorisé de cet handle absorbé
-                        // — son contenu est déjà dans merged.MergedSidecar et
-                        // sera ré-attaché au nouveau handle après InsertOMathAt.
-                        _sidecarsByHandle.Remove(h);
-                    }
 
-                    // Supprime explicitement les OMaths qui chevauchent le range
-                    // mergé : Word refuse d'écraser un OMath via Range.Text =
-                    // "..." (lève "The range cannot be deleted"). Doit être fait
-                    // AVANT InsertOMathAt. On itère en sens descendant pour que
-                    // les suppressions n'invalident pas les positions précédentes.
-                    int rangeShrink = DeleteOMathsInRange(_lastZoneAbsStart, _lastZoneAbsEnd);
-                    _lastZoneAbsEnd -= rangeShrink;
+                int rangeShrink = DeleteOMathsInRange(_lastZoneAbsStart, _lastZoneAbsEnd);
+                _lastZoneAbsEnd -= rangeShrink;
 
-                    LogDiag($"merge: {merged.RemovedHandles.Count} OMath(s) absorbés range=[{_lastZoneAbsStart},{_lastZoneAbsEnd}] (shrunk by {rangeShrink}) mergedSource=\"{source}\" latex=\"{latex}\"");
-                }
+                LogDiag($"merge: {ctx.RemovedHandles.Count} OMath(s) absorbés range=[{_lastZoneAbsStart},{_lastZoneAbsEnd}] (shrunk by {rangeShrink}) mergedSource=\"{source}\" latex=\"{latex}\"");
             }
 
             // Snapshot : on enregistre le LaTeX qui va être committé pour que
@@ -1764,7 +1755,10 @@ namespace MathCursor.Host
                     CreateBookmarkForRange(handle.Id, newStart, newEnd);
                     // Phase 1.5 sidecar : mémorise d'abord en mémoire pour que
                     // GetSidecarForHandle soit cohérent (in-mem + on-disk).
-                    StashSidecarForHandle(handle.Id, merged?.MergedSidecar);
+                    // Phase 3a : ctx.Sidecar = mergedSidecar si pipeline a tourné,
+                    // Empty sinon (StashSidecarForHandle fallback popup.CurrentSidecar
+                    // dans ce cas — préserve comportement Phase 1.6).
+                    StashSidecarForHandle(handle.Id, ctx.Sidecar);
                     // Phase 3 : sérialise le sidecar pour le persister dans le
                     // CustomXMLPart à côté de la source. Survit reload Word.
                     var sidecarJson = MathCursor.Core.Resolution.SidecarSerializer.Serialize(

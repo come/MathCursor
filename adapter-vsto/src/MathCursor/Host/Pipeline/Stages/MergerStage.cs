@@ -34,6 +34,11 @@ namespace MathCursor.Host.Pipeline.Stages
         public CommitContext Apply(CommitContext ctx)
         {
             if (ctx == null) return null;
+            // Mode édition : pas de fusion (le revert remplace l'OMath en cours,
+            // pas de merge avec voisins). Préserve `if (editing == null)` du
+            // SuggestionService.
+            if (ctx.EditingHandle != null) return ctx;
+
             var merged = _mergers.Run(ctx.AbsStart, ctx.AbsEnd, ctx.Source);
             if (merged == null) return ctx; // pas de voisin à absorber
 
