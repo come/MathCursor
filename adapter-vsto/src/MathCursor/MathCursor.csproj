@@ -299,6 +299,7 @@
     <Compile Include="Host\LastActionSnapshot.cs" />
     <Compile Include="Host\LastActionTracker.cs" />
     <Compile Include="Host\EquationHandleRegistry.cs" />
+    <Compile Include="Host\ListModeController.cs" />
     <Compile Include="Host\Feedback\FeedbackReport.cs" />
     <Compile Include="Host\Feedback\IFeedbackSender.cs" />
     <Compile Include="Host\Feedback\FeedbackJson.cs" />

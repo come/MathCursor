@@ -115,10 +115,9 @@ namespace MathCursor.Host
         // Enter sur une nouvelle ligne sans marker, on préfixe silencieusement
         // sa source par le marker actif avant de la passer au pipeline cross-merge.
         // Logique pure dans ListModeStateMachine, testée séparément.
-        private readonly ListModeStateMachine _listMode = new ListModeStateMachine();
-        // Paragraphe d'ancrage du list-mode = ¶ juste après le multi-ligne.
-        // Si le caret quitte ce ¶, on désactive list-mode. -1 = pas d'ancre.
-        private int _listModeAnchorParaStart = -1;
+        // ListModeController encapsule la state machine ListModeStateMachine
+        // + l'ancre paragraphe (anchorParaStart). Cf. ADR 06-05 Phase 4c L4.
+        private readonly ListModeController _listMode = new ListModeController();
 
         // Flag : la dernière InsertOMathAt a-t-elle utilisé le pattern XML
         // transplant ? Si oui, l'alignement (m:jc) a déjà été pré-patché dans
@@ -1488,7 +1487,6 @@ namespace MathCursor.Host
                         // l'Enter : caret reste sur le ¶ désormais vide.
                         StripListModeMarkerFromCurrentLine();
                         _listMode.Reset();
-                        _listModeAnchorParaStart = -1;
                         return true;
 
                     case EnterAction.ValidateAsIs:
@@ -1498,7 +1496,6 @@ namespace MathCursor.Host
                         // User a backspacé notre injection puis tapé du contenu.
                         // Exit silencieux : on laisse Enter créer un ¶ normal.
                         _listMode.Reset();
-                        _listModeAnchorParaStart = -1;
                         return false;
                 }
             }
@@ -1767,7 +1764,6 @@ namespace MathCursor.Host
             else
             {
                 _listMode.Reset();
-                _listModeAnchorParaStart = -1;
             }
 
             return ctx.WithBounds(newStart, newEnd);
@@ -1816,8 +1812,8 @@ namespace MathCursor.Host
         /// </para>
         /// <para>
         /// Plan calculé par <see cref="ListModeMarkerInjector.Plan"/> (testé
-        /// séparément). Définit <see cref="_listModeAnchorParaStart"/> pour
-        /// la détection caret-leave côté <see cref="OnSelectionChange"/>.
+        /// séparément). Définit l'ancre via <see cref="ListModeController.SetAnchor"/>
+        /// pour la détection caret-leave côté <see cref="OnSelectionChange"/>.
         /// </para>
         /// </summary>
         private void InjectListModeMarker(string marker, bool hostParaIsOursAndEmpty)
@@ -1825,9 +1821,9 @@ namespace MathCursor.Host
             try
             {
                 var doc = _app.ActiveDocument;
-                if (doc == null) { _listModeAnchorParaStart = -1; return; }
+                if (doc == null) { _listMode.ClearAnchor(); return; }
                 var sel = _app.Selection;
-                if (sel == null) { _listModeAnchorParaStart = -1; return; }
+                if (sel == null) { _listMode.ClearAnchor(); return; }
 
                 int paraStart = sel.Paragraphs[1].Range.Start;
                 var plan = ListModeMarkerInjector.Plan(marker, hostParaIsOursAndEmpty);
@@ -1838,13 +1834,13 @@ namespace MathCursor.Host
                 int caretAfter = paraStart + plan.CaretOffset;
                 doc.Range(caretAfter, caretAfter).Select();
 
-                _listModeAnchorParaStart = paraStart;
+                _listMode.SetAnchor(paraStart);
                 LogDiag($"list_mode: injected \"{plan.TextToInsert.Replace("\r", "\\r")}\" at ¶[{paraStart}], caret=[{caretAfter}], marker=\"{marker}\", createsNewPara={plan.CreatesNewParagraph}");
             }
             catch (Exception ex)
             {
                 LogDiag("list_mode_inject_error: " + ex.Message);
-                _listModeAnchorParaStart = -1;
+                _listMode.ClearAnchor();
             }
         }
 
@@ -1873,23 +1869,19 @@ namespace MathCursor.Host
         /// </summary>
         private void InvalidateListModeIfCaretLeftAnchor(Word.Selection sel)
         {
-            if (_listMode.ActiveMarker == null) return;
-            if (_listModeAnchorParaStart < 0) return;
             try
             {
                 int currentParaStart = sel?.Paragraphs?[1]?.Range.Start ?? -1;
-                if (currentParaStart != _listModeAnchorParaStart)
+                if (_listMode.ShouldInvalidate(currentParaStart))
                 {
-                    LogDiag($"list_mode: caret ¶[{currentParaStart}] hors anchor ¶[{_listModeAnchorParaStart}], désactivé");
+                    LogDiag($"list_mode: caret ¶[{currentParaStart}] hors anchor ¶[{_listMode.AnchorParaStart}], désactivé");
                     _listMode.OnSelectionMoved();
-                    _listModeAnchorParaStart = -1;
                 }
             }
             catch (Exception ex)
             {
                 LogDiag("list_mode_invalidate_error: " + ex.Message);
                 _listMode.OnSelectionMoved();
-                _listModeAnchorParaStart = -1;
             }
         }
 
