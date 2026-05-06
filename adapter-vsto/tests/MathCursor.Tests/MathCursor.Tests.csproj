@@ -117,6 +117,8 @@
     <Compile Include="..\..\src\MathCursor\Host\CaretPositionCalculator.cs" Link="adapter-sources\Host\CaretPositionCalculator.cs" />
     <Compile Include="..\..\src\MathCursor\Host\AutocorrectNormalizer.cs" Link="adapter-sources\Host\AutocorrectNormalizer.cs" />
     <Compile Include="..\..\src\MathCursor\Host\OMathParaJcPatcher.cs" Link="adapter-sources\Host\OMathParaJcPatcher.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\LastActionSnapshot.cs" Link="adapter-sources\Host\LastActionSnapshot.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\LastActionTracker.cs" Link="adapter-sources\Host\LastActionTracker.cs" />
     <Compile Include="..\..\src\MathCursor\Cheatsheet\CheatsheetData.cs" Link="adapter-sources\Cheatsheet\CheatsheetData.cs" />
     <Compile Include="..\..\src\MathCursor\Cheatsheet\CheatsheetViewModel.cs" Link="adapter-sources\Cheatsheet\CheatsheetViewModel.cs" />
     <Compile Include="..\..\src\MathCursor\Cheatsheet\CheatsheetPersistence.cs" Link="adapter-sources\Cheatsheet\CheatsheetPersistence.cs" />

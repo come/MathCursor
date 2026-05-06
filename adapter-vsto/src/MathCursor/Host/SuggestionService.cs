@@ -69,7 +69,7 @@ namespace MathCursor.Host
         // Snapshot de la dernière action user (popup + commit éventuel) pour
         // pré-remplir la fenêtre "Signaler une erreur". Mis à jour à chaque
         // ShowPopup et juste avant InsertOMathAt. Cf. LastActionSnapshot.
-        private LastActionSnapshot _lastAction;
+        private readonly LastActionTracker _lastActionTracker;
 
         // Sidecars de résolutions par handle d'OMath (Phase 1.5 ADR 06-05).
         // Mémoire seulement (pas persisté store côté Phase 3). Permet au
@@ -165,6 +165,7 @@ namespace MathCursor.Host
             _resolver = new ZoneResolver(_engine);
             _store = store ?? throw new ArgumentNullException(nameof(store));
             _contextReader = new WordContextReader(_app);
+            _lastActionTracker = new LastActionTracker(ReadParagraphContextForReport);
 
             // Pipeline de mergers (cf. ADR 2026-05-06-Meta-zone-merger-pipeline) :
             // remplace l'empilement de `if (merged == null)` qui vivait dans
@@ -203,7 +204,7 @@ namespace MathCursor.Host
                     new MathCursor.Host.Pipeline.Stages.MergerStage(
                         _mergerPipeline, ExtractMarkerFromMergedSource),
                     new MathCursor.Host.Pipeline.Stages.ResolverStage(_resolver),
-                    new MathCursor.Host.Pipeline.Stages.SnapshotStage(SnapshotImpl),
+                    new MathCursor.Host.Pipeline.Stages.SnapshotStage(_lastActionTracker),
                     new MathCursor.Host.Pipeline.Stages.InserterStage(InserterImpl),
                     new MathCursor.Host.Pipeline.Stages.StoreStage(StoreImpl),
                     new MathCursor.Host.Pipeline.Stages.LayoutStage(LayoutImpl),
@@ -219,7 +220,7 @@ namespace MathCursor.Host
         /// pour pré-remplir la fenêtre "Signaler une erreur". Renvoie null si
         /// aucune action depuis le démarrage de Word.
         /// </summary>
-        public LastActionSnapshot GetLastAction() => _lastAction;
+        public LastActionSnapshot GetLastAction() => _lastActionTracker.Current;
 
         /// <summary>
         /// Lit le sidecar mémorisé pour un handle d'OMath. Renvoie
@@ -1331,7 +1332,7 @@ namespace MathCursor.Host
             string version = "?";
             try { version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "?"; } catch { }
 
-            var snap = _lastAction;
+            var snap = _lastActionTracker.Current;
             string proposed = snap?.ProposedLatex ?? "";
             string committed = snap?.CommittedLatex ?? "";
 
@@ -1404,18 +1405,7 @@ namespace MathCursor.Host
             // Snapshot pour la fenêtre "Signaler une erreur" : on capture la
             // saisie source + ce que MathCursor propose. Le CommittedLatex sera
             // rempli plus tard (avant InsertOMathAt) si l'user commit.
-            try
-            {
-                _lastAction = new LastActionSnapshot
-                {
-                    At = DateTime.UtcNow,
-                    SourceText = _lastZoneSource ?? string.Empty,
-                    ProposedLatex = resolved?.TopLatex ?? string.Empty,
-                    CommittedLatex = null,
-                    ParagraphContext = ReadParagraphContextForReport(),
-                };
-            }
-            catch { /* le snapshot est best-effort, jamais bloquant pour la popup */ }
+            _lastActionTracker.RecordPopupOpen(_lastZoneSource, resolved?.TopLatex);
 
             var alts = resolved.Spot?.Alternatives
                 ?? (IReadOnlyList<MathCursor.Core.Lattice.AmbiguityAlternative>)Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
@@ -1713,30 +1703,6 @@ namespace MathCursor.Host
         // (OOXML, bookmarks, list-mode) reste dans SuggestionService pour
         // limiter le diff de cette phase. Phase 4 fera la vraie extraction
         // dans les classes des stages.
-
-        /// <summary>SnapshotStage : capture le LaTeX qui va être committé
-        /// pour pré-remplir « Signaler une erreur ». Side-effect global sur
-        /// <c>_lastAction</c> (best-effort, swallow exceptions).</summary>
-        private MathCursor.Host.Pipeline.CommitContext SnapshotImpl(
-            MathCursor.Host.Pipeline.CommitContext ctx)
-        {
-            try
-            {
-                if (_lastAction == null)
-                {
-                    _lastAction = new LastActionSnapshot
-                    {
-                        At = DateTime.UtcNow,
-                        SourceText = ctx.Source ?? string.Empty,
-                        ParagraphContext = ReadParagraphContextForReport(),
-                    };
-                }
-                _lastAction.CommittedLatex = ctx.Latex ?? string.Empty;
-                _lastAction.At = DateTime.UtcNow;
-            }
-            catch { /* best-effort */ }
-            return ctx;
-        }
 
         /// <summary>InserterStage : cleanup post-merge (handles absorbés +
         /// DeleteOMathsInRange) puis insertion OMath via <c>InsertOMathAt</c>.
