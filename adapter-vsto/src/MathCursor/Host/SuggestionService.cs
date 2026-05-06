@@ -2708,12 +2708,52 @@ namespace MathCursor.Host
             var cascade = CasesCascadeMerger.BuildCascade(paragraphsAbove, currentSource);
             if (cascade == null) return null;
 
+            // Fusion des sidecars (parallèle au pattern TryCascadeAbsorbMarkerChain
+            // — bug user 06-05 « système {…} multi-ligne fait sauter les vec »).
+            // Reconstruit chainLines depuis paragraphsAbove + currentSource avec
+            // les mêmes bornes que CasesCascadeMerger.BuildCascade (= AbsorbedCount
+            // dernières lignes de paragraphsAbove + currentSource).
+            var chainLines = new List<string>();
+            int startIdx = paragraphsAbove.Count - cascade.AbsorbedCount;
+            for (int i = startIdx; i < paragraphsAbove.Count; i++)
+                chainLines.Add(paragraphsAbove[i]);
+            chainLines.Add(currentSource);
+
+            var sidecarParts = new List<MathCursor.Core.Resolution.ResolutionSidecar>();
+            var offsetShifts = new List<int>();
+            int cumulativeShift = 0;
+            int absorbedHandleIdx = 0;
+            for (int li = 0; li < chainLines.Count; li++)
+            {
+                MathCursor.Core.Resolution.ResolutionSidecar partSc;
+                bool isLastLine = (li == chainLines.Count - 1);
+                if (isLastLine)
+                {
+                    partSc = _popup?.CurrentSidecar
+                        ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty;
+                }
+                else if (absorbedHandleIdx < removedHandles.Count)
+                {
+                    partSc = GetSidecarForHandle(removedHandles[absorbedHandleIdx++]);
+                }
+                else
+                {
+                    partSc = MathCursor.Core.Resolution.ResolutionSidecar.Empty;
+                }
+                sidecarParts.Add(partSc);
+                offsetShifts.Add(cumulativeShift);
+                cumulativeShift += chainLines[li].Length + 1; // +1 pour le \n
+            }
+            var mergedSidecar = MathCursor.Core.Resolution.SidecarMerger.Merge(
+                sidecarParts, offsetShifts);
+
             return new MergeResult
             {
                 AbsStart = chainStart,
                 AbsEnd = absEnd,
                 MergedSource = cascade.MergedSource,
                 RemovedHandles = removedHandles,
+                MergedSidecar = mergedSidecar,
             };
         }
 
