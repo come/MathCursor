@@ -109,6 +109,11 @@ namespace MathCursor.Host
         // -1 = inactif.
         private int _revertedMultiLineZoneStart = -1;
         private int _revertedMultiLineZoneEnd = -1;
+        // Handle de l'OMath original avant revert (Phase 2 ADR 06-05 — bug
+        // user 06-05 « revert + re-commit fait sauter les vec »). Lu par
+        // TryAbsorbRevertedMultiLineZone pour récupérer le sidecar mémorisé
+        // et le passer en MergedSidecar. -1 = pas de revert actif.
+        private string _revertedHandleId;
 
         // Mode liste invisible (cf. ADR 05-05 multiline-list-mode). Activé
         // après un cross-merge multi-ligne réussi. Quand l'user appuie sur
@@ -840,12 +845,14 @@ namespace MathCursor.Host
                 {
                     _revertedMultiLineZoneStart = omStart;
                     _revertedMultiLineZoneEnd = newEnd;
-                    LogDiag($"revert: multi-ligne zone tracked [{omStart},{newEnd}]");
+                    _revertedHandleId = handle.Id;
+                    LogDiag($"revert: multi-ligne zone tracked [{omStart},{newEnd}] handle={handle.Id}");
                 }
                 else
                 {
                     _revertedMultiLineZoneStart = -1;
                     _revertedMultiLineZoneEnd = -1;
+                    _revertedHandleId = null;
                 }
 
                 // Click sur la popup WPF a volé le focus à Word. Sans ça, le
@@ -1683,6 +1690,7 @@ namespace MathCursor.Host
             _editingOMathStart = -1;
             _revertedMultiLineZoneStart = -1;
             _revertedMultiLineZoneEnd = -1;
+            _revertedHandleId = null;
             _lastCommitUtc = DateTime.UtcNow;
             HidePopup();
             return true;
@@ -1865,6 +1873,7 @@ namespace MathCursor.Host
                 LogDiag($"revert_zone: caret={caretPos} hors zone [{_revertedMultiLineZoneStart},{_revertedMultiLineZoneEnd}], invalidée");
                 _revertedMultiLineZoneStart = -1;
                 _revertedMultiLineZoneEnd = -1;
+                _revertedHandleId = null;
             }
         }
 
@@ -2477,7 +2486,16 @@ namespace MathCursor.Host
                 // mange le ¶ vide qu'on avait au-dessus du Block B (cf. bug
                 // user 04-05 : « ligne à la fin du paragraphe supprimée »).
                 int newAbsEnd = Math.Max(chainEnd, absEnd);
-                LogDiag($"xparMerge_mode2: revert zone absorbed {paragraphTexts.Count} paragraphs, range=[{chainStart},{newAbsEnd}]");
+                // Bug user 06-05 « revert + re-commit fait sauter les vec » :
+                // récupère le sidecar mémorisé du handle reverted (set par
+                // OnRevertRequested) pour le propager en MergedSidecar. La
+                // mergedSource ≈ source originale post-revert (modulo
+                // remplacement de la ligne courante), donc les offsets des
+                // pins du sidecar matchent encore.
+                var mergedSidecar = !string.IsNullOrEmpty(_revertedHandleId)
+                    ? GetSidecarForHandle(_revertedHandleId)
+                    : MathCursor.Core.Resolution.ResolutionSidecar.Empty;
+                LogDiag($"xparMerge_mode2: revert zone absorbed {paragraphTexts.Count} paragraphs, range=[{chainStart},{newAbsEnd}], sidecarPins={mergedSidecar.SpanPins.Count}");
 
                 return new MergeResult
                 {
@@ -2485,6 +2503,7 @@ namespace MathCursor.Host
                     AbsEnd = newAbsEnd,
                     MergedSource = mergedSource,
                     RemovedHandles = new List<string>(),
+                    MergedSidecar = mergedSidecar,
                 };
             }
             catch (Exception ex)

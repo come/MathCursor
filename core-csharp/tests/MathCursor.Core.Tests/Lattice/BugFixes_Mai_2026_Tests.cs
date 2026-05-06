@@ -1,6 +1,7 @@
 using System.Linq;
 using MathCursor.Core;
 using MathCursor.Core.Lattice;
+using MathCursor.Core.Resolution;
 using Xunit;
 
 namespace MathCursor.Core.Tests.Lattice
@@ -57,6 +58,49 @@ namespace MathCursor.Core.Tests.Lattice
         // ───────────────────────────────────────────────────────────────────
         // Bug 2 — u.v produit scalaire : pas de point + espace bizarre
         // ───────────────────────────────────────────────────────────────────
+
+        [Fact(DisplayName = "Bug user 06-05 : système { multi-ligne avec vec → cross-merge cases préserve les vec")]
+        public void Cases_cross_merge_preserves_vec_via_merged_sidecar()
+        {
+            // Simule l'output de TryCascadeAbsorbCasesChain post-fix
+            // (commit 70a3164) : 2 lignes système `{ ` mergées avec sidecar
+            // fusionné contenant tous les pins vec.
+            //
+            // Sans le fix : MergedSidecar = Empty → ResolverStage Resolve la
+            // mergedSource sans aucun pin → vec sautent.
+            // Avec le fix : MergedSidecar contient les pins recalibrés des
+            // 2 lignes → Resolve les applique → tous les vec préservés.
+
+            // mergedSource = `{ AB+BC=DE\n{ AB+BE=BE` (24 chars)
+            //                01234567890 12345678901234
+            // ligne 1 [0..10] : `{ AB+BC=DE`
+            //   `{` =0, ` ` =1, `A` =2, `B` =3, `+` =4, `B` =5, `C` =6,
+            //   `=` =7, `D` =8, `E` =9
+            // ligne 2 [11..] : `{ AB+BE=BE` (offset shift = 11)
+            //   `{` =11, ` ` =12, `A` =13, `B` =14, `+` =15, `B` =16, `E` =17,
+            //   `=` =18, `B` =19, `E` =20
+            const string mergedSource = "{ AB+BC=DE\n{ AB+BE=BE";
+
+            var sidecar = new MathCursor.Core.Resolution.ResolutionSidecar(
+                new[]
+                {
+                    new MathCursor.Core.Resolution.SpanPin(AlternativeGenerator.RuleTwoUppercase, 2, 2, 0),  // AB ligne 1
+                    new MathCursor.Core.Resolution.SpanPin(AlternativeGenerator.RuleTwoUppercase, 5, 2, 0),  // BC
+                    new MathCursor.Core.Resolution.SpanPin(AlternativeGenerator.RuleTwoUppercase, 8, 2, 0),  // DE
+                    new MathCursor.Core.Resolution.SpanPin(AlternativeGenerator.RuleTwoUppercase, 13, 2, 0), // AB ligne 2
+                    new MathCursor.Core.Resolution.SpanPin(AlternativeGenerator.RuleTwoUppercase, 16, 2, 0), // BE (1er)
+                    new MathCursor.Core.Resolution.SpanPin(AlternativeGenerator.RuleTwoUppercase, 19, 2, 0), // BE (2nd)
+                },
+                new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IReadOnlyDictionary<int, int>>());
+
+            var resolved = _resolver.Resolve(mergedSource, sidecar);
+
+            // Tous les vec doivent être préservés dans le top final
+            Assert.Contains("\\vec{AB}", resolved.TopLatex);
+            Assert.Contains("\\vec{BC}", resolved.TopLatex);
+            Assert.Contains("\\vec{DE}", resolved.TopLatex);
+            Assert.Contains("\\vec{BE}", resolved.TopLatex);
+        }
 
         [Fact(DisplayName = "Bug user 06-05 (splice) : sidecar pin sur 1 span similaire ne pollue pas l'autre")]
         public void Sidecar_pin_uses_position_aware_splice_no_global_replace_pollution()
