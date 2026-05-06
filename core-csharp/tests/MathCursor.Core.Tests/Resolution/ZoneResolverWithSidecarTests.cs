@@ -256,6 +256,30 @@ namespace MathCursor.Core.Tests.Resolution
             Assert.DoesNotContain("DC", r.TopLatex);
         }
 
+        [Fact(DisplayName = "HYPOTHÈSE 2 : source avec 2 occurrences AB → AllMatches en a 2 → Replace empile sur les 2")]
+        public void Source_with_repeated_token_should_not_double_vec()
+        {
+            // Source avec deux occurrences "AB" (cas user qui peut arriver
+            // par re-frappe ou par merge bizarre côté adapter).
+            // Si baseResolved.AllMatches contient 2 entrées avec
+            // DefaultLatex="AB", la boucle actuelle fait Replace 2 fois
+            // → "AB+AB" → "\vec{AB}+\vec{AB}" au 1er passage, puis le 2e
+            // passage refait Replace("AB", "\vec{AB}") sur la string déjà
+            // transformée → "\vec{\vec{AB}}+\vec{\vec{AB}}". Empilement.
+            var resolver = MakeResolver();
+            var sidecar = new ResolutionSidecar(
+                new[] { new SpanPin(AlternativeGenerator.RuleTwoUppercase, 0, 2, 0) },
+                new Dictionary<string, IReadOnlyDictionary<int, int>>());
+
+            var r = resolver.Resolve("AB+AB", sidecar);
+
+            // Attendu : 1 niveau de \vec sur chaque AB, pas d'empilement.
+            Assert.DoesNotContain("\\vec{\\vec{AB}}", r.TopLatex);
+            // Vérifie que les 2 AB sont bien marqués (chaque occurrence en \vec).
+            int vecAbCount = CountOccurrences(r.TopLatex, "\\vec{AB}");
+            Assert.Equal(2, vecAbCount);
+        }
+
         [Fact(DisplayName = "Last-write-wins : 2 pins divergents sur AB (vec puis paren) → paren gagne")]
         public void Two_divergent_pins_last_one_wins()
         {

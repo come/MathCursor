@@ -160,9 +160,18 @@ namespace MathCursor.Core
             //
             // Conséquence : 3 pins identiques (cas bug 06-05) → last-write
             // gagne, 1 seul Replace. Pas de \vec{\vec{\vec{...}}}.
+            //
+            // Dédup par (rule, defaultLatex) : si la source a 2 occurrences
+            // du même token (`AB+AB`), AllMatches retourne 2 matches mais le
+            // Replace est global → on ne doit pas le rappeler une 2e fois
+            // (sinon empilement sur la 1re passe : `\vec{AB}` → `\vec{\vec{AB}}`).
+            var processedSpans = new System.Collections.Generic.HashSet<string>();
+
             foreach (var match in baseResolved.AllMatches)
             {
                 if (match.Spot == null || string.IsNullOrEmpty(match.Spot.RuleId)) continue;
+                string spanKey = match.Spot.RuleId + "" + (match.Spot.DefaultLatex ?? string.Empty);
+                if (!processedSpans.Add(spanKey)) continue;
 
                 // 1) Cherche le dernier pin matchant ce span (last-write-wins).
                 int lastPinAlt = -1;
