@@ -203,6 +203,10 @@ namespace MathCursor.Host
                     new MathCursor.Host.Pipeline.Stages.MergerStage(
                         _mergerPipeline, ExtractMarkerFromMergedSource),
                     new MathCursor.Host.Pipeline.Stages.ResolverStage(_resolver),
+                    new MathCursor.Host.Pipeline.Stages.SnapshotStage(SnapshotImpl),
+                    new MathCursor.Host.Pipeline.Stages.InserterStage(InserterImpl),
+                    new MathCursor.Host.Pipeline.Stages.StoreStage(StoreImpl),
+                    new MathCursor.Host.Pipeline.Stages.LayoutStage(LayoutImpl),
                 },
                 log: LogDiag);
         }
@@ -1649,187 +1653,28 @@ namespace MathCursor.Host
         /// </summary>
         private bool CommitLatexAndOMathCore(string latex, string source)
         {
-            var editing = _editHandle;
-
-            // Pipeline du commit (Phase 3a — ADR 2026-05-06-Meta-l4-pipeline-and-session) :
-            // les 2 premiers stages (Merger + Resolver) sont composés via
-            // CommitPipeline. Le reste (snapshot, insert, store, layout, caret)
-            // reste imbriqué ici — sera extrait en Phase 3b avec InserterStage.
+            // Pipeline du commit (Phase 3b — ADR 2026-05-06-Meta-l4-pipeline-and-session).
+            // 6 stages composés : Merger → Resolver → Snapshot → Inserter →
+            // Store → Layout. Les délégués pointent vers des méthodes privées
+            // de SuggestionService qui contiennent la logique métier (Inserter
+            // = OOXML/transplant, Store = bookmark+sidecar, Layout = align +
+            // list-mode). À nettoyer en Phase 4 quand la logique sera vraiment
+            // extraite dans les classes des stages.
             //
-            // En mode édition, MergerStage skip (revert remplace l'OMath, pas
-            // de fusion). ResolverStage skip si Sidecar.IsEmpty (= pas de merge,
-            // pas de re-résolution → préserve le LaTeX popup).
-            //
-            // ctx déclaré hors du flow merge pour rester accessible plus bas
-            // (StashSidecarForHandle utilise ctx.Sidecar au commit insert).
+            // En mode édition, MergerStage skip. ResolverStage skip si
+            // Sidecar.IsEmpty. InserterStage peut signaler IsAborted (rollback
+            // Word) → les stages suivants pass-through.
             var ctx = new MathCursor.Host.Pipeline.CommitContext(
                 absStart: _lastZoneAbsStart,
                 absEnd: _lastZoneAbsEnd,
                 source: source,
                 latex: latex,
-                editingHandle: editing);
-            ctx = _commitPipeline.Run(ctx);
-
-            bool wasCrossParagraphMerge = ctx.WasCrossParagraphMerge;
-            string crossMergeMarker = ctx.CrossMergeMarker;
-            _lastZoneAbsStart = ctx.AbsStart;
-            _lastZoneAbsEnd = ctx.AbsEnd;
-            source = ctx.Source;
-            latex = ctx.Latex;
-
-            // Cleanup post-merge : remove handles + bookmarks + sidecars memory
-            // + DeleteOMathsInRange. Sera extrait dans MergerStage (ou un
-            // MergerCleanupStage) en Phase 3b. Pour l'instant inline.
-            if (ctx.RemovedHandles != null && ctx.RemovedHandles.Count > 0)
-            {
-                foreach (var h in ctx.RemovedHandles)
-                {
-                    try { _store.RemoveAsync(new EquationHandle(h)).GetAwaiter().GetResult(); }
-                    catch (Exception ex) { LogDiag($"merge_remove_error handle={h}: {ex.Message}"); }
-                    try { DeleteBookmarkByHandle(h); }
-                    catch (Exception ex) { LogDiag($"merge_bookmark_delete_error handle={h}: {ex.Message}"); }
-                    _sidecarsByHandle.Remove(h);
-                }
-
-                int rangeShrink = DeleteOMathsInRange(_lastZoneAbsStart, _lastZoneAbsEnd);
-                _lastZoneAbsEnd -= rangeShrink;
-
-                LogDiag($"merge: {ctx.RemovedHandles.Count} OMath(s) absorbés range=[{_lastZoneAbsStart},{_lastZoneAbsEnd}] (shrunk by {rangeShrink}) mergedSource=\"{source}\" latex=\"{latex}\"");
-            }
-
-            // Snapshot : on enregistre le LaTeX qui va être committé pour que
-            // la fenêtre "Signaler une erreur" puisse le pré-remplir.
+                editingHandle: _editHandle);
             try
             {
-                if (_lastAction == null)
-                {
-                    _lastAction = new LastActionSnapshot
-                    {
-                        At = DateTime.UtcNow,
-                        SourceText = source ?? string.Empty,
-                        ParagraphContext = ReadParagraphContextForReport(),
-                    };
-                }
-                _lastAction.CommittedLatex = latex ?? string.Empty;
-                _lastAction.At = DateTime.UtcNow;
+                ctx = _commitPipeline.Run(ctx);
             }
-            catch { /* best-effort */ }
-
-            try
-            {
-                int replaceStart = _lastZoneAbsStart;
-                var (newStart, newEnd) = InsertOMathAt(_lastZoneAbsStart, _lastZoneAbsEnd, latex);
-                bool insertionSucceeded = newEnd > newStart;
-                if (!insertionSucceeded)
-                {
-                    LogDiag($"commit ABORTED latex=\"{latex}\" — OMath build failed, rollback effectué dans InsertOMathAt");
-                }
-                else if (editing != null)
-                {
-                    LogDiag($"edit commit handle={editing.Id} latex=\"{latex}\"");
-                    // Phase 1.5 sidecar : update les choix de résolution pour
-                    // cet handle existant. La popup peut avoir des nouveaux pins.
-                    StashSidecarForHandle(editing.Id);
-                    // Phase 3 : persiste le sidecar mis à jour. StoreAsync
-                    // remplace l'entrée existante (cf. VstoEquationStore qui
-                    // remove → add). Garde la source identique (l'edit a
-                    // pu changer le LaTeX final mais la source brute reste
-                    // celle que l'user a tapée — les choix de désambig
-                    // évoluent indépendamment).
-                    var editSidecarJson = MathCursor.Core.Resolution.SidecarSerializer.Serialize(
-                        GetSidecarForHandle(editing.Id));
-                    try
-                    {
-                        _store.StoreAsync(editing, source, new EquationMetadata
-                        {
-                            SourceLanguage = "fr",
-                            CreatedAt = DateTimeOffset.UtcNow,
-                            SidecarJson = string.IsNullOrEmpty(editSidecarJson) ? null : editSidecarJson,
-                        }).GetAwaiter().GetResult();
-                    }
-                    catch (Exception ex) { LogDiag("edit_store_save_error: " + ex.Message); }
-                }
-                else
-                {
-                    var handle = new EquationHandle(NewHandleId());
-                    CreateBookmarkForRange(handle.Id, newStart, newEnd);
-                    // Phase 1.5 sidecar : mémorise d'abord en mémoire pour que
-                    // GetSidecarForHandle soit cohérent (in-mem + on-disk).
-                    // Phase 3a : ctx.Sidecar = mergedSidecar si pipeline a tourné,
-                    // Empty sinon (StashSidecarForHandle fallback popup.CurrentSidecar
-                    // dans ce cas — préserve comportement Phase 1.6).
-                    StashSidecarForHandle(handle.Id, ctx.Sidecar);
-                    // Phase 3 : sérialise le sidecar pour le persister dans le
-                    // CustomXMLPart à côté de la source. Survit reload Word.
-                    var sidecarJson = MathCursor.Core.Resolution.SidecarSerializer.Serialize(
-                        GetSidecarForHandle(handle.Id));
-                    try
-                    {
-                        _store.StoreAsync(handle, source, new EquationMetadata
-                        {
-                            SourceLanguage = "fr",
-                            CreatedAt = DateTimeOffset.UtcNow,
-                            SidecarJson = string.IsNullOrEmpty(sidecarJson) ? null : sidecarJson,
-                        }).GetAwaiter().GetResult();
-                    }
-                    catch (Exception ex) { LogDiag("store_save_error: " + ex.Message); }
-                    LogDiag($"insert commit handle={handle.Id} range=[{newStart},{newEnd}] latex=\"{latex}\" source=\"{source}\" sidecarBytes={(sidecarJson?.Length ?? 0)}");
-                }
-
-                // Phase 4 du pipeline cross-merge (cf. ADR 04-05) : finalise
-                // le layout (strip ¶ vide / align / append ¶ après / caret).
-                // Encapsulé dans une méthode dédiée pour découpler les étapes.
-                bool finalizedAnchorIsOursAndEmpty = false;
-                if (insertionSucceeded && wasCrossParagraphMerge)
-                {
-                    var doc = _app.ActiveDocument;
-                    if (doc != null) FinalizeCrossMergeLayout(doc, replaceStart, ref newStart, ref newEnd, out finalizedAnchorIsOursAndEmpty);
-                }
-
-                // List-mode visible (ADR 05-05 visible) : si on vient de
-                // réussir un cross-merge multi-ligne, mémorise le marker ET
-                // l'injecte comme texte plain au début du ¶ d'ancrage. L'user
-                // voit le marker, comprend qu'il continue la chaîne en tapant
-                // juste son équation. Sinon (commit non cross-merge), désactive.
-                //
-                // ⚠ "anchorIsOursAndEmpty" ↦ injection sans \r (ne crée pas
-                // de ¶ supplémentaire). Sinon (¶ user pré-existant) on insère
-                // un \r pour préserver l'intégrité du contenu user — bug
-                // user 05-05 : « verifie bien que l'auto nouvelle ligne ne
-                // vient pas manger un espace interparagraphe ».
-                if (insertionSucceeded && wasCrossParagraphMerge && crossMergeMarker != null)
-                {
-                    _listMode.OnCrossMergeSucceeded(crossMergeMarker);
-                    InjectListModeMarker(crossMergeMarker, finalizedAnchorIsOursAndEmpty);
-                }
-                else if (insertionSucceeded && !wasCrossParagraphMerge && IsCasesLatex(latex))
-                {
-                    // Phase 2 cases (ADR 05-05) : single-line cases activé dès
-                    // la 1re conversion `{ x=1`. On finalise le layout (place
-                    // caret après l'OMath, crée un ¶ vide si dernier ¶) puis
-                    // on injecte `{ ` pour indiquer à l'user qu'il est dans le
-                    // système et peut continuer à étendre.
-                    var doc2 = _app.ActiveDocument;
-                    if (doc2 != null)
-                    {
-                        bool didCreateAnchorPara;
-                        int caretPos = AppendEmptyParagraphAfterOMath(doc2, newStart, out didCreateAnchorPara);
-                        if (caretPos >= 0) SetCaretAtPosition(caretPos);
-                        _listMode.OnCrossMergeSucceeded("{");
-                        InjectListModeMarker("{", didCreateAnchorPara);
-                        LogDiag("list_mode_cases: activated on single-line conversion");
-                    }
-                }
-                else
-                {
-                    _listMode.Reset();
-                    _listModeAnchorParaStart = -1;
-                }
-            }
-            catch (Exception ex)
-            {
-                LogDiag("commit_error: " + ex.Message);
-            }
+            catch (Exception ex) { LogDiag("commit_pipeline_error: " + ex.Message); }
 
             // Reset état
             _lastZoneAbsStart = -1;
@@ -1842,6 +1687,169 @@ namespace MathCursor.Host
             _lastCommitUtc = DateTime.UtcNow;
             HidePopup();
             return true;
+        }
+
+        // ─── Implémentations des stages du pipeline (Phase 3b) ──────────
+        // Ces méthodes sont des délégués pour les InserterStage / StoreStage /
+        // LayoutStage / SnapshotStage du CommitPipeline. La logique métier
+        // (OOXML, bookmarks, list-mode) reste dans SuggestionService pour
+        // limiter le diff de cette phase. Phase 4 fera la vraie extraction
+        // dans les classes des stages.
+
+        /// <summary>SnapshotStage : capture le LaTeX qui va être committé
+        /// pour pré-remplir « Signaler une erreur ». Side-effect global sur
+        /// <c>_lastAction</c> (best-effort, swallow exceptions).</summary>
+        private MathCursor.Host.Pipeline.CommitContext SnapshotImpl(
+            MathCursor.Host.Pipeline.CommitContext ctx)
+        {
+            try
+            {
+                if (_lastAction == null)
+                {
+                    _lastAction = new LastActionSnapshot
+                    {
+                        At = DateTime.UtcNow,
+                        SourceText = ctx.Source ?? string.Empty,
+                        ParagraphContext = ReadParagraphContextForReport(),
+                    };
+                }
+                _lastAction.CommittedLatex = ctx.Latex ?? string.Empty;
+                _lastAction.At = DateTime.UtcNow;
+            }
+            catch { /* best-effort */ }
+            return ctx;
+        }
+
+        /// <summary>InserterStage : cleanup post-merge (handles absorbés +
+        /// DeleteOMathsInRange) puis insertion OMath via <c>InsertOMathAt</c>.
+        /// Si l'insertion échoue, retourne <c>ctx.WithAbort()</c> pour que les
+        /// stages suivants pass-through. Sinon, mémorise les nouvelles bornes
+        /// + ReplaceStart pour LayoutStage.</summary>
+        private MathCursor.Host.Pipeline.CommitContext InserterImpl(
+            MathCursor.Host.Pipeline.CommitContext ctx)
+        {
+            // Cleanup post-merge : doit être fait AVANT InsertOMathAt
+            // (sinon Word refuse d'écraser un OMath via Range.Text).
+            if (ctx.RemovedHandles != null && ctx.RemovedHandles.Count > 0)
+            {
+                foreach (var h in ctx.RemovedHandles)
+                {
+                    try { _store.RemoveAsync(new EquationHandle(h)).GetAwaiter().GetResult(); }
+                    catch (Exception ex) { LogDiag($"merge_remove_error handle={h}: {ex.Message}"); }
+                    try { DeleteBookmarkByHandle(h); }
+                    catch (Exception ex) { LogDiag($"merge_bookmark_delete_error handle={h}: {ex.Message}"); }
+                    _sidecarsByHandle.Remove(h);
+                }
+
+                int rangeShrink = DeleteOMathsInRange(ctx.AbsStart, ctx.AbsEnd);
+                ctx = ctx.WithBounds(ctx.AbsStart, ctx.AbsEnd - rangeShrink);
+
+                LogDiag($"merge: {ctx.RemovedHandles.Count} OMath(s) absorbés range=[{ctx.AbsStart},{ctx.AbsEnd}] (shrunk by {rangeShrink}) mergedSource=\"{ctx.Source}\" latex=\"{ctx.Latex}\"");
+            }
+
+            int replaceStart = ctx.AbsStart;
+            var (newStart, newEnd) = InsertOMathAt(ctx.AbsStart, ctx.AbsEnd, ctx.Latex);
+            if (newEnd <= newStart)
+            {
+                LogDiag($"commit ABORTED latex=\"{ctx.Latex}\" — OMath build failed, rollback effectué dans InsertOMathAt");
+                return ctx.WithAbort();
+            }
+            return ctx.WithInsertedBounds(newStart, newEnd, replaceStart);
+        }
+
+        /// <summary>StoreStage : persiste la source + sidecar dans le
+        /// CustomXMLPart. En mode édition, met à jour l'entrée existante.
+        /// En mode nouveau commit, crée le handle, le bookmark, et stocke.
+        /// </summary>
+        private MathCursor.Host.Pipeline.CommitContext StoreImpl(
+            MathCursor.Host.Pipeline.CommitContext ctx)
+        {
+            var editing = ctx.EditingHandle;
+            if (editing != null)
+            {
+                LogDiag($"edit commit handle={editing.Id} latex=\"{ctx.Latex}\"");
+                StashSidecarForHandle(editing.Id);
+                var editSidecarJson = MathCursor.Core.Resolution.SidecarSerializer.Serialize(
+                    GetSidecarForHandle(editing.Id));
+                try
+                {
+                    _store.StoreAsync(editing, ctx.Source, new EquationMetadata
+                    {
+                        SourceLanguage = "fr",
+                        CreatedAt = DateTimeOffset.UtcNow,
+                        SidecarJson = string.IsNullOrEmpty(editSidecarJson) ? null : editSidecarJson,
+                    }).GetAwaiter().GetResult();
+                }
+                catch (Exception ex) { LogDiag("edit_store_save_error: " + ex.Message); }
+                return ctx;
+            }
+
+            var handle = new EquationHandle(NewHandleId());
+            CreateBookmarkForRange(handle.Id, ctx.AbsStart, ctx.AbsEnd);
+            // ctx.Sidecar = mergedSidecar si MergerStage a fusionné, Empty sinon.
+            // StashSidecarForHandle fallback popup.CurrentSidecar si Empty.
+            StashSidecarForHandle(handle.Id, ctx.Sidecar);
+            var sidecarJson = MathCursor.Core.Resolution.SidecarSerializer.Serialize(
+                GetSidecarForHandle(handle.Id));
+            try
+            {
+                _store.StoreAsync(handle, ctx.Source, new EquationMetadata
+                {
+                    SourceLanguage = "fr",
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    SidecarJson = string.IsNullOrEmpty(sidecarJson) ? null : sidecarJson,
+                }).GetAwaiter().GetResult();
+            }
+            catch (Exception ex) { LogDiag("store_save_error: " + ex.Message); }
+            LogDiag($"insert commit handle={handle.Id} range=[{ctx.AbsStart},{ctx.AbsEnd}] latex=\"{ctx.Latex}\" source=\"{ctx.Source}\" sidecarBytes={(sidecarJson?.Length ?? 0)}");
+            return ctx.WithNewHandle(handle);
+        }
+
+        /// <summary>LayoutStage : finalise le layout post-insert. Cas :
+        /// (1) cross-merge → FinalizeCrossMergeLayout + InjectListModeMarker,
+        /// (2) cases single-line (`{ x=1`) → AppendEmptyParagraph + caret +
+        /// inject `{`, (3) sinon → reset list-mode.</summary>
+        private MathCursor.Host.Pipeline.CommitContext LayoutImpl(
+            MathCursor.Host.Pipeline.CommitContext ctx)
+        {
+            int newStart = ctx.AbsStart;
+            int newEnd = ctx.AbsEnd;
+            bool finalizedAnchorIsOursAndEmpty = false;
+
+            if (ctx.WasCrossParagraphMerge)
+            {
+                var doc = _app.ActiveDocument;
+                if (doc != null)
+                    FinalizeCrossMergeLayout(doc, ctx.ReplaceStart, ref newStart, ref newEnd, out finalizedAnchorIsOursAndEmpty);
+            }
+
+            if (ctx.WasCrossParagraphMerge && ctx.CrossMergeMarker != null)
+            {
+                _listMode.OnCrossMergeSucceeded(ctx.CrossMergeMarker);
+                InjectListModeMarker(ctx.CrossMergeMarker, finalizedAnchorIsOursAndEmpty);
+            }
+            else if (!ctx.WasCrossParagraphMerge && IsCasesLatex(ctx.Latex))
+            {
+                // Phase 2 cases (ADR 05-05) : single-line cases activé dès
+                // la 1re conversion `{ x=1`.
+                var doc2 = _app.ActiveDocument;
+                if (doc2 != null)
+                {
+                    bool didCreateAnchorPara;
+                    int caretPos = AppendEmptyParagraphAfterOMath(doc2, newStart, out didCreateAnchorPara);
+                    if (caretPos >= 0) SetCaretAtPosition(caretPos);
+                    _listMode.OnCrossMergeSucceeded("{");
+                    InjectListModeMarker("{", didCreateAnchorPara);
+                    LogDiag("list_mode_cases: activated on single-line conversion");
+                }
+            }
+            else
+            {
+                _listMode.Reset();
+                _listModeAnchorParaStart = -1;
+            }
+
+            return ctx.WithBounds(newStart, newEnd);
         }
 
         /// <summary>

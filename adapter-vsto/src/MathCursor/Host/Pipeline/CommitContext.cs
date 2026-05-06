@@ -83,6 +83,14 @@ namespace MathCursor.Host.Pipeline
         /// avant chaque <c>Apply</c>.</summary>
         public bool IsAborted { get; }
 
+        // ─── Bornes pré-insert (memo pour LayoutStage) ──────────────
+
+        /// <summary>Position absolue de l'OMath AVANT InsertOMathAt — sert à
+        /// <c>FinalizeCrossMergeLayout</c> qui a besoin de connaître la
+        /// position de remplacement (l'OMath inséré peut avoir bougé).
+        /// -1 tant que <c>InserterStage</c> n'a pas tourné.</summary>
+        public int ReplaceStart { get; }
+
         // ─── Constructeur + With ────────────────────────────────────
 
         public CommitContext(
@@ -96,7 +104,8 @@ namespace MathCursor.Host.Pipeline
             EquationHandle editingHandle = null,
             bool wasCrossParagraphMerge = false,
             string crossMergeMarker = null,
-            bool isAborted = false)
+            bool isAborted = false,
+            int replaceStart = -1)
         {
             AbsStart = absStart;
             AbsEnd = absEnd;
@@ -109,6 +118,7 @@ namespace MathCursor.Host.Pipeline
             WasCrossParagraphMerge = wasCrossParagraphMerge;
             CrossMergeMarker = crossMergeMarker;
             IsAborted = isAborted;
+            ReplaceStart = replaceStart;
         }
 
         public CommitContext WithMergeResult(
@@ -120,30 +130,42 @@ namespace MathCursor.Host.Pipeline
             => new CommitContext(
                 absStart, absEnd, mergedSource, Latex,
                 mergedSidecar, removedHandles, NewHandle, EditingHandle,
-                wasCrossParagraphMerge, crossMergeMarker, IsAborted);
+                wasCrossParagraphMerge, crossMergeMarker, IsAborted, ReplaceStart);
 
         public CommitContext WithLatex(string latex)
             => new CommitContext(
                 AbsStart, AbsEnd, Source, latex, Sidecar, RemovedHandles,
-                NewHandle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker, IsAborted);
+                NewHandle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker,
+                IsAborted, ReplaceStart);
 
         public CommitContext WithNewHandle(EquationHandle handle)
             => new CommitContext(
                 AbsStart, AbsEnd, Source, Latex, Sidecar, RemovedHandles,
-                handle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker, IsAborted);
+                handle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker,
+                IsAborted, ReplaceStart);
 
         /// <summary>Marque le ctx comme avorté. Les stages suivants
         /// pass-through (le pipeline les saute via short-circuit).</summary>
         public CommitContext WithAbort()
             => new CommitContext(
                 AbsStart, AbsEnd, Source, Latex, Sidecar, RemovedHandles,
-                NewHandle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker, isAborted: true);
+                NewHandle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker,
+                isAborted: true, replaceStart: ReplaceStart);
 
         /// <summary>Update les bornes après insertion réussie (l'OMath inséré
         /// peut avoir légèrement changé les bornes par rapport à la zone source).</summary>
         public CommitContext WithBounds(int absStart, int absEnd)
             => new CommitContext(
                 absStart, absEnd, Source, Latex, Sidecar, RemovedHandles,
-                NewHandle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker, IsAborted);
+                NewHandle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker,
+                IsAborted, ReplaceStart);
+
+        /// <summary>Update les bornes ET mémorise <see cref="ReplaceStart"/>
+        /// (= l'AbsStart pré-insert, pour LayoutStage).</summary>
+        public CommitContext WithInsertedBounds(int newStart, int newEnd, int replaceStart)
+            => new CommitContext(
+                newStart, newEnd, Source, Latex, Sidecar, RemovedHandles,
+                NewHandle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker,
+                IsAborted, replaceStart);
     }
 }
