@@ -103,6 +103,11 @@
     <Compile Include="..\..\src\MathCursor\Host\Pipeline\ICommitStage.cs" Link="adapter-sources\Host\Pipeline\ICommitStage.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Pipeline\Stages\MergerStage.cs" Link="adapter-sources\Host\Pipeline\Stages\MergerStage.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Pipeline\Stages\ResolverStage.cs" Link="adapter-sources\Host\Pipeline\Stages\ResolverStage.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\Stages\RendererStage.cs" Link="adapter-sources\Host\Pipeline\Stages\RendererStage.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\Stages\InserterStage.cs" Link="adapter-sources\Host\Pipeline\Stages\InserterStage.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\Stages\StoreStage.cs" Link="adapter-sources\Host\Pipeline\Stages\StoreStage.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\Stages\LayoutStage.cs" Link="adapter-sources\Host\Pipeline\Stages\LayoutStage.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\Stages\CaretStage.cs" Link="adapter-sources\Host\Pipeline\Stages\CaretStage.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Session\EquationSession.cs" Link="adapter-sources\Host\Session\EquationSession.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Session\IterativeExpansion.cs" Link="adapter-sources\Host\Session\IterativeExpansion.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Session\ListModeAnchor.cs" Link="adapter-sources\Host\Session\ListModeAnchor.cs" />

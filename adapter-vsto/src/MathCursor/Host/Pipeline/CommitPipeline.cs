@@ -43,12 +43,18 @@ namespace MathCursor.Host.Pipeline
             for (int i = 0; i < _stages.Count; i++)
             {
                 var stage = _stages[i];
+                if (ctx.IsAborted)
+                {
+                    _log($"stage[{i}]={stage.Name}: SKIPPED (aborted)");
+                    continue;
+                }
                 var before = ctx;
                 ctx = stage.Apply(ctx) ?? before;
                 _log($"stage[{i}]={stage.Name}: " +
                      $"absStart={ctx.AbsStart} absEnd={ctx.AbsEnd} " +
                      $"removed={ctx.RemovedHandles.Count} " +
-                     $"sidecarPins={ctx.Sidecar.SpanPins.Count}");
+                     $"sidecarPins={ctx.Sidecar.SpanPins.Count}" +
+                     (ctx.IsAborted ? " [ABORTED]" : ""));
             }
             return ctx;
         }

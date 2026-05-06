@@ -73,6 +73,36 @@ namespace MathCursor.Tests.Host.Pipeline
             Assert.Throws<System.ArgumentNullException>(() => pipeline.Run(null));
         }
 
+        [Fact(DisplayName = "Stage qui set IsAborted → stages suivants skippés (rollback safe)")]
+        public void Aborted_stage_short_circuits_remaining_stages()
+        {
+            var calls = new List<string>();
+            var stages = new ICommitStage[]
+            {
+                new StubStage("Insert", ctx =>
+                {
+                    calls.Add("Insert");
+                    return ctx.WithAbort(); // simulate insertion failure
+                }),
+                new StubStage("Store", ctx =>
+                {
+                    calls.Add("Store"); // ne doit PAS être appelé
+                    return ctx;
+                }),
+                new StubStage("Layout", ctx =>
+                {
+                    calls.Add("Layout"); // ne doit PAS être appelé
+                    return ctx;
+                }),
+            };
+            var pipeline = new CommitPipeline(stages);
+
+            var result = pipeline.Run(NewCtx());
+
+            Assert.True(result.IsAborted);
+            Assert.Equal(new[] { "Insert" }, calls); // seulement Insert
+        }
+
         // ─── stub helper ────────────────────────────────────────────
 
         private sealed class StubStage : ICommitStage

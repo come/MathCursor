@@ -75,6 +75,14 @@ namespace MathCursor.Host.Pipeline
         /// cross-merge ou pas de marker reconnu.</summary>
         public string CrossMergeMarker { get; }
 
+        // ─── Abort flag ─────────────────────────────────────────────
+
+        /// <summary>Vrai si un stage a échoué (ex. InserterStage : rollback
+        /// requis). Les stages suivants doivent passer le ctx en
+        /// pass-through (pas de side-effect). Le pipeline check ce flag
+        /// avant chaque <c>Apply</c>.</summary>
+        public bool IsAborted { get; }
+
         // ─── Constructeur + With ────────────────────────────────────
 
         public CommitContext(
@@ -87,7 +95,8 @@ namespace MathCursor.Host.Pipeline
             EquationHandle newHandle = null,
             EquationHandle editingHandle = null,
             bool wasCrossParagraphMerge = false,
-            string crossMergeMarker = null)
+            string crossMergeMarker = null,
+            bool isAborted = false)
         {
             AbsStart = absStart;
             AbsEnd = absEnd;
@@ -99,6 +108,7 @@ namespace MathCursor.Host.Pipeline
             EditingHandle = editingHandle;
             WasCrossParagraphMerge = wasCrossParagraphMerge;
             CrossMergeMarker = crossMergeMarker;
+            IsAborted = isAborted;
         }
 
         public CommitContext WithMergeResult(
@@ -110,16 +120,30 @@ namespace MathCursor.Host.Pipeline
             => new CommitContext(
                 absStart, absEnd, mergedSource, Latex,
                 mergedSidecar, removedHandles, NewHandle, EditingHandle,
-                wasCrossParagraphMerge, crossMergeMarker);
+                wasCrossParagraphMerge, crossMergeMarker, IsAborted);
 
         public CommitContext WithLatex(string latex)
             => new CommitContext(
                 AbsStart, AbsEnd, Source, latex, Sidecar, RemovedHandles,
-                NewHandle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker);
+                NewHandle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker, IsAborted);
 
         public CommitContext WithNewHandle(EquationHandle handle)
             => new CommitContext(
                 AbsStart, AbsEnd, Source, Latex, Sidecar, RemovedHandles,
-                handle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker);
+                handle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker, IsAborted);
+
+        /// <summary>Marque le ctx comme avorté. Les stages suivants
+        /// pass-through (le pipeline les saute via short-circuit).</summary>
+        public CommitContext WithAbort()
+            => new CommitContext(
+                AbsStart, AbsEnd, Source, Latex, Sidecar, RemovedHandles,
+                NewHandle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker, isAborted: true);
+
+        /// <summary>Update les bornes après insertion réussie (l'OMath inséré
+        /// peut avoir légèrement changé les bornes par rapport à la zone source).</summary>
+        public CommitContext WithBounds(int absStart, int absEnd)
+            => new CommitContext(
+                absStart, absEnd, Source, Latex, Sidecar, RemovedHandles,
+                NewHandle, EditingHandle, WasCrossParagraphMerge, CrossMergeMarker, IsAborted);
     }
 }

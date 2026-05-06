@@ -27,17 +27,18 @@ namespace MathCursor.Tests.Host.Pipeline.Stages
             Assert.Same(ctx, result);
         }
 
-        [Fact(DisplayName = "Source `AB+BC` sans sidecar → Latex peuplé sans \\vec (default)")]
-        public void Resolves_without_sidecar_produces_default_latex()
+        [Fact(DisplayName = "Sidecar empty → ctx inchangé (pas de re-pipeline, préserve Latex popup)")]
+        public void Empty_sidecar_returns_ctx_unchanged()
         {
+            // Sémantique : ResolverStage ne fait rien si pas de merge effectif
+            // (= sidecar vide). Préserve le Latex venant de la popup, qui peut
+            // contenir des substitutions in-line non capturées dans le sidecar.
             var stage = MakeStage();
-            var ctx = new CommitContext(0, 5, source: "AB+BC", latex: "");
+            var ctx = new CommitContext(0, 5, source: "AB+BC", latex: "popup-latex");
 
             var result = stage.Apply(ctx);
 
-            Assert.NotEqual(ctx, result);
-            Assert.NotEmpty(result.Latex);
-            Assert.DoesNotContain("\\vec", result.Latex);
+            Assert.Same(ctx, result);
         }
 
         [Fact(DisplayName = "Source `AB` + sidecar pin AB→vec → Latex contient \\vec{AB}")]

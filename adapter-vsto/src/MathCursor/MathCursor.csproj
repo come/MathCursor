@@ -278,6 +278,11 @@
     <Compile Include="Host\Pipeline\ICommitStage.cs" />
     <Compile Include="Host\Pipeline\Stages\MergerStage.cs" />
     <Compile Include="Host\Pipeline\Stages\ResolverStage.cs" />
+    <Compile Include="Host\Pipeline\Stages\RendererStage.cs" />
+    <Compile Include="Host\Pipeline\Stages\InserterStage.cs" />
+    <Compile Include="Host\Pipeline\Stages\StoreStage.cs" />
+    <Compile Include="Host\Pipeline\Stages\LayoutStage.cs" />
+    <Compile Include="Host\Pipeline\Stages\CaretStage.cs" />
     <Compile Include="Host\Session\EquationSession.cs" />
     <Compile Include="Host\Session\IterativeExpansion.cs" />
     <Compile Include="Host\Session\ListModeAnchor.cs" />
