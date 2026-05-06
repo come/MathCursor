@@ -110,6 +110,39 @@ namespace MathCursor.UI
             }
         }
 
+        /// <summary>
+        /// Insère ou met à jour un pin par <c>(Rule, Offset, Len)</c> —
+        /// last-write-wins sur <c>AltIdx</c>. Cohérent avec la sémantique
+        /// <see cref="MathCursor.Core.Resolution.ResolutionSidecar"/> côté
+        /// <c>ZoneResolver.Resolve(source, sidecar)</c> qui prend le dernier
+        /// pin matching d'un span. Évite l'accumulation quand <c>Show()</c>
+        /// est appelé plusieurs fois sur le même span (NER fluctuant pendant
+        /// la frappe) — sinon le sidecar grossit avec des doublons et le
+        /// merger les recalibre, polluant les autres OMaths au merge.
+        /// Cf. cause racine bug 06-05 (flèches empilées).
+        /// </summary>
+        /// <returns><c>true</c> si un nouveau pin a été ajouté, <c>false</c>
+        /// si un pin existant a été mis à jour (overwrite altIdx). Le caller
+        /// doit utiliser ça pour conditionner <see cref="TallyVote"/> :
+        /// re-résoudre le même span ne doit pas re-voter (sinon les votes
+        /// gonflent à chaque Show répété).</returns>
+        private bool UpsertSpanPin(string ruleId, int offset, int len, int altIdx)
+        {
+            for (int i = _sessionSpanPins.Count - 1; i >= 0; i--)
+            {
+                var p = _sessionSpanPins[i];
+                if (p.Rule == ruleId && p.Offset == offset && p.Len == len)
+                {
+                    _sessionSpanPins[i] = new MathCursor.Core.Resolution.SpanPin(
+                        ruleId, offset, len, altIdx);
+                    return false;
+                }
+            }
+            _sessionSpanPins.Add(new MathCursor.Core.Resolution.SpanPin(
+                ruleId, offset, len, altIdx));
+            return true;
+        }
+
         /// <summary>Helper interne : incrémente le compteur de vote pour
         /// une règle/alt donnée. Appelé à chaque résolution (manuelle ou silent).</summary>
         private void TallyVote(string ruleId, int altIdx)
@@ -313,9 +346,8 @@ namespace MathCursor.UI
                 // avant). On l'enregistre comme SpanPin pour qu'elle survive
                 // au cross-merge re-pipeline. Sinon, un nouveau span typique
                 // taper après la 1re résolution serait perdu (ADR 06-05).
-                _sessionSpanPins.Add(new MathCursor.Core.Resolution.SpanPin(
-                    ruleId, spotStart, spotEnd - spotStart, preferredIdx));
-                TallyVote(ruleId, preferredIdx);
+                if (UpsertSpanPin(ruleId, spotStart, spotEnd - spotStart, preferredIdx))
+                    TallyVote(ruleId, preferredIdx);
                 LogPopup($"auto-applied pref rule=\"{ruleId}\" altIdx={preferredIdx} → \"{preferredAlt.Latex}\"");
                 alternatives = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
             }
@@ -541,12 +573,8 @@ namespace MathCursor.UI
                     int matchLen = match.End - match.Start;
                     if (matchLen > 0)
                     {
-                        _sessionSpanPins.Add(new MathCursor.Core.Resolution.SpanPin(
-                            ruleId,
-                            match.Start,
-                            matchLen,
-                            chosenAltIdx));
-                        TallyVote(ruleId, chosenAltIdx);
+                        if (UpsertSpanPin(ruleId, match.Start, matchLen, chosenAltIdx))
+                            TallyVote(ruleId, chosenAltIdx);
                     }
                 }
             }
