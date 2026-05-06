@@ -82,6 +82,7 @@
          testés sont pure compute (pas de dépendance Word/VSTO) → on les
          recompile dans l'assembly de test. -->
     <Compile Include="..\..\src\MathCursor\UI\WpfMathAdapter.cs" Link="adapter-sources\UI\WpfMathAdapter.cs" />
+    <Compile Include="..\..\src\MathCursor\UI\MixedLatexRenderer.cs" Link="adapter-sources\UI\MixedLatexRenderer.cs" />
     <Compile Include="..\..\src\MathCursor\Detection\DetectedZone.cs" Link="adapter-sources\Detection\DetectedZone.cs" />
     <Compile Include="..\..\src\MathCursor\Detection\WordPiece\WordPieceTokenizer.cs" Link="adapter-sources\Detection\WordPiece\WordPieceTokenizer.cs" />
     <Compile Include="..\..\src\MathCursor\Detection\MathNerDetector.cs" Link="adapter-sources\Detection\MathNerDetector.cs" />
@@ -97,6 +98,12 @@
     <Compile Include="..\..\src\MathCursor\Host\Merging\RevertedMultiLineMerger.cs" Link="adapter-sources\Host\Merging\RevertedMultiLineMerger.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Merging\CasesChainCascadeMerger.cs" Link="adapter-sources\Host\Merging\CasesChainCascadeMerger.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Merging\MarkerChainCascadeMerger.cs" Link="adapter-sources\Host\Merging\MarkerChainCascadeMerger.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\CommitContext.cs" Link="adapter-sources\Host\Pipeline\CommitContext.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Session\EquationSession.cs" Link="adapter-sources\Host\Session\EquationSession.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Session\IterativeExpansion.cs" Link="adapter-sources\Host\Session\IterativeExpansion.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Session\ListModeAnchor.cs" Link="adapter-sources\Host\Session\ListModeAnchor.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Session\RevertedMultiLineZone.cs" Link="adapter-sources\Host\Session\RevertedMultiLineZone.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Session\SessionState.cs" Link="adapter-sources\Host\Session\SessionState.cs" />
     <Compile Include="..\..\src\MathCursor\Host\CaretPositionCalculator.cs" Link="adapter-sources\Host\CaretPositionCalculator.cs" />
     <Compile Include="..\..\src\MathCursor\Host\AutocorrectNormalizer.cs" Link="adapter-sources\Host\AutocorrectNormalizer.cs" />
     <Compile Include="..\..\src\MathCursor\Host\OMathParaJcPatcher.cs" Link="adapter-sources\Host\OMathParaJcPatcher.cs" />

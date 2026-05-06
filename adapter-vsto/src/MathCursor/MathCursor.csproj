@@ -273,6 +273,12 @@
     <Compile Include="Host\Merging\RevertedMultiLineMerger.cs" />
     <Compile Include="Host\Merging\CasesChainCascadeMerger.cs" />
     <Compile Include="Host\Merging\MarkerChainCascadeMerger.cs" />
+    <Compile Include="Host\Pipeline\CommitContext.cs" />
+    <Compile Include="Host\Session\EquationSession.cs" />
+    <Compile Include="Host\Session\IterativeExpansion.cs" />
+    <Compile Include="Host\Session\ListModeAnchor.cs" />
+    <Compile Include="Host\Session\RevertedMultiLineZone.cs" />
+    <Compile Include="Host\Session\SessionState.cs" />
     <Compile Include="Host\ListModeMarkerInjector.cs" />
     <Compile Include="Host\ListModeStateMachine.cs" />
     <Compile Include="Host\OMathParaJcPatcher.cs" />
@@ -289,6 +295,7 @@
     <Compile Include="Host\Feedback\HttpFeedbackSender.cs" />
     <Compile Include="Host\Feedback\FeedbackSenderFactory.cs" />
     <Compile Include="UI\WpfMathAdapter.cs" />
+    <Compile Include="UI\MixedLatexRenderer.cs" />
     <Compile Include="UI\SuggestionPopupWindow.cs" />
     <Compile Include="UI\EditModePopupWindow.cs" />
     <Compile Include="UI\FeedbackDialog.cs" />
