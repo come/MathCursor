@@ -112,6 +112,38 @@ namespace MathCursor
                     "type your lesson, without leaving Word.",
         };
 
+        // ---------- Examples pane (cf. ADR 06-05 ribbon-pane-examples-pivot) ----------
+
+        public static string ExamplesPaneTitle => Lang switch
+        {
+            "fr" => "MathCursor — Exemples",
+            _    => "MathCursor — Examples",
+        };
+
+        public static string ExamplesMissingButton => Lang switch
+        {
+            "fr" => "Cliquez sur le bouton Exemples du ruban pour ouvrir le panneau.",
+            _    => "Click the Examples button on the ribbon to open the panel.",
+        };
+
+        public static string ExamplesNoMatch => Lang switch
+        {
+            "fr" => "Aucun exemple ne correspond à votre recherche.",
+            _    => "No example matches your search.",
+        };
+
+        public static string ExamplesEntryTypeLabel => Lang switch
+        {
+            "fr" => "Tapez :",
+            _    => "Type:",
+        };
+
+        public static string ExamplesEntryRenderLabel => Lang switch
+        {
+            "fr" => "Vous obtenez :",
+            _    => "You get:",
+        };
+
         // ---------- Dialog Aide (legacy, à dégager quand le pane Cheatsheet aura absorbé le contenu) ----------
 
         public static string HelpDialogTitle => Lang switch

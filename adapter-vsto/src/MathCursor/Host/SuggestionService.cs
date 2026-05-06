@@ -1662,13 +1662,31 @@ namespace MathCursor.Host
             // extraite dans les classes des stages.
             //
             // En mode édition, MergerStage skip. ResolverStage skip si
-            // Sidecar.IsEmpty. InserterStage peut signaler IsAborted (rollback
-            // Word) → les stages suivants pass-through.
+            // !WasMerged && Sidecar.IsEmpty. InserterStage peut signaler
+            // IsAborted (rollback Word) → les stages suivants pass-through.
+            //
+            // Pre-load sidecar en edit mode (fix canary 4) : sinon le revert
+            // d'un OMath multi-ligne avec vec perd ses désambiguïsations.
+            // Merge stored + popup pour que anciens pins ET nouveaux choix
+            // popup soient combinés (last-write-wins via ZoneResolver pour
+            // les pins divergents sur le même span).
+            var initialSidecar = MathCursor.Core.Resolution.ResolutionSidecar.Empty;
+            if (_editHandle != null)
+            {
+                initialSidecar = MathCursor.Core.Resolution.SidecarMerger.Merge(
+                    new[]
+                    {
+                        GetSidecarForHandle(_editHandle.Id),
+                        _popup?.CurrentSidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty,
+                    },
+                    new[] { 0, 0 });
+            }
             var ctx = new MathCursor.Host.Pipeline.CommitContext(
                 absStart: _lastZoneAbsStart,
                 absEnd: _lastZoneAbsEnd,
                 source: source,
                 latex: latex,
+                sidecar: initialSidecar,
                 editingHandle: _editHandle);
             try
             {
