@@ -52,6 +52,21 @@ namespace MathCursor.UI
         // Cache des résolutions par STRING (defaultLatex → altLatex). Appliqué
         // à chaque update du polling NER pour préserver les choix précis de
         // l'utilisateur (ex: "AB" → "\\vec{AB}" exactement, même si on retape).
+        // Span-pins accumulés à mesure que l'utilisateur résout des alts.
+        // Sont remontés via CurrentSidecar au commit pour que le SuggestionService
+        // les persiste et les utilise au cross-merge (cf. ADR 2026-05-06
+        // resolution-sidecar-and-layers, Phase 1.5).
+        private readonly System.Collections.Generic.List<MathCursor.Core.Resolution.SpanPin> _sessionSpanPins
+            = new System.Collections.Generic.List<MathCursor.Core.Resolution.SpanPin>();
+
+        // Compteurs de votes par règle/alt (Phase 2 ADR 06-05). Chaque
+        // résolution (manuelle OU silent au Show) incrémente le compteur.
+        // Au cross-merge, ces votes boostent le ranking pour les ambigs
+        // non pinées : un nouveau span 2-uppercase apparu après plusieurs
+        // votes vec tombe auto sur vec.
+        private readonly Dictionary<string, Dictionary<int, int>> _sessionVotes
+            = new Dictionary<string, Dictionary<int, int>>();
+
         private readonly Dictionary<string, string> _resolvedSubstitutions
             = new Dictionary<string, string>();
 
@@ -73,6 +88,41 @@ namespace MathCursor.UI
         /// finale. Intègre les éventuelles résolutions d'alternatives faites
         /// par l'utilisateur en navigant + Enter sur les alts.</summary>
         public string CurrentFinalLatex => _resolvedLatex;
+
+        /// <summary>
+        /// Sidecar de résolutions accumulé pour la zone courante. Vide tant
+        /// que l'utilisateur n'a résolu aucune alt. Cf. ADR 2026-05-06
+        /// resolution-sidecar-and-layers — utilisé au commit + cross-merge
+        /// pour réappliquer les choix vec/paren/etc. quand on re-pipeline.
+        /// </summary>
+        public MathCursor.Core.Resolution.ResolutionSidecar CurrentSidecar
+        {
+            get
+            {
+                if (_sessionSpanPins.Count == 0 && _sessionVotes.Count == 0)
+                    return MathCursor.Core.Resolution.ResolutionSidecar.Empty;
+                var votesReadonly = new Dictionary<string, IReadOnlyDictionary<int, int>>();
+                foreach (var kv in _sessionVotes)
+                    votesReadonly[kv.Key] = new Dictionary<int, int>(kv.Value);
+                return new MathCursor.Core.Resolution.ResolutionSidecar(
+                    _sessionSpanPins.ToArray(),
+                    votesReadonly);
+            }
+        }
+
+        /// <summary>Helper interne : incrémente le compteur de vote pour
+        /// une règle/alt donnée. Appelé à chaque résolution (manuelle ou silent).</summary>
+        private void TallyVote(string ruleId, int altIdx)
+        {
+            if (string.IsNullOrEmpty(ruleId) || altIdx < 0) return;
+            if (!_sessionVotes.TryGetValue(ruleId, out var byAlt))
+            {
+                byAlt = new Dictionary<int, int>();
+                _sessionVotes[ruleId] = byAlt;
+            }
+            byAlt.TryGetValue(altIdx, out var count);
+            byAlt[altIdx] = count + 1;
+        }
 
         public event Action ReportRequested;
 
@@ -258,6 +308,14 @@ namespace MathCursor.UI
                 string defaultLatex = topLatex!.Substring(spotStart, spotEnd - spotStart);
                 var preferredAlt = alternatives[preferredIdx];
                 _resolvedSubstitutions[defaultLatex] = preferredAlt.Latex;
+                // Sidecar : la pré-résolution silencieuse est aussi un vrai
+                // choix de l'user (héritée du `_rulePreferences` qu'il a fixé
+                // avant). On l'enregistre comme SpanPin pour qu'elle survive
+                // au cross-merge re-pipeline. Sinon, un nouveau span typique
+                // taper après la 1re résolution serait perdu (ADR 06-05).
+                _sessionSpanPins.Add(new MathCursor.Core.Resolution.SpanPin(
+                    ruleId, spotStart, spotEnd - spotStart, preferredIdx));
+                TallyVote(ruleId, preferredIdx);
                 LogPopup($"auto-applied pref rule=\"{ruleId}\" altIdx={preferredIdx} → \"{preferredAlt.Latex}\"");
                 alternatives = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
             }
@@ -471,12 +529,25 @@ namespace MathCursor.UI
             // 2) Cascade IMMÉDIATE : applique le même choix à TOUS les autres
             //    matches du même RuleId déjà présents dans la formule courante
             //    (ex: résoudre BC en vec → AB et AC deviennent aussi vec).
+            //    En parallèle, on enregistre un SpanPin par match cascadé pour
+            //    que le sidecar (Phase 1.5 ADR 06-05) survive au re-pipeline
+            //    (cross-merge multi-ligne notamment).
             foreach (var match in _allMatches)
             {
                 if (match.Spot.RuleId == ruleId
                     && chosenAltIdx >= 0 && chosenAltIdx < match.Spot.Alternatives.Count)
                 {
                     _resolvedSubstitutions[match.Spot.DefaultLatex] = match.Spot.Alternatives[chosenAltIdx].Latex;
+                    int matchLen = match.End - match.Start;
+                    if (matchLen > 0)
+                    {
+                        _sessionSpanPins.Add(new MathCursor.Core.Resolution.SpanPin(
+                            ruleId,
+                            match.Start,
+                            matchLen,
+                            chosenAltIdx));
+                        TallyVote(ruleId, chosenAltIdx);
+                    }
                 }
             }
 
@@ -601,6 +672,8 @@ namespace MathCursor.UI
             {
                 _resolvedSubstitutions.Clear();
                 _rulePreferences.Clear();
+                _sessionSpanPins.Clear();
+                _sessionVotes.Clear();
             }
             if (!IsVisible) return;
             var anim = new DoubleAnimation(0, TimeSpan.FromMilliseconds(FadeMs));

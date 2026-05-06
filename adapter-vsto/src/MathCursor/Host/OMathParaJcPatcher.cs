@@ -46,30 +46,40 @@ namespace MathCursor.Host
         /// 05-05 « formules une ligne s'auto-centrent »).</item>
         /// </list>
         /// </summary>
-        public static string EnsureDisplayWithLeftJc(string xml, out bool changed)
+        /// <summary>
+        /// Variante générique : garantit que le contenu math est en oMathPara
+        /// avec le m:jc demandé (left/center/centerGroup/right). Si déjà
+        /// oMathPara → patch m:jc. Sinon (m:oMath inline) → enrobe.
+        /// </summary>
+        public static string EnsureDisplayWithJc(string xml, string jc, out bool changed)
         {
             changed = false;
-            if (string.IsNullOrEmpty(xml)) return xml;
+            if (string.IsNullOrEmpty(xml) || string.IsNullOrEmpty(jc)) return xml;
 
             // Déjà display ? → patch m:jc seul
             if (xml.IndexOf("<m:oMathPara", StringComparison.Ordinal) >= 0)
             {
-                return Patch(xml, "left", out changed);
+                return Patch(xml, jc, out changed);
             }
 
             // Pas de display wrapper, peut-être inline pur. Cherche
-            // <m:oMath>...</m:oMath> et enrobe avec un display + m:jc=left.
+            // <m:oMath>...</m:oMath> et enrobe avec un display + m:jc demandé.
             var match = _rxOMathInline.Match(xml);
             if (!match.Success) return xml;
 
             string omath = match.Value;
             string wrapped =
-                "<m:oMathPara><m:oMathParaPr><m:jc m:val=\"left\"/></m:oMathParaPr>"
+                "<m:oMathPara><m:oMathParaPr><m:jc m:val=\"" + jc + "\"/></m:oMathParaPr>"
                 + omath
                 + "</m:oMathPara>";
             changed = true;
             return xml.Substring(0, match.Index) + wrapped + xml.Substring(match.Index + match.Length);
         }
+
+        /// <summary>Cas particulier (préservé pour rétrocompat des call sites
+        /// existants) : EnsureDisplayWithJc avec jc=left.</summary>
+        public static string EnsureDisplayWithLeftJc(string xml, out bool changed)
+            => EnsureDisplayWithJc(xml, "left", out changed);
 
         /// <summary>
         /// Patch les attributs de justification OMathPara dans l'OOXML.

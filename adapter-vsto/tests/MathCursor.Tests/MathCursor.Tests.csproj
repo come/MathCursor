@@ -51,6 +51,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- IntraMergeSidecarBuilder dépend de MathCursor.Core.Resolution
+         (ResolutionSidecar, SidecarMerger). ProjectReference vers le core
+         pour réutiliser ces types sans duplication. -->
+    <ProjectReference Include="..\..\..\core-csharp\src\MathCursor.Core\MathCursor.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- xunit.runner.json copié à côté de l'assembly pour désactiver le
          shadow-copy. Sinon les natives DLLs (onnxruntime.dll) ne sont pas
          résolues car le test runner shadow-copie l'assembly ailleurs et
@@ -74,9 +81,19 @@
     <Compile Include="..\..\src\MathCursor\Host\ListModeStateMachine.cs" Link="adapter-sources\Host\ListModeStateMachine.cs" />
     <Compile Include="..\..\src\MathCursor\Host\ListModeMarkerInjector.cs" Link="adapter-sources\Host\ListModeMarkerInjector.cs" />
     <Compile Include="..\..\src\MathCursor\Host\CasesCascadeMerger.cs" Link="adapter-sources\Host\CasesCascadeMerger.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\IntraMergeSidecarBuilder.cs" Link="adapter-sources\Host\IntraMergeSidecarBuilder.cs" />
     <Compile Include="..\..\src\MathCursor\Host\CaretPositionCalculator.cs" Link="adapter-sources\Host\CaretPositionCalculator.cs" />
     <Compile Include="..\..\src\MathCursor\Host\AutocorrectNormalizer.cs" Link="adapter-sources\Host\AutocorrectNormalizer.cs" />
     <Compile Include="..\..\src\MathCursor\Host\OMathParaJcPatcher.cs" Link="adapter-sources\Host\OMathParaJcPatcher.cs" />
+    <Compile Include="..\..\src\MathCursor\Cheatsheet\CheatsheetData.cs" Link="adapter-sources\Cheatsheet\CheatsheetData.cs" />
+    <Compile Include="..\..\src\MathCursor\Cheatsheet\CheatsheetViewModel.cs" Link="adapter-sources\Cheatsheet\CheatsheetViewModel.cs" />
+    <Compile Include="..\..\src\MathCursor\Cheatsheet\CheatsheetPersistence.cs" Link="adapter-sources\Cheatsheet\CheatsheetPersistence.cs" />
+    <!-- Embed la cheatsheet JSON sous le MÊME nom logique que dans
+         MathCursor.dll, pour que CheatsheetData.LoadEmbedded() trouve la
+         ressource quel que soit l'assembly courant (test ou prod). -->
+    <EmbeddedResource Include="..\..\src\MathCursor\Cheatsheet\Resources\cheatsheet.json">
+      <LogicalName>MathCursor.Cheatsheet.Resources.cheatsheet.json</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

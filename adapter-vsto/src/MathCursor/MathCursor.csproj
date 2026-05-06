@@ -108,6 +108,7 @@
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Net.Http" />
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Core" />
@@ -139,6 +140,8 @@
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+    <!-- ElementHost pour embed WPF UserControl dans CustomTaskPane WinForms (pane Cheatsheet) -->
+    <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\host-contract-csharp\src\MathCursor.HostContract\MathCursor.HostContract.csproj">
@@ -251,11 +254,18 @@
       <DependentUpon>ThisAddIn.Designer.xml</DependentUpon>
     </Compile>
     <Compile Include="Strings.cs" />
+    <Compile Include="Cheatsheet\CheatsheetData.cs" />
+    <Compile Include="Cheatsheet\CheatsheetViewModel.cs" />
+    <Compile Include="Cheatsheet\CheatsheetPane.cs" />
+    <Compile Include="Cheatsheet\CheatsheetPaneHost.cs" />
+    <Compile Include="Cheatsheet\CheatsheetPersistence.cs" />
+    <EmbeddedResource Include="Cheatsheet\Resources\cheatsheet.json" />
     <Compile Include="Host\VstoEquationStore.cs" />
     <Compile Include="Host\KeyboardInterceptor.cs" />
     <Compile Include="Host\AutocorrectNormalizer.cs" />
     <Compile Include="Host\CaretPositionCalculator.cs" />
     <Compile Include="Host\CasesCascadeMerger.cs" />
+    <Compile Include="Host\IntraMergeSidecarBuilder.cs" />
     <Compile Include="Host\ListModeMarkerInjector.cs" />
     <Compile Include="Host\ListModeStateMachine.cs" />
     <Compile Include="Host\OMathParaJcPatcher.cs" />

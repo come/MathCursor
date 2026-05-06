@@ -36,6 +36,15 @@ public sealed class EquationMetadata
     public int SelectedCandidateIndex { get; init; }
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
     public string CoreVersion { get; init; } = "";
+
+    /// <summary>
+    /// Sidecar de résolutions de désambiguïsation (JSON), persisté avec
+    /// la source pour survivre reload Word, edit OMath, copy-paste, etc.
+    /// Vide si l'équation n'a pas de pin/vote (tous les Rules en default).
+    /// Cf. ADR 2026-05-06 resolution-sidecar-and-layers (Phase 3).
+    /// Format : voir <c>MathCursor.Core.Resolution.SidecarSerializer</c>.
+    /// </summary>
+    public string? SidecarJson { get; init; }
 }
 
 /// <summary>Handle opaque identifiant une équation insérée (stable dans le temps).</summary>

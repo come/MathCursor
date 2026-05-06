@@ -19,8 +19,12 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-05-06
+- `[forte]` Feat — [Sidecar de résolutions + doctrine d'architecture en couches](2026-05-06-Feat-resolution-sidecar-and-layers.md)
+- `[molle]` Feat — [Ruban revient dans TabHome + pane pivote vers galerie d'exemples concrets multi-syntaxes](2026-05-06-Feat-ribbon-pane-examples-pivot.md) (Supersedes ribbon-refactor-cheatsheet)
+
 ### 2026-05-05
-- `[molle]` Feat — [Refonte du ruban : ajout d'un panneau Cheatsheet](2026-05-05-Feat-ribbon-refactor-cheatsheet.md)
+- `[molle]` Feat — [Refonte du ruban : ajout d'un panneau Cheatsheet](2026-05-05-Feat-ribbon-refactor-cheatsheet.md) `retracté`
 - `[forte]` Limit — [OMath display recentre après fusion ¶ via Backspace (limite Word)](2026-05-05-Limit-omath-jc-stripped-on-fusion.md)
 - `[molle]` Feat — [Mode liste cases `{` Phase 2 (multi-ligne + list-mode visible)](2026-05-05-Feat-cases-multiline-phase2.md)
 - `[molle]` Feat — [Mode liste multi-ligne visible (auto-injection du marker en texte)](2026-05-05-Feat-multiline-list-mode-visible.md) (Supersedes multiline-list-mode du même jour)

@@ -116,6 +116,126 @@ namespace MathCursor.Core
             => !string.IsNullOrEmpty(ruleId) && _preferences.ContainsKey(ruleId);
 
         /// <summary>
+        /// Résout avec un <see cref="MathCursor.Core.Resolution.ResolutionSidecar"/>
+        /// qui couvre TOUTES les rules (vec/paren/crochet via SpanPin + boost
+        /// par votes), pas juste celles à mutation source. Cf. brief 06-05
+        /// sidecar-de-resolutions et ADR à venir.
+        ///
+        /// Contrat post-refactor (actuellement non implémenté → throw) :
+        /// <list type="number">
+        ///   <item>Pipeline normal sur <paramref name="rawSource"/> (avec
+        ///     préférences <see cref="AddPreference"/> existantes pour V→∀ etc.)</item>
+        ///   <item>Applique les <see cref="MathCursor.Core.Resolution.SpanPin"/>s
+        ///     en post-render : substitue le LaTeX du span par l'alternative
+        ///     pinée, sans toucher la source.</item>
+        ///   <item>Applique les <c>ZoneVotes</c> en boost de ranking pour les
+        ///     ambigs non pinées : si <c>votes[rule][alt]</c> domine clairement,
+        ///     l'alt est résolue automatiquement (popup ne montre pas l'ambig).</item>
+        /// </list>
+        /// </summary>
+        public ResolvedZone Resolve(string rawSource, MathCursor.Core.Resolution.ResolutionSidecar sidecar)
+        {
+            // Pipeline normal : produit topLatex avec defaults pour chaque ambig.
+            var baseResolved = Resolve(rawSource);
+            if (sidecar == null || sidecar.IsEmpty) return baseResolved;
+
+            string topLatex = baseResolved.TopLatex ?? string.Empty;
+            string source = rawSource ?? string.Empty;
+
+            // Phase 1 : SpanPins. Pour chaque pin, on substitue le defaultLatex
+            // par l'alt[altIdx].Latex de la rule pinée, dans topLatex.
+            //
+            // Limites du MVP (acceptables pour la doctrine 06-05) :
+            //   - Match par (RuleId + DefaultLatex), pas par offset précis dans
+            //     le topLatex. Si la source contient deux occurrences identiques
+            //     (`AB+AB`) avec pins divergents, le `string.Replace` les
+            //     applique au 1er match — les 2 occurrences héritent du 1er pin.
+            //     À adresser plus tard via positions exactes via AllMatches.
+            //   - Pin orphelin (rule absente, offset stale, defaultLatex
+            //     introuvable côté topLatex) → ignoré silencieusement, pas de
+            //     throw, pas de log noisy.
+            //
+            // On collecte les `defaultLatex` pinés pour skip au boost ZoneVotes
+            // (Phase 2 ci-dessous) — éviter qu'un span déjà résolu via pin soit
+            // écrasé par un vote différent.
+            var pinnedDefaults = new System.Collections.Generic.HashSet<string>();
+
+            foreach (var pin in sidecar.SpanPins)
+            {
+                if (string.IsNullOrEmpty(pin.Rule)) continue;
+                if (pin.Offset < 0 || pin.Len <= 0) continue;
+                if (pin.Offset + pin.Len > source.Length) continue;
+
+                string defaultLatex = source.Substring(pin.Offset, pin.Len);
+
+                AmbiguityMatch? matchHit = null;
+                foreach (var m in baseResolved.AllMatches)
+                {
+                    if (m.Spot.RuleId == pin.Rule && m.Spot.DefaultLatex == defaultLatex)
+                    {
+                        matchHit = m;
+                        break;
+                    }
+                }
+                if (matchHit == null) continue;
+                if (pin.AltIdx < 0 || pin.AltIdx >= matchHit.Spot.Alternatives.Count) continue;
+
+                string altLatex = matchHit.Spot.Alternatives[pin.AltIdx].Latex;
+                topLatex = topLatex.Replace(defaultLatex, altLatex);
+                pinnedDefaults.Add(defaultLatex);
+            }
+
+            // Phase 2 : ZoneVotes — auto-résolution des ambigs non pinées.
+            // Pour chaque ambig encore en place dans le topLatex, si la zone
+            // a accumulé des votes pour son ruleId, on applique l'altIdx avec
+            // le plus grand compteur. Permet à un span nouveau (jamais résolu
+            // explicitement) de bénéficier de l'apprentissage local : 3 votes
+            // vec dans la zone → un nouveau span 2-uppercase tombe auto sur vec.
+            //
+            // Politique "majority wins" simple (pas de pondération α explicite
+            // en MVP) : on prend l'alt avec le compteur le plus haut, ties
+            // tranchés par altIdx le plus petit (= ordre de déclaration dans
+            // AlternativeGenerator, qui est déjà l'ordre de préférence par
+            // défaut).
+            if (sidecar.ZoneVotes.Count > 0)
+            {
+                foreach (var match in baseResolved.AllMatches)
+                {
+                    if (match.Spot == null || string.IsNullOrEmpty(match.Spot.RuleId)) continue;
+                    if (pinnedDefaults.Contains(match.Spot.DefaultLatex)) continue;
+
+                    if (!sidecar.ZoneVotes.TryGetValue(match.Spot.RuleId, out var byAlt)) continue;
+                    if (byAlt == null || byAlt.Count == 0) continue;
+
+                    int bestAlt = -1, bestVote = 0;
+                    foreach (var kv in byAlt)
+                    {
+                        if (kv.Value > bestVote
+                            || (kv.Value == bestVote && bestAlt > kv.Key))
+                        {
+                            bestVote = kv.Value;
+                            bestAlt = kv.Key;
+                        }
+                    }
+                    if (bestAlt < 0 || bestAlt >= match.Spot.Alternatives.Count) continue;
+
+                    string altLatex = match.Spot.Alternatives[bestAlt].Latex;
+                    topLatex = topLatex.Replace(match.Spot.DefaultLatex, altLatex);
+                }
+            }
+
+            return new ResolvedZone(
+                rawSource: baseResolved.RawSource,
+                mutedSource: baseResolved.MutedSource,
+                topLatex: topLatex,
+                spot: baseResolved.Spot,
+                spotStart: baseResolved.SpotStart,
+                spotEnd: baseResolved.SpotEnd,
+                allMatches: baseResolved.AllMatches,
+                isIncomplete: baseResolved.IsIncomplete);
+        }
+
+        /// <summary>
         /// Résout une source brute : applique les préférences source-mutation
         /// récursivement, lance le pipeline, calcule <see cref="ResolvedZone.IsIncomplete"/>.
         /// </summary>

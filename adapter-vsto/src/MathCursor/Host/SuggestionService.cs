@@ -70,6 +70,14 @@ namespace MathCursor.Host
         // ShowPopup et juste avant InsertOMathAt. Cf. LastActionSnapshot.
         private LastActionSnapshot _lastAction;
 
+        // Sidecars de résolutions par handle d'OMath (Phase 1.5 ADR 06-05).
+        // Mémoire seulement (pas persisté store côté Phase 3). Permet au
+        // cross-merge de retrouver les choix vec/paren/etc. faits sur les
+        // OMaths absorbés du dessus, et de les fusionner pour produire un
+        // LaTeX align* qui les préserve.
+        private readonly System.Collections.Generic.Dictionary<string, MathCursor.Core.Resolution.ResolutionSidecar> _sidecarsByHandle
+            = new System.Collections.Generic.Dictionary<string, MathCursor.Core.Resolution.ResolutionSidecar>();
+
         // État mode édition : la popup _editPopup est affichée pour proposer
         // « Revenir à la saisie initiale » sur l'OMath au caret. _editHandle
         // identifie l'OMath en cours d'édition pour le revert action.
@@ -164,6 +172,39 @@ namespace MathCursor.Host
         /// aucune action depuis le démarrage de Word.
         /// </summary>
         public LastActionSnapshot GetLastAction() => _lastAction;
+
+        /// <summary>
+        /// Lit le sidecar mémorisé pour un handle d'OMath. Renvoie
+        /// <see cref="MathCursor.Core.Resolution.ResolutionSidecar.Empty"/>
+        /// si l'OMath n'a pas de sidecar (cas commit pré-Phase 1.5, ou
+        /// session redémarrée). Cf. ADR 2026-05-06 sidecar-and-layers.
+        /// </summary>
+        internal MathCursor.Core.Resolution.ResolutionSidecar GetSidecarForHandle(string handleId)
+        {
+            if (string.IsNullOrEmpty(handleId)) return MathCursor.Core.Resolution.ResolutionSidecar.Empty;
+            return _sidecarsByHandle.TryGetValue(handleId, out var sc)
+                ? sc
+                : MathCursor.Core.Resolution.ResolutionSidecar.Empty;
+        }
+
+        /// <summary>
+        /// Stocke (ou met à jour) le sidecar pour un handle d'OMath. Appelé
+        /// au commit (insert ou edit). Si <paramref name="overrideSidecar"/>
+        /// est fourni (cas cross-merge), il prime sur le sidecar de la popup
+        /// — il contient déjà les pins fusionnés des lignes absorbées.
+        /// Si rien n'est non-Empty, on retire le handle du dict (pas de pollution).
+        /// </summary>
+        private void StashSidecarForHandle(
+            string handleId,
+            MathCursor.Core.Resolution.ResolutionSidecar overrideSidecar = null)
+        {
+            if (string.IsNullOrEmpty(handleId)) return;
+            var sc = (overrideSidecar != null && !overrideSidecar.IsEmpty)
+                ? overrideSidecar
+                : _popup?.CurrentSidecar;
+            if (sc == null || sc.IsEmpty) { _sidecarsByHandle.Remove(handleId); return; }
+            _sidecarsByHandle[handleId] = sc;
+        }
 
         /// <summary>
         /// Lit le texte du paragraphe Word courant pour le snapshot du report.
@@ -678,6 +719,17 @@ namespace MathCursor.Host
             {
                 LogDiag($"revert: source introuvable pour handle {handle.Id}");
                 return;
+            }
+
+            // Phase 3 sidecar : si l'équation stockée a un sidecar persisté,
+            // on le ré-injecte dans la mémoire pour que le cross-merge ou
+            // l'edit OMath re-l'utilise. Sinon (commit pré-Phase 3 ou 100%
+            // default) → mémoire reste vierge, default sera appliqué.
+            if (!string.IsNullOrEmpty(stored.Metadata?.SidecarJson))
+            {
+                var sc = MathCursor.Core.Resolution.SidecarSerializer.Deserialize(
+                    stored.Metadata!.SidecarJson);
+                if (!sc.IsEmpty) _sidecarsByHandle[handle.Id] = sc;
             }
 
             string source = stored.Source;
@@ -1565,9 +1617,13 @@ namespace MathCursor.Host
             //     ¶ précédent termine par OMath à nous.
             bool wasCrossParagraphMerge = false;
             string crossMergeMarker = null;
+            // Hors du `if (editing == null)` pour rester accessible plus bas
+            // (StashSidecarForHandle utilise `merged?.MergedSidecar` au commit
+            // insert post-cross-merge — Phase 1.6 ADR 06-05).
+            MergeResult merged = null;
             if (editing == null)
             {
-                var merged = TryMergeWithAdjacentOMaths(_lastZoneAbsStart, _lastZoneAbsEnd, source);
+                merged = TryMergeWithAdjacentOMaths(_lastZoneAbsStart, _lastZoneAbsEnd, source);
                 if (merged == null)
                 {
                     // Pas d'intra-merge → tenter cross-paragraphe (brief 30-04)
@@ -1585,10 +1641,13 @@ namespace MathCursor.Host
                     _lastZoneAbsStart = merged.AbsStart;
                     _lastZoneAbsEnd = merged.AbsEnd;
                     source = merged.MergedSource;
-                    // Recalcule le LaTeX sur le source mergé via le pipeline
+                    // Recalcule le LaTeX sur le source mergé via le pipeline,
+                    // EN PASSANT LE SIDECAR FUSIONNÉ (ADR 06-05 Phase 1.6) :
+                    // les choix vec/paren/etc. faits dans les paragraphes
+                    // absorbés sont préservés dans le rendu align*.
                     try
                     {
-                        var resolved = _resolver.Resolve(source);
+                        var resolved = _resolver.Resolve(source, merged.MergedSidecar);
                         if (!string.IsNullOrEmpty(resolved.TopLatex)) latex = resolved.TopLatex;
                     }
                     catch (Exception ex) { LogDiag("merge_resolve_error: " + ex.Message); }
@@ -1602,6 +1661,10 @@ namespace MathCursor.Host
                         catch (Exception ex) { LogDiag($"merge_remove_error handle={h}: {ex.Message}"); }
                         try { DeleteBookmarkByHandle(h); }
                         catch (Exception ex) { LogDiag($"merge_bookmark_delete_error handle={h}: {ex.Message}"); }
+                        // Nettoie aussi le sidecar mémorisé de cet handle absorbé
+                        // — son contenu est déjà dans merged.MergedSidecar et
+                        // sera ré-attaché au nouveau handle après InsertOMathAt.
+                        _sidecarsByHandle.Remove(h);
                     }
 
                     // Supprime explicitement les OMaths qui chevauchent le range
@@ -1646,21 +1709,50 @@ namespace MathCursor.Host
                 else if (editing != null)
                 {
                     LogDiag($"edit commit handle={editing.Id} latex=\"{latex}\"");
+                    // Phase 1.5 sidecar : update les choix de résolution pour
+                    // cet handle existant. La popup peut avoir des nouveaux pins.
+                    StashSidecarForHandle(editing.Id);
+                    // Phase 3 : persiste le sidecar mis à jour. StoreAsync
+                    // remplace l'entrée existante (cf. VstoEquationStore qui
+                    // remove → add). Garde la source identique (l'edit a
+                    // pu changer le LaTeX final mais la source brute reste
+                    // celle que l'user a tapée — les choix de désambig
+                    // évoluent indépendamment).
+                    var editSidecarJson = MathCursor.Core.Resolution.SidecarSerializer.Serialize(
+                        GetSidecarForHandle(editing.Id));
+                    try
+                    {
+                        _store.StoreAsync(editing, source, new EquationMetadata
+                        {
+                            SourceLanguage = "fr",
+                            CreatedAt = DateTimeOffset.UtcNow,
+                            SidecarJson = string.IsNullOrEmpty(editSidecarJson) ? null : editSidecarJson,
+                        }).GetAwaiter().GetResult();
+                    }
+                    catch (Exception ex) { LogDiag("edit_store_save_error: " + ex.Message); }
                 }
                 else
                 {
                     var handle = new EquationHandle(NewHandleId());
                     CreateBookmarkForRange(handle.Id, newStart, newEnd);
+                    // Phase 1.5 sidecar : mémorise d'abord en mémoire pour que
+                    // GetSidecarForHandle soit cohérent (in-mem + on-disk).
+                    StashSidecarForHandle(handle.Id, merged?.MergedSidecar);
+                    // Phase 3 : sérialise le sidecar pour le persister dans le
+                    // CustomXMLPart à côté de la source. Survit reload Word.
+                    var sidecarJson = MathCursor.Core.Resolution.SidecarSerializer.Serialize(
+                        GetSidecarForHandle(handle.Id));
                     try
                     {
                         _store.StoreAsync(handle, source, new EquationMetadata
                         {
                             SourceLanguage = "fr",
                             CreatedAt = DateTimeOffset.UtcNow,
+                            SidecarJson = string.IsNullOrEmpty(sidecarJson) ? null : sidecarJson,
                         }).GetAwaiter().GetResult();
                     }
                     catch (Exception ex) { LogDiag("store_save_error: " + ex.Message); }
-                    LogDiag($"insert commit handle={handle.Id} range=[{newStart},{newEnd}] latex=\"{latex}\" source=\"{source}\"");
+                    LogDiag($"insert commit handle={handle.Id} range=[{newStart},{newEnd}] latex=\"{latex}\" source=\"{source}\" sidecarBytes={(sidecarJson?.Length ?? 0)}");
                 }
 
                 // Phase 4 du pipeline cross-merge (cf. ADR 04-05) : finalise
@@ -2120,13 +2212,16 @@ namespace MathCursor.Host
                 var paraRange = paras[1].Range;
                 string xml = paraRange.WordOpenXML;
                 if (string.IsNullOrEmpty(xml)) return;
-                if (xml.IndexOf("<m:oMathPara", StringComparison.Ordinal) < 0) return;
                 bool changed;
-                string patched = PatchOMathParaJc(xml, targetVal, out changed);
-                // Réinsertion forcée même si contenu identique : le set typé
-                // OMath.Justification met à jour le XML mais ne déclenche pas
-                // de re-layout. InsertXML re-process le paragraphe et force le
-                // repaint (équivalent du clic ribbon).
+                // Une seule fonction couvre les 2 cas (wrap si inline, patch
+                // si déjà oMathPara). Sans ça, post-BuildUp Word peut ne pas
+                // avoir encore promu l'OMath en oMathPara → l'ancien check
+                // skip silencieusement → centré (bug user 06-05).
+                string patched = OMathParaJcPatcher.EnsureDisplayWithJc(xml, targetVal, out changed);
+                if (!changed) return;
+                // Réinsertion forcée : le set typé OMath.Justification met à
+                // jour le XML mais ne déclenche pas de re-layout. InsertXML
+                // re-process le paragraphe et force le repaint.
                 paraRange.InsertXML(patched);
             }
             catch (Exception ex) { LogDiag("align_sync_xml_error: " + ex.Message); }
@@ -2182,6 +2277,13 @@ namespace MathCursor.Host
             public int AbsEnd { get; set; }
             public string MergedSource { get; set; }
             public List<string> RemovedHandles { get; set; }
+
+            /// <summary>Sidecar de résolutions fusionné des paragraphes absorbés
+            /// (offsets recalibrés sur <see cref="MergedSource"/>) + sidecar
+            /// courant de la popup. Vide si aucun OMath absorbé n'avait de
+            /// sidecar mémorisé (cas dégradé). Cf. ADR 06-05 sidecar Phase 1.6.</summary>
+            public MathCursor.Core.Resolution.ResolutionSidecar MergedSidecar { get; set; }
+                = MathCursor.Core.Resolution.ResolutionSidecar.Empty;
         }
 
         /// <summary>
@@ -2316,12 +2418,21 @@ namespace MathCursor.Host
                 if (leftHandle != null) removed.Add(leftHandle);
                 if (rightHandle != null) removed.Add(rightHandle);
 
+                // Sidecar fusionné — logique extraite dans IntraMergeSidecarBuilder
+                // pour testabilité hors Word (bug 06-05 même-ligne, ADR 06-05).
+                var mergedSc = IntraMergeSidecarBuilder.Build(
+                    leftSource, leftHandle != null ? GetSidecarForHandle(leftHandle) : null,
+                    middleSource, _popup?.CurrentSidecar,
+                    rightSource, rightHandle != null ? GetSidecarForHandle(rightHandle) : null);
+                LogDiag($"merge sidecar: pins={mergedSc.SpanPins.Count} ruleVotes={mergedSc.ZoneVotes.Count}");
+
                 return new MergeResult
                 {
                     AbsStart = newStart,
                     AbsEnd = newEnd,
                     MergedSource = sb.ToString(),
                     RemovedHandles = removed,
+                    MergedSidecar = mergedSc,
                 };
             }
             catch (Exception ex)
@@ -2534,12 +2645,49 @@ namespace MathCursor.Host
             if (chainLines.Count < 2) return null;
 
             string mergedSource = string.Join("\n", chainLines);
+
+            // Fusion des sidecars (ADR 06-05 Phase 1.6) : pour chaque chainLine
+            // top→bottom, on récupère le sidecar mémorisé si la ligne est un
+            // OMath absorbé, vide sinon. Les offsets sont décalés selon la
+            // position cumulative dans la mergedSource.
+            // chainLines a 1 entrée pour currentSource (bottom) + N pour les
+            // absorbées (top→middle), donc la dernière chainLine = currentSource
+            // → son sidecar = popup.CurrentSidecar.
+            var sidecarParts = new List<MathCursor.Core.Resolution.ResolutionSidecar>();
+            var offsetShifts = new List<int>();
+            int cumulativeShift = 0;
+            int absorbedHandleIdx = 0;
+            for (int li = 0; li < chainLines.Count; li++)
+            {
+                MathCursor.Core.Resolution.ResolutionSidecar partSc;
+                bool isLastLine = (li == chainLines.Count - 1);
+                if (isLastLine)
+                {
+                    partSc = _popup?.CurrentSidecar
+                        ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty;
+                }
+                else if (absorbedHandleIdx < removedHandles.Count)
+                {
+                    partSc = GetSidecarForHandle(removedHandles[absorbedHandleIdx++]);
+                }
+                else
+                {
+                    partSc = MathCursor.Core.Resolution.ResolutionSidecar.Empty;
+                }
+                sidecarParts.Add(partSc);
+                offsetShifts.Add(cumulativeShift);
+                cumulativeShift += chainLines[li].Length + 1; // +1 pour le \n
+            }
+            var mergedSidecar = MathCursor.Core.Resolution.SidecarMerger.Merge(
+                sidecarParts, offsetShifts);
+
             return new MergeResult
             {
                 AbsStart = chainStart,
                 AbsEnd = absEnd,
                 MergedSource = mergedSource,
                 RemovedHandles = removedHandles,
+                MergedSidecar = mergedSidecar,
             };
         }
 
@@ -3145,6 +3293,13 @@ namespace MathCursor.Host
                     }
                 }
                 catch { }
+                // L'invariant "OMath aligné selon le ¶ parent" est garanti
+                // plus bas par SyncOMathJustificationToParagraph (appelé
+                // après ce bloc, via le path !usedXmlTransplant). Pas de
+                // patch ad-hoc ici : depuis l'option B (ADR 06-05),
+                // `PatchOMathParaJustificationViaXml` couvre wrap + patch
+                // donc fonctionne même si Word n'a pas encore promu le
+                // standalone-in-¶ en oMathPara.
                 if (!omathCreated)
                 {
                     // Rollback : restore le texte original

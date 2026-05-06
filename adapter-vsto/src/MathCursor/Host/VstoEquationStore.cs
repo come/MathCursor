@@ -69,13 +69,22 @@ namespace MathCursor.Host
             var existing = FindElement(root, handle.Id);
             if (existing != null) existing.Remove();
 
-            root.Add(new XElement(ns + "equation",
+            var equationEl = new XElement(ns + "equation",
                 new XAttribute("id", handle.Id),
                 new XAttribute("version", metadata.CoreVersion ?? ""),
                 new XAttribute("lang", metadata.SourceLanguage ?? ""),
                 new XAttribute("createdAt", metadata.CreatedAt.ToString("o")),
-                new XElement(ns + "source", source)));
+                new XElement(ns + "source", source));
 
+            // Sidecar de résolutions (Phase 3 ADR 06-05) : persisté en JSON
+            // dans un sous-élément `<sidecar>`. Absent si la métadonnée ne
+            // l'a pas (équation 100 % default, ou commit pré-Phase 3).
+            if (!string.IsNullOrEmpty(metadata.SidecarJson))
+            {
+                equationEl.Add(new XElement(ns + "sidecar", metadata.SidecarJson));
+            }
+
+            root.Add(equationEl);
             SaveRoot(root);
             return Task.CompletedTask;
         }
@@ -88,12 +97,14 @@ namespace MathCursor.Host
             if (el == null) return Task.FromResult<StoredEquation>(null);
 
             var source = el.Element(ns + "source")?.Value ?? "";
+            var sidecarJson = el.Element(ns + "sidecar")?.Value;
             var metadata = new EquationMetadata
             {
                 SourceLanguage = el.Attribute("lang")?.Value,
                 CoreVersion = el.Attribute("version")?.Value ?? "",
                 CreatedAt = DateTimeOffset.TryParse(el.Attribute("createdAt")?.Value, out var dt)
                     ? dt : DateTimeOffset.UtcNow,
+                SidecarJson = string.IsNullOrEmpty(sidecarJson) ? null : sidecarJson,
             };
             return Task.FromResult(new StoredEquation { Source = source, Metadata = metadata });
         }
