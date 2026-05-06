@@ -81,6 +81,9 @@ $FilesToCopy = @(
     'YamlDotNet.dll',
     'Google.Protobuf.dll',
     'Microsoft.ML.OnnxRuntime.dll',
+    # Microsoft.ML.OnnxRuntime.dll est managé (AnyCPU) — ok à la racine.
+    # Les natifs onnxruntime.dll / onnxruntime_providers_shared.dll sont
+    # copiés en arch-séparée dans 2b-bis ci-dessous.
     'Microsoft.Office.Tools.Common.v4.0.Utilities.dll',
     'System.Buffers.dll',
     'System.Memory.dll',
@@ -119,46 +122,61 @@ if (Test-Path $CertSrc) {
 # csproj VSTO n'a aucun PlatformTarget défini → la condition est fausse
 # → MSBuild ne copie PAS les natives dans bin/Release. Sans elles, le
 # .cctor de NativeMethods lève une TypeInitializationException au
-# démarrage de l'add-in. On copie donc explicitement depuis le cache
-# NuGet. Cf. brief 2026-04-29-fix-native-onnxruntime-deploy.md.
+# démarrage de l'add-in.
+#
+# IMPORTANT : Word peut être 32 ou 64 bits. Le DLL natif onnxruntime.dll
+# DOIT correspondre à la bitness du process WINWORD.EXE — sinon
+# BadImageFormatException remonte en TypeInitializationException sur
+# NativeMethods..cctor() au premier `new SessionOptions()`. On déploie
+# donc les DEUX runtimes dans des sous-dossiers et ThisAddIn_Startup
+# choisira le bon via SetDllDirectory(<app>\onnxruntime-x86 ou x64) en
+# fonction de IntPtr.Size avant d'instancier MathNerDetector.
 $OrtVersion = '1.16.3'
-$OrtNativeSrc = Join-Path $env:USERPROFILE ".nuget\packages\microsoft.ml.onnxruntime\$OrtVersion\runtimes\win-x64\native"
-if (Test-Path $OrtNativeSrc) {
-    foreach ($dll in @('onnxruntime.dll', 'onnxruntime_providers_shared.dll')) {
-        $src = Join-Path $OrtNativeSrc $dll
-        if (Test-Path $src) {
-            Copy-Item $src -Destination $PayloadDir -Force
-            Write-Host "  ORT native : $dll"
-        } else {
-            Write-Warning "ORT native manquante dans cache NuGet : $dll"
+$OrtNativeRoot = Join-Path $env:USERPROFILE ".nuget\packages\microsoft.ml.onnxruntime\$OrtVersion\runtimes"
+foreach ($arch in @('x86', 'x64')) {
+    $srcDir = Join-Path $OrtNativeRoot "win-$arch\native"
+    $dstDir = Join-Path $PayloadDir "onnxruntime-$arch"
+    if (Test-Path $srcDir) {
+        New-Item -ItemType Directory -Force -Path $dstDir | Out-Null
+        foreach ($dll in @('onnxruntime.dll', 'onnxruntime_providers_shared.dll')) {
+            $src = Join-Path $srcDir $dll
+            if (Test-Path $src) {
+                Copy-Item $src -Destination $dstDir -Force
+                Write-Host "  ORT native ($arch) : $dll"
+            } else {
+                Write-Warning "ORT native manquante ($arch) dans cache NuGet : $dll"
+            }
         }
+    } else {
+        Write-Warning "Cache NuGet ORT $arch introuvable : $srcDir"
+        Write-Warning "Lance d'abord 'dotnet restore' ou un build complet pour peupler le cache."
     }
-} else {
-    Write-Warning "Cache NuGet ORT introuvable : $OrtNativeSrc"
-    Write-Warning "Lance d'abord 'dotnet restore' ou un build complet pour peupler le cache."
 }
 
-# 2c) Visual C++ Redistributable x64 (requis par ONNX Runtime native DLL).
-# Téléchargement depuis aka.ms si pas déjà présent localement. URL stable
-# qui suit la dernière version VS2015-2022 (toutes binary-compat).
-$VcRedistDst = Join-Path $PayloadDir 'vc_redist.x64.exe'
-$VcRedistCache = Join-Path $InstallerDir 'vc_redist.x64.exe' # cache au niveau dossier installer
-if (Test-Path $VcRedistCache) {
-    Copy-Item $VcRedistCache -Destination $VcRedistDst -Force
-    Write-Host "  VC++ Redist depuis cache : $VcRedistCache"
-} elseif (Test-Path $VcRedistDst) {
-    Write-Host "  VC++ Redist déjà présent dans payload/"
-} else {
-    Write-Host "  Téléchargement VC++ Redist x64 depuis aka.ms/vs/17/release/vc_redist.x64.exe..."
-    try {
-        $ProgressPreference = 'SilentlyContinue'
-        Invoke-WebRequest -Uri 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile $VcRedistDst -UseBasicParsing
-        # Cache pour les builds suivants
-        Copy-Item $VcRedistDst -Destination $VcRedistCache -Force
-        Write-Host "  VC++ Redist téléchargé ($([math]::Round((Get-Item $VcRedistDst).Length / 1MB, 1)) Mo)"
-    } catch {
-        Write-Warning "Téléchargement VC++ Redist échoué : $_"
-        Write-Warning "L'installer fonctionnera mais sans bundling VC++ — l'utilisateur devra l'avoir installé."
+# 2c) Visual C++ Redistributable x86 + x64 (requis par ONNX Runtime native).
+# Word peut être 32 ou 64 bits → on bundle les deux. Le iss lance les deux
+# au runtime (idempotent, skippe si version >= déjà présente). Cache au
+# niveau dossier installer pour éviter de re-télécharger à chaque build.
+foreach ($arch in @('x86', 'x64')) {
+    $VcRedistDst   = Join-Path $PayloadDir   "vc_redist.$arch.exe"
+    $VcRedistCache = Join-Path $InstallerDir "vc_redist.$arch.exe"
+    if (Test-Path $VcRedistCache) {
+        Copy-Item $VcRedistCache -Destination $VcRedistDst -Force
+        Write-Host "  VC++ Redist $arch depuis cache : $VcRedistCache"
+    } elseif (Test-Path $VcRedistDst) {
+        Write-Host "  VC++ Redist $arch déjà présent dans payload/"
+    } else {
+        $url = "https://aka.ms/vs/17/release/vc_redist.$arch.exe"
+        Write-Host "  Téléchargement VC++ Redist $arch depuis $url..."
+        try {
+            $ProgressPreference = 'SilentlyContinue'
+            Invoke-WebRequest -Uri $url -OutFile $VcRedistDst -UseBasicParsing
+            Copy-Item $VcRedistDst -Destination $VcRedistCache -Force
+            Write-Host "  VC++ Redist $arch téléchargé ($([math]::Round((Get-Item $VcRedistDst).Length / 1MB, 1)) Mo)"
+        } catch {
+            Write-Warning "Téléchargement VC++ Redist $arch échoué : $_"
+            Write-Warning "L'installer fonctionnera mais sans bundling VC++ $arch — l'utilisateur devra l'avoir installé."
+        }
     }
 }
 

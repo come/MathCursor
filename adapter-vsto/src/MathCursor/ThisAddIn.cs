@@ -1,8 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Office.Core;
+// Microsoft.Office.Tools fournit CustomTaskPane (ambigu avec
+// Microsoft.Office.Core.CustomTaskPane) → on alias.
+using OfficeTools = Microsoft.Office.Tools;
+using MathCursor.Cheatsheet;
 using MathCursor.Detection;
 using MathCursor.Host;
 // Moteur lattice : enchaîne Lex → TopK → Parse → Render (cf. Lattice/).
@@ -18,6 +24,12 @@ namespace MathCursor
         private SuggestionService _suggestions;
         private KeyboardInterceptor _keyboard;
 
+        // Cheatsheet pane (cf. ADR 2026-05-05-Feat-ribbon-refactor-cheatsheet).
+        // Lazy-init au premier toggle. Après création, on flippe juste Visible.
+        private OfficeTools.CustomTaskPane _cheatsheetTaskPane;
+        private CheatsheetPaneHost _cheatsheetHost;
+        private CheatsheetViewModel _cheatsheetVm;
+
         /// <summary>Accès au service pour le ribbon (bouton "Signaler une erreur").
         /// Null si l'add-in a échoué à démarrer.</summary>
         internal SuggestionService Suggestions => _suggestions;
@@ -26,6 +38,15 @@ namespace MathCursor
         {
             try
             {
+                // Sélectionne le natif onnxruntime.dll de la bonne bitness AVANT
+                // toute interaction avec ONNX Runtime. Word peut être 32 ou 64
+                // bits — sans cet appel, P/Invoke pioche dans %PATH% ou côté
+                // assembly et tombe sur le mauvais binaire → BadImageFormatException
+                // remontée en TypeInitializationException sur NativeMethods..cctor()
+                // au premier `new SessionOptions()`. L'installer dépose les natifs
+                // dans <InstallDir>\onnxruntime-x86\ et <InstallDir>\onnxruntime-x64\.
+                ConfigureOnnxRuntimeNativeDir();
+
                 // Store des sources (CustomXMLParts) : utilisé par le mode édition
                 // d'un OMath existant (phase C2 : bookmark → source → popup).
                 _store = new VstoEquationStore(this.Application);
@@ -74,9 +95,37 @@ namespace MathCursor
 
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
         {
+            // Save final pour capturer la largeur user (CustomTaskPane n'a pas
+            // d'event WidthChanged → on lit la valeur courante au shutdown).
+            try { SaveCheatsheetState(); } catch { }
             try { _keyboard?.Dispose(); } catch { }
             try { _suggestions?.Dispose(); } catch { }
             try { _ner?.Dispose(); } catch { }
+        }
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SetDllDirectory(string lpPathName);
+
+        /// <summary>
+        /// Pointe le loader Windows sur le sous-dossier <c>onnxruntime-x86</c>
+        /// ou <c>onnxruntime-x64</c> selon la bitness de WINWORD.EXE, pour que
+        /// le P/Invoke d'ONNX Runtime trouve un <c>onnxruntime.dll</c> de la
+        /// bonne arch. Sinon : <see cref="BadImageFormatException"/> remontée
+        /// en <see cref="TypeInitializationException"/> dans le .cctor de
+        /// <c>Microsoft.ML.OnnxRuntime.NativeMethods</c>.
+        ///
+        /// Best-effort : si le dossier attendu n'existe pas (ex. dev sans
+        /// installer où les natifs sont déjà copiés à plat par MSBuild), on
+        /// laisse le loader chercher selon ses règles standard.
+        /// </summary>
+        private static void ConfigureOnnxRuntimeNativeDir()
+        {
+            var arch = IntPtr.Size == 4 ? "x86" : "x64";
+            var baseDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            if (string.IsNullOrEmpty(baseDir)) return;
+            var nativeDir = Path.Combine(baseDir, "onnxruntime-" + arch);
+            if (Directory.Exists(nativeDir)) SetDllDirectory(nativeDir);
         }
 
         /// <summary>
@@ -113,6 +162,124 @@ namespace MathCursor
             throw new DirectoryNotFoundException(
                 "Modèle NER introuvable (cherche model_quantized.onnx + vocab.txt). "
                 + "Chemins testés :\n" + string.Join("\n", candidates));
+        }
+
+        /// <summary>
+        /// Toggle du panneau Cheatsheet (cf. ADR 2026-05-05-Feat-ribbon-refactor-cheatsheet).
+        /// Lazy-init au premier appel : charge le JSON embarqué, instancie le
+        /// ViewModel, crée le CustomTaskPane ancré à droite. Appels suivants :
+        /// flippe juste <c>Visible</c>. Le pane survit à la fermeture (état
+        /// gardé en mémoire, persistance ajoutée en étape 2.E).
+        /// </summary>
+        internal void ToggleExamplesPane()
+        {
+            try
+            {
+                if (_cheatsheetTaskPane == null)
+                {
+                    var doc = MathCursor.Cheatsheet.CheatsheetData.LoadEmbedded();
+                    if (doc == null)
+                    {
+                        System.Windows.MessageBox.Show(
+                            "Exemples introuvables (ressource embarquée manquante).",
+                            "MathCursor", System.Windows.MessageBoxButton.OK,
+                            System.Windows.MessageBoxImage.Warning);
+                        return;
+                    }
+                    _cheatsheetVm = new CheatsheetViewModel(doc, MathCursor.Strings.Lang);
+                    // Restore l'état persisté (collapse) avant de monter l'UI
+                    var savedState = MathCursor.Cheatsheet.CheatsheetPersistence.Load();
+                    MathCursor.Cheatsheet.CheatsheetPersistence.ApplyToViewModel(savedState, _cheatsheetVm);
+
+                    _cheatsheetHost = new CheatsheetPaneHost(_cheatsheetVm);
+                    _cheatsheetHost.WpfPane.OnMissingShortcutRequested = OnMissingShortcutRequested;
+
+                    _cheatsheetTaskPane = CustomTaskPanes.Add(
+                        _cheatsheetHost, MathCursor.Strings.ExamplesPaneTitle);
+                    _cheatsheetTaskPane.Width = savedState.PaneWidth > 0 ? savedState.PaneWidth : 380;
+                    _cheatsheetTaskPane.DockPosition = MsoCTPDockPosition.msoCTPDockPositionRight;
+
+                    // Sauvegardes auto : sur changement collapse (VM) +
+                    // sur visibility (CustomTaskPane). La largeur est capturée
+                    // au moment de chaque save (pas d'event "WidthChanged" en
+                    // VSTO, on la lit depuis _cheatsheetTaskPane.Width).
+                    _cheatsheetVm.StateChanged += SaveCheatsheetState;
+                    _cheatsheetTaskPane.VisibleChanged += (s, e) => SaveCheatsheetState();
+                }
+                _cheatsheetTaskPane.Visible = !_cheatsheetTaskPane.Visible;
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    "Échec d'ouverture du panneau Exemples :\n" + ex.Message,
+                    "MathCursor", System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// Capture l'état VM + UI courant et le persiste via IsolatedStorage.
+        /// Appelée sur StateChanged (collapse), VisibleChanged (open/close),
+        /// et au shutdown de l'add-in.
+        /// </summary>
+        private void SaveCheatsheetState()
+        {
+            try
+            {
+                if (_cheatsheetVm == null || _cheatsheetTaskPane == null) return;
+                var state = MathCursor.Cheatsheet.CheatsheetPersistence.Capture(
+                    _cheatsheetVm,
+                    paneOpen: _cheatsheetTaskPane.Visible,
+                    paneWidth: _cheatsheetTaskPane.Width);
+                MathCursor.Cheatsheet.CheatsheetPersistence.Save(state);
+            }
+            catch
+            {
+                // Persistance best-effort, jamais propager
+            }
+        }
+
+        /// <summary>
+        /// Ouvre le FeedbackDialog avec un report pré-rempli "missing shortcut" :
+        /// pas de zone math (champs source/proposed/committed/paragraph vides),
+        /// préfixe <c>[missing_shortcut]</c> dans UserMessage pour que le
+        /// backend / admin puisse trier ces feedbacks séparément des bugs.
+        /// </summary>
+        private void OnMissingShortcutRequested()
+        {
+            try
+            {
+                if (_suggestions == null)
+                {
+                    System.Windows.MessageBox.Show(
+                        "Service indisponible.",
+                        MathCursor.Strings.ExamplesMissingButton,
+                        System.Windows.MessageBoxButton.OK,
+                        System.Windows.MessageBoxImage.Warning);
+                    return;
+                }
+                // BuildFeedbackReport renseigne la metadata (version, user_id,
+                // session_id, word_version, os...). On clear les champs math
+                // spécifiques (pas de zone NER ici) et on préfixe le commentaire.
+                var report = _suggestions.BuildFeedbackReport();
+                report.NerText = "";
+                report.RecognizedFormula = "";
+                report.CommittedLatex = "";
+                report.ParagraphContext = "";
+                report.UserMessage = "[missing_shortcut] ";
+
+                var sender = MathCursor.Host.Feedback.FeedbackSenderFactory.Create();
+                var dialog = new MathCursor.UI.FeedbackDialog(report, sender);
+                dialog.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    "Impossible d'ouvrir le formulaire de feedback :\n" + ex.Message,
+                    MathCursor.Strings.ExamplesMissingButton,
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Warning);
+            }
         }
 
         // Ctrl+Espace : trigger explicite — force la popup sur la span
