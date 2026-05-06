@@ -76,8 +76,7 @@ namespace MathCursor.Host
         // cross-merge de retrouver les choix vec/paren/etc. faits sur les
         // OMaths absorbés du dessus, et de les fusionner pour produire un
         // LaTeX align* qui les préserve.
-        private readonly System.Collections.Generic.Dictionary<string, MathCursor.Core.Resolution.ResolutionSidecar> _sidecarsByHandle
-            = new System.Collections.Generic.Dictionary<string, MathCursor.Core.Resolution.ResolutionSidecar>();
+        private readonly EquationHandleRegistry _handleRegistry;
 
         // État mode édition : la popup _editPopup est affichée pour proposer
         // « Revenir à la saisie initiale » sur l'OMath au caret. _editHandle
@@ -166,6 +165,11 @@ namespace MathCursor.Host
             _store = store ?? throw new ArgumentNullException(nameof(store));
             _contextReader = new WordContextReader(_app);
             _lastActionTracker = new LastActionTracker(ReadParagraphContextForReport);
+            _handleRegistry = new EquationHandleRegistry(
+                createBookmark: CreateBookmarkForRange,
+                deleteBookmark: DeleteBookmarkByHandle,
+                popupSidecar: () => _popup?.CurrentSidecar
+                                    ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty);
 
             // Pipeline de mergers (cf. ADR 2026-05-06-Meta-zone-merger-pipeline) :
             // remplace l'empilement de `if (merged == null)` qui vivait dans
@@ -206,7 +210,7 @@ namespace MathCursor.Host
                     new MathCursor.Host.Pipeline.Stages.ResolverStage(_resolver),
                     new MathCursor.Host.Pipeline.Stages.SnapshotStage(_lastActionTracker),
                     new MathCursor.Host.Pipeline.Stages.InserterStage(InserterImpl),
-                    new MathCursor.Host.Pipeline.Stages.StoreStage(StoreImpl),
+                    new MathCursor.Host.Pipeline.Stages.StoreStage(_store, _handleRegistry, LogDiag),
                     new MathCursor.Host.Pipeline.Stages.LayoutStage(LayoutImpl),
                 },
                 log: LogDiag);
@@ -223,37 +227,20 @@ namespace MathCursor.Host
         public LastActionSnapshot GetLastAction() => _lastActionTracker.Current;
 
         /// <summary>
-        /// Lit le sidecar mémorisé pour un handle d'OMath. Renvoie
-        /// <see cref="MathCursor.Core.Resolution.ResolutionSidecar.Empty"/>
-        /// si l'OMath n'a pas de sidecar (cas commit pré-Phase 1.5, ou
-        /// session redémarrée). Cf. ADR 2026-05-06 sidecar-and-layers.
+        /// Wrapper rétro-compat vers <c>_handleRegistry.GetSidecar</c>. Cf.
+        /// ADR 2026-05-06 sidecar-and-layers + Phase 4b L4 extraction.
         /// </summary>
         internal MathCursor.Core.Resolution.ResolutionSidecar GetSidecarForHandle(string handleId)
-        {
-            if (string.IsNullOrEmpty(handleId)) return MathCursor.Core.Resolution.ResolutionSidecar.Empty;
-            return _sidecarsByHandle.TryGetValue(handleId, out var sc)
-                ? sc
-                : MathCursor.Core.Resolution.ResolutionSidecar.Empty;
-        }
+            => _handleRegistry.GetSidecar(handleId);
 
         /// <summary>
-        /// Stocke (ou met à jour) le sidecar pour un handle d'OMath. Appelé
-        /// au commit (insert ou edit). Si <paramref name="overrideSidecar"/>
-        /// est fourni (cas cross-merge), il prime sur le sidecar de la popup
-        /// — il contient déjà les pins fusionnés des lignes absorbées.
-        /// Si rien n'est non-Empty, on retire le handle du dict (pas de pollution).
+        /// Wrapper rétro-compat vers <c>_handleRegistry.Stash</c>. Cf. ADR
+        /// 2026-05-06 sidecar-and-layers + Phase 4b L4 extraction.
         /// </summary>
         private void StashSidecarForHandle(
             string handleId,
             MathCursor.Core.Resolution.ResolutionSidecar overrideSidecar = null)
-        {
-            if (string.IsNullOrEmpty(handleId)) return;
-            var sc = (overrideSidecar != null && !overrideSidecar.IsEmpty)
-                ? overrideSidecar
-                : _popup?.CurrentSidecar;
-            if (sc == null || sc.IsEmpty) { _sidecarsByHandle.Remove(handleId); return; }
-            _sidecarsByHandle[handleId] = sc;
-        }
+            => _handleRegistry.Stash(handleId, overrideSidecar);
 
         /// <summary>
         /// Lit le texte du paragraphe Word courant pour le snapshot du report.
@@ -778,7 +765,7 @@ namespace MathCursor.Host
             {
                 var sc = MathCursor.Core.Resolution.SidecarSerializer.Deserialize(
                     stored.Metadata!.SidecarJson);
-                if (!sc.IsEmpty) _sidecarsByHandle[handle.Id] = sc;
+                _handleRegistry.Restore(handle.Id, sc);
             }
 
             string source = stored.Source;
@@ -1720,9 +1707,7 @@ namespace MathCursor.Host
                 {
                     try { _store.RemoveAsync(new EquationHandle(h)).GetAwaiter().GetResult(); }
                     catch (Exception ex) { LogDiag($"merge_remove_error handle={h}: {ex.Message}"); }
-                    try { DeleteBookmarkByHandle(h); }
-                    catch (Exception ex) { LogDiag($"merge_bookmark_delete_error handle={h}: {ex.Message}"); }
-                    _sidecarsByHandle.Remove(h);
+                    _handleRegistry.Forget(h);
                 }
 
                 int rangeShrink = DeleteOMathsInRange(ctx.AbsStart, ctx.AbsEnd);
@@ -1739,54 +1724,6 @@ namespace MathCursor.Host
                 return ctx.WithAbort();
             }
             return ctx.WithInsertedBounds(newStart, newEnd, replaceStart);
-        }
-
-        /// <summary>StoreStage : persiste la source + sidecar dans le
-        /// CustomXMLPart. En mode édition, met à jour l'entrée existante.
-        /// En mode nouveau commit, crée le handle, le bookmark, et stocke.
-        /// </summary>
-        private MathCursor.Host.Pipeline.CommitContext StoreImpl(
-            MathCursor.Host.Pipeline.CommitContext ctx)
-        {
-            var editing = ctx.EditingHandle;
-            if (editing != null)
-            {
-                LogDiag($"edit commit handle={editing.Id} latex=\"{ctx.Latex}\"");
-                StashSidecarForHandle(editing.Id);
-                var editSidecarJson = MathCursor.Core.Resolution.SidecarSerializer.Serialize(
-                    GetSidecarForHandle(editing.Id));
-                try
-                {
-                    _store.StoreAsync(editing, ctx.Source, new EquationMetadata
-                    {
-                        SourceLanguage = "fr",
-                        CreatedAt = DateTimeOffset.UtcNow,
-                        SidecarJson = string.IsNullOrEmpty(editSidecarJson) ? null : editSidecarJson,
-                    }).GetAwaiter().GetResult();
-                }
-                catch (Exception ex) { LogDiag("edit_store_save_error: " + ex.Message); }
-                return ctx;
-            }
-
-            var handle = new EquationHandle(NewHandleId());
-            CreateBookmarkForRange(handle.Id, ctx.AbsStart, ctx.AbsEnd);
-            // ctx.Sidecar = mergedSidecar si MergerStage a fusionné, Empty sinon.
-            // StashSidecarForHandle fallback popup.CurrentSidecar si Empty.
-            StashSidecarForHandle(handle.Id, ctx.Sidecar);
-            var sidecarJson = MathCursor.Core.Resolution.SidecarSerializer.Serialize(
-                GetSidecarForHandle(handle.Id));
-            try
-            {
-                _store.StoreAsync(handle, ctx.Source, new EquationMetadata
-                {
-                    SourceLanguage = "fr",
-                    CreatedAt = DateTimeOffset.UtcNow,
-                    SidecarJson = string.IsNullOrEmpty(sidecarJson) ? null : sidecarJson,
-                }).GetAwaiter().GetResult();
-            }
-            catch (Exception ex) { LogDiag("store_save_error: " + ex.Message); }
-            LogDiag($"insert commit handle={handle.Id} range=[{ctx.AbsStart},{ctx.AbsEnd}] latex=\"{ctx.Latex}\" source=\"{ctx.Source}\" sidecarBytes={(sidecarJson?.Length ?? 0)}");
-            return ctx.WithNewHandle(handle);
         }
 
         /// <summary>LayoutStage : finalise le layout post-insert. Cas :
