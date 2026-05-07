@@ -23,7 +23,7 @@ namespace MathCursor.UI.Debug
     /// </summary>
     public sealed class ContextInspectorPane : UserControl
     {
-        private readonly TextBlock _content;
+        private readonly TextBox _content;
         private readonly TextBlock _status;
 
         public ContextInspectorPane()
@@ -43,21 +43,25 @@ namespace MathCursor.UI.Debug
             Grid.SetRow(_status, 0);
             grid.Children.Add(_status);
 
-            _content = new TextBlock
+            // TextBox readonly (vs TextBlock) pour permettre la sélection +
+            // copier-coller du contenu (utile pour partager une trace).
+            _content = new TextBox
             {
                 Margin = new Thickness(8, 4, 8, 8),
                 FontFamily = new FontFamily("Cascadia Code, Consolas, Lucida Console, monospace"),
                 FontSize = 11,
+                IsReadOnly = true,
+                IsReadOnlyCaretVisible = true,
+                AcceptsReturn = true,
                 TextWrapping = TextWrapping.NoWrap,
-            };
-            var scroll = new ScrollViewer
-            {
-                Content = _content,
+                BorderThickness = new Thickness(0),
+                Background = System.Windows.Media.Brushes.Transparent,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                UndoLimit = 0,
             };
-            Grid.SetRow(scroll, 1);
-            grid.Children.Add(scroll);
+            Grid.SetRow(_content, 1);
+            grid.Children.Add(_content);
 
             Content = grid;
         }

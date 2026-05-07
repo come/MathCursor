@@ -1788,11 +1788,26 @@ namespace MathCursor.Host
             }
             catch (Exception ex) { LogDiag("commit_pipeline_error: " + ex.Message); }
 
-            // Propage les pins du commit vers l'historique paragraphe du
+            // Propage les pins du popup vers l'historique paragraphe du
             // _globalCtx. Permet aux zones suivantes du même ¶ de bénéficier
             // automatiquement des choix de désambig (cf. brief 2026-05-07,
             // cas AB/AD système 2 lignes).
-            try { PropagateCommittedPinsToParagraphHistory(ctx?.Sidecar ?? initialSidecar); } catch { }
+            //
+            // Note : on lit _popup.CurrentSidecar plutôt que ctx.Sidecar
+            // parce que le commit pipeline a typiquement ctx.Sidecar=Empty
+            // en commit standard (les pins ne transitent pas par le pipeline
+            // pour l'insertion, juste par cross-merge en mode edit). C'est
+            // _popup qui détient les pins accumulés pendant la session popup
+            // (via _sessionSpanPins). Lecture AVANT HidePopup() qui reset.
+            try
+            {
+                var popupSidecar = _popup?.CurrentSidecar;
+                if (popupSidecar != null && !popupSidecar.IsEmpty)
+                    PropagateCommittedPinsToParagraphHistory(popupSidecar);
+                else if (ctx?.Sidecar != null && !ctx.Sidecar.IsEmpty)
+                    PropagateCommittedPinsToParagraphHistory(ctx.Sidecar);
+            }
+            catch { }
 
             // Reset état
             _lastZoneAbsStart = -1;
