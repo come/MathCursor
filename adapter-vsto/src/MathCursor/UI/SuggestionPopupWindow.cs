@@ -421,9 +421,18 @@ namespace MathCursor.UI
             LogPopup($"Show top=\"{topLatex}\" rule=\"{ruleId}\" alts={(alternatives?.Count ?? 0)} pos=({screenX:F0},{screenY:F0})");
 
             // 1) Si l'utilisateur a déjà choisi cette règle dans la session,
-            //    on applique sa préférence en silence : la résolution est
-            //    intégrée à la substitutions string et on n'affiche pas la
-            //    zone d'alts.
+            //    on applique sa préférence en silence dans les substitutions
+            //    locales + on enregistre un SpanPin pour la propagation au
+            //    cross-merge.
+            //
+            //    NOTE 2026-05-07 : on NE TUE PLUS la zone d'alts (= plus de
+            //    `alternatives = Array.Empty`). Avec le filtrage de l'alt
+            //    active (étape 7) et le RulePin qui pré-splice le TopLatex,
+            //    la popup peut rester ouverte avec les autres options
+            //    accessibles (paren, crochet, revert) — l'user voit la
+            //    formule finale en bas + peut changer d'avis. Demande user
+            //    « ça me fait peur sur la généricité » : l'auto-kill silent
+            //    masquait les options et confondait la sémantique.
             if (!string.IsNullOrEmpty(ruleId)
                 && alternatives != null && alternatives.Count > 0
                 && _rulePreferences.TryGetValue(ruleId, out int preferredIdx)
@@ -433,15 +442,9 @@ namespace MathCursor.UI
                 string defaultLatex = ResolveDefaultLatex(topLatex!, spotStart, spotEnd, allMatches);
                 var preferredAlt = alternatives[preferredIdx];
                 _resolvedSubstitutions[defaultLatex] = preferredAlt.Latex;
-                // Sidecar : la pré-résolution silencieuse est aussi un vrai
-                // choix de l'user (héritée du `_rulePreferences` qu'il a fixé
-                // avant). On l'enregistre comme SpanPin pour qu'elle survive
-                // au cross-merge re-pipeline. Sinon, un nouveau span typique
-                // taper après la 1re résolution serait perdu (ADR 06-05).
                 if (UpsertSpanPin(ruleId, spotStart, spotEnd - spotStart, preferredIdx))
                     TallyVote(ruleId, preferredIdx);
-                LogPopup($"auto-applied pref rule=\"{ruleId}\" altIdx={preferredIdx} → \"{preferredAlt.Latex}\"");
-                alternatives = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
+                LogPopup($"applied pref (popup stays open) rule=\"{ruleId}\" altIdx={preferredIdx} → \"{preferredAlt.Latex}\"");
             }
 
             // 2) Applique les résolutions d'ambiguïté précédemment validées
