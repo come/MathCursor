@@ -77,6 +77,13 @@ namespace MathCursor.Core.Resolution
         public override string ToString()
             => $"MatchSig({RuleId}, \"{DefaultLatex}\", pos={RawSourcePos}, occ={OccurrenceIdx})";
 
+        /// <summary>Décale le <see cref="RawSourcePos"/> de
+        /// <paramref name="shift"/>. Utilisé au cross-merge multi-ligne
+        /// pour recalibrer la position dans la mergedSource (la part 2
+        /// est préfixée par la part 1 + un séparateur).</summary>
+        public MatchSignature WithRawSourcePosShift(int shift)
+            => new MatchSignature(RuleId, DefaultLatex, RawSourcePos + shift, OccurrenceIdx);
+
         public static bool operator ==(MatchSignature? a, MatchSignature? b)
             => a is null ? b is null : a.Equals(b);
 

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using MathCursor.Core.Resolution;
 using Xunit;
 
@@ -219,6 +220,71 @@ namespace MathCursor.Core.Tests.Resolution
             Assert.Equal(5, r.GetVote("two-uppercase", 0)); // 3 + 2
             Assert.Equal(1, r.GetVote("two-uppercase", 1)); // 1 + 0
             Assert.Equal(1, r.GetVote("two-uppercase", 2)); // 0 + 1
+        }
+
+        // ─── v2 : RulePins fusionnés en last-write-wins ────────────────
+
+        [Fact(DisplayName = "v2: RulePins last-write-wins par RuleId")]
+        public void V2_rule_pins_last_write_wins()
+        {
+            var part0 = new ResolutionSidecar(null, null,
+                new[] { new RulePin("two-uppercase", 0) }, null);
+            var part1 = new ResolutionSidecar(null, null,
+                new[] { new RulePin("two-uppercase", 1), new RulePin("canonical-set", 0) }, null);
+
+            var r = SidecarMerger.Merge(new[] { part0, part1 }, new[] { 0, 5 });
+
+            Assert.Equal(2, r.RulePins.Count);
+            var twoUp = r.RulePins.First(p => p.RuleId == "two-uppercase");
+            Assert.Equal(1, twoUp.AltIdx); // last (part1) gagne
+            var canon = r.RulePins.First(p => p.RuleId == "canonical-set");
+            Assert.Equal(0, canon.AltIdx);
+        }
+
+        // ─── v2 : SpanOverrides shifted ────────────────────────────────
+
+        [Fact(DisplayName = "v2: SpanOverride RawSourcePos shifted au merge")]
+        public void V2_span_overrides_shift_raw_source_pos()
+        {
+            var sigPart0 = new MatchSignature("two-uppercase", "AB", 0, 0);
+            var sigPart1 = new MatchSignature("two-uppercase", "CD", 0, 0);
+            var part0 = new ResolutionSidecar(null, null, null,
+                new[] { new SpanOverride(sigPart0, 1) });
+            var part1 = new ResolutionSidecar(null, null, null,
+                new[] { new SpanOverride(sigPart1, SpanOverride.AltIdxRevert) });
+
+            var r = SidecarMerger.Merge(new[] { part0, part1 }, new[] { 0, 5 });
+
+            Assert.Equal(2, r.SpanOverrides.Count);
+            var ovPart0 = r.SpanOverrides.First(o => o.Signature.DefaultLatex == "AB");
+            Assert.Equal(0, ovPart0.Signature.RawSourcePos); // pas de shift
+            var ovPart1 = r.SpanOverrides.First(o => o.Signature.DefaultLatex == "CD");
+            Assert.Equal(5, ovPart1.Signature.RawSourcePos); // 0 + 5
+            Assert.True(ovPart1.IsRevert);
+        }
+
+        [Fact(DisplayName = "v2: legacy + v2 fusionnés ensemble")]
+        public void V2_mix_legacy_and_v2_merged()
+        {
+            var part0 = new ResolutionSidecar(
+                new[] { new SpanPin("two-uppercase", 0, 2, 0) },
+                null,
+                new[] { new RulePin("canonical-set", 1) },
+                null);
+            var part1 = new ResolutionSidecar(null, null,
+                new[] { new RulePin("two-uppercase", 0) },
+                new[] { new SpanOverride(
+                    new MatchSignature("three-uppercase", "ABC", 0, 0),
+                    SpanOverride.AltIdxRevert) });
+
+            var r = SidecarMerger.Merge(new[] { part0, part1 }, new[] { 0, 4 });
+
+            Assert.Single(r.SpanPins); // legacy preserved
+            Assert.Equal(0, r.SpanPins[0].Offset);
+            Assert.Equal(2, r.RulePins.Count); // canonical-set + two-uppercase
+            Assert.Single(r.SpanOverrides);
+            Assert.Equal(4, r.SpanOverrides[0].Signature.RawSourcePos);
+            Assert.True(r.SpanOverrides[0].IsRevert);
         }
 
         // ─── helpers ───────────────────────────────────────────────────

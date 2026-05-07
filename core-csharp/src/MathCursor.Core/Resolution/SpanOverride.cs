@@ -58,5 +58,10 @@ namespace MathCursor.Core.Resolution
             => IsRevert
                 ? $"SpanOverride({Signature} → revert)"
                 : $"SpanOverride({Signature} → alt {AltIdx})";
+
+        /// <summary>Décale le <c>RawSourcePos</c> de la signature de
+        /// <paramref name="shift"/>. Utilisé au cross-merge.</summary>
+        public SpanOverride WithSignatureShift(int shift)
+            => new SpanOverride(Signature.WithRawSourcePosShift(shift), AltIdx);
     }
 }
