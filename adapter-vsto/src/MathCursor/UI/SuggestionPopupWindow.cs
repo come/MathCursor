@@ -380,7 +380,8 @@ namespace MathCursor.UI
             IReadOnlyList<MathCursor.Core.Lattice.AmbiguityMatch> allMatches,
             double screenX,
             double screenY,
-            string debugText = "")
+            string debugText = "",
+            int activeAltIdxFromCaller = -1)
         {
             LogPopup($"Show top=\"{topLatex}\" rule=\"{ruleId}\" alts={(alternatives?.Count ?? 0)} pos=({screenX:F0},{screenY:F0})");
 
@@ -446,11 +447,19 @@ namespace MathCursor.UI
                 string defaultLatex = topLatex!.Substring(spotStart, spotEnd - spotStart);
 
                 // Détermine l'altIdx active à filtrer (= -1 si aucune).
+                // 1) Pref in-session via _rulePreferences (priorité — choix
+                //    courant de l'user pendant cette session popup).
+                // 2) Sinon, altIdx fourni par le caller (= RulePin persistant
+                //    cross-commit via _globalCtx côté SuggestionService).
                 int activeAltIdx = -1;
                 if (!string.IsNullOrEmpty(ruleId)
                     && _rulePreferences.TryGetValue(ruleId, out int active))
                 {
                     activeAltIdx = active;
+                }
+                else if (activeAltIdxFromCaller >= 0)
+                {
+                    activeAltIdx = activeAltIdxFromCaller;
                 }
 
                 var withRevert = new System.Collections.Generic.List<MathCursor.Core.Lattice.AmbiguityAlternative>(alternatives.Count + 1);

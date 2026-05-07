@@ -413,6 +413,39 @@ namespace MathCursor.Host
             return resolved;
         }
 
+        /// <summary>
+        /// Trouve l'altIdx active pour une rule donnée (= celle qui sera
+        /// appliquée par défaut par <c>ZoneResolver.ResolveBestAlt</c> via
+        /// les RulePins courants). Utilisé par la popup pour filtrer l'alt
+        /// active de la liste affichée (demande user 2026-05-07 : « le
+        /// choix qui est utilisé par défaut ne doit pas être présenté »).
+        /// Retourne <c>-1</c> si aucun RulePin actif pour cette rule.
+        /// </summary>
+        private int FindActiveAltIdxForRule(string ruleId)
+        {
+            if (string.IsNullOrEmpty(ruleId)) return -1;
+
+            // 1) Choix in-session via _popup.CurrentSidecar.RulePins (le
+            // popup a accumulé des SpanPins → RulePins via getter).
+            var popupSidecar = _popup?.CurrentSidecar;
+            if (popupSidecar != null)
+            {
+                foreach (var rp in popupSidecar.RulePins)
+                    if (rp.RuleId == ruleId) return rp.AltIdx;
+            }
+
+            // 2) Choix persistant cross-commit via _globalCtx
+            // (RecentParagraphPins). Last-write-wins par rule.
+            var snapshot = _globalCtx.Snapshot(
+                "", MathCursor.Core.Resolution.ResolutionSidecar.Empty);
+            int found = -1;
+            foreach (var pin in snapshot.RecentParagraphPins)
+            {
+                if (pin.Rule == ruleId) found = pin.AltIdx;
+            }
+            return found;
+        }
+
         private void EmitContextResolvedIfSubscribed(
             string rawSource,
             MathCursor.Core.Resolution.ResolutionSidecar sidecar,
@@ -1518,8 +1551,14 @@ namespace MathCursor.Host
             string ruleId = resolved.Spot?.RuleId ?? "";
             int spotStart = resolved.SpotStart ?? -1;
             int spotEnd = resolved.SpotEnd ?? -1;
+            // Cherche l'altIdx active pour cette rule via le _globalCtx
+            // (cross-commit, contrairement aux _rulePreferences popup qui
+            // sont reset au commit). Permet à la popup de filtrer l'alt
+            // déjà appliquée par le RulePin/scoring (cf. demande user
+            // 2026-05-07).
+            int activeAltIdx = FindActiveAltIdxForRule(ruleId);
             _popup.Show(resolved.TopLatex, ruleId, alts, spotStart, spotEnd,
-                resolved.AllMatches, popupX, popupY, debugText);
+                resolved.AllMatches, popupX, popupY, debugText, activeAltIdx);
         }
 
         /// <summary>
