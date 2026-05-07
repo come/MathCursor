@@ -116,64 +116,57 @@ namespace MathCursor.Core
             => !string.IsNullOrEmpty(ruleId) && _preferences.ContainsKey(ruleId);
 
         /// <summary>
-        /// Résout avec un <see cref="MathCursor.Core.Resolution.ResolutionSidecar"/>
-        /// qui couvre TOUTES les rules (vec/paren/crochet via SpanPin + boost
-        /// par votes), pas juste celles à mutation source. Cf. brief 06-05
-        /// sidecar-de-resolutions et ADR à venir.
+        /// Résout avec un <see cref="MathCursor.Core.Resolution.GlobalContext"/>
+        /// qui agrège plusieurs <see cref="MathCursor.Core.Resolution.IContextSignal"/>s
+        /// (sidecar L1, résolutions ¶ L2, etc.). Point d'entrée recommandé :
+        /// le SuggestionService passe son GlobalContext de session.
         ///
-        /// Contrat post-refactor (actuellement non implémenté → throw) :
+        /// <para>Logique :</para>
         /// <list type="number">
-        ///   <item>Pipeline normal sur <paramref name="rawSource"/> (avec
-        ///     préférences <see cref="AddPreference"/> existantes pour V→∀ etc.)</item>
-        ///   <item>Applique les <see cref="MathCursor.Core.Resolution.SpanPin"/>s
-        ///     en post-render : substitue le LaTeX du span par l'alternative
-        ///     pinée, sans toucher la source.</item>
-        ///   <item>Applique les <c>ZoneVotes</c> en boost de ranking pour les
-        ///     ambigs non pinées : si <c>votes[rule][alt]</c> domine clairement,
-        ///     l'alt est résolue automatiquement (popup ne montre pas l'ambig).</item>
+        ///   <item>Pipeline normal sur <paramref name="rawSource"/>.</item>
+        ///   <item>Pour chaque ambiguïté, cherche un <see cref="MathCursor.Core.Resolution.SpanPin"/>
+        ///     matchant span-level (offset + len + rule + source.Substring).
+        ///     Si trouvé, last-write-wins → splice direct. C'est l'ancien
+        ///     comportement pin du sidecar, préservé pour la précision span.</item>
+        ///   <item>Sinon, demande <see cref="MathCursor.Core.Resolution.ScoringHints.BestAltForRule"/>
+        ///     pour cette rule. Si une alt a un score positif, splice.</item>
+        ///   <item>Sinon laisse le défaut.</item>
         /// </list>
+        ///
+        /// <para>Cf. brief <c>2026-05-07-global-context-multi-zoom-ranking</c>
+        /// + ADR sidecar 06-05 (les pins span-level restent dominants pour
+        /// préserver les choix utilisateur localisés).</para>
         /// </summary>
-        public ResolvedZone Resolve(string rawSource, MathCursor.Core.Resolution.ResolutionSidecar sidecar)
+        public ResolvedZone Resolve(
+            string rawSource,
+            MathCursor.Core.Resolution.GlobalContext? globalCtx,
+            MathCursor.Core.Resolution.ResolutionSidecar? sidecar)
         {
-            // Pipeline normal : produit topLatex avec defaults pour chaque ambig.
             var baseResolved = Resolve(rawSource);
-            if (sidecar == null || sidecar.IsEmpty) return baseResolved;
+            bool hasSidecar = sidecar != null && !sidecar.IsEmpty;
+            bool hasContext = globalCtx != null && globalCtx.SignalCount > 0;
+            if (!hasSidecar && !hasContext) return baseResolved;
 
             string topLatex = baseResolved.TopLatex ?? string.Empty;
             string source = rawSource ?? string.Empty;
 
-            // Sémantique unifiée (cf. ADR 06-05) : 1 passe par span ambigu,
-            // 1 substitution max. Pas de stacking possible.
-            //
-            //   - SpanPins = choix explicites localisés. **Last-write-wins**
-            //     par (rule, defaultLatex) : le dernier pin chronologique
-            //     exprime l'intention courante (si user change d'avis vec→paren,
-            //     c'est paren qui doit gagner, pas une moyenne pondérée).
-            //     L'ordre dans la liste reflète l'ordre temporel — la popup
-            //     ajoute en fin, SidecarMerger préserve l'ordre des parts.
-            //
-            //   - ZoneVotes = boost cascade pour spans **non-pinés**. Eux
-            //     s'additionnent (cumul historique de la zone) et un argmax
-            //     tranche. Permet à un span jamais désambigué d'hériter du
-            //     choix dominant de ses voisins (3 vec dans la zone → un
-            //     nouveau span 2-uppercase tombe auto sur vec).
-            //
-            // Conséquence : 3 pins identiques (cas bug 06-05) → last-write
-            // gagne, 1 seul splice. Pas de \vec{\vec{\vec{...}}}.
-            //
-            // **Splice position-aware** (bug user 06-05 « u(1,2) v(1,2) ») :
-            // utilise <c>match.Start/End</c> (positions dans topLatex) pour
-            // remplacer IN-PLACE. Empêche la cross-pollution entre 2 spans
-            // similaires (avant : <c>topLatex.Replace</c> global remplaçait
-            // toutes les occurrences du <c>defaultLatex</c>, pollution
-            // garantie quand 2 OMaths similaires sont mergés).
-            //
-            // Dédup par <c>(start, end)</c> : si 2 matches pointent au même
-            // span (rare, cas où plusieurs rules matchent le même span), on
-            // garde le dernier seulement (last-write-wins par span).
-            //
-            // Apply right-to-left : les splices décalent les positions des
-            // chars à droite, donc on traite d'abord ceux à droite.
+            // Hints agrégés depuis tous les signaux configurés.
+            MathCursor.Core.Resolution.ScoringHints hints;
+            if (globalCtx != null)
+            {
+                var snapshot = globalCtx.Snapshot(
+                    rawSource,
+                    sidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty);
+                hints = globalCtx.Scorer.Aggregate(snapshot);
+            }
+            else
+            {
+                hints = MathCursor.Core.Resolution.ScoringHints.Empty;
+            }
+
+            // Splice position-aware (cf. bug user 06-05 « u(1,2) v(1,2) ») :
+            // remplace IN-PLACE par (start, end). Apply right-to-left pour
+            // préserver les positions.
             var splices = new System.Collections.Generic.List<(int Start, int End, string AltLatex)>();
 
             foreach (var match in baseResolved.AllMatches)
@@ -181,56 +174,14 @@ namespace MathCursor.Core
                 if (match.Spot == null || string.IsNullOrEmpty(match.Spot.RuleId)) continue;
                 if (match.Start < 0 || match.End > topLatex.Length || match.Start >= match.End) continue;
 
-                // 1) Cherche le dernier pin matchant ce span (last-write-wins).
-                int lastPinAlt = -1;
-                foreach (var pin in sidecar.SpanPins)
-                {
-                    if (pin.Rule != match.Spot.RuleId) continue;
-                    if (pin.Offset < 0 || pin.Len <= 0) continue;
-                    if (pin.Offset + pin.Len > source.Length) continue;
-                    if (source.Substring(pin.Offset, pin.Len) != match.Spot.DefaultLatex) continue;
-                    if (pin.AltIdx < 0 || pin.AltIdx >= match.Spot.Alternatives.Count) continue;
-                    lastPinAlt = pin.AltIdx; // overwrite — le dernier gagne
-                }
-
-                int bestAlt;
-                if (lastPinAlt >= 0)
-                {
-                    // Choix explicite user → domine sur les votes.
-                    bestAlt = lastPinAlt;
-                }
-                else if (sidecar.ZoneVotes.TryGetValue(match.Spot.RuleId, out var byAlt)
-                         && byAlt != null && byAlt.Count > 0)
-                {
-                    // Pas de pin local → boost cascade par votes (additionnent).
-                    bestAlt = -1;
-                    int bestVote = 0;
-                    foreach (var kv in byAlt)
-                    {
-                        if (kv.Value > bestVote
-                            || (kv.Value == bestVote && (bestAlt < 0 || kv.Key < bestAlt)))
-                        {
-                            bestVote = kv.Value;
-                            bestAlt = kv.Key;
-                        }
-                    }
-                    if (bestAlt < 0 || bestAlt >= match.Spot.Alternatives.Count) continue;
-                }
-                else
-                {
-                    continue; // ni pin ni vote applicable → laisse le défaut
-                }
+                int bestAlt = ResolveBestAlt(match, source, sidecar, hints);
+                if (bestAlt < 0 || bestAlt >= match.Spot.Alternatives.Count) continue;
 
                 string altLatex = match.Spot.Alternatives[bestAlt].Latex;
-                // Last-write-wins par span (start, end) : si plusieurs matches
-                // (rare) pointent au même span, on garde le dernier.
                 splices.RemoveAll(s => s.Start == match.Start && s.End == match.End);
                 splices.Add((match.Start, match.End, altLatex));
             }
 
-            // Apply right-to-left pour préserver les positions des splices
-            // restants (un splice qui change la longueur d'un span décale
-            // tous les chars à droite — donc on traite d'abord ceux à droite).
             splices.Sort((a, b) => b.Start.CompareTo(a.Start));
             foreach (var s in splices)
             {
@@ -247,6 +198,58 @@ namespace MathCursor.Core
                 spotEnd: baseResolved.SpotEnd,
                 allMatches: baseResolved.AllMatches,
                 isIncomplete: baseResolved.IsIncomplete);
+        }
+
+        /// <summary>
+        /// Décide l'alternative à appliquer pour un match donné :
+        /// 1) pin span-level (last-write-wins) — domine ;
+        /// 2) sinon hints scorés (somme pondérée des signaux contextuels).
+        /// Retourne <c>-1</c> si aucune décision applicable.
+        /// </summary>
+        private static int ResolveBestAlt(
+            Lattice.AmbiguityMatch match,
+            string source,
+            MathCursor.Core.Resolution.ResolutionSidecar? sidecar,
+            MathCursor.Core.Resolution.ScoringHints hints)
+        {
+            // 1) Pin span-level. Inchangé : précision (offset, len, rule,
+            // source.Substring) que les hints scorés ne peuvent reproduire.
+            int lastPinAlt = -1;
+            if (sidecar != null)
+            {
+                foreach (var pin in sidecar.SpanPins)
+                {
+                    if (pin.Rule != match.Spot.RuleId) continue;
+                    if (pin.Offset < 0 || pin.Len <= 0) continue;
+                    if (pin.Offset + pin.Len > source.Length) continue;
+                    if (source.Substring(pin.Offset, pin.Len) != match.Spot.DefaultLatex) continue;
+                    if (pin.AltIdx < 0 || pin.AltIdx >= match.Spot.Alternatives.Count) continue;
+                    lastPinAlt = pin.AltIdx; // last-write-wins
+                }
+            }
+            if (lastPinAlt >= 0) return lastPinAlt;
+
+            // 2) Hints contextuels (votes sidecar via SidecarSignal +
+            // résolutions ¶ via ParagraphResolutionsSignal + autres signaux).
+            var (alt, score) = hints.BestAltForRule(match.Spot.RuleId);
+            if (alt < 0 || score <= 0) return -1;
+            return alt;
+        }
+
+        /// <summary>
+        /// Overload historique préservé. Wrap le sidecar dans un
+        /// <see cref="MathCursor.Core.Resolution.GlobalContext"/> jetable
+        /// avec un <see cref="MathCursor.Core.Resolution.Signals.SidecarSignal"/>
+        /// pour iso-comportement avec l'ancienne logique (pins + votes).
+        /// Préféré : passer directement le GlobalContext de session via
+        /// <see cref="Resolve(string, MathCursor.Core.Resolution.GlobalContext, MathCursor.Core.Resolution.ResolutionSidecar)"/>.
+        /// </summary>
+        public ResolvedZone Resolve(string rawSource, MathCursor.Core.Resolution.ResolutionSidecar sidecar)
+        {
+            if (sidecar == null || sidecar.IsEmpty) return Resolve(rawSource);
+            var globalCtx = new MathCursor.Core.Resolution.GlobalContext();
+            globalCtx.AddSignal(new MathCursor.Core.Resolution.Signals.SidecarSignal());
+            return Resolve(rawSource, globalCtx, sidecar);
         }
 
         /// <summary>
