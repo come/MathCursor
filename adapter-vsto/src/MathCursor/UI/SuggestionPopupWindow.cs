@@ -79,14 +79,6 @@ namespace MathCursor.UI
         private System.Collections.Generic.IReadOnlyList<int> _altIdxMap
             = System.Array.Empty<int>();
 
-        // Compteurs de votes par règle/alt (Phase 2 ADR 06-05). Chaque
-        // résolution (manuelle OU silent au Show) incrémente le compteur.
-        // Au cross-merge, ces votes boostent le ranking pour les ambigs
-        // non pinées : un nouveau span 2-uppercase apparu après plusieurs
-        // votes vec tombe auto sur vec.
-        private readonly Dictionary<string, Dictionary<int, int>> _sessionVotes
-            = new Dictionary<string, Dictionary<int, int>>();
-
         private readonly Dictionary<string, string> _resolvedSubstitutions
             = new Dictionary<string, string>();
 
@@ -128,12 +120,8 @@ namespace MathCursor.UI
         {
             get
             {
-                if (_sessionSpanPins.Count == 0 && _sessionVotes.Count == 0
-                    && _sessionSpanOverrides.Count == 0)
+                if (_sessionSpanPins.Count == 0 && _sessionSpanOverrides.Count == 0)
                     return MathCursor.Core.Resolution.ResolutionSidecar.Empty;
-                var votesReadonly = new Dictionary<string, IReadOnlyDictionary<int, int>>();
-                foreach (var kv in _sessionVotes)
-                    votesReadonly[kv.Key] = new Dictionary<int, int>(kv.Value);
 
                 // Sidecar v2 (cf. brief 2026-05-07-rule-pin-span-override-refactor) :
                 // produit aussi des RulePins déduits des SpanPins de la session.
@@ -156,7 +144,7 @@ namespace MathCursor.UI
 
                 return new MathCursor.Core.Resolution.ResolutionSidecar(
                     spanPins: _sessionSpanPins.ToArray(),
-                    zoneVotes: votesReadonly,
+                    zoneVotes: null, // ZoneVotes legacy retirés — RulePins prennent le relais
                     rulePins: rulePins,
                     spanOverrides: _sessionSpanOverrides.ToArray());
             }
@@ -174,10 +162,7 @@ namespace MathCursor.UI
         /// Cf. cause racine bug 06-05 (flèches empilées).
         /// </summary>
         /// <returns><c>true</c> si un nouveau pin a été ajouté, <c>false</c>
-        /// si un pin existant a été mis à jour (overwrite altIdx). Le caller
-        /// doit utiliser ça pour conditionner <see cref="TallyVote"/> :
-        /// re-résoudre le même span ne doit pas re-voter (sinon les votes
-        /// gonflent à chaque Show répété).</returns>
+        /// si un pin existant a été mis à jour (overwrite altIdx).</returns>
         private bool UpsertSpanPin(string ruleId, int offset, int len, int altIdx)
         {
             for (int i = _sessionSpanPins.Count - 1; i >= 0; i--)
@@ -265,20 +250,6 @@ namespace MathCursor.UI
                     return m.Signature;
             }
             return null;
-        }
-
-        /// <summary>Helper interne : incrémente le compteur de vote pour
-        /// une règle/alt donnée. Appelé à chaque résolution (manuelle ou silent).</summary>
-        private void TallyVote(string ruleId, int altIdx)
-        {
-            if (string.IsNullOrEmpty(ruleId) || altIdx < 0) return;
-            if (!_sessionVotes.TryGetValue(ruleId, out var byAlt))
-            {
-                byAlt = new Dictionary<int, int>();
-                _sessionVotes[ruleId] = byAlt;
-            }
-            byAlt.TryGetValue(altIdx, out var count);
-            byAlt[altIdx] = count + 1;
         }
 
         public event Action ReportRequested;
@@ -477,8 +448,7 @@ namespace MathCursor.UI
                 var preferredAlt = alternatives[preferredIdx];
                 _resolvedSubstitutions[defaultLatex] = preferredAlt.Latex;
                 _subsRuleMap[defaultLatex] = ruleId;
-                if (UpsertSpanPin(ruleId, spotStart, spotEnd - spotStart, preferredIdx))
-                    TallyVote(ruleId, preferredIdx);
+                UpsertSpanPin(ruleId, spotStart, spotEnd - spotStart, preferredIdx);
                 LogPopup($"applied pref (popup stays open) rule=\"{ruleId}\" altIdx={preferredIdx} → \"{preferredAlt.Latex}\"");
             }
 
@@ -844,8 +814,7 @@ namespace MathCursor.UI
                     int matchLen = match.End - match.Start;
                     if (matchLen > 0)
                     {
-                        if (UpsertSpanPin(ruleId, match.Start, matchLen, chosenAltIdx))
-                            TallyVote(ruleId, chosenAltIdx);
+                        UpsertSpanPin(ruleId, match.Start, matchLen, chosenAltIdx);
                     }
                 }
             }
@@ -978,7 +947,6 @@ namespace MathCursor.UI
                 _subsRuleMap.Clear();
                 _rulePreferences.Clear();
                 _sessionSpanPins.Clear();
-                _sessionVotes.Clear();
                 _sessionSpanOverrides.Clear();
             }
             if (!IsVisible) return;
