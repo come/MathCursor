@@ -22,6 +22,14 @@
                   size="large"
                   imageMso="WarningOriginal"
                   onAction="OnReportIssueClicked" />
+          <!-- Pane debug Context Inspector (cf. brief 2026-05-07-global-context-multi-zoom-ranking).
+               Outil de validation visuelle du scoring contextuel multi-zoom. -->
+          <button id="ContextInspectorButton"
+                  getLabel="OnGetContextInspectorButtonLabel"
+                  getScreentip="OnGetContextInspectorButtonScreentip"
+                  size="large"
+                  imageMso="WatchWindow"
+                  onAction="OnContextInspectorClicked" />
         </group>
       </tab>
     </tabs>

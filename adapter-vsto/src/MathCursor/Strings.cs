@@ -70,6 +70,25 @@ namespace MathCursor
             _    => "Report an issue",
         };
 
+        // Bouton + pane debug Context Inspector (cf. brief 2026-05-07-global-context-multi-zoom-ranking).
+        public static string ContextInspectorButtonLabel => Lang switch
+        {
+            "fr" => "Inspecteur",
+            _    => "Inspector",
+        };
+
+        public static string ContextInspectorButtonScreentip => Lang switch
+        {
+            "fr" => "Ouvre/ferme le panneau debug du contexte de résolution (raw source, sidecar, scoring hints, trace)",
+            _    => "Open/close the resolution context debug panel (raw source, sidecar, scoring hints, trace)",
+        };
+
+        public static string ContextInspectorPaneTitle => Lang switch
+        {
+            "fr" => "MathCursor — Inspecteur (debug)",
+            _    => "MathCursor — Inspector (debug)",
+        };
+
         public static string ReportButtonScreentip => Lang switch
         {
             "fr" => "Prépare un rapport (log + screenshot + contexte) prêt à envoyer",

@@ -1,0 +1,124 @@
+using System;
+using System.Linq;
+using System.Text;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using MathCursor.Core.Resolution;
+
+namespace MathCursor.UI.Debug
+{
+    /// <summary>
+    /// Pane WPF debug qui affiche en temps réel le contexte de résolution
+    /// MathCursor : raw source, sidecar (pins + votes), historique paragraphe,
+    /// scores agrégés par alternative et trace par signal.
+    ///
+    /// <para>Mis à jour par <see cref="MathCursor.Host.SuggestionService.ContextResolved"/>
+    /// à chaque résolution. Outil de validation visuelle pour le brief
+    /// 2026-05-07-global-context-multi-zoom-ranking — permet de voir le
+    /// scoring contextuel s'appliquer (ex: cas AB/AD système 2 lignes).</para>
+    ///
+    /// <para>Pas de tests unitaires : UI debug pure, valeur dans la boucle
+    /// d'usage (lancer Word, observer).</para>
+    /// </summary>
+    public sealed class ContextInspectorPane : UserControl
+    {
+        private readonly TextBlock _content;
+        private readonly TextBlock _status;
+
+        public ContextInspectorPane()
+        {
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+            _status = new TextBlock
+            {
+                Margin = new Thickness(8, 8, 8, 4),
+                FontFamily = new FontFamily("Segoe UI"),
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 120)),
+                Text = "(en attente d'une résolution...)",
+            };
+            Grid.SetRow(_status, 0);
+            grid.Children.Add(_status);
+
+            _content = new TextBlock
+            {
+                Margin = new Thickness(8, 4, 8, 8),
+                FontFamily = new FontFamily("Cascadia Code, Consolas, Lucida Console, monospace"),
+                FontSize = 11,
+                TextWrapping = TextWrapping.NoWrap,
+            };
+            var scroll = new ScrollViewer
+            {
+                Content = _content,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            };
+            Grid.SetRow(scroll, 1);
+            grid.Children.Add(scroll);
+
+            Content = grid;
+        }
+
+        /// <summary>
+        /// Reformatte le pane avec un nouveau contexte/hints. À appeler sur
+        /// le thread UI (l'appelant doit Dispatcher.Invoke si besoin).
+        /// </summary>
+        public void Update(string rawSource, ContextSnapshot snapshot, ScoringHints hints)
+        {
+            _status.Text = $"⟳ {DateTime.Now:HH:mm:ss.fff}  |  source: \"{Truncate(rawSource, 40)}\"";
+
+            var sb = new StringBuilder();
+
+            sb.AppendLine("=== Raw source ===");
+            sb.AppendLine(rawSource ?? "<null>");
+            sb.AppendLine();
+
+            if (snapshot != null)
+            {
+                sb.AppendLine($"=== Sidecar (zone OMath en cours) ===");
+                sb.AppendLine($"Pins span-level   : {snapshot.Sidecar.SpanPins.Count}");
+                foreach (var p in snapshot.Sidecar.SpanPins)
+                    sb.AppendLine($"  • [{p.Offset}..{p.Offset + p.Len}) rule={p.Rule} alt={p.AltIdx}");
+                sb.AppendLine($"Votes (rules×alt) : {snapshot.Sidecar.ZoneVotes.Count}");
+                foreach (var rv in snapshot.Sidecar.ZoneVotes)
+                    foreach (var av in rv.Value)
+                        sb.AppendLine($"  • {rv.Key}:{av.Key} = {av.Value}");
+                sb.AppendLine();
+
+                sb.AppendLine($"=== Historique ¶ courant (L2) ===");
+                sb.AppendLine($"Pins ¶            : {snapshot.RecentParagraphPins.Count}");
+                foreach (var p in snapshot.RecentParagraphPins)
+                    sb.AppendLine($"  • rule={p.Rule} alt={p.AltIdx}");
+                sb.AppendLine();
+            }
+
+            if (hints != null && hints.AltScores.Count > 0)
+            {
+                sb.AppendLine("=== Scoring hints (alts triées par score décroissant) ===");
+                foreach (var kv in hints.AltScores.OrderByDescending(kv => kv.Value))
+                    sb.AppendLine($"  {kv.Value,7:F3}   {kv.Key}");
+                sb.AppendLine();
+
+                sb.AppendLine($"=== Trace ({hints.Trace.Count} contributions) ===");
+                foreach (var line in hints.Trace)
+                    sb.AppendLine($"  {line}");
+            }
+            else
+            {
+                sb.AppendLine("=== Scoring hints ===");
+                sb.AppendLine("(aucun hint — contexte vide ou aucun signal applicable)");
+            }
+
+            _content.Text = sb.ToString();
+        }
+
+        private static string Truncate(string s, int max)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            return s.Length <= max ? s : s.Substring(0, max - 1) + "…";
+        }
+    }
+}

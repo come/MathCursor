@@ -391,6 +391,14 @@ namespace MathCursor.Host
         // ─── Plomberie GlobalContext (brief 2026-05-07) ─────────────────
 
         /// <summary>
+        /// Event émis à chaque résolution via <see cref="ResolveWithContext"/>.
+        /// Consommé par le pane debug <c>ContextInspectorPane</c> pour afficher
+        /// le contexte et les hints en temps réel. Reste optionnel — pas
+        /// d'abonné = pas d'aggregate inutile.
+        /// </summary>
+        public event System.EventHandler<ContextResolveEventArgs> ContextResolved;
+
+        /// <summary>
         /// Helper qui résout via le <c>_resolver</c> en passant systématiquement
         /// le <c>_globalCtx</c> de session. Ainsi tous les chemins (preview,
         /// commit, IsIncomplete check) bénéficient des signaux contextuels
@@ -399,7 +407,28 @@ namespace MathCursor.Host
         private MathCursor.Core.ResolvedZone ResolveWithContext(
             string rawSource,
             MathCursor.Core.Resolution.ResolutionSidecar sidecar = null)
-            => _resolver.Resolve(rawSource ?? "", _globalCtx, sidecar);
+        {
+            var resolved = _resolver.Resolve(rawSource ?? "", _globalCtx, sidecar);
+            EmitContextResolvedIfSubscribed(rawSource, sidecar);
+            return resolved;
+        }
+
+        private void EmitContextResolvedIfSubscribed(
+            string rawSource,
+            MathCursor.Core.Resolution.ResolutionSidecar sidecar)
+        {
+            var evt = ContextResolved;
+            if (evt == null) return; // évite l'aggregate si personne n'écoute
+            try
+            {
+                var snapshot = _globalCtx.Snapshot(
+                    rawSource,
+                    sidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty);
+                var hints = _globalCtx.Scorer.Aggregate(snapshot);
+                evt(this, new ContextResolveEventArgs(rawSource, snapshot, hints));
+            }
+            catch (System.Exception ex) { LogDiag("context_event_error: " + ex.Message); }
+        }
 
         /// <summary>
         /// Détecte un changement de ¶ d'ancrage du caret. Au changement, reset

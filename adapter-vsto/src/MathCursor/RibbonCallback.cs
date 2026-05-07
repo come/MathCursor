@@ -82,6 +82,33 @@ namespace MathCursor
         public string OnGetReportButtonScreentip(IRibbonControl control)
             => Strings.ReportButtonScreentip;
 
+        public string OnGetContextInspectorButtonLabel(IRibbonControl control)
+            => Strings.ContextInspectorButtonLabel;
+
+        public string OnGetContextInspectorButtonScreentip(IRibbonControl control)
+            => Strings.ContextInspectorButtonScreentip;
+
+        /// <summary>
+        /// Toggle du pane debug Context Inspector
+        /// (cf. brief 2026-05-07-global-context-multi-zoom-ranking).
+        /// </summary>
+        public void OnContextInspectorClicked(IRibbonControl control)
+        {
+            try
+            {
+                Globals.ThisAddIn?.ToggleContextInspectorPane();
+            }
+            catch (Exception ex)
+            {
+                LogDebug("context_inspector_toggle_error: " + ex.Message);
+                MessageBox.Show(
+                    "Impossible d'ouvrir l'Inspecteur :\n" + ex.Message,
+                    "MathCursor",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+
         /// <summary>
         /// Ouvre la fenêtre WPF "Signaler une erreur" pré-remplie depuis le
         /// dernier <see cref="MathCursor.Host.LastActionSnapshot"/> (saisie /

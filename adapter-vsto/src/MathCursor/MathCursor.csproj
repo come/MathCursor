@@ -247,6 +247,7 @@
     <Compile Include="ThisAddIn.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="ThisAddIn.ContextInspector.cs" />
     <None Include="ThisAddIn.Designer.xml">
       <DependentUpon>ThisAddIn.cs</DependentUpon>
     </None>
@@ -307,8 +308,11 @@
     <Compile Include="Host\Feedback\ClipboardFeedbackSender.cs" />
     <Compile Include="Host\Feedback\HttpFeedbackSender.cs" />
     <Compile Include="Host\Feedback\FeedbackSenderFactory.cs" />
+    <Compile Include="Host\ContextResolveEventArgs.cs" />
     <Compile Include="UI\WpfMathAdapter.cs" />
     <Compile Include="UI\MixedLatexRenderer.cs" />
+    <Compile Include="UI\Debug\ContextInspectorPane.cs" />
+    <Compile Include="UI\Debug\ContextInspectorPaneHost.cs" />
     <Compile Include="UI\SuggestionPopupWindow.cs" />
     <Compile Include="UI\EditModePopupWindow.cs" />
     <Compile Include="UI\FeedbackDialog.cs" />
