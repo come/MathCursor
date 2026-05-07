@@ -278,6 +278,11 @@ namespace MathCursor.Core
             var preprocessed = PreprocessCanonicalSetModifiers(rawSource);
             var muted = ApplyPreferences(preprocessed);
             var ambig = _engine.ConvertWithAmbiguity(muted);
+            // Décoration des matches avec leur Signature (cf. brief 2026-05-07
+            // rule-pin-span-override-refactor). L'AlternativeGenerator émet
+            // les matches avec les positions topLatex ; on calcule ici
+            // l'OccurrenceIdx via un scan ordonné par Start.
+            var decoratedMatches = DecorateMatchesWithSignatures(ambig.AllMatches);
             bool incomplete = ComputeIsIncomplete(rawSource, ambig.TopLatex);
             return new ResolvedZone(
                 rawSource: rawSource,
@@ -286,8 +291,50 @@ namespace MathCursor.Core
                 spot: ambig.Spot,
                 spotStart: ambig.SpotStart,
                 spotEnd: ambig.SpotEnd,
-                allMatches: ambig.AllMatches,
+                allMatches: decoratedMatches,
                 isIncomplete: incomplete);
+        }
+
+        /// <summary>
+        /// Enrichit chaque <see cref="AmbiguityMatch"/> avec sa
+        /// <see cref="MathCursor.Core.Resolution.MatchSignature"/>.
+        /// L'OccurrenceIdx est calculé par scan ordonné gauche-à-droite :
+        /// pour chaque (RuleId, DefaultLatex), on incrémente un compteur
+        /// au fur et à mesure des rencontres.
+        ///
+        /// <para>Ex : <c>"AB+CD=AB"</c> avec 3 matches two-uppercase →
+        /// 1ʳᵉ AB → occ=0, CD → occ=0, 2ᵉ AB → occ=1.</para>
+        /// </summary>
+        private static IReadOnlyList<AmbiguityMatch> DecorateMatchesWithSignatures(
+            IReadOnlyList<AmbiguityMatch> matches)
+        {
+            if (matches == null || matches.Count == 0) return matches ?? new List<AmbiguityMatch>();
+
+            // Tri par Start ASC (déjà le cas en pratique mais on s'assure).
+            // ToArray pour ne pas muter la liste source.
+            var ordered = matches.ToArray();
+            System.Array.Sort(ordered, (a, b) => a.Start.CompareTo(b.Start));
+
+            var occCount = new Dictionary<(string, string), int>();
+            var result = new List<AmbiguityMatch>(ordered.Length);
+            foreach (var m in ordered)
+            {
+                if (m.Spot == null || string.IsNullOrEmpty(m.Spot.RuleId) || m.Start < 0)
+                {
+                    result.Add(m); // pas de signature possible (cas defensif)
+                    continue;
+                }
+                var key = (m.Spot.RuleId, m.Spot.DefaultLatex ?? string.Empty);
+                if (!occCount.TryGetValue(key, out int idx)) idx = 0;
+                var sig = new MathCursor.Core.Resolution.MatchSignature(
+                    ruleId: m.Spot.RuleId,
+                    defaultLatex: m.Spot.DefaultLatex ?? string.Empty,
+                    rawSourcePos: m.Start,   // V1 : utilise la position topLatex
+                    occurrenceIdx: idx);
+                result.Add(m.WithSignature(sig));
+                occCount[key] = idx + 1;
+            }
+            return result;
         }
 
         /// <summary>

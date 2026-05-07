@@ -86,12 +86,36 @@ namespace MathCursor.Core.Lattice
         public AmbiguitySpot Spot { get; }
         public int Start { get; }
         public int End { get; }
+
+        /// <summary>
+        /// Identifiant léger et stable du match (cf. brief
+        /// <c>2026-05-07-rule-pin-span-override-refactor</c>). Calculé en
+        /// post-traitement par <c>ZoneResolver</c> après l'émission du
+        /// match par l'<see cref="AlternativeGenerator"/> (qui n'a pas
+        /// l'OccurrenceIdx du fait du scan multi-rules).
+        ///
+        /// <para>Null si non décoré (ex: tests anciens, code legacy qui
+        /// crée des matches directement). Les nouveaux consommateurs
+        /// (<c>SpanOverride</c> matching) peuvent l'utiliser.</para>
+        /// </summary>
+        public MathCursor.Core.Resolution.MatchSignature? Signature { get; }
+
         public AmbiguityMatch(AmbiguitySpot spot, int start, int end)
+            : this(spot, start, end, null) { }
+
+        public AmbiguityMatch(AmbiguitySpot spot, int start, int end,
+            MathCursor.Core.Resolution.MatchSignature? signature)
         {
             Spot = spot;
             Start = start;
             End = end;
+            Signature = signature;
         }
+
+        /// <summary>Crée une copie de ce match avec une signature attachée.
+        /// Utilisé par la passe de décoration dans <c>ZoneResolver</c>.</summary>
+        public AmbiguityMatch WithSignature(MathCursor.Core.Resolution.MatchSignature signature)
+            => new AmbiguityMatch(Spot, Start, End, signature);
     }
 
     /// <summary>
