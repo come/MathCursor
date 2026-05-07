@@ -58,6 +58,13 @@ namespace MathCursor.UI
         private readonly System.Collections.Generic.List<MathCursor.Core.Resolution.SpanPin> _sessionSpanPins
             = new System.Collections.Generic.List<MathCursor.Core.Resolution.SpanPin>();
 
+        // SpanOverrides v2 (étape 7 brief 2026-05-07) : utilisés UNIQUEMENT
+        // pour le cas "revert" (l'utilisateur choisit l'alt-revert dans la
+        // popup → SpanOverride{sig, AltIdxRevert} qui dit "pour ce span
+        // précis, garde le default brut, pas le RulePin / scoring contextuel").
+        private readonly System.Collections.Generic.List<MathCursor.Core.Resolution.SpanOverride> _sessionSpanOverrides
+            = new System.Collections.Generic.List<MathCursor.Core.Resolution.SpanOverride>();
+
         // Compteurs de votes par règle/alt (Phase 2 ADR 06-05). Chaque
         // résolution (manuelle OU silent au Show) incrémente le compteur.
         // Au cross-merge, ces votes boostent le ranking pour les ambigs
@@ -98,7 +105,8 @@ namespace MathCursor.UI
         {
             get
             {
-                if (_sessionSpanPins.Count == 0 && _sessionVotes.Count == 0)
+                if (_sessionSpanPins.Count == 0 && _sessionVotes.Count == 0
+                    && _sessionSpanOverrides.Count == 0)
                     return MathCursor.Core.Resolution.ResolutionSidecar.Empty;
                 var votesReadonly = new Dictionary<string, IReadOnlyDictionary<int, int>>();
                 foreach (var kv in _sessionVotes)
@@ -127,7 +135,7 @@ namespace MathCursor.UI
                     spanPins: _sessionSpanPins.ToArray(),
                     zoneVotes: votesReadonly,
                     rulePins: rulePins,
-                    spanOverrides: null);
+                    spanOverrides: _sessionSpanOverrides.ToArray());
             }
         }
 
@@ -162,6 +170,50 @@ namespace MathCursor.UI
             _sessionSpanPins.Add(new MathCursor.Core.Resolution.SpanPin(
                 ruleId, offset, len, altIdx));
             return true;
+        }
+
+        /// <summary>
+        /// Crée ou met à jour un <see cref="MathCursor.Core.Resolution.SpanOverride"/>
+        /// pour la signature donnée. Last-write-wins par signature.
+        /// (Cf. brief 2026-05-07 étape 7 : alt-revert dans la popup.)
+        /// </summary>
+        private void UpsertSpanOverride(MathCursor.Core.Resolution.MatchSignature sig, int altIdx)
+        {
+            if (sig == null) return;
+            for (int i = _sessionSpanOverrides.Count - 1; i >= 0; i--)
+            {
+                if (_sessionSpanOverrides[i].Signature.Equals(sig))
+                {
+                    _sessionSpanOverrides[i] = new MathCursor.Core.Resolution.SpanOverride(sig, altIdx);
+                    return;
+                }
+            }
+            _sessionSpanOverrides.Add(new MathCursor.Core.Resolution.SpanOverride(sig, altIdx));
+        }
+
+        /// <summary>
+        /// Trouve la <see cref="MathCursor.Core.Resolution.MatchSignature"/>
+        /// du match correspondant à <paramref name="spotStart"/>/<paramref name="spotEnd"/>
+        /// dans <see cref="_allMatches"/> (liste décorée par ZoneResolver).
+        /// Retourne null si aucun match correspondant ou si pas de signature.
+        /// </summary>
+        private MathCursor.Core.Resolution.MatchSignature FindSignatureAtSpot(
+            int spotStart, int spotEnd, string defaultLatex)
+        {
+            // 1) Match exact par (Start, End)
+            foreach (var m in _allMatches)
+            {
+                if (m.Start == spotStart && m.End == spotEnd && m.Signature != null)
+                    return m.Signature;
+            }
+            // 2) Fallback : match par DefaultLatex à la même position de début
+            //    (en cas de décalage léger dû au splice in-popup).
+            foreach (var m in _allMatches)
+            {
+                if (m.Spot?.DefaultLatex == defaultLatex && m.Start == spotStart && m.Signature != null)
+                    return m.Signature;
+            }
+            return null;
         }
 
         /// <summary>Helper interne : incrémente le compteur de vote pour
@@ -371,14 +423,31 @@ namespace MathCursor.UI
             _topLatex = substitutedTop;
             _currentRuleId = ruleId ?? "";
             _allMatches = allMatches ?? Array.Empty<MathCursor.Core.Lattice.AmbiguityMatch>();
-            _alternatives = (newSpotStart >= 0 && alternatives != null)
-                ? alternatives
-                : Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
+            // Préfixe l'alt-revert (= rendu defaultLatex sans transformation)
+            // en index 0 (cf. brief 2026-05-07 étape 7 : permet à l'user de
+            // choisir "revert au cas brut" via la popup, ce qui crée un
+            // SpanOverride{sig, AltIdxRevert} dans le sidecar v2).
+            // Présente uniquement quand il y a au moins une vraie alt.
+            if (newSpotStart >= 0 && alternatives != null && alternatives.Count > 0)
+            {
+                string defaultLatex = topLatex!.Substring(spotStart, spotEnd - spotStart);
+                var withRevert = new System.Collections.Generic.List<MathCursor.Core.Lattice.AmbiguityAlternative>(alternatives.Count + 1);
+                withRevert.Add(new MathCursor.Core.Lattice.AmbiguityAlternative(defaultLatex));
+                withRevert.AddRange(alternatives);
+                _alternatives = withRevert;
+            }
+            else
+            {
+                _alternatives = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
+            }
             _spotStart = newSpotStart;
             _spotEnd = newSpotEnd;
             _resolvedLatex = substitutedTop;
             _focusOnFinal = true;
-            _altIndex = 0;
+            // Pré-sélection : si on a des vraies alts (= au moins 2 entrées
+            // car index 0 = revert), pré-sélectionner la première vraie alt
+            // (= alt rule 0) pour ne pas mettre revert par défaut.
+            _altIndex = _alternatives.Count > 1 ? 1 : 0;
 
             _debugFooter.Text = string.IsNullOrEmpty(debugText) ? "" : "NER: \"" + debugText + "\"";
 
@@ -514,6 +583,41 @@ namespace MathCursor.UI
             if (_altIndex < 0 || _altIndex >= _alternatives.Count) return false;
             if (_spotStart < 0 || _spotEnd <= _spotStart) return false;
 
+            // === Index 0 = alt-revert (cf. brief 2026-05-07 étape 7) ===
+            // L'utilisateur veut le defaultLatex brut pour ce span précis,
+            // sans appliquer le RulePin global ni le scoring contextuel.
+            // → SpanOverride{sig, AltIdxRevert} dans le sidecar v2.
+            if (_altIndex == 0 && _alternatives.Count > 1)
+            {
+                string defaultLatex = _alternatives[0].Latex;
+                var sig = FindSignatureAtSpot(_spotStart, _spotEnd, defaultLatex);
+                if (sig != null)
+                    UpsertSpanOverride(sig, MathCursor.Core.Resolution.SpanOverride.AltIdxRevert);
+
+                // Retire la substitution locale si une cascade précédente
+                // l'avait posée — pour que ce span précis affiche bien le
+                // default brut localement aussi.
+                _resolvedSubstitutions.Remove(defaultLatex);
+
+                string newResolvedRevert = _topLatex;
+                foreach (var kv in _resolvedSubstitutions)
+                    newResolvedRevert = newResolvedRevert.Replace(kv.Key, kv.Value);
+                _resolvedLatex = newResolvedRevert;
+
+                _alternatives = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
+                _altsRow.Children.Clear();
+                _altsRowBorder.Visibility = Visibility.Collapsed;
+                _spotStart = _spotEnd = -1;
+                _topLatex = _resolvedLatex;
+
+                _finalContainer.Children.Clear();
+                _finalContainer.Children.Add(BuildFinalRow(_resolvedLatex));
+                _focusOnFinal = true;
+                UpdateHighlight();
+                LogPopup($"Resolved as REVERT rule=\"{_currentRuleId}\" default=\"{defaultLatex}\"");
+                return true;
+            }
+
             var selectedAlt = _alternatives[_altIndex];
 
             // Branche source-mutation : la résolution n'est plus une sub
@@ -522,10 +626,13 @@ namespace MathCursor.UI
             // mutation, relancera le pipeline et appellera Show() à nouveau
             // avec le nouveau résultat. La popup elle-même ne fait rien de
             // plus que propager.
+            // Note : avec l'alt-revert en index 0, l'altIdx réel pour les
+            // vraies alts = _altIndex - 1 (cf. décalage étape 7).
+            int realAltIdx = _altIndex - 1;
             if (selectedAlt.Mutation != null)
             {
-                LogPopup($"Resolved via SourceMutation rule=\"{_currentRuleId}\" altIdx={_altIndex} replacement=\"{selectedAlt.Mutation.Replacement}\"");
-                SourceMutationRequested?.Invoke(_currentRuleId, _altIndex, selectedAlt.Mutation);
+                LogPopup($"Resolved via SourceMutation rule=\"{_currentRuleId}\" altIdx={realAltIdx} replacement=\"{selectedAlt.Mutation.Replacement}\"");
+                SourceMutationRequested?.Invoke(_currentRuleId, realAltIdx, selectedAlt.Mutation);
                 return true;
             }
 
@@ -534,7 +641,7 @@ namespace MathCursor.UI
             // continuer à taper, V reste son interprétation.
             if (string.Equals(selectedAlt.Latex, _topLatex, StringComparison.Ordinal))
             {
-                LogPopup($"Resolved as identity (alt[{_altIndex}] = current) — no change");
+                LogPopup($"Resolved as identity (alt[{realAltIdx}] = current) — no change");
                 _alternatives = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
                 _altsRow.Children.Clear();
                 _altsRowBorder.Visibility = Visibility.Collapsed;
@@ -545,7 +652,7 @@ namespace MathCursor.UI
             }
 
             var alt = selectedAlt.Latex;
-            int chosenAltIdx = _altIndex;
+            int chosenAltIdx = realAltIdx;
             string ruleId = _currentRuleId;
 
             // 1) Mémorise la pref par RÈGLE (pour les futures ambiguïtés du
@@ -698,6 +805,7 @@ namespace MathCursor.UI
                 _rulePreferences.Clear();
                 _sessionSpanPins.Clear();
                 _sessionVotes.Clear();
+                _sessionSpanOverrides.Clear();
             }
             if (!IsVisible) return;
             var anim = new DoubleAnimation(0, TimeSpan.FromMilliseconds(FadeMs));
