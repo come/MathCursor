@@ -81,7 +81,7 @@ namespace MathCursor.Core.Tests.Resolution
             Assert.Equal(5, rt.GetVote("letter-sup-number", 0));
         }
 
-        [Fact(DisplayName = "Format JSON : clés courtes (v/pins/votes/r/o/l/a) pour économie payload")]
+        [Fact(DisplayName = "Format JSON v2 : clés courtes (v/pins/votes/rule_pins/span_overrides) pour économie payload")]
         public void Format_uses_short_keys()
         {
             var sidecar = new ResolutionSidecar(
@@ -92,7 +92,9 @@ namespace MathCursor.Core.Tests.Resolution
                 });
             var json = SidecarSerializer.Serialize(sidecar);
 
-            Assert.Contains("\"v\":1", json);
+            // v2 désormais. Format legacy v1 toléré au load (cf. brief
+            // 2026-05-07-rule-pin-span-override-refactor).
+            Assert.Contains("\"v\":2", json);
             Assert.Contains("\"pins\":", json);
             Assert.Contains("\"r\":\"two-uppercase\"", json);
             Assert.Contains("\"o\":0", json);
@@ -133,6 +135,107 @@ namespace MathCursor.Core.Tests.Resolution
             var rt = SidecarSerializer.Deserialize(json);
             Assert.Single(rt.SpanPins);
             Assert.Equal("two-uppercase", rt.SpanPins[0].Rule);
+        }
+
+        // ─── v2 : RulePins + SpanOverrides ─────────────────────────────
+
+        [Fact(DisplayName = "v2 roundtrip : RulePin")]
+        public void V2_roundtrip_rule_pin()
+        {
+            var sc = new ResolutionSidecar(
+                spanPins: null,
+                zoneVotes: null,
+                rulePins: new[] { new RulePin("two-uppercase", 0) },
+                spanOverrides: null);
+            var json = SidecarSerializer.Serialize(sc);
+            Assert.Contains("\"rule_pins\":[{", json);
+            var rt = SidecarSerializer.Deserialize(json);
+            Assert.Single(rt.RulePins);
+            Assert.Equal("two-uppercase", rt.RulePins[0].RuleId);
+            Assert.Equal(0, rt.RulePins[0].AltIdx);
+        }
+
+        [Fact(DisplayName = "v2 roundtrip : SpanOverride avec signature complète")]
+        public void V2_roundtrip_span_override()
+        {
+            var sig = new MatchSignature("two-uppercase", "AB", 3, 1);
+            var sc = new ResolutionSidecar(null, null, null,
+                new[] { new SpanOverride(sig, 1) });
+            var json = SidecarSerializer.Serialize(sc);
+            Assert.Contains("\"span_overrides\":[{", json);
+            var rt = SidecarSerializer.Deserialize(json);
+            Assert.Single(rt.SpanOverrides);
+            var ov = rt.SpanOverrides[0];
+            Assert.Equal("two-uppercase", ov.Signature.RuleId);
+            Assert.Equal("AB", ov.Signature.DefaultLatex);
+            Assert.Equal(3, ov.Signature.RawSourcePos);
+            Assert.Equal(1, ov.Signature.OccurrenceIdx);
+            Assert.Equal(1, ov.AltIdx);
+            Assert.False(ov.IsRevert);
+        }
+
+        [Fact(DisplayName = "v2 roundtrip : SpanOverride revert (alt=-1)")]
+        public void V2_roundtrip_span_override_revert()
+        {
+            var sig = new MatchSignature("two-uppercase", "AB", 0, 0);
+            var sc = new ResolutionSidecar(null, null, null,
+                new[] { new SpanOverride(sig, SpanOverride.AltIdxRevert) });
+            var json = SidecarSerializer.Serialize(sc);
+            Assert.Contains("\"a\":-1", json);
+            var rt = SidecarSerializer.Deserialize(json);
+            Assert.Single(rt.SpanOverrides);
+            Assert.True(rt.SpanOverrides[0].IsRevert);
+        }
+
+        [Fact(DisplayName = "Lazy convert v1 → v2 : ZoneVotes argmax → RulePin")]
+        public void V1_votes_converted_to_rule_pin_via_argmax()
+        {
+            // Sidecar v1 avec votes sur two-uppercase : alt 0 = 3 votes,
+            // alt 1 = 1 vote. Argmax → RulePin two-uppercase:0.
+            var json = "{\"v\":1,\"votes\":{\"two-uppercase\":{\"0\":3,\"1\":1}}}";
+            var rt = SidecarSerializer.Deserialize(json);
+            Assert.Single(rt.RulePins);
+            Assert.Equal("two-uppercase", rt.RulePins[0].RuleId);
+            Assert.Equal(0, rt.RulePins[0].AltIdx);
+            // ZoneVotes legacy gardés aussi (pour ne pas perdre l'info).
+            Assert.NotEmpty(rt.ZoneVotes);
+        }
+
+        [Fact(DisplayName = "Lazy convert v1 : argmax tie-break sur le plus petit altIdx")]
+        public void V1_votes_argmax_tie_breaks_to_smaller_alt()
+        {
+            // alt 0 = 1 vote, alt 1 = 1 vote → tie → on garde alt 0.
+            var json = "{\"v\":1,\"votes\":{\"two-uppercase\":{\"0\":1,\"1\":1}}}";
+            var rt = SidecarSerializer.Deserialize(json);
+            Assert.Single(rt.RulePins);
+            Assert.Equal(0, rt.RulePins[0].AltIdx);
+        }
+
+        [Fact(DisplayName = "Lazy convert v1 : SpanPins legacy gardés tels quels")]
+        public void V1_span_pins_kept_as_legacy()
+        {
+            // Les SpanPins ne sont pas convertis en SpanOverrides au load
+            // (nécessite le rawSource, fait ailleurs). Ils restent dans
+            // ResolutionSidecar.SpanPins et continuent à fonctionner via le
+            // pin matching span-level dans ZoneResolver.
+            var json = "{\"v\":1,\"pins\":[{\"r\":\"two-uppercase\",\"o\":0,\"l\":2,\"a\":0}]}";
+            var rt = SidecarSerializer.Deserialize(json);
+            Assert.Single(rt.SpanPins);
+            Assert.Empty(rt.SpanOverrides); // pas converti ici
+        }
+
+        [Fact(DisplayName = "v2 explicite avec rule_pins ne triggers pas la lazy convert")]
+        public void V2_explicit_does_not_trigger_lazy_convert()
+        {
+            // Si v2 contient déjà rule_pins, on ne re-convertit pas les votes.
+            var json = "{\"v\":2,"
+                       + "\"rule_pins\":[{\"r\":\"canonical-set\",\"a\":1}],"
+                       + "\"votes\":{\"two-uppercase\":{\"0\":3}}}";
+            var rt = SidecarSerializer.Deserialize(json);
+            // rule_pins explicit reste seul (pas de RulePin two-uppercase
+            // ajouté depuis votes).
+            Assert.Single(rt.RulePins);
+            Assert.Equal("canonical-set", rt.RulePins[0].RuleId);
         }
     }
 }

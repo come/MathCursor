@@ -9,19 +9,32 @@ namespace MathCursor.Core.Resolution
     /// persistance dans un CustomXMLPart Word ou équivalent Office.js. Pas de
     /// dépendance NuGet — JSON manuel pattern <c>FeedbackJson</c>.
     ///
-    /// <para>Format compact (clés courtes pour économiser le payload) :</para>
+    /// <para>Format v2 (cf. brief 2026-05-07-rule-pin-span-override-refactor) :</para>
+    /// <code>
+    /// {"v":2,
+    ///  "rule_pins":[{"r":"two-uppercase","a":0}],
+    ///  "span_overrides":[{"r":"two-uppercase","d":"AB","p":3,"o":0,"a":0}],
+    ///  "pins":[],"votes":{}}
+    /// </code>
+    /// (les champs <c>pins</c>/<c>votes</c> v1 legacy sont écrits en v2 si
+    /// non vides, pour permettre un downgrade éventuel et préserver les
+    /// SpanPins span-level qui n'ont pas encore été convertis en
+    /// SpanOverrides — la conversion nécessite le rawSource, faite ailleurs.)
+    ///
+    /// <para>Format v1 (legacy) toléré au load via lazy convert :</para>
     /// <code>
     /// {"v":1,"pins":[{"r":"two-uppercase","o":0,"l":2,"a":0}],"votes":{"two-uppercase":{"0":3}}}
     /// </code>
+    /// Au load v1 : ZoneVotes → RulePins via argmax (décision user 2026-05-07 #3).
+    /// SpanPins legacy gardés tels quels (conversion en SpanOverrides reportée
+    /// au moment où le rawSource est disponible).
     ///
-    /// <para>Versionné via le champ <c>v</c> (= 1 actuellement). Au reload
-    /// d'une version inconnue → comportement <see cref="Deserialize"/> :
-    /// retourne <see cref="ResolutionSidecar.Empty"/> et log warn (= migration
-    /// silencieuse, OMath se résout en default).</para>
+    /// <para>Versionné via le champ <c>v</c>. Au reload d'une version inconnue
+    /// (future) → <see cref="ResolutionSidecar.Empty"/>.</para>
     /// </summary>
     public static class SidecarSerializer
     {
-        public const int CurrentVersion = 1;
+        public const int CurrentVersion = 2;
 
         public static string Serialize(ResolutionSidecar sidecar)
         {
@@ -72,6 +85,46 @@ namespace MathCursor.Core.Resolution
                 sb.Append('}');
             }
 
+            // v2 : rule_pins
+            if (sidecar.RulePins.Count > 0)
+            {
+                sb.Append(",\"rule_pins\":[");
+                bool first = true;
+                foreach (var rp in sidecar.RulePins)
+                {
+                    if (!first) sb.Append(',');
+                    first = false;
+                    sb.Append('{');
+                    sb.Append("\"r\":");
+                    AppendString(sb, rp.RuleId ?? "");
+                    sb.Append(",\"a\":").Append(rp.AltIdx);
+                    sb.Append('}');
+                }
+                sb.Append(']');
+            }
+
+            // v2 : span_overrides
+            if (sidecar.SpanOverrides.Count > 0)
+            {
+                sb.Append(",\"span_overrides\":[");
+                bool first = true;
+                foreach (var ov in sidecar.SpanOverrides)
+                {
+                    if (!first) sb.Append(',');
+                    first = false;
+                    sb.Append('{');
+                    sb.Append("\"r\":");
+                    AppendString(sb, ov.Signature.RuleId ?? "");
+                    sb.Append(",\"d\":");
+                    AppendString(sb, ov.Signature.DefaultLatex ?? "");
+                    sb.Append(",\"p\":").Append(ov.Signature.RawSourcePos);
+                    sb.Append(",\"o\":").Append(ov.Signature.OccurrenceIdx);
+                    sb.Append(",\"a\":").Append(ov.AltIdx); // -1 = revert
+                    sb.Append('}');
+                }
+                sb.Append(']');
+            }
+
             sb.Append('}');
             return sb.ToString();
         }
@@ -91,9 +144,10 @@ namespace MathCursor.Core.Resolution
                 if (!p.Match('{')) return ResolutionSidecar.Empty;
 
                 int version = 0;
-                List<SpanPin> pins = new List<SpanPin>();
-                Dictionary<string, IReadOnlyDictionary<int, int>> votes
-                    = new Dictionary<string, IReadOnlyDictionary<int, int>>();
+                var pins = new List<SpanPin>();
+                var votes = new Dictionary<string, IReadOnlyDictionary<int, int>>();
+                var rulePins = new List<RulePin>();
+                var spanOverrides = new List<SpanOverride>();
 
                 while (true)
                 {
@@ -115,6 +169,12 @@ namespace MathCursor.Core.Resolution
                         case "votes":
                             ReadVotes(p, votes);
                             break;
+                        case "rule_pins":
+                            ReadRulePins(p, rulePins);
+                            break;
+                        case "span_overrides":
+                            ReadSpanOverrides(p, spanOverrides);
+                            break;
                         default:
                             p.SkipValue();
                             break;
@@ -124,13 +184,39 @@ namespace MathCursor.Core.Resolution
                     if (p.Peek() == ',') { p.Index++; continue; }
                 }
 
-                if (version != CurrentVersion && version != 0)
+                if (version > CurrentVersion)
                 {
-                    // Version inconnue (future ?) → migration silencieuse
+                    // Version future → migration silencieuse (on ne sait pas
+                    // parser des champs futurs).
                     return ResolutionSidecar.Empty;
                 }
 
-                return new ResolutionSidecar(pins, votes);
+                // Lazy convert v1 → v2 : ZoneVotes → RulePins via argmax
+                // (décision user 2026-05-07 #3 « convertir »).
+                // SpanPins legacy gardés tels quels — la conversion en
+                // SpanOverrides nécessite le rawSource, faite ailleurs.
+                if (version <= 1 && votes.Count > 0 && rulePins.Count == 0)
+                {
+                    foreach (var ruleEntry in votes)
+                    {
+                        if (ruleEntry.Value == null || ruleEntry.Value.Count == 0) continue;
+                        int bestAlt = -1;
+                        int bestCount = 0;
+                        foreach (var kv in ruleEntry.Value)
+                        {
+                            if (kv.Value > bestCount
+                                || (kv.Value == bestCount && (bestAlt < 0 || kv.Key < bestAlt)))
+                            {
+                                bestCount = kv.Value;
+                                bestAlt = kv.Key;
+                            }
+                        }
+                        if (bestAlt >= 0)
+                            rulePins.Add(new RulePin(ruleEntry.Key, bestAlt));
+                    }
+                }
+
+                return new ResolutionSidecar(pins, votes, rulePins, spanOverrides);
             }
             catch
             {
@@ -169,6 +255,84 @@ namespace MathCursor.Core.Resolution
                     if (p.Peek() == ',') { p.Index++; continue; }
                 }
                 pins.Add(new SpanPin(rule, offset, len, alt));
+                p.SkipWhitespace();
+                if (p.Peek() == ',') { p.Index++; continue; }
+            }
+        }
+
+        private static void ReadRulePins(MiniJsonParser p, List<RulePin> rulePins)
+        {
+            p.SkipWhitespace();
+            if (!p.Match('[')) return;
+            while (true)
+            {
+                p.SkipWhitespace();
+                if (p.Peek() == ']') { p.Index++; break; }
+                if (!p.Match('{')) return;
+                string rule = "";
+                int alt = 0;
+                while (true)
+                {
+                    p.SkipWhitespace();
+                    if (p.Peek() == '}') { p.Index++; break; }
+                    string k = p.ReadString();
+                    p.SkipWhitespace();
+                    if (!p.Match(':')) return;
+                    p.SkipWhitespace();
+                    switch (k)
+                    {
+                        case "r": rule = p.ReadString(); break;
+                        case "a": alt = (int)p.ReadNumber(); break;
+                        default: p.SkipValue(); break;
+                    }
+                    p.SkipWhitespace();
+                    if (p.Peek() == ',') { p.Index++; continue; }
+                }
+                if (!string.IsNullOrEmpty(rule) && alt >= 0)
+                    rulePins.Add(new RulePin(rule, alt));
+                p.SkipWhitespace();
+                if (p.Peek() == ',') { p.Index++; continue; }
+            }
+        }
+
+        private static void ReadSpanOverrides(MiniJsonParser p, List<SpanOverride> spanOverrides)
+        {
+            p.SkipWhitespace();
+            if (!p.Match('[')) return;
+            while (true)
+            {
+                p.SkipWhitespace();
+                if (p.Peek() == ']') { p.Index++; break; }
+                if (!p.Match('{')) return;
+                string rule = "";
+                string defaultLatex = "";
+                int pos = 0, occ = 0, alt = 0;
+                while (true)
+                {
+                    p.SkipWhitespace();
+                    if (p.Peek() == '}') { p.Index++; break; }
+                    string k = p.ReadString();
+                    p.SkipWhitespace();
+                    if (!p.Match(':')) return;
+                    p.SkipWhitespace();
+                    switch (k)
+                    {
+                        case "r": rule = p.ReadString(); break;
+                        case "d": defaultLatex = p.ReadString(); break;
+                        case "p": pos = (int)p.ReadNumber(); break;
+                        case "o": occ = (int)p.ReadNumber(); break;
+                        case "a": alt = (int)p.ReadNumber(); break;
+                        default: p.SkipValue(); break;
+                    }
+                    p.SkipWhitespace();
+                    if (p.Peek() == ',') { p.Index++; continue; }
+                }
+                if (!string.IsNullOrEmpty(rule) && pos >= 0 && occ >= 0
+                    && alt >= SpanOverride.AltIdxRevert)
+                {
+                    var sig = new MatchSignature(rule, defaultLatex, pos, occ);
+                    spanOverrides.Add(new SpanOverride(sig, alt));
+                }
                 p.SkipWhitespace();
                 if (p.Peek() == ',') { p.Index++; continue; }
             }
