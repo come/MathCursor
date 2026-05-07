@@ -489,6 +489,11 @@ namespace MathCursor.UI
                 substitutedTop = substitutedTop.Replace(kv.Key, kv.Value);
 
             // 3) Recalculer la position du spot APRÈS substitutions.
+            // Chercher d'abord dans substitutedTop (= post-subs popup-locales).
+            // Si pas trouvé (= splice contextuel ZoneResolver a remplacé
+            // defaultLatex par une alt active, ex: "Y^{2}" → "Y_{2}"),
+            // fallback sur les bornes originales pour que la popup s'ouvre
+            // quand même.
             int newSpotStart = -1, newSpotEnd = -1;
             if (alternatives != null && alternatives.Count > 0
                 && spotStart >= 0 && spotEnd > spotStart && spotEnd <= (topLatex?.Length ?? 0))
@@ -501,6 +506,13 @@ namespace MathCursor.UI
                     {
                         newSpotStart = newIdx;
                         newSpotEnd = newIdx + defaultLatex.Length;
+                    }
+                    else
+                    {
+                        // Fallback : defaultLatex absent de substitutedTop
+                        // (= splice contextuel actif). Bornes originales.
+                        newSpotStart = spotStart;
+                        newSpotEnd = spotEnd;
                     }
                 }
             }

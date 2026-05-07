@@ -415,18 +415,23 @@ namespace MathCursor.Host
 
         /// <summary>
         /// Trouve l'altIdx active pour une rule donnée (= celle qui sera
-        /// appliquée par défaut par <c>ZoneResolver.ResolveBestAlt</c> via
-        /// les RulePins courants). Utilisé par la popup pour filtrer l'alt
-        /// active de la liste affichée (demande user 2026-05-07 : « le
-        /// choix qui est utilisé par défaut ne doit pas être présenté »).
-        /// Retourne <c>-1</c> si aucun RulePin actif pour cette rule.
+        /// appliquée par défaut par <c>ZoneResolver.ResolveBestAlt</c>).
+        /// Utilisé par la popup pour filtrer l'alt active de la liste
+        /// affichée (demande user 2026-05-07).
+        ///
+        /// <para><b>Cohérence critique</b> : utilise la MÊME logique que
+        /// ZoneResolver — <c>ScoringHints.BestAltForRule</c> sur les hints
+        /// du <c>_globalCtx</c> + RulePins du sidecar courant. Sinon
+        /// désync entre la finale (ZoneResolver) et le filtrage popup
+        /// (= bug user 2026-05-07 « final vec et alt vec dans la
+        /// liste »).</para>
         /// </summary>
         private int FindActiveAltIdxForRule(string ruleId)
         {
             if (string.IsNullOrEmpty(ruleId)) return -1;
 
-            // 1) Choix in-session via _popup.CurrentSidecar.RulePins (le
-            // popup a accumulé des SpanPins → RulePins via getter).
+            // 1) Pref in-session via _popup.CurrentSidecar.RulePins (priorité
+            // — c'est ce que ZoneResolver consulte aussi en premier).
             var popupSidecar = _popup?.CurrentSidecar;
             if (popupSidecar != null)
             {
@@ -434,16 +439,14 @@ namespace MathCursor.Host
                     if (rp.RuleId == ruleId) return rp.AltIdx;
             }
 
-            // 2) Choix persistant cross-commit via _globalCtx
-            // (RecentParagraphPins). Last-write-wins par rule.
+            // 2) Hints contextuels (= ce que ZoneResolver utilise comme
+            // fallback). MÊME logique BestAltForRule (premier en cas
+            // d'égalité, score > 0 obligatoire).
             var snapshot = _globalCtx.Snapshot(
                 "", MathCursor.Core.Resolution.ResolutionSidecar.Empty);
-            int found = -1;
-            foreach (var pin in snapshot.RecentParagraphPins)
-            {
-                if (pin.Rule == ruleId) found = pin.AltIdx;
-            }
-            return found;
+            var hints = _globalCtx.Scorer.Aggregate(snapshot);
+            var (alt, score) = hints.BestAltForRule(ruleId);
+            return score > 0 ? alt : -1;
         }
 
         private void EmitContextResolvedIfSubscribed(
