@@ -178,6 +178,11 @@ namespace MathCursor.Core
             // remplace IN-PLACE par (start, end). Apply right-to-left pour
             // préserver les positions.
             var splices = new System.Collections.Generic.List<(int Start, int End, string AltLatex)>();
+            // Track quel altIdx a été appliqué pour chaque match → enrichit
+            // les AmbiguityMatch avec AppliedAltIdx pour que la popup filtre
+            // par construction la même alt qui est en final (demande user
+            // 2026-05-07 « pas de doublon entre désambig et final »).
+            var appliedByMatch = new System.Collections.Generic.Dictionary<AmbiguityMatch, int>();
 
             foreach (var match in baseResolved.AllMatches)
             {
@@ -187,6 +192,7 @@ namespace MathCursor.Core
                 int bestAlt = ResolveBestAlt(match, source, sidecar, hints);
                 if (bestAlt < 0 || bestAlt >= match.Spot.Alternatives.Count) continue;
 
+                appliedByMatch[match] = bestAlt;
                 string altLatex = match.Spot.Alternatives[bestAlt].Latex;
                 splices.RemoveAll(s => s.Start == match.Start && s.End == match.End);
                 splices.Add((match.Start, match.End, altLatex));
@@ -209,6 +215,27 @@ namespace MathCursor.Core
             // Conséquence : Spot et AllMatches sont retournés tels quels,
             // pas filtrés. Itération future : aligner la sélection par
             // défaut de la popup sur l'alt scorée.
+            // Enrichit AllMatches avec AppliedAltIdx (= ce que le splice a
+            // effectivement appliqué). Garantie de cohérence avec le filtre
+            // popup côté SuggestionPopupWindow.
+            IReadOnlyList<AmbiguityMatch> enrichedMatches;
+            if (appliedByMatch.Count == 0)
+            {
+                enrichedMatches = baseResolved.AllMatches;
+            }
+            else
+            {
+                var list = new System.Collections.Generic.List<AmbiguityMatch>(baseResolved.AllMatches.Count);
+                foreach (var m in baseResolved.AllMatches)
+                {
+                    if (appliedByMatch.TryGetValue(m, out int altIdx))
+                        list.Add(m.WithAppliedAlt(altIdx));
+                    else
+                        list.Add(m);
+                }
+                enrichedMatches = list;
+            }
+
             return new ResolvedZone(
                 rawSource: baseResolved.RawSource,
                 mutedSource: baseResolved.MutedSource,
@@ -216,7 +243,7 @@ namespace MathCursor.Core
                 spot: baseResolved.Spot,
                 spotStart: baseResolved.SpotStart,
                 spotEnd: baseResolved.SpotEnd,
-                allMatches: baseResolved.AllMatches,
+                allMatches: enrichedMatches,
                 isIncomplete: baseResolved.IsIncomplete,
                 baseTopLatex: baseResolved.TopLatex);
         }

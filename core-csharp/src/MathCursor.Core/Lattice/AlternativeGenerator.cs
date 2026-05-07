@@ -89,33 +89,43 @@ namespace MathCursor.Core.Lattice
 
         /// <summary>
         /// Identifiant léger et stable du match (cf. brief
-        /// <c>2026-05-07-rule-pin-span-override-refactor</c>). Calculé en
-        /// post-traitement par <c>ZoneResolver</c> après l'émission du
-        /// match par l'<see cref="AlternativeGenerator"/> (qui n'a pas
-        /// l'OccurrenceIdx du fait du scan multi-rules).
-        ///
-        /// <para>Null si non décoré (ex: tests anciens, code legacy qui
-        /// crée des matches directement). Les nouveaux consommateurs
-        /// (<c>SpanOverride</c> matching) peuvent l'utiliser.</para>
+        /// <c>2026-05-07-rule-pin-span-override-refactor</c>).
         /// </summary>
         public MathCursor.Core.Resolution.MatchSignature? Signature { get; }
 
+        /// <summary>
+        /// AltIdx que <c>ZoneResolver.ResolveBestAlt</c> a appliqué pour ce
+        /// match (= alt active visible dans le TopLatex post-splice). <c>-1</c>
+        /// = aucune alt appliquée (= default rule reste). Utilisé par la
+        /// popup pour filtrer l'alt active de la liste affichée et garantir
+        /// l'invariant « la finale n'apparaît jamais dans les alts »
+        /// (demande user 2026-05-07).
+        /// </summary>
+        public int AppliedAltIdx { get; }
+
         public AmbiguityMatch(AmbiguitySpot spot, int start, int end)
-            : this(spot, start, end, null) { }
+            : this(spot, start, end, null, -1) { }
 
         public AmbiguityMatch(AmbiguitySpot spot, int start, int end,
             MathCursor.Core.Resolution.MatchSignature? signature)
+            : this(spot, start, end, signature, -1) { }
+
+        public AmbiguityMatch(AmbiguitySpot spot, int start, int end,
+            MathCursor.Core.Resolution.MatchSignature? signature, int appliedAltIdx)
         {
             Spot = spot;
             Start = start;
             End = end;
             Signature = signature;
+            AppliedAltIdx = appliedAltIdx;
         }
 
-        /// <summary>Crée une copie de ce match avec une signature attachée.
-        /// Utilisé par la passe de décoration dans <c>ZoneResolver</c>.</summary>
         public AmbiguityMatch WithSignature(MathCursor.Core.Resolution.MatchSignature signature)
-            => new AmbiguityMatch(Spot, Start, End, signature);
+            => new AmbiguityMatch(Spot, Start, End, signature, AppliedAltIdx);
+
+        /// <summary>Marque l'altIdx appliqué par le ZoneResolver pour ce match.</summary>
+        public AmbiguityMatch WithAppliedAlt(int appliedAltIdx)
+            => new AmbiguityMatch(Spot, Start, End, Signature, appliedAltIdx);
     }
 
     /// <summary>

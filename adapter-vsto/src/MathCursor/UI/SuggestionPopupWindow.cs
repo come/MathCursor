@@ -542,12 +542,32 @@ namespace MathCursor.UI
                 string defaultLatex = ResolveDefaultLatex(topLatex!, spotStart, spotEnd, allMatches);
 
                 int activeAltIdx = -1;
-                if (!string.IsNullOrEmpty(ruleId)
+                // 1) PRIORITÉ : AppliedAltIdx du match courant — c'est ce
+                //    que le ZoneResolver a EFFECTIVEMENT appliqué dans le
+                //    TopLatex, donc l'alt qu'il NE FAUT PAS afficher dans
+                //    la popup (= invariant user 2026-05-07).
+                if (allMatches != null)
+                {
+                    foreach (var m in allMatches)
+                    {
+                        if (m?.Spot == null) continue;
+                        if (m.Start == spotStart && m.End == spotEnd
+                            && m.AppliedAltIdx >= 0)
+                        {
+                            activeAltIdx = m.AppliedAltIdx;
+                            break;
+                        }
+                    }
+                }
+                // 2) Fallback : pref in-session via _rulePreferences.
+                if (activeAltIdx < 0
+                    && !string.IsNullOrEmpty(ruleId)
                     && _rulePreferences.TryGetValue(ruleId, out int active))
                 {
                     activeAltIdx = active;
                 }
-                else if (activeAltIdxFromCaller >= 0)
+                // 3) Fallback : activeAltIdxFromCaller (= calculé côté caller).
+                else if (activeAltIdx < 0 && activeAltIdxFromCaller >= 0)
                 {
                     activeAltIdx = activeAltIdxFromCaller;
                 }
