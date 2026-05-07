@@ -105,6 +105,69 @@ namespace MathCursor.Tests.Host
         }
 
         // ─────────────────────────────────────────────────────────────────
+        //  Bug user 2026-05-07 : ¶ d'accueil contient DÉJÀ le marker.
+        //
+        //  Scénario : user fait un système ou une chaîne d'équivalences.
+        //  Le marker initial est injecté ("{ " ou "<=> "). User edit la
+        //  ligne du dessus, voit une erreur, revert+reconvertit. Sans le
+        //  fix, on rentre en cas 3 (¶ "non vide") et on injecte un nouveau
+        //  marker + \r → marker dupliqué et ligne vide qui pollue le doc.
+        //
+        //  Fix : si le ¶ contient JUSTE le marker (avec ou sans espace
+        //  trailing), on ne réinjecte rien et on positionne le caret à la
+        //  suite du marker existant.
+        // ─────────────────────────────────────────────────────────────────
+
+        [Theory]
+        [InlineData("<=>", "<=> \r")]   // marker + espace + \r de fin de ¶
+        [InlineData("<=>", "<=> ")]     // marker + espace, sans \r
+        [InlineData("<=>", "<=>\r")]    // marker sans espace + \r
+        [InlineData("<=>", "<=>")]      // marker brut
+        [InlineData("{",   "{ \r")]     // système (Phase 2)
+        [InlineData("{",   "{")]
+        [InlineData("=",   "= \r")]
+        [InlineData("=>",  "=> ")]
+        public void Plan_existingParaIsJustMarker_NoInsertCaretAfterMarker(
+            string marker, string existingParaContent)
+        {
+            var plan = ListModeMarkerInjector.Plan(
+                marker, hostParaIsOursAndEmpty: false, existingParaContent: existingParaContent);
+
+            Assert.Equal(string.Empty, plan.TextToInsert);
+            // CaretOffset doit positionner le caret juste après "marker + ' '"
+            // (qu'il y ait ou non l'espace dans l'existing — dans le cas sans
+            // espace, le caret tombe quand même à la position attendue
+            // post-injection logique, càd qu'on aurait inséré "marker + ' '").
+            Assert.Equal(marker.Length + 1, plan.CaretOffset);
+            Assert.False(plan.CreatesNewParagraph);
+        }
+
+        [Fact(DisplayName = "¶ contient marker + contenu utilisateur → quand même \\r (cas 3 préservé)")]
+        public void Plan_existingParaHasMarkerPlusUserContent_StillInsertsParagraphBreak()
+        {
+            // L'user a tapé "<=> 2x = 4" sur la ligne, puis reverted+reconverted.
+            // Le ¶ d'accueil contient maintenant ce contenu utilisateur, qu'on
+            // ne doit PAS écraser. → cas 3, on insère avec \r.
+            var plan = ListModeMarkerInjector.Plan(
+                "<=>", hostParaIsOursAndEmpty: false, existingParaContent: "<=> 2x = 4\r");
+
+            Assert.Equal("<=> \r", plan.TextToInsert);
+            Assert.True(plan.CreatesNewParagraph);
+        }
+
+        [Fact(DisplayName = "¶ vide pré-existant + existingParaContent fourni → cas 3 (\\r)")]
+        public void Plan_existingParaEmpty_StillInsertsParagraphBreak()
+        {
+            // ¶ vide pré-existant (séparateur user) — pas le cas marker-only.
+            // existingParaContent = "\r" (juste le marqueur de fin de ¶).
+            var plan = ListModeMarkerInjector.Plan(
+                "<=>", hostParaIsOursAndEmpty: false, existingParaContent: "\r");
+
+            Assert.Equal("<=> \r", plan.TextToInsert);
+            Assert.True(plan.CreatesNewParagraph);
+        }
+
+        // ─────────────────────────────────────────────────────────────────
         //  Null safety
         // ─────────────────────────────────────────────────────────────────
 

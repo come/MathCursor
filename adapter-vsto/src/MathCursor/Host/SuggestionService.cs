@@ -1841,7 +1841,12 @@ namespace MathCursor.Host
                 if (sel == null) { _listMode.ClearAnchor(); return; }
 
                 int paraStart = sel.Paragraphs[1].Range.Start;
-                var plan = ListModeMarkerInjector.Plan(marker, hostParaIsOursAndEmpty);
+                // Contenu actuel du ¶ d'ancrage : permet de détecter le cas
+                // bug 2026-05-07 (¶ contient déjà juste le marker → ne pas
+                // dupliquer) côté ListModeMarkerInjector.
+                string existingParaContent = null;
+                try { existingParaContent = sel.Paragraphs[1].Range.Text; } catch { }
+                var plan = ListModeMarkerInjector.Plan(marker, hostParaIsOursAndEmpty, existingParaContent);
 
                 var insertRange = doc.Range(paraStart, paraStart);
                 insertRange.Text = plan.TextToInsert;
