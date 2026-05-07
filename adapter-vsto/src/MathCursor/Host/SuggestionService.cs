@@ -409,13 +409,14 @@ namespace MathCursor.Host
             MathCursor.Core.Resolution.ResolutionSidecar sidecar = null)
         {
             var resolved = _resolver.Resolve(rawSource ?? "", _globalCtx, sidecar);
-            EmitContextResolvedIfSubscribed(rawSource, sidecar);
+            EmitContextResolvedIfSubscribed(rawSource, sidecar, resolved);
             return resolved;
         }
 
         private void EmitContextResolvedIfSubscribed(
             string rawSource,
-            MathCursor.Core.Resolution.ResolutionSidecar sidecar)
+            MathCursor.Core.Resolution.ResolutionSidecar sidecar,
+            MathCursor.Core.ResolvedZone resolved)
         {
             var evt = ContextResolved;
             if (evt == null) return; // évite l'aggregate si personne n'écoute
@@ -425,7 +426,7 @@ namespace MathCursor.Host
                     rawSource,
                     sidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty);
                 var hints = _globalCtx.Scorer.Aggregate(snapshot);
-                evt(this, new ContextResolveEventArgs(rawSource, snapshot, hints));
+                evt(this, new ContextResolveEventArgs(rawSource, snapshot, hints, resolved));
             }
             catch (System.Exception ex) { LogDiag("context_event_error: " + ex.Message); }
         }

@@ -74,7 +74,7 @@ namespace MathCursor
 
                 _inspectorHost.WpfPane.Dispatcher.BeginInvoke(
                     new Action(() => _inspectorHost.WpfPane.Update(
-                        e.RawSource, e.Snapshot, e.Hints)));
+                        e.RawSource, e.Snapshot, e.Hints, e.Resolved)));
             }
             catch { /* debug pane, jamais propager */ }
         }

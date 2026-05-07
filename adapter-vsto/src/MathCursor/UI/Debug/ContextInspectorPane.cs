@@ -4,6 +4,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using MathCursor.Core;
 using MathCursor.Core.Resolution;
 
 namespace MathCursor.UI.Debug
@@ -70,7 +71,7 @@ namespace MathCursor.UI.Debug
         /// Reformatte le pane avec un nouveau contexte/hints. À appeler sur
         /// le thread UI (l'appelant doit Dispatcher.Invoke si besoin).
         /// </summary>
-        public void Update(string rawSource, ContextSnapshot snapshot, ScoringHints hints)
+        public void Update(string rawSource, ContextSnapshot snapshot, ScoringHints hints, ResolvedZone resolved)
         {
             _status.Text = $"⟳ {DateTime.Now:HH:mm:ss.fff}  |  source: \"{Truncate(rawSource, 40)}\"";
 
@@ -79,6 +80,35 @@ namespace MathCursor.UI.Debug
             sb.AppendLine("=== Raw source ===");
             sb.AppendLine(rawSource ?? "<null>");
             sb.AppendLine();
+
+            // Résultat effectif de la résolution. C'est la vérité terrain :
+            // le scoring contextuel (Hints ci-dessous) ne sert à rien si
+            // aucune AmbiguityMatch ne correspond aux hints émis.
+            if (resolved != null)
+            {
+                sb.AppendLine("=== Top LaTeX (rendu final post-splice) ===");
+                sb.AppendLine(resolved.TopLatex ?? "<null>");
+                sb.AppendLine($"IsIncomplete: {resolved.IsIncomplete}");
+                sb.AppendLine();
+
+                sb.AppendLine($"=== Ambiguïtés détectées sur cette zone : {resolved.AllMatches.Count} ===");
+                if (resolved.AllMatches.Count == 0)
+                {
+                    sb.AppendLine("  (aucune ambig détectée — rule jamais activée sur ce rawSource)");
+                }
+                else
+                {
+                    foreach (var m in resolved.AllMatches)
+                    {
+                        sb.AppendLine($"  • [{m.Start}..{m.End}) rule={m.Spot.RuleId} default=\"{m.Spot.DefaultLatex}\" alts={m.Spot.Alternatives.Count}");
+                    }
+                }
+                if (resolved.Spot != null)
+                    sb.AppendLine($"Spot rightmost (popup va s'ouvrir) : rule={resolved.Spot.RuleId}");
+                else
+                    sb.AppendLine("Spot rightmost : (none — pas de popup d'ambig)");
+                sb.AppendLine();
+            }
 
             if (snapshot != null)
             {
