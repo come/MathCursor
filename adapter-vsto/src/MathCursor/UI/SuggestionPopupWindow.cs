@@ -181,6 +181,34 @@ namespace MathCursor.UI
         }
 
         /// <summary>
+        /// Résout le DefaultLatex correct pour une ambig au span (spotStart,
+        /// spotEnd) en cherchant dans <paramref name="allMatches"/>. Évite le
+        /// piège du <c>topLatex.Substring(...)</c> qui peut renvoyer du
+        /// gibberish quand le topLatex a été splicé par un RulePin (= les
+        /// bornes spotStart/End restent du baseTopLatex pré-splice).
+        /// Fallback substring si aucun match trouvé.
+        /// </summary>
+        private static string ResolveDefaultLatex(
+            string topLatex,
+            int spotStart,
+            int spotEnd,
+            IReadOnlyList<MathCursor.Core.Lattice.AmbiguityMatch> allMatches)
+        {
+            if (allMatches != null)
+            {
+                foreach (var m in allMatches)
+                {
+                    if (m?.Spot == null) continue;
+                    if (m.Start == spotStart && m.End == spotEnd)
+                        return m.Spot.DefaultLatex ?? "";
+                }
+            }
+            if (string.IsNullOrEmpty(topLatex)) return "";
+            if (spotStart < 0 || spotEnd <= spotStart || spotEnd > topLatex.Length) return "";
+            return topLatex.Substring(spotStart, spotEnd - spotStart);
+        }
+
+        /// <summary>
         /// Crée ou met à jour un <see cref="MathCursor.Core.Resolution.SpanOverride"/>
         /// pour la signature donnée. Last-write-wins par signature.
         /// (Cf. brief 2026-05-07 étape 7 : alt-revert dans la popup.)
@@ -395,7 +423,7 @@ namespace MathCursor.UI
                 && preferredIdx >= 0 && preferredIdx < alternatives.Count
                 && spotStart >= 0 && spotEnd > spotStart && spotEnd <= (topLatex?.Length ?? 0))
             {
-                string defaultLatex = topLatex!.Substring(spotStart, spotEnd - spotStart);
+                string defaultLatex = ResolveDefaultLatex(topLatex!, spotStart, spotEnd, allMatches);
                 var preferredAlt = alternatives[preferredIdx];
                 _resolvedSubstitutions[defaultLatex] = preferredAlt.Latex;
                 // Sidecar : la pré-résolution silencieuse est aussi un vrai
@@ -420,12 +448,15 @@ namespace MathCursor.UI
             if (alternatives != null && alternatives.Count > 0
                 && spotStart >= 0 && spotEnd > spotStart && spotEnd <= (topLatex?.Length ?? 0))
             {
-                string defaultLatex = topLatex!.Substring(spotStart, spotEnd - spotStart);
-                int newIdx = substitutedTop.LastIndexOf(defaultLatex, StringComparison.Ordinal);
-                if (newIdx >= 0)
+                string defaultLatex = ResolveDefaultLatex(topLatex!, spotStart, spotEnd, allMatches);
+                if (!string.IsNullOrEmpty(defaultLatex))
                 {
-                    newSpotStart = newIdx;
-                    newSpotEnd = newIdx + defaultLatex.Length;
+                    int newIdx = substitutedTop.LastIndexOf(defaultLatex, StringComparison.Ordinal);
+                    if (newIdx >= 0)
+                    {
+                        newSpotStart = newIdx;
+                        newSpotEnd = newIdx + defaultLatex.Length;
+                    }
                 }
             }
 
@@ -444,7 +475,7 @@ namespace MathCursor.UI
             // déjà le rendu de cette alt dans le TopLatex au-dessus).
             if (newSpotStart >= 0 && alternatives != null && alternatives.Count > 0)
             {
-                string defaultLatex = topLatex!.Substring(spotStart, spotEnd - spotStart);
+                string defaultLatex = ResolveDefaultLatex(topLatex!, spotStart, spotEnd, allMatches);
 
                 // Détermine l'altIdx active à filtrer (= -1 si aucune).
                 // 1) Pref in-session via _rulePreferences (priorité — choix
