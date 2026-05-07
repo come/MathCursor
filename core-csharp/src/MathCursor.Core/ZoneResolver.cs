@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using MathCursor.Core.Lattice;
 
 namespace MathCursor.Core
@@ -189,14 +190,66 @@ namespace MathCursor.Core
                 topLatex = topLatex.Substring(0, s.Start) + s.AltLatex + topLatex.Substring(s.End);
             }
 
+            // Filtre les ambig résolues auto (splicées) du Spot et AllMatches.
+            // Sinon la popup s'ouvre encore pour des ambig déjà résolues par
+            // le scoring contextuel — ce qui défait l'objectif du brief
+            // 2026-05-07 (réduire les popups quand le contexte est fort).
+            //
+            // Note : les positions Start/End des unsplicedMatches sont dans
+            // le baseTopLatex (avant splices). Si un splice a changé la
+            // longueur, les positions des non-splicées peuvent être désync
+            // dans le topLatex final. Acceptable en V1 — popup n'utilise
+            // les positions que pour surligner, pas pour rendre.
+            IReadOnlyList<AmbiguityMatch> filteredMatches;
+            AmbiguitySpot? filteredSpot;
+            int? filteredSpotStart;
+            int? filteredSpotEnd;
+            if (splices.Count == 0)
+            {
+                filteredMatches = baseResolved.AllMatches;
+                filteredSpot = baseResolved.Spot;
+                filteredSpotStart = baseResolved.SpotStart;
+                filteredSpotEnd = baseResolved.SpotEnd;
+            }
+            else
+            {
+                var splicedSpans = new HashSet<(int, int)>();
+                foreach (var sp in splices) splicedSpans.Add((sp.Start, sp.End));
+
+                var unspliced = baseResolved.AllMatches
+                    .Where(m => !splicedSpans.Contains((m.Start, m.End)))
+                    .ToList();
+                filteredMatches = unspliced;
+
+                if (unspliced.Count == 0)
+                {
+                    filteredSpot = null;
+                    filteredSpotStart = null;
+                    filteredSpotEnd = null;
+                }
+                else
+                {
+                    // Conserver la plus à droite (cf. AmbiguityResult.Spot semantics).
+                    var rightmost = unspliced[0];
+                    for (int i = 1; i < unspliced.Count; i++)
+                    {
+                        if (unspliced[i].Start > rightmost.Start)
+                            rightmost = unspliced[i];
+                    }
+                    filteredSpot = rightmost.Spot;
+                    filteredSpotStart = rightmost.Start;
+                    filteredSpotEnd = rightmost.End;
+                }
+            }
+
             return new ResolvedZone(
                 rawSource: baseResolved.RawSource,
                 mutedSource: baseResolved.MutedSource,
                 topLatex: topLatex,
-                spot: baseResolved.Spot,
-                spotStart: baseResolved.SpotStart,
-                spotEnd: baseResolved.SpotEnd,
-                allMatches: baseResolved.AllMatches,
+                spot: filteredSpot,
+                spotStart: filteredSpotStart,
+                spotEnd: filteredSpotEnd,
+                allMatches: filteredMatches,
                 isIncomplete: baseResolved.IsIncomplete);
         }
 
