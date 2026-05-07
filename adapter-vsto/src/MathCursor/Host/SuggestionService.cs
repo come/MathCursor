@@ -432,26 +432,25 @@ namespace MathCursor.Host
         }
 
         /// <summary>
-        /// Détecte un changement de ¶ d'ancrage du caret. Au changement, reset
-        /// l'historique paragraphe du <see cref="_globalCtx"/> pour ne pas
-        /// muscler des résolutions du ¶ précédent dans le ¶ suivant.
+        /// Tracking du ¶ d'ancrage du caret. Initialement on resetait
+        /// l'historique des résolutions au changement de ¶, mais Word
+        /// considère chaque ligne d'un système / chaîne d'équivalences
+        /// multi-ligne comme un ¶ séparé → reset trop agressif qui vidait
+        /// l'historique entre lignes du même bloc sémantique. Bug constaté
+        /// 2026-05-07 : Pins ¶ = 0 sur ligne 2 d'un système alors que
+        /// ligne 1 venait de faire 3 désambig vec.
+        ///
+        /// V1 : pas de reset au changement de ¶. L'historique grandit
+        /// (cap 32 dans GlobalContext gère la mémoire). À raffiner plus
+        /// tard : decay temporel + reset explicite à des actions discriminantes
+        /// (clic dans une autre section, ouverture d'un autre OMath éloigné).
         /// </summary>
         private void TrackParagraphChangeAndResetIfNeeded(Word.Selection sel)
         {
             if (sel == null) return;
-            int currentParaStart;
-            try { currentParaStart = sel.Paragraphs[1].Range.Start; }
-            catch { return; }
-            if (_lastTrackedParaStart < 0)
-            {
-                _lastTrackedParaStart = currentParaStart;
-                return;
-            }
-            if (_lastTrackedParaStart != currentParaStart)
-            {
-                _globalCtx.ResetParagraphHistory();
-                _lastTrackedParaStart = currentParaStart;
-            }
+            try { _lastTrackedParaStart = sel.Paragraphs[1].Range.Start; }
+            catch { /* ignore */ }
+            // Pas de ResetParagraphHistory ici — voir summary.
         }
 
         /// <summary>
