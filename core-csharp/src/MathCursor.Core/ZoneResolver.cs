@@ -212,10 +212,19 @@ namespace MathCursor.Core
         }
 
         /// <summary>
-        /// Décide l'alternative à appliquer pour un match donné :
-        /// 1) pin span-level (last-write-wins) — domine ;
-        /// 2) sinon hints scorés (somme pondérée des signaux contextuels).
-        /// Retourne <c>-1</c> si aucune décision applicable.
+        /// Décide l'alternative à appliquer pour un match donné. Ordre de
+        /// précédence (cf. brief 2026-05-07-rule-pin-span-override-refactor) :
+        /// <list type="number">
+        /// <item><b>SpanOverride</b> par signature (v2) — choix explicite
+        /// localisé. Si <see cref="MathCursor.Core.Resolution.SpanOverride.IsRevert"/>
+        /// → retourne -1 sans fallback (l'utilisateur veut explicitement le
+        /// default ici).</item>
+        /// <item><b>RulePin</b> par rule (v2) — choix session-wide.</item>
+        /// <item><b>SpanPin legacy</b> par offset+len+source.Substring
+        /// (v1) — préservation pour les sidecars non encore migrés.</item>
+        /// <item><b>ScoringHints</b> contextuels (via signaux GlobalContext).</item>
+        /// </list>
+        /// Retourne <c>-1</c> = pas de splice (default reste affiché).
         /// </summary>
         private static int ResolveBestAlt(
             Lattice.AmbiguityMatch match,
@@ -223,8 +232,34 @@ namespace MathCursor.Core
             MathCursor.Core.Resolution.ResolutionSidecar? sidecar,
             MathCursor.Core.Resolution.ScoringHints hints)
         {
-            // 1) Pin span-level. Inchangé : précision (offset, len, rule,
-            // source.Substring) que les hints scorés ne peuvent reproduire.
+            int altCount = match.Spot.Alternatives.Count;
+
+            // 1) SpanOverride v2 par signature.
+            if (sidecar != null && match.Signature != null)
+            {
+                foreach (var ov in sidecar.SpanOverrides)
+                {
+                    if (!ov.Signature.Equals(match.Signature)) continue;
+                    if (ov.IsRevert) return -1;  // explicit revert → no fallback
+                    if (ov.AltIdx >= 0 && ov.AltIdx < altCount)
+                        return ov.AltIdx;
+                }
+            }
+
+            // 2) RulePin v2 par rule.
+            if (sidecar != null)
+            {
+                foreach (var rp in sidecar.RulePins)
+                {
+                    if (rp.RuleId != match.Spot.RuleId) continue;
+                    if (rp.AltIdx >= 0 && rp.AltIdx < altCount)
+                        return rp.AltIdx;
+                }
+            }
+
+            // 3) SpanPin legacy v1. Préservation pour les sidecars non
+            // encore migrés (= ouverture d'OMaths anciens en mode edit).
+            // Last-write-wins.
             int lastPinAlt = -1;
             if (sidecar != null)
             {
@@ -234,14 +269,13 @@ namespace MathCursor.Core
                     if (pin.Offset < 0 || pin.Len <= 0) continue;
                     if (pin.Offset + pin.Len > source.Length) continue;
                     if (source.Substring(pin.Offset, pin.Len) != match.Spot.DefaultLatex) continue;
-                    if (pin.AltIdx < 0 || pin.AltIdx >= match.Spot.Alternatives.Count) continue;
-                    lastPinAlt = pin.AltIdx; // last-write-wins
+                    if (pin.AltIdx < 0 || pin.AltIdx >= altCount) continue;
+                    lastPinAlt = pin.AltIdx;
                 }
             }
             if (lastPinAlt >= 0) return lastPinAlt;
 
-            // 2) Hints contextuels (votes sidecar via SidecarSignal +
-            // résolutions ¶ via ParagraphResolutionsSignal + autres signaux).
+            // 4) Hints contextuels (signaux GlobalContext).
             var (alt, score) = hints.BestAltForRule(match.Spot.RuleId);
             if (alt < 0 || score <= 0) return -1;
             return alt;
