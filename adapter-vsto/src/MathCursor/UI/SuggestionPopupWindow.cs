@@ -103,9 +103,31 @@ namespace MathCursor.UI
                 var votesReadonly = new Dictionary<string, IReadOnlyDictionary<int, int>>();
                 foreach (var kv in _sessionVotes)
                     votesReadonly[kv.Key] = new Dictionary<int, int>(kv.Value);
+
+                // Sidecar v2 (cf. brief 2026-05-07-rule-pin-span-override-refactor) :
+                // produit aussi des RulePins déduits des SpanPins de la session.
+                // Sémantique : « si l'user a choisi vec sur AB, on muscle vec
+                // pour la rule globalement ». Last-write-wins par RuleId :
+                // la dernière alt choisie gagne (cohérent avec
+                // ZoneResolver.ResolveBestAlt qui consulte RulePins en ordre).
+                // Les SpanPins legacy restent peuplés pour rétro-compat
+                // (l'overload Resolve(rawSource, sidecar) historique les
+                // utilise toujours).
+                var rulePinsByRule = new Dictionary<string, int>();
+                foreach (var sp in _sessionSpanPins)
+                {
+                    if (string.IsNullOrEmpty(sp.Rule) || sp.AltIdx < 0) continue;
+                    rulePinsByRule[sp.Rule] = sp.AltIdx; // last-write-wins
+                }
+                var rulePins = new List<MathCursor.Core.Resolution.RulePin>(rulePinsByRule.Count);
+                foreach (var kv in rulePinsByRule)
+                    rulePins.Add(new MathCursor.Core.Resolution.RulePin(kv.Key, kv.Value));
+
                 return new MathCursor.Core.Resolution.ResolutionSidecar(
-                    _sessionSpanPins.ToArray(),
-                    votesReadonly);
+                    spanPins: _sessionSpanPins.ToArray(),
+                    zoneVotes: votesReadonly,
+                    rulePins: rulePins,
+                    spanOverrides: null);
             }
         }
 
