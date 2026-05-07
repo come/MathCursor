@@ -90,6 +90,15 @@ namespace MathCursor.UI
         private readonly Dictionary<string, string> _resolvedSubstitutions
             = new Dictionary<string, string>();
 
+        // Map defaultLatex → ruleId pour les subs accumulées dans
+        // _resolvedSubstitutions. Permet de purger par rule au Show()
+        // pour éviter les subs stale (= un choix paren sur "BC" reste
+        // appliqué même quand l'user a changé d'avis pour vec via une
+        // autre session popup). Cf. fix bug 2026-05-07 « la finale (BC)
+        // apparaissait à la fois en final ET dans les alts ».
+        private readonly Dictionary<string, string> _subsRuleMap
+            = new Dictionary<string, string>();
+
         // Cache des préférences par TYPE de pattern (ruleId → altIndex). Si
         // l'utilisateur a résolu un "two-uppercase" en choisissant l'alt #0
         // (\vec), tous les "two-uppercase" suivants de la session se résolvent
@@ -420,6 +429,31 @@ namespace MathCursor.UI
         {
             LogPopup($"Show top=\"{topLatex}\" rule=\"{ruleId}\" alts={(alternatives?.Count ?? 0)} pos=({screenX:F0},{screenY:F0})");
 
+            // Purge les subs stale pour les rules présentes dans allMatches.
+            // Évite qu'un ancien choix popup (= sub posée pour une autre zone
+            // NER plus tôt) reste appliqué quand la rule réapparaît dans la
+            // zone courante avec un altIdx différent. Cf. fix 2026-05-07.
+            // Le RulePin du sidecar (passé au ZoneResolver) prend le relais
+            // pour le splice contextuel cross-zone.
+            if (allMatches != null)
+            {
+                var rulesPresent = new HashSet<string>();
+                foreach (var m in allMatches)
+                    if (!string.IsNullOrEmpty(m?.Spot?.RuleId)) rulesPresent.Add(m.Spot.RuleId);
+
+                if (rulesPresent.Count > 0)
+                {
+                    var keysToRemove = new List<string>();
+                    foreach (var kv in _subsRuleMap)
+                        if (rulesPresent.Contains(kv.Value)) keysToRemove.Add(kv.Key);
+                    foreach (var k in keysToRemove)
+                    {
+                        _resolvedSubstitutions.Remove(k);
+                        _subsRuleMap.Remove(k);
+                    }
+                }
+            }
+
             // 1) Si l'utilisateur a déjà choisi cette règle dans la session,
             //    on applique sa préférence en silence dans les substitutions
             //    locales + on enregistre un SpanPin pour la propagation au
@@ -442,6 +476,7 @@ namespace MathCursor.UI
                 string defaultLatex = ResolveDefaultLatex(topLatex!, spotStart, spotEnd, allMatches);
                 var preferredAlt = alternatives[preferredIdx];
                 _resolvedSubstitutions[defaultLatex] = preferredAlt.Latex;
+                _subsRuleMap[defaultLatex] = ruleId;
                 if (UpsertSpanPin(ruleId, spotStart, spotEnd - spotStart, preferredIdx))
                     TallyVote(ruleId, preferredIdx);
                 LogPopup($"applied pref (popup stays open) rule=\"{ruleId}\" altIdx={preferredIdx} → \"{preferredAlt.Latex}\"");
@@ -698,6 +733,7 @@ namespace MathCursor.UI
                 // l'avait posée — pour que ce span précis affiche bien le
                 // default brut localement aussi.
                 _resolvedSubstitutions.Remove(defaultLatex);
+                _subsRuleMap.Remove(defaultLatex);
 
                 // Partir de _baseTopLatex (cf. fix double-splice).
                 string newResolvedRevert = _baseTopLatex;
@@ -772,6 +808,7 @@ namespace MathCursor.UI
                     && chosenAltIdx >= 0 && chosenAltIdx < match.Spot.Alternatives.Count)
                 {
                     _resolvedSubstitutions[match.Spot.DefaultLatex] = match.Spot.Alternatives[chosenAltIdx].Latex;
+                    _subsRuleMap[match.Spot.DefaultLatex] = ruleId;
                     int matchLen = match.End - match.Start;
                     if (matchLen > 0)
                     {
@@ -906,6 +943,7 @@ namespace MathCursor.UI
             if (resetCaches)
             {
                 _resolvedSubstitutions.Clear();
+                _subsRuleMap.Clear();
                 _rulePreferences.Clear();
                 _sessionSpanPins.Clear();
                 _sessionVotes.Clear();
