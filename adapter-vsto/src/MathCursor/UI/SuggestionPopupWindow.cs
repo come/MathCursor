@@ -65,6 +65,14 @@ namespace MathCursor.UI
         private readonly System.Collections.Generic.List<MathCursor.Core.Resolution.SpanOverride> _sessionSpanOverrides
             = new System.Collections.Generic.List<MathCursor.Core.Resolution.SpanOverride>();
 
+        // Mapping index UI (= position dans _alternatives) → altIdx réel
+        // de la rule. -1 = alt-revert. Construit à chaque Show() en
+        // tenant compte du filtrage de l'alt active (= déjà appliquée
+        // par défaut, pas affichée pour ne pas polluer visuellement —
+        // demande user 2026-05-07).
+        private System.Collections.Generic.IReadOnlyList<int> _altIdxMap
+            = System.Array.Empty<int>();
+
         // Compteurs de votes par règle/alt (Phase 2 ADR 06-05). Chaque
         // résolution (manuelle OU silent au Show) incrémente le compteur.
         // Au cross-merge, ces votes boostent le ranking pour les ambigs
@@ -427,18 +435,46 @@ namespace MathCursor.UI
             // en index 0 (cf. brief 2026-05-07 étape 7 : permet à l'user de
             // choisir "revert au cas brut" via la popup, ce qui crée un
             // SpanOverride{sig, AltIdxRevert} dans le sidecar v2).
-            // Présente uniquement quand il y a au moins une vraie alt.
+            //
+            // FILTRE l'alt actuellement active (= celle qui est appliquée
+            // par défaut sur le span via _rulePreferences) — demande user
+            // 2026-05-07 « le choix qui est utilisé par défaut ne doit pas
+            // être présenté ». Évite la redondance visuelle (l'user voit
+            // déjà le rendu de cette alt dans le TopLatex au-dessus).
             if (newSpotStart >= 0 && alternatives != null && alternatives.Count > 0)
             {
                 string defaultLatex = topLatex!.Substring(spotStart, spotEnd - spotStart);
+
+                // Détermine l'altIdx active à filtrer (= -1 si aucune).
+                int activeAltIdx = -1;
+                if (!string.IsNullOrEmpty(ruleId)
+                    && _rulePreferences.TryGetValue(ruleId, out int active))
+                {
+                    activeAltIdx = active;
+                }
+
                 var withRevert = new System.Collections.Generic.List<MathCursor.Core.Lattice.AmbiguityAlternative>(alternatives.Count + 1);
+                var altIdxMap = new System.Collections.Generic.List<int>(alternatives.Count + 1);
+
+                // Index 0 = alt-revert.
                 withRevert.Add(new MathCursor.Core.Lattice.AmbiguityAlternative(defaultLatex));
-                withRevert.AddRange(alternatives);
+                altIdxMap.Add(MathCursor.Core.Resolution.SpanOverride.AltIdxRevert);
+
+                // Vraies alts (indexes 1+), sauf l'alt active filtrée.
+                for (int i = 0; i < alternatives.Count; i++)
+                {
+                    if (i == activeAltIdx) continue;
+                    withRevert.Add(alternatives[i]);
+                    altIdxMap.Add(i);
+                }
+
                 _alternatives = withRevert;
+                _altIdxMap = altIdxMap;
             }
             else
             {
                 _alternatives = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
+                _altIdxMap = Array.Empty<int>();
             }
             _spotStart = newSpotStart;
             _spotEnd = newSpotEnd;
@@ -583,13 +619,17 @@ namespace MathCursor.UI
             if (_altIndex < 0 || _altIndex >= _alternatives.Count) return false;
             if (_spotStart < 0 || _spotEnd <= _spotStart) return false;
 
-            // === Index 0 = alt-revert (cf. brief 2026-05-07 étape 7) ===
-            // L'utilisateur veut le defaultLatex brut pour ce span précis,
-            // sans appliquer le RulePin global ni le scoring contextuel.
-            // → SpanOverride{sig, AltIdxRevert} dans le sidecar v2.
-            if (_altIndex == 0 && _alternatives.Count > 1)
+            // === Mapping index UI → altIdx réel (cf. brief 2026-05-07 étape 7) ===
+            // _altIdxMap[uiIndex] = altIdx réel, ou AltIdxRevert (-1) pour l'alt-revert.
+            int realAltIdx = _altIndex < _altIdxMap.Count
+                ? _altIdxMap[_altIndex]
+                : _altIndex; // fallback rétro-compat (ne devrait pas arriver)
+            bool isRevert = realAltIdx == MathCursor.Core.Resolution.SpanOverride.AltIdxRevert;
+
+            // === Index revert : l'utilisateur veut le defaultLatex brut ===
+            if (isRevert)
             {
-                string defaultLatex = _alternatives[0].Latex;
+                string defaultLatex = _alternatives[_altIndex].Latex;
                 var sig = FindSignatureAtSpot(_spotStart, _spotEnd, defaultLatex);
                 if (sig != null)
                     UpsertSpanOverride(sig, MathCursor.Core.Resolution.SpanOverride.AltIdxRevert);
@@ -626,9 +666,7 @@ namespace MathCursor.UI
             // mutation, relancera le pipeline et appellera Show() à nouveau
             // avec le nouveau résultat. La popup elle-même ne fait rien de
             // plus que propager.
-            // Note : avec l'alt-revert en index 0, l'altIdx réel pour les
-            // vraies alts = _altIndex - 1 (cf. décalage étape 7).
-            int realAltIdx = _altIndex - 1;
+            // realAltIdx déjà calculé via _altIdxMap au-dessus.
             if (selectedAlt.Mutation != null)
             {
                 LogPopup($"Resolved via SourceMutation rule=\"{_currentRuleId}\" altIdx={realAltIdx} replacement=\"{selectedAlt.Mutation.Replacement}\"");
