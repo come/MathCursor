@@ -41,6 +41,16 @@ namespace MathCursor.Host
         private readonly MathNerDetector _ner;
         private readonly Engine _engine;
         private readonly ZoneResolver _resolver;
+
+        // Contexte global de session pour le ranking contextuel multi-zoom.
+        // Cf. brief 2026-05-07. Initialisé dans le constructeur, alimenté
+        // au fil des commits popup et resets au changement de ¶.
+        private readonly MathCursor.Core.Resolution.GlobalContext _globalCtx;
+
+        // Position du début du ¶ d'ancrage du caret au dernier tracking.
+        // -1 = pas encore tracké. Au changement (caret a quitté le ¶),
+        // l'historique paragraphe du _globalCtx est reset.
+        private int _lastTrackedParaStart = -1;
         private readonly IEquationStore _store;
 
         private SuggestionPopupWindow _popup;
@@ -173,6 +183,14 @@ namespace MathCursor.Host
             _ner = ner ?? throw new ArgumentNullException(nameof(ner));
             _engine = engine ?? throw new ArgumentNullException(nameof(engine));
             _resolver = new ZoneResolver(_engine);
+            // Contexte global de session : agrège SidecarSignal (L1, votes du
+            // sidecar) + ParagraphResolutionsSignal (L2, pins du ¶ courant).
+            // Alimenté par PropagateCommittedPinsToParagraphHistory au commit
+            // popup, reset par TrackParagraphChangeAndResetIfNeeded au
+            // changement de ¶. Cf. brief 2026-05-07-global-context-multi-zoom-ranking.
+            _globalCtx = new MathCursor.Core.Resolution.GlobalContext();
+            _globalCtx.AddSignal(new MathCursor.Core.Resolution.Signals.SidecarSignal());
+            _globalCtx.AddSignal(new MathCursor.Core.Resolution.Signals.ParagraphResolutionsSignal());
             _store = store ?? throw new ArgumentNullException(nameof(store));
             _contextReader = new WordContextReader(_app);
             _lastActionTracker = new LastActionTracker(ReadParagraphContextForReport);
@@ -348,6 +366,9 @@ namespace MathCursor.Host
             // travail (lecture paragraphe, NER, etc.) et peut échouer.
             try
             {
+                // Tracking du ¶ courant pour reset l'historique paragraphe
+                // du _globalCtx au changement de ¶ (cf. brief 2026-05-07).
+                try { TrackParagraphChangeAndResetIfNeeded(sel); } catch { }
                 // Caret bougé volontairement → reset l'état d'extension itérative
                 // (cf. ADR 29-04) : le prochain Ctrl+Espace repart d'une détection
                 // neuve. Le polling CheckAndUpdate continue normalement.
@@ -366,6 +387,62 @@ namespace MathCursor.Host
                 LogDiag("on_selection_change_error: " + ex.Message);
             }
         }
+
+        // ─── Plomberie GlobalContext (brief 2026-05-07) ─────────────────
+
+        /// <summary>
+        /// Helper qui résout via le <c>_resolver</c> en passant systématiquement
+        /// le <c>_globalCtx</c> de session. Ainsi tous les chemins (preview,
+        /// commit, IsIncomplete check) bénéficient des signaux contextuels
+        /// configurés (Sidecar L1 + ParagraphResolutions L2 pour l'instant).
+        /// </summary>
+        private MathCursor.Core.ResolvedZone ResolveWithContext(
+            string rawSource,
+            MathCursor.Core.Resolution.ResolutionSidecar sidecar = null)
+            => _resolver.Resolve(rawSource ?? "", _globalCtx, sidecar);
+
+        /// <summary>
+        /// Détecte un changement de ¶ d'ancrage du caret. Au changement, reset
+        /// l'historique paragraphe du <see cref="_globalCtx"/> pour ne pas
+        /// muscler des résolutions du ¶ précédent dans le ¶ suivant.
+        /// </summary>
+        private void TrackParagraphChangeAndResetIfNeeded(Word.Selection sel)
+        {
+            if (sel == null) return;
+            int currentParaStart;
+            try { currentParaStart = sel.Paragraphs[1].Range.Start; }
+            catch { return; }
+            if (_lastTrackedParaStart < 0)
+            {
+                _lastTrackedParaStart = currentParaStart;
+                return;
+            }
+            if (_lastTrackedParaStart != currentParaStart)
+            {
+                _globalCtx.ResetParagraphHistory();
+                _lastTrackedParaStart = currentParaStart;
+            }
+        }
+
+        /// <summary>
+        /// Pousse les <see cref="MathCursor.Core.Resolution.SpanPin"/> d'un
+        /// sidecar (typiquement <c>_popup.CurrentSidecar</c> au commit) vers
+        /// l'historique paragraphe du <see cref="_globalCtx"/>. Cas type :
+        /// ligne 1 d'un système résolue en vec → ligne 2 hérite via le
+        /// <c>ParagraphResolutionsSignal</c> (cf. brief 2026-05-07 cas AB/AD).
+        /// </summary>
+        private void PropagateCommittedPinsToParagraphHistory(
+            MathCursor.Core.Resolution.ResolutionSidecar sidecar)
+        {
+            if (sidecar == null || sidecar.IsEmpty) return;
+            foreach (var pin in sidecar.SpanPins)
+            {
+                if (pin == null) continue;
+                _globalCtx.RecordParagraphResolution(pin);
+            }
+        }
+
+        // ─── Fin plomberie GlobalContext ─────────────────────────────────
 
         /// <summary>
         /// OMath dans lequel se trouve strictement le caret (pas seulement au
@@ -653,7 +730,7 @@ namespace MathCursor.Host
                 foreach (var ch in target.Text) hex.Append($"{(int)ch:X4} ");
                 LogDiag($"engine zone hex=\"{hex.ToString().TrimEnd()}\" len={target.Text.Length}");
             }
-            try { resolved = _resolver.Resolve(target.Text ?? ""); }
+            try { resolved = ResolveWithContext(target.Text); }
             catch (Exception ex)
             {
                 LogDiag("engine_error: " + ex.Message);
@@ -948,7 +1025,7 @@ namespace MathCursor.Host
                 LogDiag($"manual trigger span=[{spanStart},{spanEnd}] → \"{Preview(span)}\"");
 
                 ResolvedZone resolved;
-                try { resolved = _resolver.Resolve(span); }
+                try { resolved = ResolveWithContext(span); }
                 catch (Exception ex) { LogDiag("manual_engine_error: " + ex.Message); return; }
 
                 int absStart = paragraphAbsStart + spanStart;
@@ -1053,7 +1130,7 @@ namespace MathCursor.Host
             LogDiag($"iterative extend: span=[{_iterativeSpanStart},{_iterativeSpanEnd}] → \"{Preview(span)}\"");
 
             ResolvedZone resolved;
-            try { resolved = _resolver.Resolve(span); }
+            try { resolved = ResolveWithContext(span); }
             catch (Exception ex) { LogDiag("iterative_extend_error: " + ex.Message); return; }
             if (string.IsNullOrEmpty(resolved.TopLatex)) return;
 
@@ -1158,7 +1235,7 @@ namespace MathCursor.Host
         private bool ShouldExtendZoneForward(DetectedZone zone)
         {
             if (zone == null || string.IsNullOrEmpty(zone.Text)) return false;
-            try { return _resolver.Resolve(zone.Text).IsIncomplete; }
+            try { return ResolveWithContext(zone.Text).IsIncomplete; }
             catch { return false; }
         }
 
@@ -1436,7 +1513,7 @@ namespace MathCursor.Host
                 _resolver.AddPreference(ruleId, altIdx);
 
                 var src = _lastZoneSource ?? string.Empty;
-                var resolved = _resolver.Resolve(src);
+                var resolved = ResolveWithContext(src);
                 LogDiag($"pref applied rule=\"{ruleId}\" altIdx={altIdx} src=\"{src}\" → muted=\"{resolved.MutedSource}\" incomplete={resolved.IsIncomplete}");
 
                 // Auto-commit retiré (29-04). Avec la décomposition modulaire
@@ -1681,6 +1758,12 @@ namespace MathCursor.Host
                 ctx = _commitPipeline.Run(ctx);
             }
             catch (Exception ex) { LogDiag("commit_pipeline_error: " + ex.Message); }
+
+            // Propage les pins du commit vers l'historique paragraphe du
+            // _globalCtx. Permet aux zones suivantes du même ¶ de bénéficier
+            // automatiquement des choix de désambig (cf. brief 2026-05-07,
+            // cas AB/AD système 2 lignes).
+            try { PropagateCommittedPinsToParagraphHistory(ctx?.Sidecar ?? initialSidecar); } catch { }
 
             // Reset état
             _lastZoneAbsStart = -1;
