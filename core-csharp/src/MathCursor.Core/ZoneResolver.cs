@@ -49,9 +49,17 @@ namespace MathCursor.Core
         /// </summary>
         public bool IsIncomplete { get; }
 
+        /// <summary>Top-1 LaTeX <b>avant</b> splice contextuel (RulePin /
+        /// SpanOverride / SidecarSignal). Identique à <see cref="TopLatex"/>
+        /// quand aucun splice contextuel n'est appliqué. Utilisé par la
+        /// popup pour ses recalculs sans subir le double-splice
+        /// (cf. brief 2026-05-07 fix double-splice).</summary>
+        public string BaseTopLatex { get; }
+
         public ResolvedZone(string rawSource, string mutedSource, string topLatex,
             AmbiguitySpot? spot, int? spotStart, int? spotEnd,
-            IReadOnlyList<AmbiguityMatch> allMatches, bool isIncomplete)
+            IReadOnlyList<AmbiguityMatch> allMatches, bool isIncomplete,
+            string? baseTopLatex = null)
         {
             RawSource = rawSource;
             MutedSource = mutedSource;
@@ -61,6 +69,7 @@ namespace MathCursor.Core
             SpotEnd = spotEnd;
             AllMatches = allMatches;
             IsIncomplete = isIncomplete;
+            BaseTopLatex = baseTopLatex ?? topLatex;
         }
     }
 
@@ -208,7 +217,8 @@ namespace MathCursor.Core
                 spotStart: baseResolved.SpotStart,
                 spotEnd: baseResolved.SpotEnd,
                 allMatches: baseResolved.AllMatches,
-                isIncomplete: baseResolved.IsIncomplete);
+                isIncomplete: baseResolved.IsIncomplete,
+                baseTopLatex: baseResolved.TopLatex);
         }
 
         /// <summary>

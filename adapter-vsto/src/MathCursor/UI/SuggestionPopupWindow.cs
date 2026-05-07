@@ -34,6 +34,12 @@ namespace MathCursor.UI
         private readonly Grid _finalContainer;
 
         private string _topLatex = "";
+        // BaseTopLatex (= TopLatex avant splice contextuel par RulePin /
+        // SpanOverride / SidecarSignal). Utilisé pour les recalculs lors
+        // des changements d'alt user, pour éviter le double-splice
+        // (= partir de "AB" brut au lieu de "\vec{AB}" déjà splicé).
+        // Cf. fix bug double-splice 2026-05-07.
+        private string _baseTopLatex = "";
         private string _currentRuleId = "";
         private IReadOnlyList<MathCursor.Core.Lattice.AmbiguityAlternative> _alternatives
             = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
@@ -409,7 +415,8 @@ namespace MathCursor.UI
             double screenX,
             double screenY,
             string debugText = "",
-            int activeAltIdxFromCaller = -1)
+            int activeAltIdxFromCaller = -1,
+            string baseTopLatex = null)
         {
             LogPopup($"Show top=\"{topLatex}\" rule=\"{ruleId}\" alts={(alternatives?.Count ?? 0)} pos=({screenX:F0},{screenY:F0})");
 
@@ -461,6 +468,7 @@ namespace MathCursor.UI
             }
 
             _topLatex = substitutedTop;
+            _baseTopLatex = baseTopLatex ?? substitutedTop; // fallback rétro-compat
             _currentRuleId = ruleId ?? "";
             _allMatches = allMatches ?? Array.Empty<MathCursor.Core.Lattice.AmbiguityMatch>();
             // Préfixe l'alt-revert (= rendu defaultLatex sans transformation)
@@ -679,7 +687,8 @@ namespace MathCursor.UI
                 // default brut localement aussi.
                 _resolvedSubstitutions.Remove(defaultLatex);
 
-                string newResolvedRevert = _topLatex;
+                // Partir de _baseTopLatex (cf. fix double-splice).
+                string newResolvedRevert = _baseTopLatex;
                 foreach (var kv in _resolvedSubstitutions)
                     newResolvedRevert = newResolvedRevert.Replace(kv.Key, kv.Value);
                 _resolvedLatex = newResolvedRevert;
@@ -762,7 +771,12 @@ namespace MathCursor.UI
 
             // 3) Recompose _resolvedLatex en applicant TOUTES les substitutions
             //    accumulées (cascade incluse).
-            string newResolved = _topLatex;
+            //    IMPORTANT : on part de _baseTopLatex (= avant splice contextuel)
+            //    pour éviter le double-splice. Si on partait de _topLatex
+            //    déjà splicé (\vec{AB}), un .Replace("AB", "(AB)") trouverait
+            //    "AB" dans "\vec{AB}" et produirait "\vec{(AB)}" — bug user
+            //    2026-05-07 « ça fait un truc nul droite vecteur ».
+            string newResolved = _baseTopLatex;
             foreach (var kv in _resolvedSubstitutions)
                 newResolved = newResolved.Replace(kv.Key, kv.Value);
             _resolvedLatex = newResolved;

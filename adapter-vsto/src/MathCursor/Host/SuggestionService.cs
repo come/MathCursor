@@ -1558,7 +1558,8 @@ namespace MathCursor.Host
             // 2026-05-07).
             int activeAltIdx = FindActiveAltIdxForRule(ruleId);
             _popup.Show(resolved.TopLatex, ruleId, alts, spotStart, spotEnd,
-                resolved.AllMatches, popupX, popupY, debugText, activeAltIdx);
+                resolved.AllMatches, popupX, popupY, debugText, activeAltIdx,
+                baseTopLatex: resolved.BaseTopLatex);
         }
 
         /// <summary>
