@@ -474,25 +474,26 @@ namespace MathCursor.UI
             _baseTopLatex = baseTopLatex ?? substitutedTop; // fallback rétro-compat
             _currentRuleId = ruleId ?? "";
             _allMatches = allMatches ?? Array.Empty<MathCursor.Core.Lattice.AmbiguityMatch>();
-            // Préfixe l'alt-revert (= rendu defaultLatex sans transformation)
-            // en index 0 (cf. brief 2026-05-07 étape 7 : permet à l'user de
-            // choisir "revert au cas brut" via la popup, ce qui crée un
-            // SpanOverride{sig, AltIdxRevert} dans le sidecar v2).
+            // Construction de la liste affichée dans la popup d'ambig.
+            // Règle invariant 2026-05-07 (user) : « le choix final (par
+            // défaut si pas de choix) d'une désambig n'est jamais montré
+            // dans une popup de désambig ».
             //
-            // FILTRE l'alt actuellement active (= celle qui est appliquée
-            // par défaut sur le span via _rulePreferences) — demande user
-            // 2026-05-07 « le choix qui est utilisé par défaut ne doit pas
-            // être présenté ». Évite la redondance visuelle (l'user voit
-            // déjà le rendu de cette alt dans le TopLatex au-dessus).
+            //   - Si activeAltIdx = -1 (cas vierge, pas de RulePin) : la
+            //     finale = defaultLatex (brut). On affiche TOUTES les vraies
+            //     alts. Pas d'alt-revert (= redondant avec la finale).
+            //   - Si activeAltIdx >= 0 (RulePin / scoring actif) : la finale
+            //     = alts[activeAltIdx]. On AJOUTE l'alt-revert (permet de
+            //     revenir au default brut) + les autres vraies alts (sauf
+            //     l'active filtrée).
+            //
+            // Précédence pour activeAltIdx :
+            //   1) _rulePreferences[ruleId] (in-session courante)
+            //   2) activeAltIdxFromCaller (RulePin cross-commit via _globalCtx)
             if (newSpotStart >= 0 && alternatives != null && alternatives.Count > 0)
             {
                 string defaultLatex = ResolveDefaultLatex(topLatex!, spotStart, spotEnd, allMatches);
 
-                // Détermine l'altIdx active à filtrer (= -1 si aucune).
-                // 1) Pref in-session via _rulePreferences (priorité — choix
-                //    courant de l'user pendant cette session popup).
-                // 2) Sinon, altIdx fourni par le caller (= RulePin persistant
-                //    cross-commit via _globalCtx côté SuggestionService).
                 int activeAltIdx = -1;
                 if (!string.IsNullOrEmpty(ruleId)
                     && _rulePreferences.TryGetValue(ruleId, out int active))
@@ -504,22 +505,28 @@ namespace MathCursor.UI
                     activeAltIdx = activeAltIdxFromCaller;
                 }
 
-                var withRevert = new System.Collections.Generic.List<MathCursor.Core.Lattice.AmbiguityAlternative>(alternatives.Count + 1);
+                bool hasActive = activeAltIdx >= 0 && activeAltIdx < alternatives.Count;
+
+                var built = new System.Collections.Generic.List<MathCursor.Core.Lattice.AmbiguityAlternative>(alternatives.Count + 1);
                 var altIdxMap = new System.Collections.Generic.List<int>(alternatives.Count + 1);
 
-                // Index 0 = alt-revert.
-                withRevert.Add(new MathCursor.Core.Lattice.AmbiguityAlternative(defaultLatex));
-                altIdxMap.Add(MathCursor.Core.Resolution.SpanOverride.AltIdxRevert);
+                // Alt-revert ajoutée UNIQUEMENT si une alt est active (sinon
+                // le default brut est déjà la finale, doublon visuel).
+                if (hasActive)
+                {
+                    built.Add(new MathCursor.Core.Lattice.AmbiguityAlternative(defaultLatex));
+                    altIdxMap.Add(MathCursor.Core.Resolution.SpanOverride.AltIdxRevert);
+                }
 
-                // Vraies alts (indexes 1+), sauf l'alt active filtrée.
+                // Vraies alts, sauf l'alt active filtrée.
                 for (int i = 0; i < alternatives.Count; i++)
                 {
                     if (i == activeAltIdx) continue;
-                    withRevert.Add(alternatives[i]);
+                    built.Add(alternatives[i]);
                     altIdxMap.Add(i);
                 }
 
-                _alternatives = withRevert;
+                _alternatives = built;
                 _altIdxMap = altIdxMap;
             }
             else
@@ -531,10 +538,12 @@ namespace MathCursor.UI
             _spotEnd = newSpotEnd;
             _resolvedLatex = substitutedTop;
             _focusOnFinal = true;
-            // Pré-sélection : si on a des vraies alts (= au moins 2 entrées
-            // car index 0 = revert), pré-sélectionner la première vraie alt
-            // (= alt rule 0) pour ne pas mettre revert par défaut.
-            _altIndex = _alternatives.Count > 1 ? 1 : 0;
+            // Pré-sélection : si l'alt-revert est en index 0 (= une alt est
+            // active et splicée en finale), sauter à l'index 1 (= 1ʳᵉ vraie
+            // alt non-active). Sinon (cas vierge), index 0 = 1ʳᵉ vraie alt.
+            bool firstIsRevert = _altIdxMap.Count > 0
+                && _altIdxMap[0] == MathCursor.Core.Resolution.SpanOverride.AltIdxRevert;
+            _altIndex = (firstIsRevert && _alternatives.Count > 1) ? 1 : 0;
 
             _debugFooter.Text = string.IsNullOrEmpty(debugText) ? "" : "NER: \"" + debugText + "\"";
 
