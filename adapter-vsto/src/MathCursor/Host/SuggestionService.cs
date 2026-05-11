@@ -3095,41 +3095,47 @@ namespace MathCursor.Host
         /// paragraphe (sans pkg:package wrapper) à splicer dans un autre
         /// fullDocXml.
         /// </summary>
-        private static string ExtractFirstWPElement(string xml)
+        /// <summary>
+        /// Cherche dans tout le doc l'OMath qui couvre <paramref name="absStart"/>.
+        /// Sortie via <paramref name="newStart"/>/<paramref name="newEnd"/>.
+        /// Retourne true si trouvée. Logs préfixés par
+        /// <paramref name="logPrefix"/> pour identifier la route appelante
+        /// (splice vs legacy transplant).
+        /// </summary>
+        private bool LocateInsertedOMath(Word.Document doc, int absStart, string logPrefix, out int newStart, out int newEnd)
         {
-            if (string.IsNullOrEmpty(xml)) return null;
-            var m = System.Text.RegularExpressions.Regex.Match(
-                xml,
-                @"<w:p[\s>](?:(?!</w:p>).)*?</w:p>",
-                System.Text.RegularExpressions.RegexOptions.Singleline);
-            return m.Success ? m.Value : null;
+            newStart = absStart;
+            newEnd = absStart;
+            try
+            {
+                int omathCountAfter = doc.OMaths.Count;
+                foreach (Word.OMath om in doc.OMaths)
+                {
+                    var rng = om.Range;
+                    if (rng.Start <= absStart && rng.End > absStart)
+                    {
+                        LogDiag($"{logPrefix}: OMaths.Count={omathCountAfter} matched [{rng.Start},{rng.End}]");
+                        newStart = rng.Start;
+                        newEnd = rng.End;
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex) { LogDiag($"{logPrefix}_locate_error: " + ex.Message); }
+            LogDiag($"{logPrefix}: ok but OMath not found at absStart={absStart}");
+            return false;
         }
 
-        /// <summary>
-        /// Remplace <paramref name="targetCount"/> paragraphes consécutifs à
-        /// l'index <paramref name="targetIdx0"/> (0-based) dans le full doc XML
-        /// par un seul nouveau paragraphe <paramref name="newParaWp"/>.
-        /// Manipulation pur structurelle (regex sur <c>&lt;w:p&gt;</c>),
-        /// pas d'API Word. Cf. test offline xmltest_modified.docx 04-05 :
-        /// produit un doc structurellement clean (pas de fusion possible).
-        /// </summary>
-        private static string ReplaceParagraphsInDocXml(string fullDocXml, int targetIdx0, int targetCount, string newParaWp)
-        {
-            if (string.IsNullOrEmpty(fullDocXml) || string.IsNullOrEmpty(newParaWp)) return null;
-            if (targetIdx0 < 0 || targetCount < 1) return null;
-            var paraRegex = new System.Text.RegularExpressions.Regex(
-                @"<w:p[\s>](?:(?!</w:p>).)*?</w:p>",
-                System.Text.RegularExpressions.RegexOptions.Singleline);
-            var matches = paraRegex.Matches(fullDocXml);
-            if (targetIdx0 + targetCount > matches.Count) return null;
-            var firstMatch = matches[targetIdx0];
-            var lastMatch = matches[targetIdx0 + targetCount - 1];
-            var sb = new System.Text.StringBuilder(fullDocXml.Length);
-            sb.Append(fullDocXml, 0, firstMatch.Index);
-            sb.Append(newParaWp);
-            sb.Append(fullDocXml, lastMatch.Index + lastMatch.Length, fullDocXml.Length - (lastMatch.Index + lastMatch.Length));
-            return sb.ToString();
-        }
+        // Délégué pur (XDocument) — cf. InlineOMathSplicer pour
+        // l'implémentation. Évite la regex et gère self-closing,
+        // namespaces, attribute-order naturellement.
+        private static string ExtractFirstWPElement(string xml)
+            => InlineOMathSplicer.ExtractFirstWPElement(xml);
+
+        private static string ReplaceParagraphsInDocXml(
+            string fullDocXml, int targetIdx0, int targetCount, string newParaWp)
+            => InlineOMathSplicer.ReplaceParagraphsInDocXml(
+                fullDocXml, targetIdx0, targetCount, newParaWp);
 
         /// <summary>
         /// Pattern build-isolated → transplant XML (cf. ADR 04-05). Construit
@@ -3146,32 +3152,27 @@ namespace MathCursor.Host
         /// risque d'absorption d'OMaths voisins.
         /// </para>
         /// </summary>
-        private string BuildOMathXmlIsolated(Word.Document doc, string textBefore, string latex, string textAfter)
+        private string BuildOMathXmlIsolated(Word.Document doc, string latex)
         {
             string unicodeMath;
             try { unicodeMath = LatexToUnicodeMath.Convert(latex); }
             catch (Exception ex) { LogDiag("iso_l2um_error: " + ex.Message); return null; }
             if (string.IsNullOrEmpty(unicodeMath)) return null;
-            textBefore ??= "";
-            textAfter ??= "";
 
             int origContentEnd = doc.Content.End;
             int insertPos = origContentEnd - 1; // avant le ¶ final du doc
-            // Layout temporaire :
-            //   [insertPos] \r [textBefore] [unicodeMath] [textAfter] \r [final ¶]
-            int paraStart = origContentEnd;
-            int unicodeStart = paraStart + textBefore.Length;
+            // Layout temporaire : [insertPos] \r [unicodeMath] \r [final ¶]
+            int unicodeStart = origContentEnd;
             int unicodeEnd = unicodeStart + unicodeMath.Length;
             string capturedXml = null;
 
             try
             {
-                // 1. Insert "\r" + textBefore + unicodeMath + textAfter + "\r"
-                string toInsert = "\r" + textBefore + unicodeMath + textAfter + "\r";
-                doc.Range(insertPos, insertPos).Text = toInsert;
+                // 1. Insert "\r" + unicodeMath + "\r"
+                doc.Range(insertPos, insertPos).Text = "\r" + unicodeMath + "\r";
 
-                // 2. BuildUp UNIQUEMENT sur la portion unicodeMath (pas
-                //    textBefore/After — c'est du texte normal qu'on préserve).
+                // 2. BuildUp sur la portion unicodeMath isolée par les \r
+                //    → aucun voisin à absorber.
                 var mathRange = doc.Range(unicodeStart, unicodeEnd);
                 mathRange.OMaths.Add(mathRange);
                 mathRange.OMaths.BuildUp();
@@ -3204,11 +3205,7 @@ namespace MathCursor.Host
                 }
                 else
                 {
-                    // Diag : check si la BuildUp en zone temp a accidentellement
-                    // pulled in un autre OMath du doc (cas absorption).
-                    int omathCount = System.Text.RegularExpressions.Regex.Matches(capturedXml, "<m:oMath\\b(?!Pa)").Count;
-                    int eqArrCount = System.Text.RegularExpressions.Regex.Matches(capturedXml, "<m:eqArr\\b").Count;
-                    LogDiag($"iso_capture: xml_len={capturedXml.Length} omathCount={omathCount} eqArrCount={eqArrCount}");
+                    LogDiag($"iso_capture: xml_len={capturedXml.Length}");
                 }
             }
             catch (Exception ex) { LogDiag("iso_build_error: " + ex.Message); }
@@ -3254,28 +3251,16 @@ namespace MathCursor.Host
             while (absEnd > absStart && IsWhitespaceCharAt(doc, absEnd - 1)) absEnd--;
             if (absEnd <= absStart) return (absStart, absEnd);
 
-            // SAUVEGARDE du texte original avant remplacement, pour rollback si
-            // l'insertion échoue. Règle dure : on ne doit JAMAIS laisser dans
-            // Word du texte technique (UnicodeMath ou LaTeX brut) si la conversion
-            // en équation a échoué.
-            string originalText;
-            try { originalText = doc.Range(absStart, absEnd).Text ?? ""; }
-            catch { originalText = ""; }
-
             // === PATTERN UNIFIÉ XML TRANSPLANT (cf. ADR 04-05) ===
             // Construit l'OMath en zone isolée fin de doc avec textBefore +
             // unicodeMath + textAfter, capture le full paragraph WordOpenXML,
             // remplace le paragraphe cible via InsertXML. Pour multi-ligne
             // display (latex contient \begin{...}), on ne préserve pas de
             // surround : la cible est remplacée intégralement par la zone
-            // math. Pour inline single-eq, on préserve le texte du paragraphe
-            // avant absStart et après absEnd. Aucun BuildUp à la cible →
-            // aucune absorption possible des OMaths voisins.
-            //
-            // Fallback : .doc legacy (CompatibilityMode < 14) → ancien pattern
-            // API in-place.
-            bool isDocxOoxml = false;
-            try { isDocxOoxml = doc.CompatibilityMode >= 14; } catch { }
+            // math. Pour inline single-eq, on splice via InlineOMathSplicer
+            // dans le <w:p> existant pour préserver les OMaths voisines.
+            // Aucun BuildUp à la cible → aucune absorption possible des
+            // OMaths voisins.
             bool isDisplayMath = latex.IndexOf("\\begin{align", StringComparison.Ordinal) >= 0
                               || latex.IndexOf("\\begin{cases", StringComparison.Ordinal) >= 0;
 
@@ -3284,12 +3269,10 @@ namespace MathCursor.Host
             bool omathCreated = false;
             bool usedXmlTransplant = false;
 
-            if (isDocxOoxml)
+            try
             {
-                try
-                {
-                    // 1. Identifier les paragraphes cibles. Probe à absStart+1 / absEnd-1
-                    //    pour être strictement DANS les paragraphes cibles.
+                // 1. Identifier les paragraphes cibles. Probe à absStart+1 / absEnd-1
+                //    pour être strictement DANS les paragraphes cibles.
                     int safeProbeStart = Math.Min(absStart + 1, doc.Content.End - 1);
                     int safeProbeEnd = Math.Max(absStart, Math.Min(absEnd - 1, doc.Content.End - 1));
                     if (safeProbeStart > safeProbeEnd) safeProbeStart = safeProbeEnd;
@@ -3314,30 +3297,69 @@ namespace MathCursor.Host
                     }
                     LogDiag($"insert_transplant: target idx0={firstTargetIdx0} count={targetCount} (totalParas={totalParas})");
 
-                    // 2. textBefore/textAfter pour inline single-eq
-                    string textBefore = "";
-                    string textAfter = "";
+                    // 2. ROUTE PRINCIPALE inline single-¶ (cf. ADR
+                    //    2026-05-07-Fix-insert-via-paragraph-xml-splice) :
+                    //    on splice la nouvelle OMath directement dans le
+                    //    <w:p> du doc.Content.WordOpenXML — un seul XML,
+                    //    un seul contexte de namespaces, les OMaths
+                    //    voisines préservées byte-à-byte.
+                    string fullDocXmlSpliced = null;
                     if (!isDisplayMath && targetCount == 1)
                     {
                         try
                         {
-                            int paraStart = firstPara.Range.Start;
-                            int paraContentEnd = firstPara.Range.End - 1;
-                            if (absStart > paraStart) textBefore = doc.Range(paraStart, absStart).Text ?? "";
-                            if (absEnd < paraContentEnd) textAfter = doc.Range(absEnd, paraContentEnd).Text ?? "";
+                            string capturedAlone = BuildOMathXmlIsolated(doc, latex);
+                            string newOMathOnly = InlineOMathSplicer.ExtractOMathElement(capturedAlone);
+                            if (!string.IsNullOrEmpty(newOMathOnly))
+                            {
+                                string fullDocXml = doc.Content.WordOpenXML;
+                                string mathSource = doc.Range(absStart, absEnd).Text ?? "";
+                                // Range.Text safe ici : la plage [absStart,
+                                // absEnd] est purement texte (la math source
+                                // qu'on vient de taper, jamais d'OMath dedans).
+
+                                fullDocXmlSpliced = InlineOMathSplicer.SpliceOMathInDocXml(
+                                    fullDocXml, firstTargetIdx0, mathSource, newOMathOnly);
+                                if (!string.IsNullOrEmpty(fullDocXmlSpliced))
+                                {
+                                    LogDiag($"para_splice: ok mathSource=\"{Preview(mathSource)}\" newDocLen={fullDocXmlSpliced.Length}");
+                                }
+                                else
+                                {
+                                    LogDiag($"para_splice: skip (no match for \"{Preview(mathSource)}\")");
+                                }
+                            }
                         }
-                        catch { }
+                        catch (Exception ex) { LogDiag("para_splice_error: " + ex.Message); }
                     }
 
-                    // 3. Build l'OMath en zone isolée + force m:jc=left.
-                    //    Si captured XML a déjà <m:oMathPara> (ex. cases/align
-                    //    multi-ligne), patch m:jc=left dedans. Si captured est
-                    //    inline pur (ex. single-line `Y=2X+1`), on enrobe
-                    //    pré-emptivement avec <m:oMathPara><m:oMathParaPr>
-                    //    <m:jc=left> — sinon Word auto-promote standalone-in-¶
-                    //    en display sans m:jc → centré par défaut (cf. bug user
-                    //    05-05 « formules une ligne s'auto-centrent »).
-                    string capturedXml = BuildOMathXmlIsolated(doc, textBefore, latex, textAfter);
+                    // 3. Si la route splice a réussi, on l'applique direct
+                    //    via doc.Content.InsertXML (le fullDocXml a déjà
+                    //    été modifié in place). Sinon (display math
+                    //    cases/align, ou inline single-eq où le splice
+                    //    n'a pas trouvé sa source au bon endroit), on
+                    //    build l'OMath en zone isolée et on remplace le
+                    //    paragraphe entier via ReplaceParagraphsInDocXml.
+                    string capturedXml = fullDocXmlSpliced != null
+                        ? null  // route splice gère sa propre InsertXML plus bas
+                        : BuildOMathXmlIsolated(doc, latex);
+
+                    if (fullDocXmlSpliced != null)
+                    {
+                        try
+                        {
+                            doc.Content.InsertXML(fullDocXmlSpliced);
+                            usedXmlTransplant = true;
+                            LogDiag($"para_splice: doc.Content.InsertXML ok, len={fullDocXmlSpliced.Length}");
+                        }
+                        catch (Exception ex) { LogDiag("para_splice_insertxml_error: " + ex.Message); }
+
+                        if (usedXmlTransplant)
+                        {
+                            omathCreated = LocateInsertedOMath(doc, absStart, "para_splice", out newStart, out newEnd);
+                        }
+                    }
+
                     if (!string.IsNullOrEmpty(capturedXml))
                     {
                         try
@@ -3346,12 +3368,10 @@ namespace MathCursor.Host
                         }
                         catch (Exception ex) { LogDiag("insert_transplant_ensure_error: " + ex.Message); }
 
-                        // 4. SINGLE ROUND-TRIP XML : valider sur Python que la
-                        //    manipulation pur XML est sound (cf. test
-                        //    xmltest_modified.docx 04-05). Plutôt que paragraph
-                        //    par paragraph (qui cause fusion), on lit le full
-                        //    doc XML, on remplace les paragraphes cibles in-memory,
-                        //    on réécrit en un seul doc.Content.InsertXML.
+                        // 4. Lit le full doc XML, remplace les ¶s cibles
+                        //    via le splicer XDocument, réécrit en un seul
+                        //    doc.Content.InsertXML (pas paragraph-par-
+                        //    paragraph qui causait fusion, cf. ADR 04-05).
                         try
                         {
                             string fullDocXml = doc.Content.WordOpenXML;
@@ -3378,117 +3398,20 @@ namespace MathCursor.Host
                         }
                         catch (Exception ex) { LogDiag("insert_transplant_fulldoc_error: " + ex.Message); }
 
-                        // 5. Find OMath inséré : identifier par PARAGRAPHE cible
-                        //    (pas par position fuzzy). Le transplant a remplacé
-                        //    les paragraphes [firstTargetIdx0 .. firstTargetIdx0+targetCount)
-                        //    par UN seul nouveau paragraphe. On cherche l'OMath
-                        //    dedans. Sinon, l'ancienne tolérance `>= firstParaStart - 5`
-                        //    matchait à tort un OMath en fin de ¶ précédent (cf. bug
-                        //    user 05-05 « soit f » caret monte/descend après insertion).
                         if (usedXmlTransplant)
                         {
-                            int omathCountAfter = 0;
-                            try { omathCountAfter = doc.OMaths.Count; } catch { }
-                            try
-                            {
-                                // doc.Paragraphs est 1-based ; targetIdx0 est 0-based.
-                                // Le nouveau ¶ unique est à l'index 1-based targetIdx0+1.
-                                int newParaIdx = firstTargetIdx0 + 1;
-                                if (newParaIdx >= 1 && newParaIdx <= doc.Paragraphs.Count)
-                                {
-                                    var newPara = doc.Paragraphs[newParaIdx];
-                                    foreach (Word.OMath om in newPara.Range.OMaths)
-                                    {
-                                        var rng = om.Range;
-                                        int eqArrCount = 0;
-                                        try
-                                        {
-                                            string omXml = om.Range.WordOpenXML ?? "";
-                                            eqArrCount = System.Text.RegularExpressions.Regex.Matches(omXml, "<m:eqArr>").Count;
-                                        }
-                                        catch { }
-                                        LogDiag($"insert_transplant: OMaths.Count={omathCountAfter} matched [{rng.Start},{rng.End}] in ¶[{newParaIdx}] eqArrs={eqArrCount}");
-                                        newStart = rng.Start;
-                                        newEnd = rng.End;
-                                        omathCreated = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            catch (Exception ex) { LogDiag("insert_transplant_locate_error: " + ex.Message); }
-                            if (!omathCreated) LogDiag($"insert: transplant ok but OMath not found in ¶[{firstTargetIdx0 + 1}]");
+                            omathCreated = LocateInsertedOMath(doc, absStart, "insert_transplant", out newStart, out newEnd);
                         }
                     }
                     else { LogDiag("insert: build-isolated returned null"); }
                 }
                 catch (Exception ex) { LogDiag("insert_xml_transplant_error: " + ex.Message); }
-            }
 
-            // Fallback API in-place (legacy .doc OU si transplant XML a échoué)
-            if (!omathCreated)
-            {
-                string unicodeMath = LatexToUnicodeMath.Convert(latex);
-                LogDiag($"insert: fallback API in-place. latex→umath \"{latex}\" → \"{unicodeMath}\"");
-                bool nextIsWs = absEnd < docEnd && IsWhitespaceCharAt(doc, absEnd);
-                string insertText = nextIsWs ? unicodeMath : unicodeMath + " ";
-                try { doc.Range(absStart, absEnd).Text = insertText; } catch (Exception ex) { LogDiag("insert_replace_error: " + ex.Message); }
-                int insertedLen = unicodeMath.Length;
-                var mathRange = doc.Range(absStart, absStart + insertedLen);
-                try
-                {
-                    mathRange.OMaths.Add(mathRange);
-                    mathRange.OMaths.BuildUp();
-                }
-                catch (Exception ex) { LogDiag("omath_add_error: " + ex.Message); }
-                newEnd = absStart + insertedLen;
-                try
-                {
-                    foreach (Word.OMath om in doc.OMaths)
-                    {
-                        var rng = om.Range;
-                        if (rng.Start <= absStart && rng.End > absStart)
-                        {
-                            newStart = rng.Start;
-                            newEnd = rng.End;
-                            omathCreated = true;
-                            break;
-                        }
-                    }
-                }
-                catch { }
-                // L'invariant "OMath aligné selon le ¶ parent" est garanti
-                // plus bas par SyncOMathJustificationToParagraph (appelé
-                // après ce bloc, via le path !usedXmlTransplant). Pas de
-                // patch ad-hoc ici : depuis l'option B (ADR 06-05),
-                // `PatchOMathParaJustificationViaXml` couvre wrap + patch
-                // donc fonctionne même si Word n'a pas encore promu le
-                // standalone-in-¶ en oMathPara.
-                if (!omathCreated)
-                {
-                    // Rollback : restore le texte original
-                    LogDiag($"omath NOT created — rollback to original=\"{originalText}\"");
-                    try
-                    {
-                        var fallbackRange = doc.Range(absStart, Math.Min(absStart + insertText.Length, doc.Content.End));
-                        fallbackRange.Text = originalText;
-                        int restoredEnd = absStart + originalText.Length;
-                        try { _app.Selection.SetRange(restoredEnd, restoredEnd); } catch { }
-                    }
-                    catch (Exception ex) { LogDiag("rollback_error: " + ex.Message); }
-                    return (absStart, absStart);
-                }
-            }
-
-            // On aligne l'OMath sur l'alignement du paragraphe texte. Skipped
-            // si on a utilisé le transplant XML car le m:jc a déjà été pré-patché
-            // dans le XML capturé avant l'unique InsertXML (cf. bug user 04-05 :
-            // un 2e InsertXML via PatchOMathParaJustificationViaXml ICI causait
-            // une fusion avec l'OMath voisin).
+            // Pas de fallback API in-place : si le transplant XML a échoué,
+            // on ne re-tente pas via BuildUp direct (qui absorbait les
+            // OMaths voisines, cf. ADR 04-05). Le doc reste avec le texte
+            // brut typé par l'user, qui peut retrigger le commit.
             _lastInsertUsedXmlTransplant = usedXmlTransplant;
-            if (!usedXmlTransplant)
-            {
-                SyncOMathJustificationToParagraph(doc, newStart, newEnd);
-            }
 
             // Positionne le curseur juste après l'OMath, puis vérifie qu'on n'est
             // PAS resté dans l'éditeur math (Word interprète parfois "pile après"
