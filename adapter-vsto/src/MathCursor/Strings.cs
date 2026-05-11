@@ -64,6 +64,164 @@ namespace MathCursor
             _    => $"MathCursor — v{version}",
         };
 
+        // ---------- Onglet dédié + duo TabHome (ADR 2026-05-11) ----------
+
+        public static string HomeGroupLabel(string version) => Lang switch
+        {
+            "fr" => $"MathCursor v{version}",
+            _    => $"MathCursor v{version}",
+        };
+
+        public static string MathCursorTabLabel => Lang switch
+        {
+            "fr" => "MathCursor",
+            _    => "MathCursor",
+        };
+
+        public static string InputGroupLabel => Lang switch
+        {
+            "fr" => "Saisie",
+            _    => "Input",
+        };
+
+        public static string LayoutGroupLabel => Lang switch
+        {
+            "fr" => "Mise en page",
+            _    => "Layout",
+        };
+
+        public static string ConstructionsGroupLabel => Lang switch
+        {
+            "fr" => "Constructions",
+            _    => "Constructions",
+        };
+
+        public static string ToolsTabGroupLabel => Lang switch
+        {
+            "fr" => "Outils",
+            _    => "Tools",
+        };
+
+        public static string ConvertButtonLabel => Lang switch
+        {
+            "fr" => "Convertir",
+            _    => "Convert",
+        };
+
+        public static string ConvertButtonScreentip => Lang switch
+        {
+            "fr" => "Convertit ce que tu viens de taper en math (équivalent Ctrl+Espace). Répété, étend la zone vers la gauche.",
+            _    => "Converts what you just typed to math (same as Ctrl+Space). Repeated, extends the zone leftward.",
+        };
+
+        public static string ColumnsMenuLabel => Lang switch
+        {
+            "fr" => "Colonnes",
+            _    => "Columns",
+        };
+
+        public static string ColumnsMenuScreentip => Lang switch
+        {
+            "fr" => "Insère un tableau N colonnes (barres séparatrices visibles, pas de bordures externes).",
+            _    => "Insert an N-column table (visible separator bars, no outer borders).",
+        };
+
+        public static string Columns1Label => Lang switch
+        {
+            "fr" => "1 colonne",
+            _    => "1 column",
+        };
+
+        public static string Columns2Label => Lang switch
+        {
+            "fr" => "2 colonnes",
+            _    => "2 columns",
+        };
+
+        public static string Columns3Label => Lang switch
+        {
+            "fr" => "3 colonnes",
+            _    => "3 columns",
+        };
+
+        public static string Columns4Label => Lang switch
+        {
+            "fr" => "4 colonnes",
+            _    => "4 columns",
+        };
+
+        public static string CheatsheetButtonLabel => Lang switch
+        {
+            "fr" => "Exemples",
+            _    => "Examples",
+        };
+
+        public static string CheatsheetButtonScreentip => Lang switch
+        {
+            "fr" => "Galerie d'exemples concrets multi-syntaxes (à venir).",
+            _    => "Concrete multi-syntax examples gallery (coming).",
+        };
+
+        public static string ConstructionSignTableLabel => Lang switch
+        {
+            "fr" => "Tableau de signe",
+            _    => "Sign table",
+        };
+
+        public static string ConstructionVariationTableLabel => Lang switch
+        {
+            "fr" => "Tableau de variation",
+            _    => "Variation table",
+        };
+
+        public static string ConstructionCurveLabel => Lang switch
+        {
+            "fr" => "Courbe",
+            _    => "Curve",
+        };
+
+        public static string ConstructionFigureLabel => Lang switch
+        {
+            "fr" => "Figure",
+            _    => "Figure",
+        };
+
+        public static string ConstructionComingSoonScreentip => Lang switch
+        {
+            "fr" => "À venir — roadmap v0.6+",
+            _    => "Coming soon — roadmap v0.6+",
+        };
+
+        public static string SettingsButtonLabel => Lang switch
+        {
+            "fr" => "Paramètres",
+            _    => "Settings",
+        };
+
+        public static string SettingsButtonScreentip => Lang switch
+        {
+            "fr" => "Préférences MathCursor (langue, symbole de multiplication, popup auto, logs).",
+            _    => "MathCursor preferences (language, multiplication symbol, auto popup, logs).",
+        };
+
+        public static string SettingsComingSoonBody => Lang switch
+        {
+            "fr" => "Les paramètres arriveront dans la v0.6.\nPour l'instant, la langue suit Word et les autres préférences sont par défaut.",
+            _    => "Settings will arrive in v0.6.\nFor now, language follows Word and other preferences are at default.",
+        };
+
+        public static string AboutButtonLabel => Lang switch
+        {
+            "fr" => "À propos",
+            _    => "About",
+        };
+
+        public static string AboutButtonScreentip => Lang switch
+        {
+            "fr" => "Version, raccourcis, aide.",
+            _    => "Version, shortcuts, help.",
+        };
+
         public static string ReportButtonLabel => Lang switch
         {
             "fr" => "Signaler un souci",

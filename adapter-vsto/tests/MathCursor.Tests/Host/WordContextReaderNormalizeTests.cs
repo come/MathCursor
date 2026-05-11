@@ -133,5 +133,35 @@ namespace MathCursor.Tests.Host
 
             Assert.Equal(expected, AutocorrectNormalizer.Normalize(input));
         }
+
+        // ─── Chars de contrôle Word (bug 2026-05-11 cellule de tableau) ──
+
+        [Theory(DisplayName = "Chars de contrôle Word internes → espace (NER en cellule)")]
+        [InlineData("x = 1\a", "x = 1 ")]   // cell-end marker (U+0007)
+        [InlineData("ligne1\vligne2", "ligne1 ligne2")] // <w:br/> Word
+        [InlineData("a\bb", "a b")]          // backspace (rare)
+        [InlineData("page1\fpage2", "page1 page2")]    // page break (rare)
+        public void WordControlChars_NormalizedToSpace(string input, string expected)
+        {
+            // Sans normalisation : Range.Text en cellule retourne du
+            // texte avec \a en queue → le NER, entraîné sur du texte
+            // propre, ne tokenize plus la zone math → popup ne se
+            // lève pas. Bug 2026-05-11.
+            var output = AutocorrectNormalizer.Normalize(input);
+            Assert.Equal(expected, output);
+            // Invariant 1:1 : longueur préservée pour aligner
+            // text[i] avec paraStart + i côté Word.
+            Assert.Equal(input.Length, output.Length);
+        }
+
+        [Fact(DisplayName = "Tab et newline préservés (chars de contrôle légitimes)")]
+        public void TabAndNewline_Preserved()
+        {
+            // \t et \r/\n sont des chars de contrôle valides dans
+            // Range.Text (tab dans un ¶, séparateur de ¶). Ne pas
+            // les normaliser sinon on casse la structure.
+            const string input = "col1\tcol2\r\nligne2";
+            Assert.Equal(input, AutocorrectNormalizer.Normalize(input));
+        }
     }
 }

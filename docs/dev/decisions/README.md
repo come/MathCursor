@@ -19,6 +19,11 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-05-11
+- `[molle]` Feat — [Duo Convertir/Colonnes dans TabHome + onglet "MathCursor" dédié pour le reste](2026-05-11-Feat-ribbon-home-duo-plus-dedicated-tab.md)
+- `[forte]` Refactor — [Lecture du paragraphe courant via `Range.WordOpenXML` (pas `Range.Text`)](2026-05-11-Refactor-paragraph-reader-via-xml.md)
+- `[forte]` Fix — [Splice XML navigué par parent/siblings et matching par contenu (durcit pour tableaux + tout conteneur)](2026-05-11-Fix-omath-splice-content-based-navigation.md)
+
 ### 2026-05-07
 - `[forte]` Fix — [Insertion d'OMath par splice XML du `<w:p>` existant (pas reconstruction depuis Range.Text)](2026-05-07-Fix-insert-via-paragraph-xml-splice.md)
 

@@ -59,42 +59,27 @@ namespace MathCursor.Host
                 int paraStart = paraRange.Start;
                 int paraEnd = paraRange.End;
                 if (paraStart >= paraEnd) return empty;
-                var rawText = AutocorrectNormalizer.Normalize(doc.Range(paraStart, paraEnd).Text ?? "");
 
-                var regions = new List<(int start, int end)>();
-                string text = rawText;
-
-                if (rawText.Length > 0)
+                // REVERT 2026-05-11 : refactor XML reader désactivé suite
+                // à crash Word + caret blink en prod (cf. ADR du même jour,
+                // section "Risque perf"). Le helper ParagraphTextExtractor
+                // reste utilisé par les tests xUnit et sera réactivé une
+                // fois qu'on aura un cache pré-appel pour éviter de
+                // sérialiser le XML à chaque tick _pollTimer.
+                var rangeText = doc.Range(paraStart, paraEnd).Text ?? "";
+                var omathAbsRegions = new List<(int absStart, int absEnd)>();
+                try
                 {
-                    var sb = new StringBuilder(rawText);
-                    try
+                    foreach (Word.OMath om in doc.OMaths)
                     {
-                        foreach (Word.OMath om in doc.OMaths)
-                        {
-                            var r = om.Range;
-                            if (r.End <= paraStart || r.Start >= paraEnd) continue;
-                            int omRelStart = Math.Max(0, r.Start - paraStart);
-                            int omRelEnd = Math.Min(sb.Length, r.End - paraStart);
-                            int regionLen = omRelEnd - omRelStart;
-                            if (regionLen <= 0) continue;
-
-                            // Masquage : on remplace chaque caractère de la région OMath
-                            // par un espace. Deux motifs :
-                            // 1) Le NER est entraîné sur du texte brut, pas sur du math
-                            //    rendu — substituer la source brute au milieu d'un
-                            //    paragraphe le confond parfois (il ne détecte plus les
-                            //    expressions adjacentes). Masquer le fait "disparaître".
-                            // 2) La source reste accessible via bookmark→store côté
-                            //    TryEnterEditMode quand le caret entre dans l'équation.
-                            for (int i = 0; i < regionLen; i++)
-                                sb[omRelStart + i] = ' ';
-
-                            regions.Add((omRelStart, omRelEnd));
-                        }
+                        var r = om.Range;
+                        if (r.End <= paraStart || r.Start >= paraEnd) continue;
+                        omathAbsRegions.Add((r.Start, r.End));
                     }
-                    catch (Exception ex) { LogDiag("omath_iter_error: " + ex.Message); }
-                    text = sb.ToString();
                 }
+                catch (Exception ex) { LogDiag("omath_iter_error: " + ex.Message); }
+
+                var (text, regions) = FallbackFromRangeText(rangeText, paraStart, omathAbsRegions);
 
                 if (regions.Count > 0)
                     LogDiag($"paragraph reconstructed (OMaths={regions.Count}, len={text.Length}) → \"{Preview(text)}\"");
@@ -111,6 +96,35 @@ namespace MathCursor.Host
             {
                 return empty;
             }
+        }
+
+        /// <summary>
+        /// Fallback : reconstruit (text, regions) à partir du Range.Text
+        /// Word (avec ses chars de contrôle internes) + Normalize. Utilisé
+        /// quand le chemin XML échoue ou que l'invariant 1:1 casse.
+        /// Comportement identique au pré-ADR 2026-05-11.
+        /// </summary>
+        private static (string text, IReadOnlyList<(int start, int end)> regions) FallbackFromRangeText(
+            string rangeText, int paraStart, IReadOnlyList<(int absStart, int absEnd)> omathAbsRegions)
+        {
+            string normalized = AutocorrectNormalizer.Normalize(rangeText ?? "");
+            var regions = new List<(int start, int end)>();
+            if (normalized.Length == 0) return (normalized, regions);
+
+            var sb = new StringBuilder(normalized);
+            foreach (var (absStart, absEnd) in omathAbsRegions)
+            {
+                int omRelStart = Math.Max(0, absStart - paraStart);
+                int omRelEnd = Math.Min(sb.Length, absEnd - paraStart);
+                int regionLen = omRelEnd - omRelStart;
+                if (regionLen <= 0) continue;
+
+                for (int i = 0; i < regionLen; i++)
+                    sb[omRelStart + i] = ' ';
+
+                regions.Add((omRelStart, omRelEnd));
+            }
+            return (sb.ToString(), regions);
         }
 
         /// <summary>

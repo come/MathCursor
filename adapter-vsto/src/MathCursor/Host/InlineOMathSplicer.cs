@@ -17,11 +17,19 @@ namespace MathCursor.Host
     /// de format Word (self-closing tags, attribute order, whitespace,
     /// namespaces, runs imbriqués…).</para>
     ///
-    /// <para>Cf. ADR <c>2026-05-07-Fix-insert-via-paragraph-xml-splice</c>.
-    /// L'approche précédente (<c>textBefore = Range.Text</c> +
-    /// reconstruction du ¶ depuis BuildUp) était lossy pour les OMaths
-    /// voisines : <c>Range.Text</c> aplatit la structure d'une OMath voisine
-    /// → BuildUp ultérieure dégénère → l'OMath voisine disparaît du ¶.</para>
+    /// <para>Navigation par contenu + parent immédiat (cf. ADR
+    /// <c>2026-05-11-Fix-omath-splice-content-based-navigation</c>). Le
+    /// <c>&lt;w:p&gt;</c> cible est identifié par "celui dont la queue
+    /// match <paramref name="mathSource"/>", peu importe sa profondeur
+    /// dans l'arbre (<c>&lt;w:body&gt;</c> direct, cellule de tableau,
+    /// SDT, header, footnote). La cross-merge multi-¶ utilise
+    /// <see cref="XContainer.ElementsBeforeSelf()"/> + check du
+    /// <c>.Parent</c> pour refuser les frontières de conteneur.</para>
+    ///
+    /// <para>Origine du pattern XML transplant : ADR
+    /// <c>2026-05-07-Fix-insert-via-paragraph-xml-splice</c>. L'approche
+    /// précédente (<c>textBefore = Range.Text</c> + reconstruction du ¶
+    /// depuis BuildUp) était lossy pour les OMaths voisines.</para>
     /// </summary>
     internal static class InlineOMathSplicer
     {
@@ -56,11 +64,15 @@ namespace MathCursor.Host
 
         /// <summary>
         /// Splice <paramref name="newOMathXml"/> dans le <c>&lt;w:p&gt;</c>
-        /// numéro <paramref name="targetParaIdx0"/> du <paramref name="fullDocXml"/>
-        /// (= <c>doc.Content.WordOpenXML</c>), à la place des
-        /// <c>&lt;w:r&gt;</c> qui couvrent <paramref name="mathSource"/>.
-        /// Retourne le <c>fullDocXml</c> modifié, ou <c>null</c> si la
-        /// cible n'existe pas / le splice n'a pas trouvé la math source.
+        /// dont les derniers <c>&lt;w:r&gt;</c> matchent
+        /// <paramref name="mathSource"/> en queue. Navigation par contenu,
+        /// pas par index — marche dans <c>&lt;w:body&gt;</c> direct,
+        /// <c>&lt;w:tc&gt;</c> de tableau, <c>&lt;w:sdt&gt;</c>, headers,
+        /// footnotes, uniformément.
+        ///
+        /// <para>Si plusieurs <c>&lt;w:p&gt;</c> matchent (rare — la source
+        /// brute fraîchement tapée est presque unique), prend le dernier
+        /// dans l'ordre document (intuition utilisateur = le plus récent).</para>
         ///
         /// <para>Suppose que la math source est en queue du ¶ (= cas du
         /// commit immédiat où l'utilisateur vient juste de la taper).
@@ -68,10 +80,9 @@ namespace MathCursor.Host
         /// fallback ailleurs.</para>
         /// </summary>
         public static string SpliceOMathInDocXml(
-            string fullDocXml, int targetParaIdx0, string mathSource, string newOMathXml)
+            string fullDocXml, string mathSource, string newOMathXml)
         {
             if (string.IsNullOrEmpty(fullDocXml)) return null;
-            if (targetParaIdx0 < 0) return null;
             if (string.IsNullOrEmpty(mathSource)) return null;
             if (string.IsNullOrEmpty(newOMathXml)) return null;
 
@@ -79,18 +90,25 @@ namespace MathCursor.Host
             try { xdoc = XDocument.Parse(fullDocXml); }
             catch { return null; }
 
-            // Localise le <w:body> (peut être plusieurs si pkg:package
-            // contient plusieurs <w:document> — on prend le premier qui
-            // a des <w:p> direct enfants).
-            var bodies = xdoc.Descendants(W + "body").ToList();
-            XElement body = bodies.FirstOrDefault(b => b.Elements(W + "p").Any());
-            if (body == null) return null;
-
-            // Liste les <w:p> direct enfants du body, dans l'ordre.
-            var paras = body.Elements(W + "p").ToList();
-            if (targetParaIdx0 >= paras.Count) return null;
-
-            var targetPara = paras[targetParaIdx0];
+            // Scan TOUS les <w:p> du doc, peu importe la profondeur :
+            // body direct, cellule de tableau, SDT, etc. Identification
+            // par contenu, pas par index global. On prend le DERNIER
+            // <w:p> qui match (intuition user = celui qu'il vient de
+            // taper, le plus tardif dans l'ordre doc).
+            XElement targetPara = null;
+            int firstChildIdxToReplace = -1;
+            int prefixLen = 0;
+            foreach (var para in xdoc.Descendants(W + "p"))
+            {
+                var match = TryMatchTailRunSequence(para, mathSource);
+                if (match.HasValue)
+                {
+                    targetPara = para;
+                    firstChildIdxToReplace = match.Value.firstChildIdx;
+                    prefixLen = match.Value.prefixLen;
+                }
+            }
+            if (targetPara == null) return null;
 
             // Construit une nouvelle XElement à partir du XML de l'OMath.
             XElement newOMath;
@@ -101,53 +119,8 @@ namespace MathCursor.Host
                 ?? newOMath.Descendants(M + "oMath").FirstOrDefault()
                 ?? newOMath;
 
-            // Cherche backward dans les enfants direct de <w:p> les
-            // <w:r> dont les <w:t> concaténés matchent mathSource en
-            // queue.
             var children = targetPara.Elements().ToList();
-            var accumulated = new StringBuilder();
-            int firstChildIdxToReplace = -1;
             int lastChildIdxToReplace = children.Count - 1;
-
-            // On scan backward et on n'accepte de match que si on est en
-            // queue (= les enfants traversés AVANT match doivent être
-            // tous des <w:r> avec <w:t>). Ça enforce "math source en fin".
-            // Si on rencontre un autre type d'enfant (m:oMath, bookmarks,
-            // etc.) AVANT d'avoir matché, abandonner.
-            for (int i = children.Count - 1; i >= 0; i--)
-            {
-                var child = children[i];
-                if (child.Name != W + "r")
-                {
-                    // Pas un run : on ne peut pas matcher ici, donc soit
-                    // mathSource pas en queue → null.
-                    return null;
-                }
-
-                string runText = ExtractRunText(child);
-                accumulated.Insert(0, runText);
-
-                if (accumulated.Length >= mathSource.Length)
-                {
-                    string tail = accumulated.ToString(
-                        accumulated.Length - mathSource.Length, mathSource.Length);
-                    if (tail == mathSource)
-                    {
-                        firstChildIdxToReplace = i;
-                        break;
-                    }
-                    if (accumulated.Length > mathSource.Length)
-                    {
-                        // Plus de texte que mathSource sans match → pas en queue.
-                        return null;
-                    }
-                }
-            }
-            if (firstChildIdxToReplace < 0) return null;
-
-            // prefixLen = chars à garder du PREMIER run remplacé (texte
-            // AVANT mathSource). Si > 0, on émet un run préfixe.
-            int prefixLen = accumulated.Length - mathSource.Length;
             var firstRun = children[firstChildIdxToReplace];
 
             // Construit la nouvelle séquence d'enfants.
@@ -179,6 +152,66 @@ namespace MathCursor.Host
             }
 
             return xdoc.ToString(SaveOptions.DisableFormatting);
+        }
+
+        /// <summary>
+        /// Essaie de matcher <paramref name="source"/> en queue des
+        /// <c>&lt;w:r&gt;</c> de <paramref name="para"/>. Retourne
+        /// <c>(firstChildIdx, prefixLen)</c> où :
+        /// <list type="bullet">
+        /// <item><c>firstChildIdx</c> = index du premier <c>&lt;w:r&gt;</c>
+        /// à remplacer (les suivants jusqu'à la fin sont également
+        /// couverts par <paramref name="source"/>).</item>
+        /// <item><c>prefixLen</c> = nombre de chars à garder en début du
+        /// premier run remplacé (texte AVANT <paramref name="source"/>).</item>
+        /// </list>
+        /// Retourne <c>null</c> si :
+        /// <list type="bullet">
+        /// <item>aucun match de queue (<paramref name="source"/> pas en fin) ;</item>
+        /// <item>on rencontre un enfant non-<c>&lt;w:r&gt;</c> en scan
+        /// backward avant d'avoir matché (= source pas en queue stricte) ;</item>
+        /// <item>les <c>&lt;w:r&gt;</c> accumulés dépassent la longueur
+        /// de <paramref name="source"/> sans match exact (= source pas
+        /// en queue).</item>
+        /// </list>
+        /// </summary>
+        private static (int firstChildIdx, int prefixLen)? TryMatchTailRunSequence(
+            XElement para, string source)
+        {
+            if (string.IsNullOrEmpty(source)) return null;
+            var children = para.Elements().ToList();
+            if (children.Count == 0) return null;
+
+            var accumulated = new StringBuilder();
+            for (int i = children.Count - 1; i >= 0; i--)
+            {
+                var child = children[i];
+                if (child.Name != W + "r")
+                {
+                    // Pas un run : on ne peut pas matcher ici, donc soit
+                    // source pas en queue → null.
+                    return null;
+                }
+
+                string runText = ExtractRunText(child);
+                accumulated.Insert(0, runText);
+
+                if (accumulated.Length >= source.Length)
+                {
+                    string tail = accumulated.ToString(
+                        accumulated.Length - source.Length, source.Length);
+                    if (tail == source)
+                    {
+                        return (i, accumulated.Length - source.Length);
+                    }
+                    if (accumulated.Length > source.Length)
+                    {
+                        // Plus de texte que source sans match → pas en queue.
+                        return null;
+                    }
+                }
+            }
+            return null;
         }
 
         // ─── Helpers internes ─────────────────────────────────────────
@@ -296,42 +329,117 @@ namespace MathCursor.Host
         }
 
         /// <summary>
-        /// Remplace <paramref name="targetCount"/> paragraphes consécutifs
-        /// à l'index <paramref name="targetIdx0"/> (0-based) du
-        /// <paramref name="fullDocXml"/> par le seul nouveau paragraphe
-        /// <paramref name="newParaWp"/>. Navigation XML pure (XDocument),
-        /// pas de regex.
+        /// Remplace un groupe de <c>&lt;w:p&gt;</c> siblings consécutifs
+        /// (dans le même <c>.Parent</c>) par un seul nouveau
+        /// <paramref name="newParaWp"/>. Le groupe est identifié par
+        /// <paramref name="paragraphSources"/>, qui liste les sources
+        /// brutes des paragraphes cibles dans l'ordre du document (haut
+        /// en bas).
+        ///
+        /// <para>Algorithme :</para>
+        /// <list type="number">
+        /// <item>Trouver le DERNIER <c>&lt;w:p&gt;</c> du doc dont la
+        /// queue match <c>paragraphSources[N-1]</c>.</item>
+        /// <item>Pour les N-1 précédents (de bas en haut), prendre le
+        /// sibling IMMÉDIATEMENT précédent (<see cref="XNode.ElementsBeforeSelf()"/>
+        /// dernier) et vérifier qu'il est un <c>&lt;w:p&gt;</c>, dans
+        /// le même <c>.Parent</c>, et que sa queue match
+        /// <c>paragraphSources[i]</c>.</item>
+        /// <item>Refuser (<c>null</c>) si on traverserait un changement
+        /// de Parent (frontière cellule/body, cellule/cellule), un
+        /// sibling non-<c>&lt;w:p&gt;</c>, ou si une source ne match pas.</item>
+        /// <item>Remplacer le groupe par <paramref name="newParaWp"/> in
+        /// place dans l'arbre XDocument.</item>
+        /// </list>
+        ///
+        /// <para>Navigation XML pure (XDocument), pas de regex. Marche
+        /// dans n'importe quel conteneur (body, cellule, SDT, …) par
+        /// construction.</para>
         /// </summary>
         public static string ReplaceParagraphsInDocXml(
-            string fullDocXml, int targetIdx0, int targetCount, string newParaWp)
+            string fullDocXml, IReadOnlyList<string> paragraphSources, string newParaWp)
         {
             if (string.IsNullOrEmpty(fullDocXml)) return null;
+            if (paragraphSources == null || paragraphSources.Count == 0) return null;
             if (string.IsNullOrEmpty(newParaWp)) return null;
-            if (targetIdx0 < 0 || targetCount < 1) return null;
 
             XDocument xdoc;
             try { xdoc = XDocument.Parse(fullDocXml); }
             catch { return null; }
 
-            var bodies = xdoc.Descendants(W + "body").ToList();
-            XElement body = bodies.FirstOrDefault(b => b.Elements(W + "p").Any());
-            if (body == null) return null;
+            // 1. Trouver le dernier <w:p> dont la queue match la dernière source.
+            string lastSrc = paragraphSources[paragraphSources.Count - 1];
+            if (string.IsNullOrEmpty(lastSrc)) return null;
+            XElement lastPara = null;
+            foreach (var para in xdoc.Descendants(W + "p"))
+            {
+                if (TryMatchTailRunSequence(para, lastSrc).HasValue)
+                {
+                    lastPara = para;
+                }
+            }
+            if (lastPara == null) return null;
 
-            var paras = body.Elements(W + "p").ToList();
-            if (targetIdx0 + targetCount > paras.Count) return null;
+            // 2. Remonter les N-1 paragraphes précédents par siblings
+            //    stricts dans le même .Parent.
+            var group = new List<XElement> { lastPara };
+            var parent = lastPara.Parent;
+            var current = lastPara;
+            for (int i = paragraphSources.Count - 2; i >= 0; i--)
+            {
+                // Le sibling IMMÉDIATEMENT précédent (n'importe quel type)
+                // doit être un <w:p> dans le même Parent.
+                var prevNode = current.ElementsBeforeSelf().LastOrDefault();
+                if (prevNode == null) return null;          // pas de sibling avant
+                if (prevNode.Name != W + "p") return null;  // sibling non-<w:p>
+                if (prevNode.Parent != parent) return null; // changement de parent (par sécurité)
 
+                string srcI = paragraphSources[i];
+                if (string.IsNullOrEmpty(srcI)) return null;
+                if (!TryMatchTailRunSequence(prevNode, srcI).HasValue) return null;
+
+                group.Insert(0, prevNode);
+                current = prevNode;
+            }
+
+            // 3. Remplace le groupe par le nouveau <w:p>.
             XElement newParaEl;
             try { newParaEl = WrapAndParse(newParaWp); }
             catch { return null; }
-            // Si on a wrappé pour parser, descendre au vrai <w:p>.
             newParaEl = newParaEl.Descendants(W + "p").FirstOrDefault() ?? newParaEl;
 
-            // Remplace [targetIdx0 .. targetIdx0+targetCount) par le
-            // nouveau ¶ (en place dans l'arbre XDocument).
-            paras[targetIdx0].ReplaceWith(newParaEl);
-            for (int i = 1; i < targetCount; i++)
+            // Mémorise le sibling avant le groupe (= node après lequel on
+            // va insérer) puis remplace le groupe. Note : ReplaceWith peut
+            // cloner newParaEl, rendant la référence locale obsolète — on
+            // re-localise le <w:p> inséré via le node précédent ou via
+            // parent.Elements().
+            var parentEl = group[0].Parent;
+            var nodeBeforeGroup = group[0].PreviousNode;
+            group[0].ReplaceWith(newParaEl);
+            for (int i = 1; i < group.Count; i++)
             {
-                paras[targetIdx0 + i].Remove();
+                group[i].Remove();
+            }
+
+            // Récupère le <w:p> inséré dans l'arbre (= le node juste
+            // après nodeBeforeGroup, ou le premier élément de parent si
+            // nodeBeforeGroup est null).
+            XElement insertedPara = nodeBeforeGroup != null
+                ? nodeBeforeGroup.NodesAfterSelf().OfType<XElement>().FirstOrDefault()
+                : parentEl?.Elements().FirstOrDefault();
+            if (insertedPara == null) return xdoc.ToString(SaveOptions.DisableFormatting);
+
+            // Garantit qu'il y a un <w:p> sibling après le nouveau ¶ pour
+            // que le caret puisse atterrir dedans après l'insertion (sinon
+            // en cellule mono-¶ avec multi-ligne, le caret est piégé sur
+            // le `\r` final et NudgeCursorOutOfMath / EndKey(wdLine)
+            // sort de la cellule). Cf. bug user 2026-05-11 : multi-ligne
+            // dans cellule → caret saute à la cellule suivante. Hors
+            // cellule, si un <w:p> sibling existe déjà, on ne touche à
+            // rien (préserve comportement actuel).
+            if (insertedPara.ElementsAfterSelf(W + "p").FirstOrDefault() == null)
+            {
+                insertedPara.AddAfterSelf(new XElement(W + "p"));
             }
 
             return xdoc.ToString(SaveOptions.DisableFormatting);

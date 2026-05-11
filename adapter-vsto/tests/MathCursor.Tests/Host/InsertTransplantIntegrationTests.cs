@@ -66,12 +66,14 @@ namespace MathCursor.Tests.Host
             string fullDocXml = FullDocPkg(body);
             string newOMath = FakeOMath("f");
 
-            string result = InlineOMathSplicer.SpliceOMathInDocXml(fullDocXml, 0, "f", newOMath);
+            string result = InlineOMathSplicer.SpliceOMathInDocXml(fullDocXml, "f", newOMath);
 
             Assert.NotNull(result);
             Assert.Contains("Soit ", result);
             Assert.Contains(newOMath, result);
-            // Le styles.xml part ne doit PAS avoir été touché.
+            // Le styles.xml part ne doit PAS avoir été touché — il contient
+            // "style example f" en queue d'un <w:r>, le splicer ne doit pas
+            // confondre avec le body (la part styles.xml n'a pas de <w:p>).
             Assert.Contains("<w:t>style example f</w:t>", result);
         }
 
@@ -89,7 +91,7 @@ namespace MathCursor.Tests.Host
             string newOMath = FakeOMath("f");
 
             string result = InlineOMathSplicer.SpliceOMathInDocXml(
-                FullDocPkg(body), 0, "f", newOMath);
+                FullDocPkg(body), "f", newOMath);
 
             Assert.NotNull(result);
             // L'espace après "soit" doit survivre → xml:space="preserve" injecté.
@@ -106,7 +108,7 @@ namespace MathCursor.Tests.Host
             string newOMath = FakeOMath("f");
 
             string result = InlineOMathSplicer.SpliceOMathInDocXml(
-                FullDocPkg(body), 0, "f", newOMath);
+                FullDocPkg(body), "f", newOMath);
 
             Assert.NotNull(result);
             // Pas de duplication d'attribut.
@@ -134,7 +136,7 @@ namespace MathCursor.Tests.Host
             string fullDocXml = FullDocPkg(body);
             string newOMath = FakeOMath("g");
 
-            string result = InlineOMathSplicer.SpliceOMathInDocXml(fullDocXml, 0, "g", newOMath);
+            string result = InlineOMathSplicer.SpliceOMathInDocXml(fullDocXml, "g", newOMath);
 
             Assert.NotNull(result);
             Assert.Contains(fOMath, result);
@@ -158,7 +160,7 @@ namespace MathCursor.Tests.Host
             string newOMath = FakeOMath("y");
 
             string result = InlineOMathSplicer.SpliceOMathInDocXml(
-                FullDocPkg(body), 0, "y", newOMath);
+                FullDocPkg(body), "y", newOMath);
 
             Assert.NotNull(result);
             Assert.Contains(xOMath, result);
@@ -180,7 +182,7 @@ namespace MathCursor.Tests.Host
             string newOMath = FakeOMath("y");
 
             string result = InlineOMathSplicer.SpliceOMathInDocXml(
-                FullDocPkg(body), 0, "y", newOMath);
+                FullDocPkg(body), "y", newOMath);
 
             Assert.NotNull(result);
             Assert.Contains(twoXOMath, result);
@@ -208,7 +210,7 @@ namespace MathCursor.Tests.Host
                 + "</w:p>";
 
             string result = InlineOMathSplicer.SpliceOMathInDocXml(
-                FullDocPkg(body), 0, "y", FakeOMath("y_NEW_MARKER"));
+                FullDocPkg(body), "y", FakeOMath("y_NEW_MARKER"));
 
             Assert.NotNull(result);
             // Parse pour vérification sémantique (XDocument normalise le
@@ -247,7 +249,7 @@ namespace MathCursor.Tests.Host
             string newOMath = FakeOMath("y_2_via_revert"); // marker test
 
             string result = InlineOMathSplicer.SpliceOMathInDocXml(
-                FullDocPkg(body), 0, "y2", newOMath);
+                FullDocPkg(body), "y2", newOMath);
 
             Assert.NotNull(result);
             Assert.Contains(x2OMath, result); // x_2 OMath byte-à-byte intact
@@ -267,7 +269,7 @@ namespace MathCursor.Tests.Host
             string body = "<w:p><w:r><w:t>f</w:t></w:r></w:p>";
 
             string result = InlineOMathSplicer.SpliceOMathInDocXml(
-                FullDocPkg(body), 0, "f", FakeOMath("f"));
+                FullDocPkg(body), "f", FakeOMath("f"));
 
             Assert.NotNull(result);
             var parsed = XDocument.Parse(result);
@@ -295,7 +297,7 @@ namespace MathCursor.Tests.Host
                 + "</m:oMathPara>";
 
             string result = InlineOMathSplicer.SpliceOMathInDocXml(
-                FullDocPkg(body), 0, "F(x)=1/X", newOMathParaCenterGroup);
+                FullDocPkg(body), "F(x)=1/X", newOMathParaCenterGroup);
 
             Assert.NotNull(result);
             var parsed = XDocument.Parse(result);
@@ -316,7 +318,7 @@ namespace MathCursor.Tests.Host
             string body = "<w:p><w:r><w:t xml:space=\"preserve\">Soit f</w:t></w:r></w:p>";
 
             string result = InlineOMathSplicer.SpliceOMathInDocXml(
-                FullDocPkg(body), 0, "f", FakeOMath("f"));
+                FullDocPkg(body), "f", FakeOMath("f"));
 
             Assert.NotNull(result);
             var parsed = XDocument.Parse(result);
@@ -328,30 +330,22 @@ namespace MathCursor.Tests.Host
         // ─── Cas dégénérés ────────────────────────────────────────────
 
         [Fact]
-        public void Returns_null_when_target_index_out_of_range()
-        {
-            string body = "<w:p><w:r><w:t>x</w:t></w:r></w:p>";
-            string result = InlineOMathSplicer.SpliceOMathInDocXml(
-                FullDocPkg(body), 5, "x", FakeOMath("x"));
-            Assert.Null(result);
-        }
-
-        [Fact]
-        public void Returns_null_when_math_source_not_in_target_para()
+        public void Returns_null_when_math_source_not_in_any_paragraph()
         {
             string body =
                 "<w:p><w:r><w:t>first para</w:t></w:r></w:p>"
                 + "<w:p><w:r><w:t>second para</w:t></w:r></w:p>";
-            // Cherche "absent" dans le 1er ¶ → null.
+            // "absent" n'existe nulle part en queue de <w:p> → null.
             string result = InlineOMathSplicer.SpliceOMathInDocXml(
-                FullDocPkg(body), 0, "absent", FakeOMath("x"));
+                FullDocPkg(body), "absent", FakeOMath("x"));
             Assert.Null(result);
         }
 
         [Fact]
-        public void Targets_correct_paragraph_when_doc_has_multiple()
+        public void Targets_correct_paragraph_by_content_match()
         {
-            // 3 ¶s, on splice dans le 2ème (idx0=1).
+            // 3 ¶s, "f" en queue du 2ème seulement → content-based doit
+            // toucher uniquement le 2ème.
             string body =
                 "<w:p><w:r><w:t>premier</w:t></w:r></w:p>"
                 + "<w:p><w:r><w:t xml:space=\"preserve\">Soit f</w:t></w:r></w:p>"
@@ -359,7 +353,7 @@ namespace MathCursor.Tests.Host
             string newOMath = FakeOMath("f");
 
             string result = InlineOMathSplicer.SpliceOMathInDocXml(
-                FullDocPkg(body), 1, "f", newOMath);
+                FullDocPkg(body), "f", newOMath);
 
             Assert.NotNull(result);
             // Les ¶s 0 et 2 doivent être intacts byte-à-byte.
@@ -396,7 +390,7 @@ namespace MathCursor.Tests.Host
                 + "</w:p>";
 
             string result = InlineOMathSplicer.ReplaceParagraphsInDocXml(
-                fullDocXml, 1, 1, newPara);
+                fullDocXml, new[] { "{ x+2 = 3" }, newPara);
 
             Assert.NotNull(result);
             var parsed = XDocument.Parse(result);
@@ -421,19 +415,19 @@ namespace MathCursor.Tests.Host
         }
 
         [Fact]
-        public void Self_closing_empty_paragraphs_count_in_index()
+        public void Self_closing_empty_paragraphs_are_ignored_by_content_match()
         {
             // Word peut émettre <w:p/> auto-fermant pour les ¶ vides.
-            // Le navigateur XML doit les compter pour que targetIdx0
-            // reste cohérent avec l'ordre des ¶ dans le doc.
+            // Le navigateur content-based ignore les ¶ qui n'ont rien
+            // en queue (pas de <w:r>) — il trouve uniquement celui dont
+            // la queue match mathSource.
             string body =
                 "<w:p><w:r><w:t>premier</w:t></w:r></w:p>"
-                + "<w:p/>" // ¶ vide auto-fermé (idx 1)
-                + "<w:p><w:r><w:t xml:space=\"preserve\">Soit f</w:t></w:r></w:p>"; // idx 2
+                + "<w:p/>" // ¶ vide auto-fermé : ignoré par le splicer
+                + "<w:p><w:r><w:t xml:space=\"preserve\">Soit f</w:t></w:r></w:p>"; // cible
 
-            // On vise le ¶ idx=2 (le self-closing à idx 1 doit compter).
             string result = InlineOMathSplicer.SpliceOMathInDocXml(
-                FullDocPkg(body), 2, "f", FakeOMath("f_NEW"));
+                FullDocPkg(body), "f", FakeOMath("f_NEW"));
 
             Assert.NotNull(result);
             var parsed = XDocument.Parse(result);

@@ -3132,10 +3132,14 @@ namespace MathCursor.Host
         private static string ExtractFirstWPElement(string xml)
             => InlineOMathSplicer.ExtractFirstWPElement(xml);
 
+        // Content-based wrapper : cf. ADR 2026-05-11. On passe les sources
+        // brutes des N ¶s cibles, plus d'index global. Le splicer trouve
+        // les <w:p> par contenu (queue match) et vérifie qu'ils sont
+        // siblings dans le même .Parent (sinon refuse).
         private static string ReplaceParagraphsInDocXml(
-            string fullDocXml, int targetIdx0, int targetCount, string newParaWp)
+            string fullDocXml, System.Collections.Generic.IReadOnlyList<string> paragraphSources, string newParaWp)
             => InlineOMathSplicer.ReplaceParagraphsInDocXml(
-                fullDocXml, targetIdx0, targetCount, newParaWp);
+                fullDocXml, paragraphSources, newParaWp);
 
         /// <summary>
         /// Pattern build-isolated → transplant XML (cf. ADR 04-05). Construit
@@ -3318,8 +3322,12 @@ namespace MathCursor.Host
                                 // absEnd] est purement texte (la math source
                                 // qu'on vient de taper, jamais d'OMath dedans).
 
+                                // Content-based splice : pas d'index, le splicer
+                                // trouve le <w:p> dont la queue match mathSource
+                                // (marche dans body direct, cellule de tableau, SDT).
+                                // Cf. ADR 2026-05-11.
                                 fullDocXmlSpliced = InlineOMathSplicer.SpliceOMathInDocXml(
-                                    fullDocXml, firstTargetIdx0, mathSource, newOMathOnly);
+                                    fullDocXml, mathSource, newOMathOnly);
                                 if (!string.IsNullOrEmpty(fullDocXmlSpliced))
                                 {
                                     LogDiag($"para_splice: ok mathSource=\"{Preview(mathSource)}\" newDocLen={fullDocXmlSpliced.Length}");
@@ -3382,11 +3390,33 @@ namespace MathCursor.Host
                             }
                             else
                             {
+                                // Construit la liste des sources brutes des N ¶s
+                                // cibles dans l'ordre du doc (haut en bas). Le
+                                // splicer content-based identifie les <w:p> par
+                                // queue de contenu + siblings dans même .Parent.
+                                // Cf. ADR 2026-05-11.
+                                var paragraphSources = new System.Collections.Generic.List<string>(targetCount);
+                                for (int pi = 0; pi < targetCount; pi++)
+                                {
+                                    string rawText = doc.Paragraphs[firstTargetIdx0 + 1 + pi].Range.Text ?? "";
+                                    // Strip ¶ mark (\r) ou cell end (\a) éventuel
+                                    // en queue — ce qu'on veut, c'est la source
+                                    // brute typée par l'user.
+                                    while (rawText.Length > 0
+                                        && (rawText[rawText.Length - 1] == '\r'
+                                            || rawText[rawText.Length - 1] == '\a'
+                                            || rawText[rawText.Length - 1] == '\v'))
+                                    {
+                                        rawText = rawText.Substring(0, rawText.Length - 1);
+                                    }
+                                    paragraphSources.Add(rawText);
+                                }
+
                                 string modifiedDocXml = ReplaceParagraphsInDocXml(
-                                    fullDocXml, firstTargetIdx0, targetCount, newParaWp);
+                                    fullDocXml, paragraphSources, newParaWp);
                                 if (string.IsNullOrEmpty(modifiedDocXml))
                                 {
-                                    LogDiag("insert_transplant: failed to splice doc XML");
+                                    LogDiag("insert_transplant: failed to splice doc XML (no match for paragraph sources)");
                                 }
                                 else
                                 {

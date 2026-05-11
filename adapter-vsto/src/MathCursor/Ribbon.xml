@@ -3,33 +3,146 @@
   <ribbon>
     <tabs>
       <!--
-        Group MathCursor placé dans l'onglet Accueil de Word (cf. ADR
-        2026-05-06-Feat-ribbon-pane-examples-pivot, qui supersede 2026-05-05).
-        Onglet dédié écarté car visuellement vide (2 boutons), pivot vers
-        intégration discrète dans TabHome.
+        Onglet Accueil (TabHome) : duo immédiat utile (cf. ADR
+        2026-05-11-Feat-ribbon-home-duo-plus-dedicated-tab). On garde
+        seulement Convertir + Colonnes ici, le reste va dans l'onglet
+        dédié MathCursor.
       -->
       <tab idMso="TabHome">
-        <group id="MathCursorToolsGroup" getLabel="OnGetToolsGroupLabel">
-          <!-- Bouton Cheatsheet retiré temporairement : le pane planté en
-               l'état (refonte galerie d'exemples en cours, cf. ADR
-               2026-05-06-Feat-ribbon-pane-examples-pivot). Réintégrer en
-               "Exemples" quand la refonte sera livrée. Icône mortier
-               préservée dans Resources/cheatsheet{16,32}.png + script de
-               régénération dans tools/icons/. -->
-          <button id="ReportIssueButton"
+        <group id="MathCursorHomeGroup" getLabel="OnGetHomeGroupLabel">
+          <button id="ConvertHomeButton"
+                  getLabel="OnGetConvertButtonLabel"
+                  getScreentip="OnGetConvertButtonScreentip"
+                  size="large"
+                  imageMso="EquationInsert"
+                  onAction="OnConvertClicked" />
+          <menu id="ColumnsHomeMenu"
+                getLabel="OnGetColumnsMenuLabel"
+                getScreentip="OnGetColumnsMenuScreentip"
+                size="large"
+                imageMso="ColumnsTwo">
+            <button id="InsertColumns1Button"
+                    getLabel="OnGetColumns1Label"
+                    imageMso="ColumnsOne"
+                    onAction="OnInsertColumnsClicked" />
+            <button id="InsertColumns2Button"
+                    getLabel="OnGetColumns2Label"
+                    imageMso="ColumnsTwo"
+                    onAction="OnInsertColumnsClicked" />
+            <button id="InsertColumns3Button"
+                    getLabel="OnGetColumns3Label"
+                    imageMso="ColumnsThree"
+                    onAction="OnInsertColumnsClicked" />
+            <button id="InsertColumns4Button"
+                    getLabel="OnGetColumns4Label"
+                    imageMso="ColumnsThree"
+                    onAction="OnInsertColumnsClicked" />
+          </menu>
+        </group>
+      </tab>
+
+      <!--
+        Onglet dédié MathCursor : galerie complète (4 sous-groupes).
+        Cf. ADR 2026-05-11.
+      -->
+      <tab id="MathCursorTab" getLabel="OnGetMathCursorTabLabel">
+        <!-- Groupe Saisie -->
+        <group id="MathCursorInputGroup" getLabel="OnGetInputGroupLabel">
+          <button id="ConvertTabButton"
+                  getLabel="OnGetConvertButtonLabel"
+                  getScreentip="OnGetConvertButtonScreentip"
+                  size="large"
+                  imageMso="EquationInsert"
+                  onAction="OnConvertClicked" />
+          <button id="CheatsheetButton"
+                  getLabel="OnGetCheatsheetButtonLabel"
+                  getScreentip="OnGetCheatsheetButtonScreentip"
+                  getEnabled="OnGetCheatsheetEnabled"
+                  size="large"
+                  imageMso="HelpFile"
+                  onAction="OnCheatsheetClicked" />
+        </group>
+
+        <!-- Groupe Mise en page -->
+        <group id="MathCursorLayoutGroup" getLabel="OnGetLayoutGroupLabel">
+          <menu id="ColumnsTabMenu"
+                getLabel="OnGetColumnsMenuLabel"
+                getScreentip="OnGetColumnsMenuScreentip"
+                size="large"
+                imageMso="ColumnsTwo">
+            <button id="InsertColumns1TabButton"
+                    getLabel="OnGetColumns1Label"
+                    imageMso="ColumnsOne"
+                    onAction="OnInsertColumnsClicked" />
+            <button id="InsertColumns2TabButton"
+                    getLabel="OnGetColumns2Label"
+                    imageMso="ColumnsTwo"
+                    onAction="OnInsertColumnsClicked" />
+            <button id="InsertColumns3TabButton"
+                    getLabel="OnGetColumns3Label"
+                    imageMso="ColumnsThree"
+                    onAction="OnInsertColumnsClicked" />
+            <button id="InsertColumns4TabButton"
+                    getLabel="OnGetColumns4Label"
+                    imageMso="ColumnsThree"
+                    onAction="OnInsertColumnsClicked" />
+          </menu>
+        </group>
+
+        <!-- Groupe Constructions (roadmap, boutons grisés) -->
+        <group id="MathCursorConstructionsGroup" getLabel="OnGetConstructionsGroupLabel">
+          <button id="ConstructionSignTableButton"
+                  getLabel="OnGetConstructionSignTableLabel"
+                  getScreentip="OnGetConstructionComingSoonScreentip"
+                  getEnabled="OnGetConstructionEnabled"
+                  size="normal"
+                  imageMso="TableInsertDialogWord" />
+          <button id="ConstructionVariationTableButton"
+                  getLabel="OnGetConstructionVariationTableLabel"
+                  getScreentip="OnGetConstructionComingSoonScreentip"
+                  getEnabled="OnGetConstructionEnabled"
+                  size="normal"
+                  imageMso="ChartTypeLineChart" />
+          <button id="ConstructionCurveButton"
+                  getLabel="OnGetConstructionCurveLabel"
+                  getScreentip="OnGetConstructionComingSoonScreentip"
+                  getEnabled="OnGetConstructionEnabled"
+                  size="normal"
+                  imageMso="ChartTypeXYScatterChart" />
+          <button id="ConstructionFigureButton"
+                  getLabel="OnGetConstructionFigureLabel"
+                  getScreentip="OnGetConstructionComingSoonScreentip"
+                  getEnabled="OnGetConstructionEnabled"
+                  size="normal"
+                  imageMso="ShapeRectangle" />
+        </group>
+
+        <!-- Groupe Outils -->
+        <group id="MathCursorToolsTabGroup" getLabel="OnGetToolsTabGroupLabel">
+          <button id="SettingsButton"
+                  getLabel="OnGetSettingsButtonLabel"
+                  getScreentip="OnGetSettingsButtonScreentip"
+                  size="normal"
+                  imageMso="ApplicationOptionsDialog"
+                  onAction="OnSettingsClicked" />
+          <button id="ReportIssueTabButton"
                   getLabel="OnGetReportButtonLabel"
                   getScreentip="OnGetReportButtonScreentip"
-                  size="large"
+                  size="normal"
                   imageMso="WarningOriginal"
                   onAction="OnReportIssueClicked" />
-          <!-- Pane debug Context Inspector (cf. brief 2026-05-07-global-context-multi-zoom-ranking).
-               Outil de validation visuelle du scoring contextuel multi-zoom. -->
-          <button id="ContextInspectorButton"
+          <button id="ContextInspectorTabButton"
                   getLabel="OnGetContextInspectorButtonLabel"
                   getScreentip="OnGetContextInspectorButtonScreentip"
-                  size="large"
+                  size="normal"
                   imageMso="WatchWindow"
                   onAction="OnContextInspectorClicked" />
+          <button id="AboutButton"
+                  getLabel="OnGetAboutButtonLabel"
+                  getScreentip="OnGetAboutButtonScreentip"
+                  size="normal"
+                  imageMso="FileDocumentInspect"
+                  onAction="OnAboutClicked" />
         </group>
       </tab>
     </tabs>

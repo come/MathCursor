@@ -294,6 +294,8 @@
     <Compile Include="Host\ListModeStateMachine.cs" />
     <Compile Include="Host\OMathParaJcPatcher.cs" />
     <Compile Include="Host\InlineOMathSplicer.cs" />
+    <Compile Include="Host\ParagraphTextExtractor.cs" />
+    <Compile Include="Host\ColumnLayoutInserter.cs" />
     <Compile Include="Host\RevertedZoneMerger.cs" />
     <Compile Include="Host\SuggestionService.cs" />
     <Compile Include="Host\WordContextReader.cs" />
