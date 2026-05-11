@@ -30,6 +30,15 @@ namespace MathCursor.Core.Lattice
             { "frac",      "frac" },
             { "vec",       "vec" },
             { "vecteur",   "vec" },
+            // Angle (notation chapeau française). Cf. ADR
+            // 2026-05-11-Feat-angle-notation-caret-and-keyword.
+            // `angle(...)` est la syntaxe explicite ; le marqueur `^` en
+            // position fresh est géré au niveau ScanAngleNotation
+            // (substitution `^X` → `angle X` avant lex).
+            { "angle",     "angle" },
+            { "hat",       "angle" },
+            { "widehat",   "angle" },
+            { "chapeau",   "angle" },
             { "inf",       "infinity" },
             { "infini",    "infinity" },
             { "forall",    "forall" },

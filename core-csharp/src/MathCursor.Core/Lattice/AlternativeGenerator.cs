@@ -233,6 +233,10 @@ namespace MathCursor.Core.Lattice
         {
             var matches = new List<AmbiguityMatch>();
             var consumed = new bool[topLatex.Length];
+            // 0) Angle 2-lettres (default avec placeholder) AVANT toute autre
+            //    scan : on ne veut PAS que ScanUppercaseSequences capture les
+            //    `AB` à l'intérieur de `\widehat{AB\square}` et propose vec.
+            ScanAngleTwoLetterPlaceholder(topAst, topLatex, matches, consumed);
             // 1) Patterns AST-based (Sup d'une lettre par un nombre, etc.)
             CollectAllMatchesRec(topAst, topLatex, matches, consumed);
             // 2) Patterns STRING-based sur le LaTeX rendu : séquences de
@@ -273,6 +277,9 @@ namespace MathCursor.Core.Lattice
             //    qui tapent `3.4` pour "trois virgule quatre" de switcher
             //    rapidement.
             ScanDecimalVsMultiplication(source, topLatex, matches, consumed);
+            // Angle 2-lettres : scan déplacé en étape (0) tout en haut
+            // pour passer avant ScanUppercaseSequences qui capterait les
+            // `AB` dans le rendu `\widehat{AB\square}`.
             // Tri : priorité aux règles structurantes (V→∀, E→∃ qui changent
             // la sémantique globale) puis aux règles locales (canonical-set,
             // AB→vec, x²→x_2). En cas d'égalité de priorité, rightmost first
@@ -325,6 +332,9 @@ namespace MathCursor.Core.Lattice
             // Plus haut que tight-chain-extension (4) parce que la confusion
             // décimal/mult a un impact plus fort sur le rendu visuel.
             RuleDecimalVsMultiplication => 3,
+            // Angle 2-lettres : priorité 3 (sémantique = nb de lettres dans le
+            // chapeau). Plus haut que tight-chain-extension.
+            RuleAngleTwoLetterPlaceholder => 3,
             _ => 99,
         };
 
@@ -574,6 +584,39 @@ namespace MathCursor.Core.Lattice
         }
 
         private static bool IsDigit(char c) => c >= '0' && c <= '9';
+
+        /// <summary>
+        /// Walk l'AST top-1, détecte les nodes <see cref="Angle"/> avec
+        /// <c>HasPlaceholder=true</c> (= 2-lettres défaulté avec invite à
+        /// compléter), et propose en alt le rendu sans placeholder (= angle
+        /// littéral 2 lettres).
+        /// </summary>
+        private static void ScanAngleTwoLetterPlaceholder(AstNode topAst, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            if (topAst == null || string.IsNullOrEmpty(topLatex)) return;
+            // V1 : on ne gère que l'angle top-level (pas nested), suffisant
+            // pour `^AB` ou `angle(AB)` en zone unique. Le pattern user
+            // typique est l'angle isolé, pas en expression composée.
+            if (topAst is not Angle a) return;
+            if (!a.HasPlaceholder) return;
+            // Position : tout le topLatex est l'angle.
+            for (int i = 0; i < topLatex.Length; i++)
+                if (consumed[i]) return;
+            string defaultLatex = topLatex; // `\widehat{AB\square}` rendu par LatexRenderer
+            string literalLatex = $"\\widehat{{{a.Name}}}";
+            if (defaultLatex == literalLatex) return; // pas d'ambig à proposer
+            var spot = new AmbiguitySpot(
+                RuleAngleTwoLetterPlaceholder,
+                defaultLatex,
+                new[]
+                {
+                    new AmbiguityAlternative(defaultLatex, mutation: null),  // default avec carré
+                    new AmbiguityAlternative(literalLatex, mutation: null),  // alt sans
+                });
+            for (int i = 0; i < topLatex.Length; i++) consumed[i] = true;
+            output.Add(new AmbiguityMatch(spot, 0, topLatex.Length));
+        }
 
         /// <summary>Re-parse avec les flags spécifiés. Retourne le LaTeX, ou null si erreur.</summary>
         private static string? TryReparse(string source, bool tightExtendsToOps, bool flipAsterisk)
@@ -1084,6 +1127,10 @@ namespace MathCursor.Core.Lattice
         // Concerne UNIQUEMENT le pattern `\d+\.\d+` (deux nombres séparés
         // par `.`). Lettres ou expressions ne déclenchent pas cette règle.
         public const string RuleDecimalVsMultiplication = "decimal-vs-multiplication";
+        // Angle 2-lettres avec placeholder. Default `\widehat{AB\square}` (= invite
+        // à compléter), alt `\widehat{AB}` (= angle littéral 2 lettres). Cf. ADR
+        // 2026-05-11-Feat-angle-notation-caret-and-keyword.
+        public const string RuleAngleTwoLetterPlaceholder = "angle-two-letter-placeholder";
 
         /// <summary>
         /// Simule l'application d'une <see cref="SourceMutation"/> sur la

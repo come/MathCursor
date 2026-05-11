@@ -1396,6 +1396,35 @@ namespace MathCursor.Core.Lattice
                     }
                     return new Vec(name.Length > 0 ? name : null);
                 }
+                case "angle":
+                case "hat":
+                case "widehat":
+                case "chapeau":
+                {
+                    // Consomme les identifiants suivants (lettres collées,
+                    // potentiellement entre parens).
+                    var name = string.Empty;
+                    bool openParen = false;
+                    if (Peek() is { Type: EdgeType.Op, Value: "(" })
+                    {
+                        Consume();
+                        openParen = true;
+                    }
+                    while (Peek() is { Type: EdgeType.Ident } id)
+                    {
+                        name += id.Value;
+                        Consume();
+                    }
+                    if (openParen && Peek() is { Type: EdgeType.Op, Value: ")" })
+                        Consume();
+                    // 2 lettres exactement → on défaulte avec un placeholder
+                    // pour inviter visuellement à compléter le 3ème point
+                    // (cf. ADR 2026-05-11-Feat-angle-notation-caret-and-keyword).
+                    // AlternativeGenerator proposera l'alt sans placeholder
+                    // (= angle littéral 2 lettres) dans la popup.
+                    bool placeholder = name.Length == 2;
+                    return new Angle(name, hasPlaceholder: placeholder);
+                }
                 case "inf":
                 case "infini":
                 case "infinity":

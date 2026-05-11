@@ -20,6 +20,7 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-05-11
+- `[molle]` Feat — [Notation d'angle au clavier : `^A`/`^ABC` et `angle(...)`](2026-05-11-Feat-angle-notation-caret-and-keyword.md)
 - `[molle]` Feat — [Duo Convertir/Colonnes dans TabHome + onglet "MathCursor" dédié pour le reste](2026-05-11-Feat-ribbon-home-duo-plus-dedicated-tab.md)
 - `[forte]` Fix — [Commit groupé dans un seul `UndoRecord` Word](2026-05-11-Fix-commit-grouped-in-single-undo-record.md)
 - `[forte]` Refactor — [Lecture du paragraphe courant via `Range.WordOpenXML` (pas `Range.Text`)](2026-05-11-Refactor-paragraph-reader-via-xml.md)

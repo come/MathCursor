@@ -112,6 +112,24 @@ namespace MathCursor.Core.Lattice.Ast
         public Vec(string? name) { Name = name; }
     }
 
+    /// <summary>
+    /// Angle (notation chapeau française). Nom = chaîne de 1+ lettres :
+    /// 1 lettre → <c>\hat{X}</c>, 2+ lettres → <c>\widehat{XYZ}</c>.
+    /// Sentinelle vide possible <c>HasPlaceholder=true</c> → on émet un
+    /// <c>\square</c> en fin de Name pour signaler une lettre manquante
+    /// (cas user 2026-05-11 : <c>^AB</c> = popup avec carré pending).
+    /// </summary>
+    public sealed class Angle : AstNode
+    {
+        public string Name { get; }
+        public bool HasPlaceholder { get; }
+        public Angle(string name, bool hasPlaceholder = false)
+        {
+            Name = name ?? string.Empty;
+            HasPlaceholder = hasPlaceholder;
+        }
+    }
+
     /// <summary>Fonction nommée : sin, cos, ln, exp…</summary>
     public sealed class Func : AstNode
     {

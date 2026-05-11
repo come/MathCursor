@@ -42,6 +42,7 @@ namespace MathCursor.Core.Lattice
             Frac f => $"\\frac{{{Render(Unwrap(f.Num))}}}{{{Render(Unwrap(f.Den))}}}",
             Sqrt sq => $"\\sqrt{{{Render(Unwrap(sq.Arg))}}}",
             Vec v => v.Name != null ? $"\\vec{{{v.Name}}}" : $"\\vec{{{HoleLatex}}}",
+            Angle a => RenderAngle(a),
             Func fn => RenderFunc(fn),
             Sum sum => RenderSum(sum),
             Lim lim => $"\\lim_{{{Render(lim.Var)} \\to {Render(Unwrap(lim.Target))}}} {Render(lim.Body)}",
@@ -166,6 +167,28 @@ namespace MathCursor.Core.Lattice
             "<==" or "⇐" or "⟸" => "\\Leftarrow",
             _ => op,
         };
+
+        /// <summary>
+        /// Rendu d'un angle (notation chapeau française) :
+        /// <list type="bullet">
+        /// <item>1 lettre → <c>\hat{X}</c></item>
+        /// <item>2+ lettres → <c>\widehat{XYZ}</c></item>
+        /// <item><c>HasPlaceholder=true</c> → on ajoute un <c>\square</c>
+        /// dans le nom rendu, signalant à l'utilisateur qu'une lettre
+        /// manque (ex. <c>^AB</c> → <c>\widehat{AB\square}</c>).</item>
+        /// </list>
+        /// Cf. ADR <c>2026-05-11-Feat-angle-notation-caret-and-keyword</c>.
+        /// </summary>
+        private static string RenderAngle(Angle a)
+        {
+            string name = a.Name ?? string.Empty;
+            string rendered = a.HasPlaceholder ? name + "\\square " : name;
+            // 1 lettre (sans placeholder) → \hat. Sinon \widehat (cas
+            // multi-lettres OU 1 lettre + placeholder = 2 chars visuels).
+            bool useWide = a.HasPlaceholder || name.Length >= 2;
+            string cmd = useWide ? "widehat" : "hat";
+            return $"\\{cmd}{{{rendered}}}";
+        }
 
         private static string RenderFunc(Func fn)
         {

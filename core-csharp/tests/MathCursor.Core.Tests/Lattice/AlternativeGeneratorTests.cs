@@ -713,6 +713,102 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.Contains("x_{x+1}", alts);
         }
 
+        // ---- Notation d'angle (ADR 2026-05-11-Feat-angle-notation-caret-and-keyword) ----
+
+        [Fact]
+        public void Angle_caret_single_letter_renders_hat()
+        {
+            // `^A` → \hat{A} (1 lettre, pas de popup ambig)
+            var r = _engine.ConvertWithAmbiguity("^A");
+            Assert.Equal("\\hat{A}", r.TopLatex);
+        }
+
+        [Fact]
+        public void Angle_caret_single_lowercase_letter_renders_hat()
+        {
+            // `^a` → \hat{a} (la casse n'importe pas, user a confirmé)
+            var r = _engine.ConvertWithAmbiguity("^a");
+            Assert.Equal("\\hat{a}", r.TopLatex);
+        }
+
+        [Fact]
+        public void Angle_caret_two_letters_default_has_placeholder()
+        {
+            // `^AB` (2 lettres) : default avec \square invitant à compléter
+            // le 3ème point, alt = \widehat{AB} littéral.
+            var r = _engine.ConvertWithAmbiguity("^AB");
+            Assert.Equal("\\widehat{AB\\square }", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleAngleTwoLetterPlaceholder, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            Assert.Contains("\\widehat{AB\\square }", alts);
+            Assert.Contains("\\widehat{AB}", alts);
+        }
+
+        [Fact]
+        public void Angle_keyword_two_letters_default_has_placeholder()
+        {
+            // `angle(AB)` (2 lettres) : même ambig que `^AB`.
+            var r = _engine.ConvertWithAmbiguity("angle(AB)");
+            Assert.Equal("\\widehat{AB\\square }", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleAngleTwoLetterPlaceholder, r.Spot!.RuleId);
+        }
+
+        [Fact]
+        public void Angle_caret_three_letters_renders_widehat()
+        {
+            // `^ABC` → \widehat{ABC} (notation angle complète, 3 points)
+            var r = _engine.ConvertWithAmbiguity("^ABC");
+            Assert.Equal("\\widehat{ABC}", r.TopLatex);
+        }
+
+        [Fact]
+        public void Angle_caret_four_letters_renders_widehat()
+        {
+            // `^ABCD` → \widehat{ABCD} (4+ lettres, rare mais valide)
+            var r = _engine.ConvertWithAmbiguity("^ABCD");
+            Assert.Equal("\\widehat{ABCD}", r.TopLatex);
+        }
+
+        [Fact]
+        public void Angle_keyword_paren_renders_widehat()
+        {
+            // `angle(ABC)` → \widehat{ABC} (syntaxe explicite)
+            var r = _engine.ConvertWithAmbiguity("angle(ABC)");
+            Assert.Equal("\\widehat{ABC}", r.TopLatex);
+        }
+
+        [Fact]
+        public void Angle_keyword_paren_single_letter_renders_hat()
+        {
+            // `angle(A)` → \hat{A}
+            var r = _engine.ConvertWithAmbiguity("angle(A)");
+            Assert.Equal("\\hat{A}", r.TopLatex);
+        }
+
+        [Fact]
+        public void Caret_after_atom_stays_superscript_unchanged()
+        {
+            // `x^2` reste l'exposant (= comportement actuel). Le `^` n'est
+            // PAS en position fresh (`x` à gauche), donc pas d'angle.
+            var r = _engine.ConvertWithAmbiguity("x^2");
+            Assert.Equal("x^{2}", r.TopLatex);
+        }
+
+        [Fact]
+        public void Caret_after_space_then_letter_is_angle()
+        {
+            // `x ^A` (avec espace) → x \hat{A} : le `^` est fresh après
+            // l'espace, donc angle. Le `x` reste à part.
+            var r = _engine.ConvertWithAmbiguity("x ^A");
+            // L'output exact dépend du parsing du `x` + concat avec
+            // l'angle. Au minimum on doit voir `\hat{A}` quelque part
+            // et pas un `x^{A}`.
+            Assert.Contains("\\hat{A}", r.TopLatex);
+            Assert.DoesNotContain("x^{A}", r.TopLatex);
+        }
+
         [Fact]
         public void Tight_chain_extension_3star4_over_5star6_proposes_extended_denom()
         {

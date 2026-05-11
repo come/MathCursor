@@ -41,7 +41,7 @@ namespace MathCursor.Core
             if (string.IsNullOrWhiteSpace(rawSpan))
                 return System.Array.Empty<LatexSuggestion>();
 
-            var trimmed = AutoBalanceDelimiters(NormalizeUnicodeSubSup(rawSpan.Trim()));
+            var trimmed = AutoBalanceDelimiters(NormalizeAngleCaret(NormalizeUnicodeSubSup(rawSpan.Trim())));
             var edges = Lexer.Lex(trimmed);
             var paths = LatticePathFinder.TopK(edges, trimmed.Length, TopKWidth);
             if (paths.Count == 0)
@@ -112,7 +112,7 @@ namespace MathCursor.Core
             if (string.IsNullOrWhiteSpace(rawSpan))
                 return new AmbiguityResult(string.Empty, null, null, null);
 
-            var trimmed = AutoBalanceDelimiters(NormalizeUnicodeSubSup(rawSpan.Trim()));
+            var trimmed = AutoBalanceDelimiters(NormalizeAngleCaret(NormalizeUnicodeSubSup(rawSpan.Trim())));
             var edges = Lexer.Lex(trimmed);
             var paths = LatticePathFinder.TopK(edges, trimmed.Length, TopKWidth);
             if (paths.Count == 0)
@@ -183,6 +183,63 @@ namespace MathCursor.Core
         /// au lexer (qui ne connaît que ^ et _) de reconnaître les conventions
         /// typographiques tapées via le clavier français étendu.
         /// </summary>
+        /// <summary>
+        /// Substitue <c>^[a-zA-Z]+</c> en position "fresh" (début de zone
+        /// OU précédé d'espace OU précédé d'un opérateur math) par
+        /// <c>angle X</c> — le mot-clé que le parser reconnaît comme un
+        /// nœud <see cref="MathCursor.Core.Lattice.Ast.Angle"/>.
+        ///
+        /// <para>Position "fresh" : on considère que <c>^</c> est un
+        /// marqueur d'angle si rien à gauche (sauf espace/op math) ne
+        /// peut servir de base à un exposant. Si à gauche on a une lettre/
+        /// chiffre/fermant, <c>^</c> reste l'opérateur exposant historique
+        /// (<c>x^2</c> = puissance, inchangé).</para>
+        ///
+        /// <para>Cf. ADR <c>2026-05-11-Feat-angle-notation-caret-and-keyword</c>.</para>
+        /// </summary>
+        internal static string NormalizeAngleCaret(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return input ?? string.Empty;
+            // Test rapide : pas de `^` → return tel quel.
+            if (input.IndexOf('^') < 0) return input;
+
+            var sb = new System.Text.StringBuilder(input.Length + 8);
+            int i = 0;
+            while (i < input.Length)
+            {
+                if (input[i] != '^') { sb.Append(input[i]); i++; continue; }
+                // Test position fresh : on regarde le char à gauche (ou
+                // début de chaîne). Fresh = whitespace, opérateur math, ou
+                // début. Tout autre (lettre, chiffre, `}`, `)`) = exposant
+                // classique → on laisse le `^` tel quel.
+                bool fresh;
+                if (i == 0) { fresh = true; }
+                else
+                {
+                    char prev = input[i - 1];
+                    fresh = char.IsWhiteSpace(prev)
+                        || prev == '+' || prev == '-' || prev == '*' || prev == '/'
+                        || prev == '=' || prev == '<' || prev == '>'
+                        || prev == ',' || prev == ';' || prev == '(' || prev == '[';
+                }
+                if (!fresh) { sb.Append('^'); i++; continue; }
+                // Lookhead : doit être suivi d'au moins une lettre.
+                int j = i + 1;
+                while (j < input.Length && IsAsciiLetter(input[j])) j++;
+                int letterCount = j - (i + 1);
+                if (letterCount == 0) { sb.Append('^'); i++; continue; }
+                // Substitue `^XYZ` → `angle XYZ` (espace pour que le lexer
+                // sépare le keyword du nom).
+                sb.Append("angle ");
+                sb.Append(input, i + 1, letterCount);
+                i = j;
+            }
+            return sb.ToString();
+        }
+
+        private static bool IsAsciiLetter(char c)
+            => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+
         private static string NormalizeUnicodeSubSup(string input)
         {
             if (string.IsNullOrEmpty(input)) return input ?? string.Empty;
