@@ -18,10 +18,20 @@ namespace MathCursor.Core.Resolution.Signals
     /// </summary>
     public sealed class ParagraphResolutionsSignal : IContextSignal
     {
-        // Score par pin du ¶. Plus discret qu'un vote sidecar (le ¶ peut
-        // contenir des résolutions non liées à la zone courante, on
-        // contribue mais on ne domine pas).
+        // Poids du pin le plus récent (= le dernier ajouté). Les pins plus
+        // anciens ont un poids moindre via décay exponentiel — voir Lambda.
         private const double PinWeight = 1.0;
+
+        // Décay exponentiel : weight = PinWeight * exp(-distance * Lambda),
+        // où distance = (n - 1 - i) (= distance au plus récent).
+        // Lambda = 0.5 → demi-vie ~1.4 pins. Le plus récent = 1.0,
+        // l'avant-dernier ≈ 0.61, l'antépénultième ≈ 0.37.
+        //
+        // Effet « muscler le plus proche » (demande user 2026-05-07) :
+        // si AB→vec (ancien) et CD→paren (récent), paren gagne sur la
+        // prochaine ambig (= 1.0 vs 0.61). Si vec×3 anciens vs paren×1
+        // récent, vec garde l'avantage de peu (cumul historique).
+        private const double Lambda = 0.5;
 
         public string Name => "ParagraphResolutions";
 
@@ -32,18 +42,23 @@ namespace MathCursor.Core.Resolution.Signals
             var deltas = new Dictionary<string, double>();
             if (ctx?.RecentParagraphPins == null) return deltas;
 
-            // Aggrège par (rule, alt) en cumulant les pins du ¶.
-            // Les pins du même (rule, alt) s'additionnent (3 résolutions vec
-            // dans le ¶ → boost plus fort qu'une seule).
-            foreach (var pin in ctx.RecentParagraphPins)
+            int n = ctx.RecentParagraphPins.Count;
+            for (int i = 0; i < n; i++)
             {
+                var pin = ctx.RecentParagraphPins[i];
                 if (pin == null || string.IsNullOrEmpty(pin.Rule)) continue;
                 if (pin.AltIdx < 0) continue;
+
+                // Distance au plus récent : i = n-1 → distance 0 (max).
+                // Décay exponentiel donne du poids au récent.
+                int distance = n - 1 - i;
+                double weight = PinWeight * System.Math.Exp(-distance * Lambda);
+
                 string key = ScoringHints.Key(pin.Rule, pin.AltIdx);
                 if (deltas.TryGetValue(key, out double current))
-                    deltas[key] = current + PinWeight;
+                    deltas[key] = current + weight;
                 else
-                    deltas[key] = PinWeight;
+                    deltas[key] = weight;
             }
             return deltas;
         }
