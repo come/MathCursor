@@ -67,6 +67,11 @@ namespace MathCursor.Core.Tests
         // Variantes sans espace (déjà ok avant le fix, anti-rechute).
         [InlineData("2\\cdot4", "2⋅4")]
         [InlineData("3\\times5", "3×5")]
+        // Espace AVANT \cdot/\times aussi consommé (cf. AlternativeGenerator
+        // émet ` \\cdot ` pour produit scalaire vec).
+        [InlineData("\\vec{a} \\cdot \\vec{b}", "a⃗⋅b⃗")]
+        [InlineData("1 \\cdot 2", "1⋅2")]
+        [InlineData("a \\times b", "a×b")]
         // v0.5.2 : `\int` était rendu `∈t` au lieu de `∫`. Cause : ordre des
         // règles dans LiteralReplacements appliquait `\in → ∈` avant `\int → ∫`.
         [InlineData("\\int", "∫")]

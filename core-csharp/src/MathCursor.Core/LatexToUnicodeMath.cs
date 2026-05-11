@@ -400,13 +400,19 @@ namespace MathCursor.Core
                 new KeyValuePair<string, string>("\\emptyset", "∅"),
                 new KeyValuePair<string, string>("\\partial", "∂"),
                 new KeyValuePair<string, string>("\\nabla", "∇"),
-                // Multiplications : on consomme aussi l'espace de séparation
-                // LaTeX (le terminateur de commande). Sinon `2\cdot 4` →
-                // `2⋅ 4` avec espace visible dans Word OMath (bug user
-                // 2026-05-09). Variante sans espace en fallback.
+                // Multiplications : on consomme tous les espaces parasites
+                // autour (séparateur LaTeX trailing et leading). Sinon
+                // `2\cdot 4` → `2⋅ 4` (bug 2026-05-09 trailing) ou
+                // `\vec{a} \cdot \vec{b}` → `a⃗ ⋅b⃗` (leading) avec
+                // espaces visibles dans Word OMath. Ordre : variantes les
+                // plus spécifiques d'abord.
+                new KeyValuePair<string, string>(" \\times ", "×"),
                 new KeyValuePair<string, string>("\\times ", "×"),
+                new KeyValuePair<string, string>(" \\times", "×"),
                 new KeyValuePair<string, string>("\\times", "×"),
+                new KeyValuePair<string, string>(" \\cdot ", "⋅"),
                 new KeyValuePair<string, string>("\\cdot ", "⋅"),
+                new KeyValuePair<string, string>(" \\cdot", "⋅"),
                 new KeyValuePair<string, string>("\\cdot", "⋅"),
                 new KeyValuePair<string, string>("\\circ", "∘"),
                 new KeyValuePair<string, string>("\\otimes", "⊗"),
