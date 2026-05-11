@@ -368,14 +368,9 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.Equal("\\exists ", c.Value);
         }
 
-        [Fact]
-        public void In_arrow_keyboard_alias_yields_in_const()
-        {
-            // (- (clavier, multi-char) est un alias de `in` qui rend ` \in `
-            var ast = ParseTop("(-");
-            var c = Assert.IsType<Const>(ast);
-            Assert.Equal(" \\in ", c.Value);
-        }
+        // (Anciennement : In_arrow_keyboard_alias_yields_in_const — testait
+        // le raccourci `(-` → `\in`. Retiré 2026-05-11 car faux positif
+        // sur la mult implicite `x(-2x+3)`.)
 
         // ------------------ FuncDef (ADR 29-04 function-definition) ------------------
 

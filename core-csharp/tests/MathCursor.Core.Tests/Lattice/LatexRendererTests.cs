@@ -288,8 +288,10 @@ namespace MathCursor.Core.Tests.Lattice
         // ------------------ Quantificateurs ------------------
 
         // Décomposition modulaire (cf. ADR 29-04 supersedes scope du 28-04) :
-        // forall + var + dans/in/(- + set se composent naturellement par
-        // juxtaposition, sans nœud Quant ni grammaire scope.
+        // forall + var + dans/in + set se composent naturellement par
+        // juxtaposition, sans nœud Quant ni grammaire scope. (Le raccourci
+        // clavier `(-` pour `\in` a été retiré le 2026-05-11 — faux positif
+        // sur la mult implicite `x(-2x+3)`.)
 
         [Fact]
         public void Forall_alone_renders_just_forall()
@@ -311,9 +313,14 @@ namespace MathCursor.Core.Tests.Lattice
             => Assert.Equal("\\forall x \\in R", RenderTop("forall x in R"));
 
         [Fact]
-        public void Forall_x_arrow_R_keyboard_alias()
-            // forall x (- R : `(-` est l'alias clavier de \in
-            => Assert.Equal("\\forall x \\in R", RenderTop("forall x (- R"));
+        public void Mult_implicit_with_negative_does_not_become_in_operator()
+        {
+            // Bug user 2026-05-11 : `x(-2x+3)` (mult implicite avec négatif)
+            // était parsé comme `x ∈ ...` à cause du raccourci `(-` pour
+            // `\in`. Raccourci retiré → la sortie ne doit PAS contenir `\in`.
+            var result = RenderTop("x(-2x+3)");
+            Assert.DoesNotContain("\\in", result);
+        }
 
         [Fact]
         public void Exists_y_dans_N_via_juxtaposition()
@@ -345,7 +352,7 @@ namespace MathCursor.Core.Tests.Lattice
         [Fact]
         public void Interval_in_forall_set_explicit_in()
         {
-            // Décomposition modulaire (ADR 29-04) : il faut taper `dans`/`in`/`(-`
+            // Décomposition modulaire (ADR 29-04) : il faut taper `dans`/`in`
             // explicitement entre var et set. Sans, c'est juste une mult implicite.
             Assert.Equal("\\forall x \\in [0,1]", RenderTop("forall x dans [0,1]"));
         }
@@ -786,12 +793,52 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.DoesNotContain("\\begin{align*}", result);
         }
 
-        [Fact(DisplayName = "Cases sans espace après `{` : pas de match (set en extension)")]
+        [Fact(DisplayName = "Set fermé par `}` (`{1, 2}`) : pas un cases")]
         public void Cases_strict_space_required()
         {
             // `{1, 2}` est un set en extension, PAS un système.
-            // La règle « { + espace » du parser cases doit refuser ce match.
+            // Critère (2026-05-11) : présence d'un `}` fermant → set.
             var result = RenderTop("{1, 2}");
+            Assert.DoesNotContain("\\begin{cases}", result);
+        }
+
+        [Fact(DisplayName = "Cases sans espace après `{` (fix user 2026-05-11) → cases reconnu")]
+        public void Cases_without_space_recognised()
+        {
+            // Bug user 2026-05-11 : `{x+1=3` (sans espace après `{`) doit
+            // être reconnu comme cases. Critère : pas de `}` fermant dans
+            // la ligne → système ouvert (cases).
+            var result = RenderTop("{x+1=3");
+            Assert.Contains("\\begin{cases}", result);
+            Assert.Contains("\\end{cases}", result);
+        }
+
+        [Fact(DisplayName = "Cases multi-ligne sans espace : `{x=1\\n{y=2` → cases")]
+        public void Cases_multiline_without_space_recognised()
+        {
+            // Multi-ligne sans espace : aucune ligne n'a de `}` fermant
+            // → reconnues comme cases toutes les deux.
+            var result = RenderTop("{x=1\n{y=2");
+            Assert.Contains("\\begin{cases}", result);
+            Assert.Contains("\\end{cases}", result);
+        }
+
+        [Fact(DisplayName = "Set par compréhension `{x = 1, y = 2}` (fermé par `}`) reste set")]
+        public void Set_by_comprehension_with_equals_stays_set()
+        {
+            // Edge case : le set par compréhension contient des `=` mais
+            // est fermé par `}` → critère `}` → set. Mon heuristique
+            // précédente (contient `=` → cases) se trompait sur ce cas.
+            var result = RenderTop("{x = 1, y = 2}");
+            Assert.DoesNotContain("\\begin{cases}", result);
+        }
+
+        [Fact(DisplayName = "Set sans `=` (`{x, y, z}`) reste set, pas cases")]
+        public void Set_without_equals_stays_set()
+        {
+            // Régression : `{x, y, z}` est un set en extension de
+            // variables. Fermé par `}` → set.
+            var result = RenderTop("{x, y, z}");
             Assert.DoesNotContain("\\begin{cases}", result);
         }
 

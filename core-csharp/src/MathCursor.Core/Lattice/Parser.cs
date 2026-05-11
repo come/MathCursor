@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using MathCursor.Core.Lattice.Ast;
 
@@ -157,9 +158,6 @@ namespace MathCursor.Core.Lattice
                 // on n'est PAS déjà dans un intervalle en cours de parsing
                 // (sinon le bracket fermant serait pris comme nouveau primary).
                 if ((t.Value == "[" || t.Value == "]") && _intervalDepth == 0) return true;
-                // `(-` = alias clavier de `\in`. Accepté en mult implicite
-                // pour permettre `forall x (- R` → `\forall x \in R`.
-                if (t.Value == "(-") return true;
             }
             return false;
         }
@@ -216,7 +214,8 @@ namespace MathCursor.Core.Lattice
 
             // Si la 1re ligne commence par marker cases (`{ `), on tente
             // cases en priorité — pas de mix avec align (cf. brief 30-04 §3.4).
-            if (StartsWithCasesMarkerAt(lineStarts[0]))
+            int firstLineEnd = (lineStarts.Count > 1) ? lineStarts[1] : _toks.Count;
+            if (StartsWithCasesMarkerAt(lineStarts[0], firstLineEnd))
             {
                 var cases = TryParseCasesBlock(lineStarts);
                 if (cases != null) return cases;
@@ -283,10 +282,12 @@ namespace MathCursor.Core.Lattice
         {
             int save = _i;
 
-            // Toutes les lignes doivent commencer par marker cases `{ `
+            // Toutes les lignes doivent commencer par marker cases `{` (avec
+            // ou sans espace après — cf. heuristique dans StartsWithCasesMarkerAt).
             for (int li = 0; li < lineStarts.Count; li++)
             {
-                if (!StartsWithCasesMarkerAt(lineStarts[li])) { _i = save; return null; }
+                int lineEnd = (li + 1 < lineStarts.Count) ? lineStarts[li + 1] : _toks.Count;
+                if (!StartsWithCasesMarkerAt(lineStarts[li], lineEnd)) { _i = save; return null; }
             }
 
             var lines = new List<AstNode>();
@@ -308,18 +309,36 @@ namespace MathCursor.Core.Lattice
 
         /// <summary>
         /// True si le token à <paramref name="lineStart"/> est l'op <c>{</c>
-        /// suivi (dans le flux brut) d'un espace. Sinon le <c>{</c> est traité
-        /// comme un délimiteur de set ou autre, pas comme marker système.
+        /// reconnu comme marker système (et non comme délimiteur de set).
+        /// <para>
+        /// Critère unique (cf. fix user 2026-05-11) : <b>présence d'un
+        /// <c>}</c> fermant dans la ligne → set en extension</b> (ex.
+        /// <c>{1, 2}</c>, <c>{x, y}</c>, <c>{x = 1, y = 2}</c> par
+        /// compréhension). <b>Pas de <c>}</c> dans la ligne → cases</b>
+        /// (système d'équations ouvert, l'utilisateur tape de gauche à
+        /// droite et le <c>}</c> est implicite, ajouté par le commit).
+        /// </para>
+        /// <para>
+        /// Couvre proprement <c>{ x+1=3</c> (avec espace) ET <c>{x+1=3</c>
+        /// (sans espace) sans heuristique sur le contenu — l'utilisateur
+        /// peut taper son système avec ou sans espace après le marker.
+        /// </para>
         /// </summary>
-        private bool StartsWithCasesMarkerAt(int lineStart)
+        private bool StartsWithCasesMarkerAt(int lineStart, int lineEnd)
         {
             if (lineStart >= _toks.Count) return false;
             var tok = _toks[lineStart];
             if (tok.Type != EdgeType.Op || tok.Value != "{") return false;
-            // Le token suivant doit avoir un espace AVANT (= entre le `{` et lui)
             int next = lineStart + 1;
             if (next >= _toks.Count) return false;
-            return _hasSpaceBefore[next];
+            // Set fermé par `}` quelque part dans la ligne → pas un cases.
+            int effectiveEnd = Math.Min(lineEnd, _toks.Count);
+            for (int i = next; i < effectiveEnd; i++)
+            {
+                var t = _toks[i];
+                if (t.Type == EdgeType.Op && t.Value == "}") return false;
+            }
+            return true;
         }
 
         /// <summary>
@@ -774,13 +793,8 @@ namespace MathCursor.Core.Lattice
                 if (IsOp(")")) Consume();
                 return new Group(e);
             }
-            // Notation clavier `(-` pour `\in` (alias de `dans`/`in`/`appartient`).
-            // Le lexer l'émet comme Op multi-char.
-            if (t.Type == EdgeType.Op && t.Value == "(-")
-            {
-                Consume();
-                return new Const(" \\in ");
-            }
+            // (Anciennement : `(-` parsé comme `\in`. Retiré 2026-05-11,
+            // cf. Vocabulary.cs.)
             // Intervalle français : [a,b] / [a,b[ / ]a,b] / ]a,b[
             // Le bracket d'ouverture peut être `[` (fermé) ou `]` (ouvert).
             // Idem pour le bracket fermant. Args manquants → Hole.

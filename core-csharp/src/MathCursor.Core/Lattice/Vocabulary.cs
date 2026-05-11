@@ -104,9 +104,10 @@ namespace MathCursor.Core.Lattice
             { "⟺", "Leftrightarrow" }, // U+27FA flèche longue
             { "⟹", "Rightarrow" },     // U+27F9 flèche longue à droite
             { "⟸", "Leftarrow" },      // U+27F8 flèche longue à gauche
-            // Notation clavier `(-` pour `\in` (alias de `dans`/`in`/`appartient`).
-            // Visuellement le `(` ouvert + `-` rappelle ∈.
-            { "(-", "in_op" },
+            // (Anciennement : `(-` → `\in` alias clavier. Retiré 2026-05-11
+            // car faux positif sur `x(-2x+3)` qui est une mult implicite,
+            // pas un appartenance. L'utilisateur peut taper `in` ou
+            // `appartient` à la place.)
             // // = parallèle (∥) entre deux droites/vecteurs. Évite que la
             // saisie clavier fluide "AB//CD" soit interprétée comme une
             // fraction imbriquée AB/(CD) ou similaire.

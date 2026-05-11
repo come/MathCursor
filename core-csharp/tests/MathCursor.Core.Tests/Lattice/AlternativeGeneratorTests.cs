@@ -358,7 +358,7 @@ namespace MathCursor.Core.Tests.Lattice
         {
             // Décomposition modulaire (ADR 29-04) : forall n'est plus un scope.
             // L'aperçu de l'alt ∀ pour `V x y` est juste `\forall xy` (juxtaposition
-            // simple, pas de \in automatique). L'utilisateur ajoute `dans`/`(-`
+            // simple, pas de \in automatique). L'utilisateur ajoute `dans`/`in`
             // explicitement après s'il veut le \in.
             var r = _engine.ConvertWithAmbiguity("V x y");
             Assert.NotNull(r.Spot);
