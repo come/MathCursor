@@ -102,18 +102,6 @@ namespace MathCursor
             _    => "Tools",
         };
 
-        public static string ConvertButtonLabel => Lang switch
-        {
-            "fr" => "Convertir",
-            _    => "Convert",
-        };
-
-        public static string ConvertButtonScreentip => Lang switch
-        {
-            "fr" => "Convertit ce que tu viens de taper en math (équivalent Ctrl+Espace). Répété, étend la zone vers la gauche.",
-            _    => "Converts what you just typed to math (same as Ctrl+Space). Repeated, extends the zone leftward.",
-        };
-
         public static string ColumnsMenuLabel => Lang switch
         {
             "fr" => "Colonnes",

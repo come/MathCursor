@@ -4,62 +4,49 @@
     <tabs>
       <!--
         Onglet Accueil (TabHome) : duo immédiat utile (cf. ADR
-        2026-05-11-Feat-ribbon-home-duo-plus-dedicated-tab). On garde
-        seulement Convertir + Colonnes ici, le reste va dans l'onglet
-        dédié MathCursor.
+        2026-05-11-Feat-ribbon-home-duo-plus-dedicated-tab). Convertir +
+        Colonnes seulement, le reste va dans l'onglet dédié MathCursor.
+        Icônes PNG embarquées via getImage="OnGetButtonImage" (sources
+        SVG dans tools/icons/ribbon/, rasterisation par
+        tools/icons/rasterize-ribbon-icons.ps1).
       -->
       <tab idMso="TabHome">
         <group id="MathCursorHomeGroup" getLabel="OnGetHomeGroupLabel">
-          <button id="ConvertHomeButton"
-                  getLabel="OnGetConvertButtonLabel"
-                  getScreentip="OnGetConvertButtonScreentip"
-                  size="large"
-                  imageMso="EquationInsert"
-                  onAction="OnConvertClicked" />
           <menu id="ColumnsHomeMenu"
                 getLabel="OnGetColumnsMenuLabel"
                 getScreentip="OnGetColumnsMenuScreentip"
                 size="large"
-                imageMso="ColumnsTwo">
+                getImage="OnGetButtonImage">
             <button id="InsertColumns1Button"
                     getLabel="OnGetColumns1Label"
-                    imageMso="ColumnsOne"
+                    getImage="OnGetButtonImage"
                     onAction="OnInsertColumnsClicked" />
             <button id="InsertColumns2Button"
                     getLabel="OnGetColumns2Label"
-                    imageMso="ColumnsTwo"
+                    getImage="OnGetButtonImage"
                     onAction="OnInsertColumnsClicked" />
             <button id="InsertColumns3Button"
                     getLabel="OnGetColumns3Label"
-                    imageMso="ColumnsThree"
+                    getImage="OnGetButtonImage"
                     onAction="OnInsertColumnsClicked" />
             <button id="InsertColumns4Button"
                     getLabel="OnGetColumns4Label"
-                    imageMso="ColumnsThree"
+                    getImage="OnGetButtonImage"
                     onAction="OnInsertColumnsClicked" />
           </menu>
         </group>
       </tab>
 
-      <!--
-        Onglet dédié MathCursor : galerie complète (4 sous-groupes).
-        Cf. ADR 2026-05-11.
-      -->
+      <!-- Onglet dédié MathCursor : galerie complète (cf. ADR 2026-05-11). -->
       <tab id="MathCursorTab" getLabel="OnGetMathCursorTabLabel">
         <!-- Groupe Saisie -->
         <group id="MathCursorInputGroup" getLabel="OnGetInputGroupLabel">
-          <button id="ConvertTabButton"
-                  getLabel="OnGetConvertButtonLabel"
-                  getScreentip="OnGetConvertButtonScreentip"
-                  size="large"
-                  imageMso="EquationInsert"
-                  onAction="OnConvertClicked" />
           <button id="CheatsheetButton"
                   getLabel="OnGetCheatsheetButtonLabel"
                   getScreentip="OnGetCheatsheetButtonScreentip"
                   getEnabled="OnGetCheatsheetEnabled"
                   size="large"
-                  imageMso="HelpFile"
+                  getImage="OnGetButtonImage"
                   onAction="OnCheatsheetClicked" />
         </group>
 
@@ -69,22 +56,22 @@
                 getLabel="OnGetColumnsMenuLabel"
                 getScreentip="OnGetColumnsMenuScreentip"
                 size="large"
-                imageMso="ColumnsTwo">
+                getImage="OnGetButtonImage">
             <button id="InsertColumns1TabButton"
                     getLabel="OnGetColumns1Label"
-                    imageMso="ColumnsOne"
+                    getImage="OnGetButtonImage"
                     onAction="OnInsertColumnsClicked" />
             <button id="InsertColumns2TabButton"
                     getLabel="OnGetColumns2Label"
-                    imageMso="ColumnsTwo"
+                    getImage="OnGetButtonImage"
                     onAction="OnInsertColumnsClicked" />
             <button id="InsertColumns3TabButton"
                     getLabel="OnGetColumns3Label"
-                    imageMso="ColumnsThree"
+                    getImage="OnGetButtonImage"
                     onAction="OnInsertColumnsClicked" />
             <button id="InsertColumns4TabButton"
                     getLabel="OnGetColumns4Label"
-                    imageMso="ColumnsThree"
+                    getImage="OnGetButtonImage"
                     onAction="OnInsertColumnsClicked" />
           </menu>
         </group>
@@ -96,25 +83,25 @@
                   getScreentip="OnGetConstructionComingSoonScreentip"
                   getEnabled="OnGetConstructionEnabled"
                   size="normal"
-                  imageMso="TableInsertDialogWord" />
+                  getImage="OnGetButtonImage" />
           <button id="ConstructionVariationTableButton"
                   getLabel="OnGetConstructionVariationTableLabel"
                   getScreentip="OnGetConstructionComingSoonScreentip"
                   getEnabled="OnGetConstructionEnabled"
                   size="normal"
-                  imageMso="ChartTypeLineChart" />
+                  getImage="OnGetButtonImage" />
           <button id="ConstructionCurveButton"
                   getLabel="OnGetConstructionCurveLabel"
                   getScreentip="OnGetConstructionComingSoonScreentip"
                   getEnabled="OnGetConstructionEnabled"
                   size="normal"
-                  imageMso="ChartTypeXYScatterChart" />
+                  getImage="OnGetButtonImage" />
           <button id="ConstructionFigureButton"
                   getLabel="OnGetConstructionFigureLabel"
                   getScreentip="OnGetConstructionComingSoonScreentip"
                   getEnabled="OnGetConstructionEnabled"
                   size="normal"
-                  imageMso="ShapeRectangle" />
+                  getImage="OnGetButtonImage" />
         </group>
 
         <!-- Groupe Outils -->
@@ -123,25 +110,25 @@
                   getLabel="OnGetSettingsButtonLabel"
                   getScreentip="OnGetSettingsButtonScreentip"
                   size="normal"
-                  imageMso="ApplicationOptionsDialog"
+                  getImage="OnGetButtonImage"
                   onAction="OnSettingsClicked" />
           <button id="ReportIssueTabButton"
                   getLabel="OnGetReportButtonLabel"
                   getScreentip="OnGetReportButtonScreentip"
                   size="normal"
-                  imageMso="WarningOriginal"
+                  getImage="OnGetButtonImage"
                   onAction="OnReportIssueClicked" />
           <button id="ContextInspectorTabButton"
                   getLabel="OnGetContextInspectorButtonLabel"
                   getScreentip="OnGetContextInspectorButtonScreentip"
                   size="normal"
-                  imageMso="WatchWindow"
+                  getImage="OnGetButtonImage"
                   onAction="OnContextInspectorClicked" />
           <button id="AboutButton"
                   getLabel="OnGetAboutButtonLabel"
                   getScreentip="OnGetAboutButtonScreentip"
                   size="normal"
-                  imageMso="FileDocumentInspect"
+                  getImage="OnGetButtonImage"
                   onAction="OnAboutClicked" />
         </group>
       </tab>

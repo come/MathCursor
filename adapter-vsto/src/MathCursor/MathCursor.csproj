@@ -295,6 +295,7 @@
     <Compile Include="Host\OMathParaJcPatcher.cs" />
     <Compile Include="Host\InlineOMathSplicer.cs" />
     <Compile Include="Host\ParagraphTextExtractor.cs" />
+    <Compile Include="Host\UndoRecordScope.cs" />
     <Compile Include="Host\ColumnLayoutInserter.cs" />
     <Compile Include="Host\RevertedZoneMerger.cs" />
     <Compile Include="Host\SuggestionService.cs" />
@@ -324,6 +325,35 @@
     <Compile Include="Detection\WordPiece\WordPieceTokenizer.cs" />
     <Compile Include="RibbonCallback.cs" />
     <EmbeddedResource Include="Ribbon.xml" />
+    <!-- Icônes ruban PNG (cf. ADR 2026-05-11-Feat-ribbon-home-duo + tools/icons/rasterize-ribbon-icons.ps1).
+         32×32 utilisé pour les boutons size="large", 16×16 pour size="normal".
+         48×48 réservé hi-DPI (non utilisé pour l'instant). -->
+    <EmbeddedResource Include="Resources\ribbon-about-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-about-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-cheatsheet-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-cheatsheet-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-columns-1-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-columns-1-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-columns-2-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-columns-2-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-columns-3-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-columns-3-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-columns-4-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-columns-4-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-curve-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-curve-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-figure-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-figure-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-inspector-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-inspector-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-report-bug-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-report-bug-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-settings-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-settings-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-sign-table-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-sign-table-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-variation-table-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-variation-table-32.png" />
     <AppDesigner Include="Properties\" />
   </ItemGroup>
   <PropertyGroup>

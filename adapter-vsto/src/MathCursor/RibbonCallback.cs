@@ -88,9 +88,6 @@ namespace MathCursor
         public string OnGetConstructionsGroupLabel(IRibbonControl control) => Strings.ConstructionsGroupLabel;
         public string OnGetToolsTabGroupLabel(IRibbonControl control) => Strings.ToolsTabGroupLabel;
 
-        public string OnGetConvertButtonLabel(IRibbonControl control) => Strings.ConvertButtonLabel;
-        public string OnGetConvertButtonScreentip(IRibbonControl control) => Strings.ConvertButtonScreentip;
-
         public string OnGetColumnsMenuLabel(IRibbonControl control) => Strings.ColumnsMenuLabel;
         public string OnGetColumnsMenuScreentip(IRibbonControl control) => Strings.ColumnsMenuScreentip;
         public string OnGetColumns1Label(IRibbonControl control) => Strings.Columns1Label;
@@ -115,20 +112,75 @@ namespace MathCursor
         public string OnGetAboutButtonLabel(IRibbonControl control) => Strings.AboutButtonLabel;
         public string OnGetAboutButtonScreentip(IRibbonControl control) => Strings.AboutButtonScreentip;
 
-        // ---------- Actions ----------
+        // ---------- getImage (icônes PNG embarquées) ----------
 
-        public void OnConvertClicked(IRibbonControl control)
+        /// <summary>
+        /// Callback générique <c>getImage</c> du Ribbon. Charge le PNG
+        /// embarqué correspondant à <see cref="IRibbonControl.Id"/>.
+        /// Taille fixée à 32×32 (Office downscale proprement vers 16
+        /// pour les boutons <c>size="normal"</c>). PNG générés par
+        /// <c>tools/icons/rasterize-ribbon-icons.ps1</c>.
+        /// </summary>
+        public System.Drawing.Bitmap OnGetButtonImage(IRibbonControl control)
+        {
+            if (control == null) return null;
+            string icon = MapControlIdToIcon(control.Id);
+            if (icon == null) return null;
+            return LoadEmbeddedIcon(icon, 32);
+        }
+
+        /// <summary>
+        /// Mappe <c>control.Id</c> du Ribbon vers le slug d'icône PNG.
+        /// Liste exhaustive (cf. Ribbon.xml). Retourne null si pas mappé
+        /// (Office fallback à pas d'image).
+        /// </summary>
+        private static string MapControlIdToIcon(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            // Plus spécifiques d'abord (ex. InsertColumns1Button avant
+            // un éventuel Contains("Columns")).
+            if (id.StartsWith("InsertColumns1", StringComparison.Ordinal)) return "columns-1";
+            if (id.StartsWith("InsertColumns2", StringComparison.Ordinal)) return "columns-2";
+            if (id.StartsWith("InsertColumns3", StringComparison.Ordinal)) return "columns-3";
+            if (id.StartsWith("InsertColumns4", StringComparison.Ordinal)) return "columns-4";
+            if (id.Contains("Columns"))                       return "columns-2";   // menu trigger
+            if (id.Contains("Cheatsheet"))                    return "cheatsheet";
+            if (id.Contains("SignTable"))                     return "sign-table";
+            if (id.Contains("VariationTable"))                return "variation-table";
+            if (id.Contains("Curve"))                         return "curve";
+            if (id.Contains("Figure"))                        return "figure";
+            if (id.Contains("Settings"))                      return "settings";
+            if (id.Contains("ReportIssue"))                   return "report-bug";
+            if (id.Contains("ContextInspector"))              return "inspector";
+            if (id.Contains("About"))                         return "about";
+            return null;
+        }
+
+        /// <summary>Charge un PNG embarqué <c>MathCursor.Resources.ribbon-{name}-{size}.png</c>.</summary>
+        private static System.Drawing.Bitmap LoadEmbeddedIcon(string name, int size)
         {
             try
             {
-                var suggestions = Globals.ThisAddIn?.Suggestions;
-                suggestions?.TriggerManual();
+                string resourceName = $"MathCursor.Resources.ribbon-{name}-{size}.png";
+                var asm = Assembly.GetExecutingAssembly();
+                using (var stream = asm.GetManifestResourceStream(resourceName))
+                {
+                    if (stream == null)
+                    {
+                        LogDebug($"ribbon_icon_missing: {resourceName}");
+                        return null;
+                    }
+                    return new System.Drawing.Bitmap(stream);
+                }
             }
             catch (Exception ex)
             {
-                LogDebug("convert_click_error: " + ex.Message);
+                LogDebug($"ribbon_icon_load_error: {ex.Message}");
+                return null;
             }
         }
+
+        // ---------- Actions ----------
 
         /// <summary>
         /// Insère un tableau N colonnes au curseur (barres séparatrices,
