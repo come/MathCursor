@@ -293,6 +293,7 @@
     <Compile Include="Host\ListModeMarkerInjector.cs" />
     <Compile Include="Host\ListModeStateMachine.cs" />
     <Compile Include="Host\OMathParaJcPatcher.cs" />
+    <Compile Include="Host\InlineOMathSplicer.cs" />
     <Compile Include="Host\RevertedZoneMerger.cs" />
     <Compile Include="Host\SuggestionService.cs" />
     <Compile Include="Host\WordContextReader.cs" />
