@@ -19,6 +19,9 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-05-07
+- `[forte]` Fix — [Insertion d'OMath par splice XML du `<w:p>` existant (pas reconstruction depuis Range.Text)](2026-05-07-Fix-insert-via-paragraph-xml-splice.md)
+
 ### 2026-05-06
 - `[forte]` Meta — [Décomposition L4 : Pipeline déclaratif + Session avec cycle de vie](2026-05-06-Meta-l4-pipeline-and-session.md)
 - `[forte]` Meta — [Pipeline de mergers L4 via interface `IZoneMerger` (no if-pile)](2026-05-06-Meta-zone-merger-pipeline.md)
