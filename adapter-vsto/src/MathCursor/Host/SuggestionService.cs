@@ -3310,11 +3310,14 @@ namespace MathCursor.Host
 
                     // 2. ROUTE PRINCIPALE inline single-¶ (cf. ADR
                     //    2026-05-07-Fix-insert-via-paragraph-xml-splice) :
-                    //    on splice la nouvelle OMath directement dans le
-                    //    <w:p> du doc.Content.WordOpenXML — un seul XML,
-                    //    un seul contexte de namespaces, les OMaths
-                    //    voisines préservées byte-à-byte.
-                    string fullDocXmlSpliced = null;
+                    //    on splice la nouvelle OMath dans le <w:p> du ¶
+                    //    courant SEULEMENT (= firstPara.Range.WordOpenXML,
+                    //    pas doc.Content.WordOpenXML). Sur un gros doc
+                    //    (>50KB texte), full-doc InsertXML force Word à
+                    //    repaginer/rerender tout → 20s gel (bug user
+                    //    2026-05-11). En localisant à un seul ¶, on passe
+                    //    de ~MB d'XML à ~KB.
+                    string newParaXmlSpliced = null;
                     if (!isDisplayMath && targetCount == 1)
                     {
                         try
@@ -3323,21 +3326,20 @@ namespace MathCursor.Host
                             string newOMathOnly = InlineOMathSplicer.ExtractOMathElement(capturedAlone);
                             if (!string.IsNullOrEmpty(newOMathOnly))
                             {
-                                string fullDocXml = doc.Content.WordOpenXML;
+                                // Range.Text safe ici : plage [absStart,
+                                // absEnd] = math source qu'on vient de
+                                // taper, jamais d'OMath dedans.
                                 string mathSource = doc.Range(absStart, absEnd).Text ?? "";
-                                // Range.Text safe ici : la plage [absStart,
-                                // absEnd] est purement texte (la math source
-                                // qu'on vient de taper, jamais d'OMath dedans).
+                                // XML du ¶ courant uniquement (pkg avec UN
+                                // seul <w:p> + namespaces). Bcp plus petit
+                                // que doc.Content.WordOpenXML.
+                                string paraXml = firstPara.Range.WordOpenXML;
 
-                                // Content-based splice : pas d'index, le splicer
-                                // trouve le <w:p> dont la queue match mathSource
-                                // (marche dans body direct, cellule de tableau, SDT).
-                                // Cf. ADR 2026-05-11.
-                                fullDocXmlSpliced = InlineOMathSplicer.SpliceOMathInDocXml(
-                                    fullDocXml, mathSource, newOMathOnly);
-                                if (!string.IsNullOrEmpty(fullDocXmlSpliced))
+                                newParaXmlSpliced = InlineOMathSplicer.SpliceOMathInDocXml(
+                                    paraXml, mathSource, newOMathOnly);
+                                if (!string.IsNullOrEmpty(newParaXmlSpliced))
                                 {
-                                    LogDiag($"para_splice: ok mathSource=\"{Preview(mathSource)}\" newDocLen={fullDocXmlSpliced.Length}");
+                                    LogDiag($"para_splice: ok mathSource=\"{Preview(mathSource)}\" newParaLen={newParaXmlSpliced.Length}");
                                 }
                                 else
                                 {
@@ -3348,24 +3350,22 @@ namespace MathCursor.Host
                         catch (Exception ex) { LogDiag("para_splice_error: " + ex.Message); }
                     }
 
-                    // 3. Si la route splice a réussi, on l'applique direct
-                    //    via doc.Content.InsertXML (le fullDocXml a déjà
-                    //    été modifié in place). Sinon (display math
-                    //    cases/align, ou inline single-eq où le splice
-                    //    n'a pas trouvé sa source au bon endroit), on
-                    //    build l'OMath en zone isolée et on remplace le
-                    //    paragraphe entier via ReplaceParagraphsInDocXml.
-                    string capturedXml = fullDocXmlSpliced != null
-                        ? null  // route splice gère sa propre InsertXML plus bas
+                    // 3. Si la route splice a réussi, on InsertXML sur le
+                    //    Range du ¶ courant uniquement (Word ne re-rend
+                    //    QUE ce ¶, pas le doc entier). Sinon (display math
+                    //    cases/align, ou splice failed), on tombe sur la
+                    //    route legacy plus bas.
+                    string capturedXml = newParaXmlSpliced != null
+                        ? null
                         : BuildOMathXmlIsolated(doc, latex);
 
-                    if (fullDocXmlSpliced != null)
+                    if (newParaXmlSpliced != null)
                     {
                         try
                         {
-                            doc.Content.InsertXML(fullDocXmlSpliced);
+                            firstPara.Range.InsertXML(newParaXmlSpliced);
                             usedXmlTransplant = true;
-                            LogDiag($"para_splice: doc.Content.InsertXML ok, len={fullDocXmlSpliced.Length}");
+                            LogDiag($"para_splice: paragraph InsertXML ok, len={newParaXmlSpliced.Length}");
                         }
                         catch (Exception ex) { LogDiag("para_splice_insertxml_error: " + ex.Message); }
 
