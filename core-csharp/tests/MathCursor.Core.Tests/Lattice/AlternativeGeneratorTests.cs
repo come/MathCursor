@@ -686,6 +686,52 @@ namespace MathCursor.Core.Tests.Lattice
         }
 
         [Fact]
+        public void Tight_chain_extension_x_caret_x_plus_1_proposes_extended_exponent()
+        {
+            // x^x+1 : variante user 2026-05-11. Default = x^{x}+1 (PEMDAS) ;
+            // alt sténo = x^{x+1}.
+            var r = _engine.ConvertWithAmbiguity("x^x+1");
+            Assert.Equal("x^{x}+1", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleTightChainExtension, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            Assert.Contains("x^{x}+1", alts);
+            Assert.Contains("x^{x+1}", alts);
+        }
+
+        [Fact]
+        public void Tight_chain_extension_x_under_x_plus_1_proposes_extended_subscript()
+        {
+            // x_x+1 : variante user 2026-05-11. Default = x_{x}+1 ;
+            // alt sténo = x_{x+1}.
+            var r = _engine.ConvertWithAmbiguity("x_x+1");
+            Assert.Equal("x_{x}+1", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleTightChainExtension, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            Assert.Contains("x_{x}+1", alts);
+            Assert.Contains("x_{x+1}", alts);
+        }
+
+        [Fact]
+        public void Tight_chain_extension_3star4_over_5star6_proposes_extended_denom()
+        {
+            // 3*4/5*6 : variante user 2026-05-11. Default = PEMDAS gauche-assoc.
+            // alt sténo = 3*4/(5*6) = \frac{3·4}{5·6}. Le mult symbole dépend
+            // de la culture courante (\times en FR, \cdot ailleurs).
+            var r = _engine.ConvertWithAmbiguity("3*4/5*6");
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleTightChainExtension, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            // L'alt sténo doit grouper le dénominateur (5 et 6 ensemble dans
+            // le dénominateur de la fraction). On match indépendamment du
+            // symbole de mult.
+            Assert.Contains(alts, a =>
+                a.Contains("\\frac") &&
+                (a.Contains("{5\\cdot 6}") || a.Contains("{5\\times 6}")));
+        }
+
+        [Fact]
         public void Tight_chain_extension_AB_BC_no_alt_already_grouped()
         {
             // AB/BC : default groupé en \frac{AB}{BC} (chaîne implicite).
