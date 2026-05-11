@@ -400,7 +400,13 @@ namespace MathCursor.Core
                 new KeyValuePair<string, string>("\\emptyset", "∅"),
                 new KeyValuePair<string, string>("\\partial", "∂"),
                 new KeyValuePair<string, string>("\\nabla", "∇"),
+                // Multiplications : on consomme aussi l'espace de séparation
+                // LaTeX (le terminateur de commande). Sinon `2\cdot 4` →
+                // `2⋅ 4` avec espace visible dans Word OMath (bug user
+                // 2026-05-09). Variante sans espace en fallback.
+                new KeyValuePair<string, string>("\\times ", "×"),
                 new KeyValuePair<string, string>("\\times", "×"),
+                new KeyValuePair<string, string>("\\cdot ", "⋅"),
                 new KeyValuePair<string, string>("\\cdot", "⋅"),
                 new KeyValuePair<string, string>("\\circ", "∘"),
                 new KeyValuePair<string, string>("\\otimes", "⊗"),

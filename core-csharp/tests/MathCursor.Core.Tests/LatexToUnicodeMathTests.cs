@@ -57,6 +57,16 @@ namespace MathCursor.Core.Tests
         // on a re-régressé sur un bug connu — d'où le test isolé et nommé.
 
         [Theory]
+        // v0.5.8 : `2\cdot 4` rendait `2⋅ 4` avec espace visible dans Word
+        // OMath (l'espace LaTeX séparateur de commande survivait à la
+        // conversion). Fix : variante `\\cdot ` (avec espace) en tête de
+        // table consomme l'espace. Idem `\\times`.
+        [InlineData("2\\cdot 4", "2⋅4")]
+        [InlineData("a\\cdot b", "a⋅b")]
+        [InlineData("3\\times 5", "3×5")]
+        // Variantes sans espace (déjà ok avant le fix, anti-rechute).
+        [InlineData("2\\cdot4", "2⋅4")]
+        [InlineData("3\\times5", "3×5")]
         // v0.5.2 : `\int` était rendu `∈t` au lieu de `∫`. Cause : ordre des
         // règles dans LiteralReplacements appliquait `\in → ∈` avant `\int → ∫`.
         [InlineData("\\int", "∫")]
@@ -207,14 +217,15 @@ namespace MathCursor.Core.Tests
         [Theory]
         // `\times` → `×` (présent dans LiteralReplacements depuis longtemps mais
         // exercé concrètement par le brief frère qui change le rendu de `*`).
-        // Le LaTeX rendu inclut un espace après `\times` (cf. LatexRenderer)
-        // pour la lisibilité — préservé tel quel dans la sortie OMath.
-        [InlineData("a\\times b", "a× b")]
-        [InlineData("3\\times 4", "3× 4")]
-        [InlineData("a\\times b\\times c", "a× b× c")]
-        // `\cdot` → `⋅` (U+22C5 DOT OPERATOR, idem, espace après préservé)
-        [InlineData("a\\cdot b", "a⋅ b")]
-        [InlineData("\\vec{u}\\cdot \\vec{v}", "u⃗⋅ v⃗")]
+        // Bug v0.5.8 fixé : le LaTeX rendu inclut un espace après
+        // `\times`/`\cdot` (terminateur de commande LaTeX). On le consomme
+        // à la conversion sinon Word OMath affiche un espace visible entre
+        // l'opérateur et le 2e opérande.
+        [InlineData("a\\times b", "a×b")]
+        [InlineData("3\\times 4", "3×4")]
+        [InlineData("a\\times b\\times c", "a×b×c")]
+        [InlineData("a\\cdot b", "a⋅b")]
+        [InlineData("\\vec{u}\\cdot \\vec{v}", "u⃗⋅v⃗")]
         public void Multiplication_symbols_convert(string latex, string expected)
         {
             var got = LatexToUnicodeMath.Convert(latex);
@@ -246,12 +257,12 @@ namespace MathCursor.Core.Tests
         // `\frac{(1/2) \cdot 3}{4}` (P6 default tight `*`) → conversion
         // produit la fraction imbriquée Word OMath. Vérifier que les parens
         // de `(1/2)` sont conservées (sinon Word colle `1/2 \cdot 3` au num).
-        [InlineData("\\frac{\\frac{1}{2}\\cdot 3}{4}", "(1/2⋅ 3)/4")]
+        [InlineData("\\frac{\\frac{1}{2}\\cdot 3}{4}", "(1/2⋅3)/4")]
         // `\frac{1}{2}\cdot \frac{3}{4}` (P6 alt loose `*`) → 2 fractions séparées.
-        [InlineData("\\frac{1}{2}\\cdot \\frac{3}{4}", "1/2⋅ 3/4")]
+        [InlineData("\\frac{1}{2}\\cdot \\frac{3}{4}", "1/2⋅3/4")]
         // Mêmes cas avec `\times` (setting culturel FR)
-        [InlineData("\\frac{\\frac{1}{2}\\times 3}{4}", "(1/2× 3)/4")]
-        [InlineData("\\frac{1}{2}\\times \\frac{3}{4}", "1/2× 3/4")]
+        [InlineData("\\frac{\\frac{1}{2}\\times 3}{4}", "(1/2×3)/4")]
+        [InlineData("\\frac{1}{2}\\times \\frac{3}{4}", "1/2×3/4")]
         public void P6_asterisk_tightness_assoc_converts_to_omath(string latex, string expected)
         {
             var got = LatexToUnicodeMath.Convert(latex);
