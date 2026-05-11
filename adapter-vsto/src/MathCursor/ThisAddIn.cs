@@ -115,17 +115,121 @@ namespace MathCursor
         /// en <see cref="TypeInitializationException"/> dans le .cctor de
         /// <c>Microsoft.ML.OnnxRuntime.NativeMethods</c>.
         ///
-        /// Best-effort : si le dossier attendu n'existe pas (ex. dev sans
-        /// installer où les natifs sont déjà copiés à plat par MSBuild), on
-        /// laisse le loader chercher selon ses règles standard.
+        /// Bretelles + ceinture :
+        /// 1) Tente plusieurs candidats pour le base dir (Location peut être
+        ///    shadow-copié par VSTO en <c>%LocalAppData%\Microsoft\Office\
+        ///    AddInsCache</c> ; CodeBase = URL original ; fallback hardcodé
+        ///    sur <c>%LocalAppData%\MathCursor</c> qui est le DefaultDirName
+        ///    de l'installer).
+        /// 2) Copie en plus les natifs DANS le folder de l'assembly chargée
+        ///    pour que le loader Windows les trouve sans dépendre de
+        ///    SetDllDirectory (résolution standard).
+        /// 3) Logs dans <c>%TEMP%\mathcursor-onnx-init.log</c> pour
+        ///    diagnostiquer en prod si ça crash encore.
         /// </summary>
         private static void ConfigureOnnxRuntimeNativeDir()
         {
             var arch = IntPtr.Size == 4 ? "x86" : "x64";
-            var baseDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            if (string.IsNullOrEmpty(baseDir)) return;
-            var nativeDir = Path.Combine(baseDir, "onnxruntime-" + arch);
-            if (Directory.Exists(nativeDir)) SetDllDirectory(nativeDir);
+            string targetSubdir = "onnxruntime-" + arch;
+
+            string logPath = null;
+            try { logPath = Path.Combine(Path.GetTempPath(), "mathcursor-onnx-init.log"); } catch { }
+            void Log(string msg)
+            {
+                if (string.IsNullOrEmpty(logPath)) return;
+                try { File.AppendAllText(logPath, "[" + DateTime.UtcNow.ToString("o") + "] " + msg + Environment.NewLine); } catch { }
+            }
+
+            Log("=== ConfigureOnnxRuntimeNativeDir start, arch=" + arch + " ===");
+
+            var candidates = new List<string>();
+            try
+            {
+                var loc = Assembly.GetExecutingAssembly().Location;
+                Log("Assembly.Location=" + (loc ?? "<null>"));
+                if (!string.IsNullOrEmpty(loc)) candidates.Add(Path.GetDirectoryName(loc));
+            }
+            catch (Exception ex) { Log("Location err: " + ex.Message); }
+
+            try
+            {
+                var cb = Assembly.GetExecutingAssembly().CodeBase;
+                Log("Assembly.CodeBase=" + (cb ?? "<null>"));
+                if (!string.IsNullOrEmpty(cb))
+                {
+                    var uri = new Uri(cb);
+                    candidates.Add(Path.GetDirectoryName(uri.LocalPath));
+                }
+            }
+            catch (Exception ex) { Log("CodeBase err: " + ex.Message); }
+
+            try
+            {
+                var lad = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                if (!string.IsNullOrEmpty(lad))
+                {
+                    var hardcoded = Path.Combine(lad, "MathCursor");
+                    Log("Hardcoded LocalAppData=" + hardcoded);
+                    candidates.Add(hardcoded);
+                }
+            }
+            catch (Exception ex) { Log("LocalAppData err: " + ex.Message); }
+
+            // Tente chaque candidat. Premier qui contient le sous-dossier wins.
+            string foundNativeDir = null;
+            foreach (var baseDir in candidates)
+            {
+                if (string.IsNullOrEmpty(baseDir)) continue;
+                var nativeDir = Path.Combine(baseDir, targetSubdir);
+                bool exists = Directory.Exists(nativeDir);
+                Log("Try " + nativeDir + " exists=" + exists);
+                if (exists) { foundNativeDir = nativeDir; break; }
+            }
+
+            if (foundNativeDir == null)
+            {
+                Log("FAIL aucun candidat ne contient " + targetSubdir);
+                return;
+            }
+
+            // Ceinture : SetDllDirectory pour pointer le loader sur ce path.
+            try
+            {
+                bool ok = SetDllDirectory(foundNativeDir);
+                Log("SetDllDirectory(" + foundNativeDir + ") = " + ok);
+            }
+            catch (Exception ex) { Log("SetDllDirectory err: " + ex.Message); }
+
+            // Bretelles : copie les natifs DANS le folder de l'assembly chargée.
+            // Si l'assembly est shadow-copiée par VSTO, le shadow folder ne
+            // contient pas les natifs ; SetDllDirectory devrait suffire mais
+            // on copie quand même au cas où le loader CLR a déjà résolu via
+            // un autre chemin (cache JIT, etc.).
+            try
+            {
+                var asmDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                if (!string.IsNullOrEmpty(asmDir)
+                    && !string.Equals(asmDir, foundNativeDir, StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (var dll in new[] { "onnxruntime.dll", "onnxruntime_providers_shared.dll" })
+                    {
+                        var src = Path.Combine(foundNativeDir, dll);
+                        var dst = Path.Combine(asmDir, dll);
+                        if (File.Exists(src) && !File.Exists(dst))
+                        {
+                            File.Copy(src, dst, overwrite: false);
+                            Log("Copy " + src + " -> " + dst);
+                        }
+                        else
+                        {
+                            Log("Skip copy " + dll + " (src=" + File.Exists(src) + " dst=" + File.Exists(dst) + ")");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) { Log("Copy belt err: " + ex.Message); }
+
+            Log("=== ConfigureOnnxRuntimeNativeDir end ===");
         }
 
         /// <summary>
