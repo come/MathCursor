@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Repère + courbe : axes x/y + parabole douce -->
+  <!-- Axe Y -->
+  <line x1="5" y1="3" x2="5" y2="20" />
+  <polyline points="3.5,5 5,3 6.5,5" />
+  <!-- Axe X -->
+  <line x1="4" y1="19" x2="21" y2="19" />
+  <polyline points="19,17.5 21,19 19,20.5" />
+  <!-- Courbe -->
+  <path d="M6 16 Q 10 7, 13 11 T 20 8" />
+</svg>
