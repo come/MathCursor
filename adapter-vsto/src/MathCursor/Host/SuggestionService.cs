@@ -1825,11 +1825,18 @@ namespace MathCursor.Host
                 latex: latex,
                 sidecar: initialSidecar,
                 editingHandle: _editHandle);
-            try
+            // Wrap tout le pipeline dans un seul UndoRecord nommé Word →
+            // un Ctrl+Z annule le commit entier d'un coup (pas étape par
+            // étape) → fini les états partiels incohérents. Cf. ADR
+            // 2026-05-11-Fix-commit-grouped-in-single-undo-record.
+            using (var _undoScope = new UndoRecordScope(_app, "Convertir formule"))
             {
-                ctx = _commitPipeline.Run(ctx);
+                try
+                {
+                    ctx = _commitPipeline.Run(ctx);
+                }
+                catch (Exception ex) { LogDiag("commit_pipeline_error: " + ex.Message); }
             }
-            catch (Exception ex) { LogDiag("commit_pipeline_error: " + ex.Message); }
 
             // Propage les pins du popup vers l'historique paragraphe du
             // _globalCtx. Permet aux zones suivantes du même ¶ de bénéficier

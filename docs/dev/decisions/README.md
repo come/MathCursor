@@ -21,6 +21,7 @@ Format et conventions : voir
 
 ### 2026-05-11
 - `[molle]` Feat — [Duo Convertir/Colonnes dans TabHome + onglet "MathCursor" dédié pour le reste](2026-05-11-Feat-ribbon-home-duo-plus-dedicated-tab.md)
+- `[forte]` Fix — [Commit groupé dans un seul `UndoRecord` Word](2026-05-11-Fix-commit-grouped-in-single-undo-record.md)
 - `[forte]` Refactor — [Lecture du paragraphe courant via `Range.WordOpenXML` (pas `Range.Text`)](2026-05-11-Refactor-paragraph-reader-via-xml.md)
 - `[forte]` Fix — [Splice XML navigué par parent/siblings et matching par contenu (durcit pour tableaux + tout conteneur)](2026-05-11-Fix-omath-splice-content-based-navigation.md)
 
