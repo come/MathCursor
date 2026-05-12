@@ -81,6 +81,21 @@ namespace MathCursor.Host
         /// </summary>
         public static string SpliceOMathInDocXml(
             string fullDocXml, string mathSource, string newOMathXml)
+            => SpliceOMathInDocXml(fullDocXml, mathSource, newOMathXml, null);
+
+        /// <summary>
+        /// Variante avec absorption inline. <paramref name="absorbedHandles"/>
+        /// liste les handles dont les OMaths sont DANS le <w:p> cible et
+        /// doivent être retirées en même temps que les runs typés (cas du
+        /// merger inline qui absorbe un voisin avant ou après le texte
+        /// typé). La span replacée s'étend backward depuis le tail-match
+        /// jusqu'au premier <c>&lt;w:bookmarkStart name="mcEq_X"&gt;</c>
+        /// trouvé, en englobant l'OMath et le bookmarkEnd associés ainsi
+        /// que tout run de "glue" entre eux (typiquement 1 espace).
+        /// </summary>
+        public static string SpliceOMathInDocXml(
+            string fullDocXml, string mathSource, string newOMathXml,
+            IReadOnlyList<string> absorbedHandles)
         {
             if (string.IsNullOrEmpty(fullDocXml)) return null;
             if (string.IsNullOrEmpty(mathSource)) return null;
@@ -90,68 +105,112 @@ namespace MathCursor.Host
             try { xdoc = XDocument.Parse(fullDocXml); }
             catch { return null; }
 
-            // Scan TOUS les <w:p> du doc, peu importe la profondeur :
-            // body direct, cellule de tableau, SDT, etc. Identification
-            // par contenu, pas par index global. On prend le DERNIER
-            // <w:p> qui match (intuition user = celui qu'il vient de
-            // taper, le plus tardif dans l'ordre doc).
+            HashSet<string> handleSet = (absorbedHandles != null && absorbedHandles.Count > 0)
+                ? new HashSet<string>(absorbedHandles) : null;
+
+            // Scan TOUS les <w:p>. On retient le DERNIER qui match (intuition
+            // user = le ¶ qu'il vient de taper, le plus tardif dans l'ordre doc).
             XElement targetPara = null;
             int firstChildIdxToReplace = -1;
+            int lastChildIdxToReplace = -1;
             int prefixLen = 0;
             foreach (var para in xdoc.Descendants(W + "p"))
             {
-                var match = TryMatchTailRunSequence(para, mathSource);
+                var match = TryMatchTailRunSequence(para, mathSource, handleSet);
                 if (match.HasValue)
                 {
                     targetPara = para;
                     firstChildIdxToReplace = match.Value.firstChildIdx;
+                    lastChildIdxToReplace = match.Value.lastChildIdx;
                     prefixLen = match.Value.prefixLen;
                 }
             }
             if (targetPara == null) return null;
 
-            // Construit une nouvelle XElement à partir du XML de l'OMath.
+            var children = targetPara.Elements().ToList();
+
+            // Extension backward : englobe les éléments absorbés (bookmark
+            // + OMath du handle absorbé) et la "glue" whitespace, pour le
+            // cas merge_left (OMath absorbée AVANT le texte typé).
+            if (handleSet != null)
+            {
+                int spanStart = firstChildIdxToReplace;
+                for (int j = firstChildIdxToReplace - 1; j >= 0; j--)
+                {
+                    if (IsAbsorbedElement(children[j], handleSet) ||
+                        IsWhitespaceRun(children[j]))
+                    {
+                        spanStart = j;
+                        continue;
+                    }
+                    break;
+                }
+                if (spanStart < firstChildIdxToReplace)
+                {
+                    firstChildIdxToReplace = spanStart;
+                    prefixLen = 0;
+                }
+            }
+
             XElement newOMath;
             try { newOMath = WrapAndParse(newOMathXml); }
             catch { return null; }
-            // Si on a wrappé pour parser, descendre au vrai oMath/oMathPara.
             newOMath = newOMath.Descendants(M + "oMathPara").FirstOrDefault()
                 ?? newOMath.Descendants(M + "oMath").FirstOrDefault()
                 ?? newOMath;
 
-            var children = targetPara.Elements().ToList();
-            int lastChildIdxToReplace = children.Count - 1;
-            var firstRun = children[firstChildIdxToReplace];
+            var firstChild = children[firstChildIdxToReplace];
 
-            // Construit la nouvelle séquence d'enfants.
             var newChildren = new List<XElement>();
-            // Tout ce qui était avant le premier run remplacé.
             for (int i = 0; i < firstChildIdxToReplace; i++)
                 newChildren.Add(children[i]);
-            // Run préfixe si on garde du texte avant mathSource.
-            if (prefixLen > 0)
+            if (prefixLen > 0 && firstChild.Name == W + "r")
             {
-                string keptText = ExtractRunText(firstRun).Substring(0, prefixLen);
-                newChildren.Add(BuildPrefixRun(firstRun, keptText));
+                string keptText = ExtractRunText(firstChild).Substring(0, prefixLen);
+                newChildren.Add(BuildPrefixRun(firstChild, keptText));
             }
-            // La nouvelle OMath.
             newChildren.Add(newOMath);
-            // Tout ce qui était après le dernier run remplacé.
             for (int i = lastChildIdxToReplace + 1; i < children.Count; i++)
                 newChildren.Add(children[i]);
 
-            // Remplace les enfants du <w:p>. ReplaceNodes prend des
-            // objects, on passe les XElements.
             targetPara.ReplaceNodes(newChildren.Cast<object>().ToArray());
 
-            // Si l'OMath se retrouve seule dans le <w:p> (aucun <w:r>),
-            // wrap en <m:oMathPara><m:jc=left> sinon Word centre.
             if (!targetPara.Elements(W + "r").Any())
             {
                 WrapStandaloneOMathWithJcLeft(targetPara);
             }
 
             return xdoc.ToString(SaveOptions.DisableFormatting);
+        }
+
+        /// <summary>
+        /// True si l'élément est un <c>&lt;w:r&gt;</c> dont tout le texte
+        /// est blanc (espaces, tabs). Glue typique entre OMath et texte typé.
+        /// </summary>
+        private static bool IsWhitespaceRun(XElement el)
+            => el.Name == W + "r" && string.IsNullOrWhiteSpace(ExtractRunText(el));
+
+        /// <summary>
+        /// True si l'élément fait partie d'un OMath absorbé : bookmarkStart
+        /// "mcEq_X" pour un handle X dans <paramref name="handles"/>, son
+        /// bookmarkEnd associé, ou le <c>&lt;m:oMath&gt;</c> entre les deux.
+        /// On reconnaît m:oMath/oMathPara comme absorbés sans corrélation au
+        /// handle parce qu'ils sont entourés des bookmarks et le scan est
+        /// monotone.
+        /// </summary>
+        private static bool IsAbsorbedElement(XElement el, HashSet<string> handles)
+        {
+            if (el.Name == M + "oMath" || el.Name == M + "oMathPara") return true;
+            if (el.Name == W + "bookmarkEnd") return true;
+            if (el.Name == W + "bookmarkStart")
+            {
+                var name = (string)el.Attribute(W + "name");
+                if (string.IsNullOrEmpty(name)) return false;
+                const string prefix = "mcEq_";
+                if (!name.StartsWith(prefix, StringComparison.Ordinal)) return false;
+                return handles.Contains(name.Substring(prefix.Length));
+            }
+            return false;
         }
 
         /// <summary>
@@ -175,40 +234,45 @@ namespace MathCursor.Host
         /// en queue).</item>
         /// </list>
         /// </summary>
-        private static (int firstChildIdx, int prefixLen)? TryMatchTailRunSequence(
-            XElement para, string source)
+        private static (int firstChildIdx, int lastChildIdx, int prefixLen)? TryMatchTailRunSequence(
+            XElement para, string source, HashSet<string> absorbedHandles = null)
         {
             if (string.IsNullOrEmpty(source)) return null;
             var children = para.Elements().ToList();
             if (children.Count == 0) return null;
 
+            // Skip les éléments absorbés en queue (cas merge_right : l'OMath
+            // absorbée est APRÈS le texte typé). lastChildIdx pointe sur le
+            // dernier élément du span de remplacement (= dernier run typé OU
+            // dernier élément absorbé en queue).
+            int lastChildIdx = children.Count - 1;
+            if (absorbedHandles != null)
+            {
+                while (lastChildIdx >= 0 &&
+                       (IsAbsorbedElement(children[lastChildIdx], absorbedHandles) ||
+                        IsWhitespaceRun(children[lastChildIdx])))
+                {
+                    lastChildIdx--;
+                }
+                if (lastChildIdx < 0) return null;
+            }
+            int spanEnd = children.Count - 1; // englobe les absorbés en queue
+
             var accumulated = new StringBuilder();
-            for (int i = children.Count - 1; i >= 0; i--)
+            for (int i = lastChildIdx; i >= 0; i--)
             {
                 var child = children[i];
-                if (child.Name != W + "r")
-                {
-                    // Pas un run : on ne peut pas matcher ici, donc soit
-                    // source pas en queue → null.
-                    return null;
-                }
+                if (child.Name != W + "r") return null;
 
-                string runText = ExtractRunText(child);
-                accumulated.Insert(0, runText);
+                accumulated.Insert(0, ExtractRunText(child));
 
                 if (accumulated.Length >= source.Length)
                 {
                     string tail = accumulated.ToString(
                         accumulated.Length - source.Length, source.Length);
                     if (tail == source)
-                    {
-                        return (i, accumulated.Length - source.Length);
-                    }
-                    if (accumulated.Length > source.Length)
-                    {
-                        // Plus de texte que source sans match → pas en queue.
-                        return null;
-                    }
+                        return (i, spanEnd, accumulated.Length - source.Length);
+                    if (accumulated.Length > source.Length) return null;
                 }
             }
             return null;
