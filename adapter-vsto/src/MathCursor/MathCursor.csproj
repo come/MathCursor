@@ -295,6 +295,8 @@
     <Compile Include="Host\OMathParaJcPatcher.cs" />
     <Compile Include="Host\InlineOMathSplicer.cs" />
     <Compile Include="Host\OMathXmlCache.cs" />
+    <Compile Include="Host\ParaXmlPrefetcher.cs" />
+    <Compile Include="Host\WordParaXmlSource.cs" />
     <Compile Include="Host\ParagraphTextExtractor.cs" />
     <Compile Include="Host\UndoRecordScope.cs" />
     <Compile Include="Host\ColumnLayoutInserter.cs" />

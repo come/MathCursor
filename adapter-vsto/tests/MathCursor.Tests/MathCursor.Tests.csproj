@@ -119,6 +119,7 @@
     <Compile Include="..\..\src\MathCursor\Host\OMathParaJcPatcher.cs" Link="adapter-sources\Host\OMathParaJcPatcher.cs" />
     <Compile Include="..\..\src\MathCursor\Host\InlineOMathSplicer.cs" Link="adapter-sources\Host\InlineOMathSplicer.cs" />
     <Compile Include="..\..\src\MathCursor\Host\OMathXmlCache.cs" Link="adapter-sources\Host\OMathXmlCache.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\ParaXmlPrefetcher.cs" Link="adapter-sources\Host\ParaXmlPrefetcher.cs" />
     <Compile Include="..\..\src\MathCursor\Host\ParagraphTextExtractor.cs" Link="adapter-sources\Host\ParagraphTextExtractor.cs" />
     <Compile Include="..\..\src\MathCursor\Host\LastActionSnapshot.cs" Link="adapter-sources\Host\LastActionSnapshot.cs" />
     <Compile Include="..\..\src\MathCursor\Host\LastActionTracker.cs" Link="adapter-sources\Host\LastActionTracker.cs" />

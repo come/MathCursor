@@ -73,15 +73,9 @@ namespace MathCursor.Host
         // Extrait en classe dédiée par P2.4 (ADR refactor pure-merger).
         private readonly OMathXmlCache _omathXmlCache = new OMathXmlCache(capacity: 32);
 
-        // Cache pré-fetch du paraXml. Couche 3/3 du stack perf (ADR
-        // 2026-05-12). Refresh sur idle dans CheckAndUpdate quand le ¶
-        // courant est stable. À InsertOMathAt on vérifie hash+paraStart,
-        // si match on évite le 60ms read_para_xml. Une seule entrée (le ¶
-        // où est le curseur), pas de map.
-        private int _prefetchedParaStart = -1;
-        private int _prefetchedParaTextHash = 0;
-        private string _prefetchedParaXml = null;
-        private string _prefetchLastSeenText = null;
+        // Pré-fetch du paraXml courant. Couche 3/3 perf (ADR 2026-05-12).
+        // Extrait en classe dédiée par P2.5 (refactor archi).
+        private readonly ParaXmlPrefetcher _paraXmlPrefetcher;
 
         // État de la dernière popup affichée — nécessaire pour commit sur Enter :
         // on a besoin des positions absolues dans le document (pas juste offsets
@@ -213,6 +207,9 @@ namespace MathCursor.Host
                 deleteBookmark: DeleteBookmarkByHandle,
                 popupSidecar: () => _popup?.CurrentSidecar
                                     ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty);
+            _paraXmlPrefetcher = new ParaXmlPrefetcher(
+                new WordParaXmlSource(_app),
+                LogDiag);
 
             // Pipeline de mergers (cf. ADR 2026-05-06-Meta-zone-merger-pipeline) :
             // remplace l'empilement de `if (merged == null)` qui vivait dans
@@ -761,78 +758,7 @@ namespace MathCursor.Host
             // STABLE (= même texte que le tick précédent → user idle).
             // Évite de payer 60ms de WordOpenXML pendant la frappe
             // rapide ; payé seulement sur les pauses.
-            MaybePrefetchParaXml();
-        }
-
-        /// <summary>
-        /// Pré-fetch opportuniste du <c>firstPara.Range.WordOpenXML</c>
-        /// courant pour servir le cache hit dans <c>InsertOMathAt</c>.
-        /// Ne tire le coup qu'en cas d'idle (= 2 ticks consécutifs avec
-        /// même texte de ¶) ET si le cache n'est pas déjà à jour.
-        /// </summary>
-        private void MaybePrefetchParaXml()
-        {
-            try
-            {
-                if (_app.Documents.Count == 0) return;
-                var sel = _app.Selection;
-                if (sel == null) return;
-                Word.Range selRange;
-                try { selRange = sel.Range; } catch { return; }
-                if (selRange == null) return;
-                Word.Paragraph para = null;
-                try { para = selRange.Paragraphs[1]; } catch { return; }
-                if (para == null) return;
-
-                int paraStart;
-                string paraText;
-                try
-                {
-                    paraStart = para.Range.Start;
-                    paraText = para.Range.Text ?? "";
-                }
-                catch { return; }
-
-                int hash = paraText.GetHashCode();
-
-                // Cache déjà à jour ? skip.
-                if (_prefetchedParaStart == paraStart && _prefetchedParaTextHash == hash)
-                {
-                    _prefetchLastSeenText = paraText;
-                    return;
-                }
-
-                // Signal idle : current tick == last tick (user n'a rien
-                // tapé entre les 2). Sinon on attend que ça se stabilise.
-                if (_prefetchLastSeenText != paraText)
-                {
-                    _prefetchLastSeenText = paraText;
-                    return;
-                }
-
-                // Stable + cache stale → on rafraîchit.
-                var sw = System.Diagnostics.Stopwatch.StartNew();
-                string xml = para.Range.WordOpenXML;
-                sw.Stop();
-                _prefetchedParaStart = paraStart;
-                _prefetchedParaTextHash = hash;
-                _prefetchedParaXml = xml;
-                LogDiag($"PERF prefetch.read_para_xml={sw.ElapsedMilliseconds}ms len={xml?.Length ?? 0}");
-            }
-            catch (Exception ex) { LogDiag("prefetch_para_xml_error: " + ex.Message); }
-        }
-
-        /// <summary>
-        /// Récupère le paraXml pré-fetché si le ¶ courant matche
-        /// (paraStart + hash texte). Retourne <c>null</c> si stale ou
-        /// pas de cache.
-        /// </summary>
-        private string TryGetPrefetchedParaXml(int paraStart, string paraText)
-        {
-            if (_prefetchedParaXml == null) return null;
-            if (_prefetchedParaStart != paraStart) return null;
-            if (_prefetchedParaTextHash != paraText.GetHashCode()) return null;
-            return _prefetchedParaXml;
+            _paraXmlPrefetcher.Tick();
         }
 
         private void ApplyZones(IReadOnlyList<DetectedZone> zones, int caretInParagraph, int paragraphAbsStart, IReadOnlyList<(int start, int end)> omathRegions)
@@ -3650,7 +3576,7 @@ namespace MathCursor.Host
                             // prefetch posé en idle par MaybePrefetchParaXml.
                             int firstParaStartForCache = firstPara.Range.Start;
                             string firstParaTextForCache = firstPara.Range.Text ?? "";
-                            string paraXml = TryGetPrefetchedParaXml(firstParaStartForCache, firstParaTextForCache);
+                            string paraXml = _paraXmlPrefetcher.TryGet(firstParaStartForCache, firstParaTextForCache);
                             if (paraXml != null)
                             {
                                 LogDiag($"PERF para_splice.read_para_xml=0ms (prefetch hit, len={paraXml.Length})");
