@@ -94,7 +94,8 @@
     <Compile Include="..\..\src\MathCursor\Host\Merging\IZoneMerger.cs" Link="adapter-sources\Host\Merging\IZoneMerger.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Merging\MergeResult.cs" Link="adapter-sources\Host\Merging\MergeResult.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Merging\MergerPipeline.cs" Link="adapter-sources\Host\Merging\MergerPipeline.cs" />
-    <Compile Include="..\..\src\MathCursor\Host\Merging\IntraOMathsMerger.cs" Link="adapter-sources\Host\Merging\IntraOMathsMerger.cs" />
+    <!-- IntraOMathsMerger.cs : Word-coupled depuis P2.9, lien retiré du test project (pas testable hors Word). -->
+    <!-- <Compile Include="..\..\src\MathCursor\Host\Merging\IntraOMathsMerger.cs" /> -->
     <Compile Include="..\..\src\MathCursor\Host\Merging\RevertedMultiLineMerger.cs" Link="adapter-sources\Host\Merging\RevertedMultiLineMerger.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Merging\CasesChainCascadeMerger.cs" Link="adapter-sources\Host\Merging\CasesChainCascadeMerger.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Merging\MarkerChainCascadeMerger.cs" Link="adapter-sources\Host\Merging\MarkerChainCascadeMerger.cs" />
