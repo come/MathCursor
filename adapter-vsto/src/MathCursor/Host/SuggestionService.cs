@@ -34,7 +34,8 @@ namespace MathCursor.Host
         // bookmark "mcEq_<handleId>" pour (a) identifier que l'équation nous
         // appartient et (b) retrouver la source brute en CustomXMLPart au moment
         // où le caret revient dessus (mode édition).
-        private const string BookmarkPrefix = "mcEq_";
+        // BookmarkPrefix gardé pour compat. Préférer Bookmarks.EquationBookmarkRegistry.Prefix.
+        private const string BookmarkPrefix = Bookmarks.EquationBookmarkRegistry.Prefix;
 
         private readonly Word.Application _app;
         private readonly WordContextReader _contextReader;
@@ -80,6 +81,9 @@ namespace MathCursor.Host
         // Ghost doc pour BuildUp en isolation. P2.6 du refactor archi —
         // zéro mutation du doc actif user.
         private readonly OMathStagingService _omathStaging;
+
+        // Registre des bookmarks mcEq_* (P2.8 refactor archi).
+        private readonly Bookmarks.EquationBookmarkRegistry _bookmarks;
 
         // Stratégies d'insertion (P2.7 refactor archi). Enchaînées dans
         // l'ordre fast_path → splice → atomic. Première qui Success gagne.
@@ -221,6 +225,7 @@ namespace MathCursor.Host
                 new WordParaXmlSource(_app),
                 LogDiag);
             _omathStaging = new OMathStagingService(_app, LogDiag);
+            _bookmarks = new Bookmarks.EquationBookmarkRegistry(() => _app.ActiveDocument, LogDiag);
             _fastPathInserter = new Inserters.PureFastPathInserter(LogDiag);
             _spliceInserter = new Inserters.InlineSpliceInserter(_omathXmlCache, _paraXmlPrefetcher, _omathStaging, LogDiag);
             _atomicInserter = new Inserters.AtomicRangeInserter(_omathStaging, LogDiag);
@@ -570,29 +575,8 @@ namespace MathCursor.Host
             }
         }
 
-        /// <summary>
-        /// Cherche un bookmark "mcEq_..." couvrant l'OMath donné, et renvoie son
-        /// handle (sans le préfixe) — ou null si l'OMath n'est pas à nous.
-        /// </summary>
-        private string FindOurHandleForOMath(Word.OMath om)
-        {
-            try
-            {
-                var doc = _app.ActiveDocument;
-                int omStart = om.Range.Start;
-                int omEnd = om.Range.End;
-                foreach (Word.Bookmark bm in doc.Bookmarks)
-                {
-                    if (!bm.Name.StartsWith(BookmarkPrefix, StringComparison.Ordinal)) continue;
-                    var r = bm.Range;
-                    // Bookmark couvre ou touche l'OMath (tolérance 1 char pour l'espace trailing).
-                    if (r.Start <= omStart && r.End >= omEnd - 1)
-                        return bm.Name.Substring(BookmarkPrefix.Length);
-                }
-            }
-            catch { }
-            return null;
-        }
+        /// <summary>Délégué — cf. <see cref="Bookmarks.EquationBookmarkRegistry.FindHandleForOMath"/>.</summary>
+        private string FindOurHandleForOMath(Word.OMath om) => _bookmarks.FindHandleForOMath(om);
 
         private void OnWindowDeactivate(Word.Document doc, Word.Window wnd)
         {
@@ -3090,34 +3074,10 @@ namespace MathCursor.Host
             return Guid.NewGuid().ToString("N").Substring(0, 16);
         }
 
-        /// <summary>
-        /// Supprime le bookmark Word `mcEq_<handleId>` s'il existe. Utilisé
-        /// quand un handle est retiré du store (ex: merge OMath qui fusionne
-        /// l'OMath dans un nouveau bloc) — sans ce nettoyage, le bookmark
-        /// fantôme reste dans le doc et `FindOurHandleForOMath` retrouve
-        /// l'ancien handle, créant des merge corrompus au prochain trigger.
-        /// </summary>
-        private void DeleteBookmarkByHandle(string handleId)
-        {
-            var doc = _app.ActiveDocument;
-            if (doc == null) return;
-            string name = BookmarkPrefix + handleId;
-            if (doc.Bookmarks.Exists(name)) doc.Bookmarks[name].Delete();
-            LogDiag($"bookmark deleted: {name}");
-        }
-
+        /// <summary>Délégués — cf. <see cref="Bookmarks.EquationBookmarkRegistry"/>.</summary>
+        private void DeleteBookmarkByHandle(string handleId) => _bookmarks.Delete(handleId);
         private void CreateBookmarkForRange(string handleId, int absStart, int absEnd)
-        {
-            try
-            {
-                var doc = _app.ActiveDocument;
-                string name = BookmarkPrefix + handleId;
-                var range = doc.Range(absStart, absEnd);
-                if (doc.Bookmarks.Exists(name)) doc.Bookmarks[name].Delete();
-                doc.Bookmarks.Add(name, range);
-            }
-            catch (Exception ex) { LogDiag("bookmark_create_error: " + ex.Message); }
-        }
+            => _bookmarks.Create(handleId, absStart, absEnd);
 
         /// <summary>
         /// Extrait le premier élément <c>&lt;w:p ... &gt;...&lt;/w:p&gt;</c>

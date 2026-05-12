@@ -294,6 +294,7 @@
     <Compile Include="Host\ListModeStateMachine.cs" />
     <Compile Include="Host\OMathParaJcPatcher.cs" />
     <Compile Include="Host\InlineOMathSplicer.cs" />
+    <Compile Include="Host\Bookmarks\EquationBookmarkRegistry.cs" />
     <Compile Include="Host\Inserters\AtomicRangeInserter.cs" />
     <Compile Include="Host\Inserters\InlineSpliceInserter.cs" />
     <Compile Include="Host\Inserters\InsertContext.cs" />
