@@ -294,6 +294,7 @@
     <Compile Include="Host\ListModeStateMachine.cs" />
     <Compile Include="Host\OMathParaJcPatcher.cs" />
     <Compile Include="Host\InlineOMathSplicer.cs" />
+    <Compile Include="Host\OMathStagingService.cs" />
     <Compile Include="Host\OMathXmlCache.cs" />
     <Compile Include="Host\ParaXmlPrefetcher.cs" />
     <Compile Include="Host\WordParaXmlSource.cs" />

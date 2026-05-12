@@ -77,6 +77,10 @@ namespace MathCursor.Host
         // Extrait en classe dédiée par P2.5 (refactor archi).
         private readonly ParaXmlPrefetcher _paraXmlPrefetcher;
 
+        // Ghost doc pour BuildUp en isolation. P2.6 du refactor archi —
+        // zéro mutation du doc actif user.
+        private readonly OMathStagingService _omathStaging;
+
         // État de la dernière popup affichée — nécessaire pour commit sur Enter :
         // on a besoin des positions absolues dans le document (pas juste offsets
         // paragraphe), des choix présentés, et de la source brute pour la store.
@@ -210,6 +214,7 @@ namespace MathCursor.Host
             _paraXmlPrefetcher = new ParaXmlPrefetcher(
                 new WordParaXmlSource(_app),
                 LogDiag);
+            _omathStaging = new OMathStagingService(_app, LogDiag);
 
             // Pipeline de mergers (cf. ADR 2026-05-06-Meta-zone-merger-pipeline) :
             // remplace l'empilement de `if (merged == null)` qui vivait dans
@@ -325,6 +330,7 @@ namespace MathCursor.Host
             try { _pollTimer?.Stop(); } catch { }
             try { _popup?.Close(); } catch { }
             try { _editPopup?.Close(); } catch { }
+            try { _omathStaging?.Dispose(); } catch { }
             _popup = null;
             _editPopup = null;
             _pollTimer = null;
@@ -3287,109 +3293,14 @@ namespace MathCursor.Host
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Délègue à <see cref="OMathStagingService"/> (ghost doc). P2.6 du
+        /// refactor archi — zéro mutation du doc actif. Le paramètre
+        /// <paramref name="doc"/> est conservé pour compat avec call sites
+        /// existants mais ignoré.
+        /// </summary>
         private string BuildOMathXmlIsolated(Word.Document doc, string latex)
-        {
-            string unicodeMath;
-            try { unicodeMath = LatexToUnicodeMath.Convert(latex); }
-            catch (Exception ex) { LogDiag("iso_l2um_error: " + ex.Message); return null; }
-            if (string.IsNullOrEmpty(unicodeMath)) return null;
-
-            int origContentEnd = doc.Content.End;
-            int insertPos = origContentEnd - 1; // avant le ¶ final du doc
-            // Layout temporaire : [insertPos] \r [unicodeMath] \r [final ¶]
-            int unicodeStart = origContentEnd;
-            int unicodeEnd = unicodeStart + unicodeMath.Length;
-            string capturedXml = null;
-
-            var swIso = System.Diagnostics.Stopwatch.StartNew();
-            try
-            {
-                // 1. Insert "\r" + unicodeMath + "\r"
-                var swStep1 = System.Diagnostics.Stopwatch.StartNew();
-                doc.Range(insertPos, insertPos).Text = "\r" + unicodeMath + "\r";
-                swStep1.Stop();
-
-                // 2. BuildUp sur la portion unicodeMath isolée par les \r
-                //    → aucun voisin à absorber.
-                var swStep2 = System.Diagnostics.Stopwatch.StartNew();
-                var mathRange = doc.Range(unicodeStart, unicodeEnd);
-                mathRange.OMaths.Add(mathRange);
-                mathRange.OMaths.BuildUp();
-                swStep2.Stop();
-
-                // 3. Find the new OMath. On connaît la position EXACTE
-                //    (= mathRange) — pas besoin de scanner doc.OMaths
-                //    (= 165ms sur gros doc avec 65 OMaths, bug perf 12-05).
-                //    On accède direct via mathRange.OMaths[1] (la collection
-                //    contient l'OMath qu'on vient d'ajouter).
-                var swStep3 = System.Diagnostics.Stopwatch.StartNew();
-                Word.OMath newOMath = null;
-                try
-                {
-                    var omaths = mathRange.OMaths;
-                    if (omaths.Count >= 1) newOMath = omaths[1];
-                }
-                catch { /* fallback ci-dessous */ }
-                if (newOMath == null)
-                {
-                    // Fallback : scan limité au range mathRange (pas tout le
-                    // doc) si l'accès indexé a échoué pour une raison X.
-                    try
-                    {
-                        foreach (Word.OMath om in doc.Range(unicodeStart, unicodeEnd).OMaths)
-                        {
-                            newOMath = om;
-                            break;
-                        }
-                    }
-                    catch { }
-                }
-                swStep3.Stop();
-                LogDiag($"PERF iso.step1_insert={swStep1.ElapsedMilliseconds}ms step2_buildup={swStep2.ElapsedMilliseconds}ms step3_find_omath={swStep3.ElapsedMilliseconds}ms");
-                if (newOMath == null) { LogDiag("iso_build: OMath not found after BuildUp"); return null; }
-
-                Word.Paragraph omPara = null;
-                try { omPara = newOMath.Range.Paragraphs[1]; } catch { }
-                if (omPara == null) return null;
-
-                // 4. Capture FULL WordOpenXML package du paragraphe (= avec
-                //    pkg:package wrapper + namespaces). InsertXML demande ce
-                //    format complet, sinon « Impossible d'insérer le code XML ».
-                var swStep4 = System.Diagnostics.Stopwatch.StartNew();
-                capturedXml = omPara.Range.WordOpenXML;
-                swStep4.Stop();
-                LogDiag($"PERF iso.step4_capture_xml={swStep4.ElapsedMilliseconds}ms len={capturedXml?.Length ?? 0}");
-                if (string.IsNullOrEmpty(capturedXml))
-                {
-                    LogDiag("iso_build: empty WordOpenXML capture");
-                    capturedXml = null;
-                }
-                else
-                {
-                    LogDiag($"iso_capture: xml_len={capturedXml.Length}");
-                }
-            }
-            catch (Exception ex) { LogDiag("iso_build_error: " + ex.Message); }
-            finally
-            {
-                // 5. Cleanup : supprime tout ce qu'on a ajouté à la fin du doc.
-                //    diff = ce que le doc a gagné en chars = exactement ce qu'on
-                //    a inséré (post-BuildUp). On le supprime depuis insertPos.
-                var swStep5 = System.Diagnostics.Stopwatch.StartNew();
-                try
-                {
-                    int currentEnd = doc.Content.End;
-                    int diff = currentEnd - origContentEnd;
-                    if (diff > 0) doc.Range(insertPos, insertPos + diff).Delete();
-                }
-                catch (Exception ex) { LogDiag("iso_cleanup_error: " + ex.Message); }
-                swStep5.Stop();
-                swIso.Stop();
-                LogDiag($"PERF iso.step5_cleanup={swStep5.ElapsedMilliseconds}ms iso.total={swIso.ElapsedMilliseconds}ms");
-            }
-
-            return capturedXml;
-        }
+            => _omathStaging.BuildOMathXml(latex);
 
         /// <summary>
         /// Remplace le range [absStart, absEnd) du document par un OMath construit
