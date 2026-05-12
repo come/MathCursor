@@ -3133,6 +3133,38 @@ namespace MathCursor.Host
             return false;
         }
 
+        /// <summary>
+        /// Diag : quand para_splice skip avec "no match for X", on dump
+        /// les <w:r>/<w:t> trouvés dans le <w:p> pour comprendre pourquoi.
+        /// </summary>
+        private void DumpParaRunsForDiag(string paraXml, string mathSource)
+        {
+            try
+            {
+                var rxRun = new System.Text.RegularExpressions.Regex(
+                    @"<w:r(?:\s[^>]*)?>(?:(?!</w:r>).)*?</w:r>",
+                    System.Text.RegularExpressions.RegexOptions.Singleline);
+                var rxText = new System.Text.RegularExpressions.Regex(
+                    @"<w:t(?:\s[^>]*)?>((?:(?!</w:t>).)*)</w:t>",
+                    System.Text.RegularExpressions.RegexOptions.Singleline);
+                var runs = rxRun.Matches(paraXml);
+                var sb = new System.Text.StringBuilder();
+                sb.Append("para_splice_diag: source=\"" + Preview(mathSource) + "\" runs=");
+                int n = 0;
+                foreach (System.Text.RegularExpressions.Match m in runs)
+                {
+                    var tm = rxText.Match(m.Value);
+                    string t = tm.Success ? tm.Groups[1].Value : "<no-t>";
+                    if (n > 0) sb.Append(" | ");
+                    sb.Append("[" + Preview(t) + "]");
+                    n++;
+                    if (n >= 10) { sb.Append(" ..."); break; }
+                }
+                LogDiag(sb.ToString());
+            }
+            catch (Exception ex) { LogDiag("para_splice_diag_error: " + ex.Message); }
+        }
+
         // Délégué pur (XDocument) — cf. InlineOMathSplicer pour
         // l'implémentation. Évite la regex et gère self-closing,
         // namespaces, attribute-order naturellement.
@@ -3311,37 +3343,53 @@ namespace MathCursor.Host
                     int firstParaStart = firstPara.Range.Start;
                     int lastParaStart = lastPara.Range.Start;
 
-                    // Identifier les indices 0-based des paragraphes cibles dans
-                    // l'ordre du document (correspond aux <w:p> dans WordOpenXML).
-                    int firstTargetIdx0 = -1;
-                    int targetCount = 0;
-                    int totalParas = doc.Paragraphs.Count;
-                    for (int i = 1; i <= totalParas; i++)
+                    // Calcul `targetCount` (= nb de ¶s couverts par [absStart, absEnd]).
+                    // Optimisation perf gros doc 12-05 : on évite la boucle
+                    // doc.Paragraphs[i] qui prend O(N) Word interop par accès
+                    // (= 30s sur doc 1300 ¶s). Pour 99% des cas (single ¶),
+                    // on compare juste les positions de firstPara et lastPara.
+                    int targetCount;
+                    var swTargetCount = System.Diagnostics.Stopwatch.StartNew();
+                    if (firstParaStart == lastParaStart)
                     {
-                        var p = doc.Paragraphs[i];
-                        if (p.Range.Start >= firstParaStart && p.Range.Start <= lastParaStart)
+                        targetCount = 1;
+                    }
+                    else
+                    {
+                        // Multi-¶ : on itère via Paragraph.Next, navigation
+                        // linéaire bcp plus rapide que random access par index.
+                        targetCount = 1;
+                        var cursor = firstPara;
+                        while (cursor != null && cursor.Range.Start < lastParaStart)
                         {
-                            if (firstTargetIdx0 < 0) firstTargetIdx0 = i - 1; // 0-based
+                            try { cursor = cursor.Next(); }
+                            catch { cursor = null; }
+                            if (cursor == null) break;
                             targetCount++;
+                            if (cursor.Range.Start >= lastParaStart) break;
                         }
                     }
-                    LogDiag($"insert_transplant: target idx0={firstTargetIdx0} count={targetCount} (totalParas={totalParas})");
+                    swTargetCount.Stop();
+                    LogDiag($"PERF target_count={swTargetCount.ElapsedMilliseconds}ms count={targetCount}");
 
-                    // 2. ROUTE PRINCIPALE inline single-¶ (cf. ADR
-                    //    2026-05-07-Fix-insert-via-paragraph-xml-splice) :
-                    //    splice de la nouvelle OMath dans le <w:p> du ¶
-                    //    courant uniquement (= firstPara.Range.WordOpenXML).
+                    // 2. ROUTE PRINCIPALE inline single-¶ : splice de la
+                    //    nouvelle OMath dans firstPara.Range.WordOpenXML.
+                    //
+                    //    Build l'OMath UNE SEULE FOIS (cache pour fallback
+                    //    legacy si splice échoue — bug perf user 12-05 :
+                    //    on rebuildait à chaque échec).
+                    string capturedSharedXml = null;
                     string newParaXmlSpliced = null;
                     if (!isDisplayMath && targetCount == 1)
                     {
                         try
                         {
                             var swBuild = System.Diagnostics.Stopwatch.StartNew();
-                            string capturedAlone = BuildOMathXmlIsolated(doc, latex);
+                            capturedSharedXml = BuildOMathXmlIsolated(doc, latex);
                             swBuild.Stop();
                             LogDiag($"PERF para_splice.build_isolated={swBuild.ElapsedMilliseconds}ms");
 
-                            string newOMathOnly = InlineOMathSplicer.ExtractOMathElement(capturedAlone);
+                            string newOMathOnly = InlineOMathSplicer.ExtractOMathElement(capturedSharedXml);
                             if (!string.IsNullOrEmpty(newOMathOnly))
                             {
                                 string mathSource = doc.Range(absStart, absEnd).Text ?? "";
@@ -3357,25 +3405,41 @@ namespace MathCursor.Host
                                 LogDiag($"PERF para_splice.splice_xml={swSplice.ElapsedMilliseconds}ms");
 
                                 if (!string.IsNullOrEmpty(newParaXmlSpliced))
+                                {
                                     LogDiag($"para_splice: ok mathSource=\"{Preview(mathSource)}\" newParaLen={newParaXmlSpliced.Length}");
+                                }
                                 else
+                                {
+                                    // Diag : dump les <w:r>/<w:t> trouvés pour
+                                    // diagnostiquer pourquoi le match a foiré.
                                     LogDiag($"para_splice: skip (no match for \"{Preview(mathSource)}\")");
+                                    DumpParaRunsForDiag(paraXml, mathSource);
+                                }
                             }
                         }
                         catch (Exception ex) { LogDiag("para_splice_error: " + ex.Message); }
                     }
 
-                    // 3. Si la route splice a réussi → InsertXML sur le
-                    //    Range du ¶ courant uniquement. Sinon (display math
-                    //    cases/align, ou splice failed), route legacy +
-                    //    full-doc InsertXML.
+                    // 3. Si splice OK → InsertXML sur firstPara.Range. Sinon
+                    //    fallback legacy : on RÉUTILISE capturedSharedXml
+                    //    (déjà construit dans étape 2) au lieu de rebuilder.
                     string capturedXml = null;
                     if (newParaXmlSpliced == null)
                     {
-                        var swBuildLegacy = System.Diagnostics.Stopwatch.StartNew();
-                        capturedXml = BuildOMathXmlIsolated(doc, latex);
-                        swBuildLegacy.Stop();
-                        LogDiag($"PERF legacy.build_isolated={swBuildLegacy.ElapsedMilliseconds}ms");
+                        if (capturedSharedXml != null)
+                        {
+                            capturedXml = capturedSharedXml;
+                            LogDiag("PERF legacy.build_isolated=0ms (cached from para_splice)");
+                        }
+                        else
+                        {
+                            // Display math (cases/align) : pas passé par la
+                            // tentative splice, donc pas encore construit.
+                            var swBuildLegacy = System.Diagnostics.Stopwatch.StartNew();
+                            capturedXml = BuildOMathXmlIsolated(doc, latex);
+                            swBuildLegacy.Stop();
+                            LogDiag($"PERF legacy.build_isolated={swBuildLegacy.ElapsedMilliseconds}ms");
+                        }
                     }
 
                     if (newParaXmlSpliced != null)
@@ -3425,17 +3489,16 @@ namespace MathCursor.Host
                             else
                             {
                                 // Construit la liste des sources brutes des N ¶s
-                                // cibles dans l'ordre du doc (haut en bas). Le
-                                // splicer content-based identifie les <w:p> par
-                                // queue de contenu + siblings dans même .Parent.
-                                // Cf. ADR 2026-05-11.
+                                // cibles. On NAVIGUE via .Next() depuis firstPara
+                                // (linéaire) au lieu de doc.Paragraphs[i] (random
+                                // access O(N) sur gros doc — bug perf 12-05).
+                                // Le splicer content-based identifie les <w:p>
+                                // par queue de contenu (ADR 2026-05-11).
                                 var paragraphSources = new System.Collections.Generic.List<string>(targetCount);
-                                for (int pi = 0; pi < targetCount; pi++)
+                                var paraCursor = firstPara;
+                                for (int pi = 0; pi < targetCount && paraCursor != null; pi++)
                                 {
-                                    string rawText = doc.Paragraphs[firstTargetIdx0 + 1 + pi].Range.Text ?? "";
-                                    // Strip ¶ mark (\r) ou cell end (\a) éventuel
-                                    // en queue — ce qu'on veut, c'est la source
-                                    // brute typée par l'user.
+                                    string rawText = paraCursor.Range.Text ?? "";
                                     while (rawText.Length > 0
                                         && (rawText[rawText.Length - 1] == '\r'
                                             || rawText[rawText.Length - 1] == '\a'
@@ -3444,6 +3507,11 @@ namespace MathCursor.Host
                                         rawText = rawText.Substring(0, rawText.Length - 1);
                                     }
                                     paragraphSources.Add(rawText);
+                                    if (pi + 1 < targetCount)
+                                    {
+                                        try { paraCursor = paraCursor.Next(); }
+                                        catch { paraCursor = null; }
+                                    }
                                 }
 
                                 var swReplace = System.Diagnostics.Stopwatch.StartNew();
