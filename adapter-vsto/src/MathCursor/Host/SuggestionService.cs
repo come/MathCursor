@@ -1987,8 +1987,27 @@ namespace MathCursor.Host
         private MathCursor.Host.Pipeline.CommitContext InserterImpl(
             MathCursor.Host.Pipeline.CommitContext ctx)
         {
-            // Cleanup post-merge : doit être fait AVANT InsertOMathAt
-            // (sinon Word refuse d'écraser un OMath via Range.Text).
+            // Merger pur : on NE PRÉ-SUPPRIME PLUS rien. InsertOMathAt reçoit
+            // les bornes pré-absorption ; il remplace atomiquement la range
+            // entière (Word retire les OMaths absorbées au passage via
+            // Range.InsertXML). Cleanup store + bookmarks en post-success.
+            // Cf. ADR 2026-05-12-Refactor-pure-merger-atomic-insert.
+            if (ctx.RemovedHandles != null && ctx.RemovedHandles.Count > 0)
+            {
+                LogDiag($"merge: {ctx.RemovedHandles.Count} OMath(s) absorbés range=[{ctx.AbsStart},{ctx.AbsEnd}] mergedSource=\"{ctx.Source}\" latex=\"{ctx.Latex}\"");
+            }
+
+            int replaceStart = ctx.AbsStart;
+            var (newStart, newEnd) = InsertOMathAt(ctx.AbsStart, ctx.AbsEnd, ctx.Latex, ctx.RemovedHandles);
+            if (newEnd <= newStart)
+            {
+                LogDiag($"commit ABORTED latex=\"{ctx.Latex}\" — OMath build failed, doc intact (no pre-mutation)");
+                return ctx.WithAbort();
+            }
+
+            // Post-success uniquement : on retire les handles absorbés du
+            // store. Les bookmarks Word des OMaths absorbées ont été
+            // évacuées avec elles par Range.InsertXML (atomique).
             if (ctx.RemovedHandles != null && ctx.RemovedHandles.Count > 0)
             {
                 foreach (var h in ctx.RemovedHandles)
@@ -1997,20 +2016,8 @@ namespace MathCursor.Host
                     catch (Exception ex) { LogDiag($"merge_remove_error handle={h}: {ex.Message}"); }
                     _handleRegistry.Forget(h);
                 }
-
-                int rangeShrink = DeleteOMathsInRange(ctx.AbsStart, ctx.AbsEnd);
-                ctx = ctx.WithBounds(ctx.AbsStart, ctx.AbsEnd - rangeShrink);
-
-                LogDiag($"merge: {ctx.RemovedHandles.Count} OMath(s) absorbés range=[{ctx.AbsStart},{ctx.AbsEnd}] (shrunk by {rangeShrink}) mergedSource=\"{ctx.Source}\" latex=\"{ctx.Latex}\"");
             }
 
-            int replaceStart = ctx.AbsStart;
-            var (newStart, newEnd) = InsertOMathAt(ctx.AbsStart, ctx.AbsEnd, ctx.Latex);
-            if (newEnd <= newStart)
-            {
-                LogDiag($"commit ABORTED latex=\"{ctx.Latex}\" — OMath build failed, rollback effectué dans InsertOMathAt");
-                return ctx.WithAbort();
-            }
             return ctx.WithInsertedBounds(newStart, newEnd, replaceStart);
         }
 
@@ -3391,6 +3398,36 @@ namespace MathCursor.Host
         /// </para>
         /// </summary>
         /// <summary>
+        /// Texte typé en clair (= chars dans [absStart, absEnd] hors des
+        /// OMaths absorbées). Sans absorption, équivalent à Range.Text.
+        /// Avec absorption inline, exclut les chars de l'OMath voisine pour
+        /// que le tail-match du splicer matche les <c>&lt;w:r&gt;</c> typés.
+        /// </summary>
+        private string ComputeTypedTextInRange(Word.Document doc, int absStart, int absEnd)
+        {
+            var range = doc.Range(absStart, absEnd);
+            var omRanges = new System.Collections.Generic.List<(int s, int e)>();
+            try
+            {
+                foreach (Word.OMath om in range.OMaths)
+                    omRanges.Add((om.Range.Start, om.Range.End));
+            }
+            catch { }
+            if (omRanges.Count == 0) return range.Text ?? "";
+
+            omRanges.Sort((a, b) => a.s.CompareTo(b.s));
+            var sb = new System.Text.StringBuilder();
+            int cur = absStart;
+            foreach (var (s, e) in omRanges)
+            {
+                if (s > cur) sb.Append(doc.Range(cur, s).Text ?? "");
+                cur = Math.Max(cur, e);
+            }
+            if (cur < absEnd) sb.Append(doc.Range(cur, absEnd).Text ?? "");
+            return sb.ToString();
+        }
+
+        /// <summary>
         /// Cache lookup pour l'élément OMath extrait. Couche 2/3 du stack
         /// perf (ADR 2026-05-12). Touch LRU = on déplace en tête si trouvé.
         /// Retourne <c>null</c> si pas en cache.
@@ -3543,7 +3580,8 @@ namespace MathCursor.Host
         /// Renvoie (newStart, newEnd) = bornes réelles de l'OMath inséré pour qu'on
         /// puisse accrocher un bookmark dessus.
         /// </summary>
-        private (int newStart, int newEnd) InsertOMathAt(int absStart, int absEnd, string latex)
+        private (int newStart, int newEnd) InsertOMathAt(int absStart, int absEnd, string latex,
+            System.Collections.Generic.IReadOnlyList<string> absorbedHandles = null)
         {
             var swTotal = System.Diagnostics.Stopwatch.StartNew();
             var doc = _app.ActiveDocument;
@@ -3713,7 +3751,7 @@ namespace MathCursor.Host
                             // Sinon la ref COM firstPara peut renvoyer un
                             // package "fantôme" (260KB de skeleton mais
                             // <w:body> vide) — bug user 12-05 sur gros doc.
-                            string mathSource = doc.Range(absStart, absEnd).Text ?? "";
+                            string mathSource = ComputeTypedTextInRange(doc, absStart, absEnd);
                             // Couche 3/3 perf stack (ADR 2026-05-12) : on
                             // regarde le cache pré-fetché. Hit si le ¶
                             // courant (paraStart + hash texte) matche le
@@ -3764,7 +3802,7 @@ namespace MathCursor.Host
 
                                 var swSplice = System.Diagnostics.Stopwatch.StartNew();
                                 newParaXmlSpliced = InlineOMathSplicer.SpliceOMathInDocXml(
-                                    paraXml, mathSource, newOMathOnly);
+                                    paraXml, mathSource, newOMathOnly, absorbedHandles);
                                 swSplice.Stop();
                                 LogDiag($"PERF para_splice.splice_xml={swSplice.ElapsedMilliseconds}ms");
 
@@ -3830,79 +3868,30 @@ namespace MathCursor.Host
 
                     if (!string.IsNullOrEmpty(capturedXml))
                     {
+                        // Multi-¶ / display math : atomic Range.InsertXML sur
+                        // [absStart, absEnd]. Word remplace le range entier
+                        // (avec OMaths absorbées au passage) par le bloc
+                        // capturé en une seule transaction. Sur abort, le doc
+                        // reste intact. Cf. ADR 2026-05-12-Refactor-pure-merger.
                         try
                         {
                             capturedXml = OMathParaJcPatcher.EnsureDisplayWithLeftJc(capturedXml, out _);
                         }
-                        catch (Exception ex) { LogDiag("insert_transplant_ensure_error: " + ex.Message); }
+                        catch (Exception ex) { LogDiag("atomic_insert_ensure_error: " + ex.Message); }
 
-                        // 4. Lit le full doc XML, remplace les ¶s cibles
-                        //    via le splicer XDocument, réécrit en un seul
-                        //    doc.Content.InsertXML (pas paragraph-par-
-                        //    paragraph qui causait fusion, cf. ADR 04-05).
                         try
                         {
-                            var swReadFull = System.Diagnostics.Stopwatch.StartNew();
-                            string fullDocXml = doc.Content.WordOpenXML;
-                            swReadFull.Stop();
-                            LogDiag($"PERF legacy.read_full_doc_xml={swReadFull.ElapsedMilliseconds}ms len={fullDocXml?.Length ?? 0}");
-                            string newParaWp = ExtractFirstWPElement(capturedXml);
-                            if (string.IsNullOrEmpty(newParaWp))
-                            {
-                                LogDiag("insert_transplant: failed to extract <w:p> from captured");
-                            }
-                            else
-                            {
-                                // Construit la liste des sources brutes des N ¶s
-                                // cibles. On NAVIGUE via .Next() depuis firstPara
-                                // (linéaire) au lieu de doc.Paragraphs[i] (random
-                                // access O(N) sur gros doc — bug perf 12-05).
-                                // Le splicer content-based identifie les <w:p>
-                                // par queue de contenu (ADR 2026-05-11).
-                                var paragraphSources = new System.Collections.Generic.List<string>(targetCount);
-                                var paraCursor = firstPara;
-                                for (int pi = 0; pi < targetCount && paraCursor != null; pi++)
-                                {
-                                    string rawText = paraCursor.Range.Text ?? "";
-                                    while (rawText.Length > 0
-                                        && (rawText[rawText.Length - 1] == '\r'
-                                            || rawText[rawText.Length - 1] == '\a'
-                                            || rawText[rawText.Length - 1] == '\v'))
-                                    {
-                                        rawText = rawText.Substring(0, rawText.Length - 1);
-                                    }
-                                    paragraphSources.Add(rawText);
-                                    if (pi + 1 < targetCount)
-                                    {
-                                        try { paraCursor = paraCursor.Next(); }
-                                        catch { paraCursor = null; }
-                                    }
-                                }
-
-                                var swReplace = System.Diagnostics.Stopwatch.StartNew();
-                                string modifiedDocXml = ReplaceParagraphsInDocXml(
-                                    fullDocXml, paragraphSources, newParaWp);
-                                swReplace.Stop();
-                                LogDiag($"PERF legacy.replace_para_in_doc_xml={swReplace.ElapsedMilliseconds}ms");
-                                if (string.IsNullOrEmpty(modifiedDocXml))
-                                {
-                                    LogDiag("insert_transplant: failed to splice doc XML (no match for paragraph sources)");
-                                }
-                                else
-                                {
-                                    var swInsertFull = System.Diagnostics.Stopwatch.StartNew();
-                                    doc.Content.InsertXML(modifiedDocXml);
-                                    swInsertFull.Stop();
-                                    usedXmlTransplant = true;
-                                    LogDiag($"PERF legacy.insert_full_doc={swInsertFull.ElapsedMilliseconds}ms (len={modifiedDocXml.Length})");
-                                }
-                            }
+                            var swInsert = System.Diagnostics.Stopwatch.StartNew();
+                            doc.Range(absStart, absEnd).InsertXML(capturedXml);
+                            swInsert.Stop();
+                            usedXmlTransplant = true;
+                            LogDiag($"PERF atomic_insert.range_insertxml={swInsert.ElapsedMilliseconds}ms (range=[{absStart},{absEnd}] len={capturedXml.Length})");
                         }
-                        catch (Exception ex) { LogDiag("insert_transplant_fulldoc_error: " + ex.Message); }
+                        catch (Exception ex) { LogDiag("atomic_insert_error: " + ex.Message); }
 
                         if (usedXmlTransplant)
                         {
-                            omathCreated = LocateInsertedOMath(doc, absStart, "insert_transplant", out newStart, out newEnd);
+                            omathCreated = LocateInsertedOMath(doc, absStart, "atomic_insert", out newStart, out newEnd);
                         }
                     }
                     else { LogDiag("insert: build-isolated returned null"); }
