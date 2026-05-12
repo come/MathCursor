@@ -110,11 +110,11 @@ namespace MathCursor.Host
         // LaTeX align* qui les préserve.
         private readonly EquationHandleRegistry _handleRegistry;
 
-        // État mode édition : la popup _editPopup est affichée pour proposer
-        // « Revenir à la saisie initiale » sur l'OMath au caret. _editHandle
-        // identifie l'OMath en cours d'édition pour le revert action.
-        private EquationHandle _editHandle;
-        private EditModePopupWindow _editPopup;
+        // Mode édition d'une OMath existante — P2.10 refactor archi.
+        // L'état (_editHandle, _editingOMathStart, _editPopup) + le flow
+        // complet (Sync polling, TryEnter, OnRevertRequested) sont
+        // encapsulés dans EditModeController.
+        private EditMode.EditModeController _editController;
 
         // ANTI-SPAM POPUP — modèle commun aux 2 popups (suggestion et édition) :
         // une fois qu'une popup a été affichée pour une zone donnée, on retient
@@ -129,7 +129,7 @@ namespace MathCursor.Host
         //  - _dismissedZoneStart/End : zone NER pour laquelle on a déjà
         //    affiché (ou que l'utilisateur a fermée par Esc) la popup
         //    suggestion. -1 = aucune zone bloquée.
-        private int _editingOMathStart = -1;
+        // _editingOMathStart : déplacé dans EditModeController (P2.10).
         private int _dismissedZoneStart = -1;
         private int _dismissedZoneEnd = -1;
 
@@ -226,6 +226,26 @@ namespace MathCursor.Host
                 LogDiag);
             _omathStaging = new OMathStagingService(_app, LogDiag);
             _bookmarks = new Bookmarks.EquationBookmarkRegistry(() => _app.ActiveDocument, LogDiag);
+            _editController = new EditMode.EditModeController(
+                app: _app,
+                store: _store,
+                bookmarks: _bookmarks,
+                handleRegistry: _handleRegistry,
+                hideSuggestionPopup: HidePopup,
+                getCaretScreenPos: GetCaretScreenPosition,
+                log: LogDiag);
+            _editController.MultiLineReverted += (s, e, h) =>
+            {
+                _revertedMultiLineZoneStart = s;
+                _revertedMultiLineZoneEnd = e;
+                _revertedHandleId = h;
+            };
+            _editController.InlineReverted += () =>
+            {
+                _revertedMultiLineZoneStart = -1;
+                _revertedMultiLineZoneEnd = -1;
+                _revertedHandleId = null;
+            };
             _fastPathInserter = new Inserters.PureFastPathInserter(LogDiag);
             _spliceInserter = new Inserters.InlineSpliceInserter(_omathXmlCache, _paraXmlPrefetcher, _omathStaging, LogDiag);
             _atomicInserter = new Inserters.AtomicRangeInserter(_omathStaging, LogDiag);
@@ -349,21 +369,15 @@ namespace MathCursor.Host
             try { if (_installed) _app.WindowActivate -= OnWindowActivate; } catch { }
             try { _pollTimer?.Stop(); } catch { }
             try { _popup?.Close(); } catch { }
-            try { _editPopup?.Close(); } catch { }
+            try { _editController?.Close(); } catch { }
             try { _omathStaging?.Dispose(); } catch { }
             _popup = null;
-            _editPopup = null;
             _pollTimer = null;
             _installed = false;
         }
 
-        // IsPopupVisible ne couvre QUE la popup de suggestion (clavier
-        // intercepté pour nav). En mode édition d'OMath, les flèches et Enter
-        // sont laissées à Word pour la nav math native — la popup edit se
-        // contente d'un click souris pour valider l'action revert.
         public bool IsPopupVisible => (_popup?.IsVisible == true);
-        public bool IsEditPopupVisible => (_editPopup?.IsVisible == true);
-        // Pour Esc : ferme l'une ou l'autre.
+        public bool IsEditPopupVisible => _editController?.IsPopupVisible == true;
         public bool IsAnyPopupVisible => IsPopupVisible || IsEditPopupVisible;
         public bool IsNavMode => (_popup?.IsNavMode == true);
 
@@ -373,27 +387,16 @@ namespace MathCursor.Host
         public void EnterNavMode() => _popup?.EnterNavMode();
         public void HidePopup()
         {
-            // Hide explicite (Esc / commit / sortie zone) → reset des caches
-            // de résolution et de préférences de règles dans la popup, ET
-            // des préférences source-mutation dans le résolveur (V→forall, etc.).
-            // Au prochain trigger l'utilisateur repart d'une page blanche.
             _popup?.HidePopup(resetCaches: true);
-            _editPopup?.HidePopup();
+            _editController?.HidePopup();
             _resolver?.Clear();
             ResetIterativeExpansion();
         }
 
-        /// <summary>
-        /// Hide « transient » : NER ne détecte temporairement pas la zone
-        /// (ex: pendant la frappe entre deux caractères), mais on ne veut pas
-        /// reset les choix d'ambiguïté de l'utilisateur. Au prochain tick où
-        /// la zone redevient détectable, les substitutions précédemment
-        /// validées s'appliqueront à nouveau.
-        /// </summary>
         private void HidePopupTransient()
         {
             _popup?.HidePopup(resetCaches: false);
-            _editPopup?.HidePopup();
+            _editController?.HidePopup();
         }
 
         private void OnSelectionChange(Word.Selection sel)
@@ -640,32 +643,15 @@ namespace MathCursor.Host
                 //    et on affiche la popup avec les alternatives.
                 //  - OMath étranger (ex. une équation déjà dans le doc) → hide
                 //    popup (relancer l'algo sur du LaTeX rendu donnerait du bruit).
+                // Sync l'edit mode controller : entrée si caret sur OMath
+                // à nous, sortie sinon. Si actif on rend la main au polling
+                // (pas de popup de suggestion concurrente).
                 var omAtCaret = FindOMathAtCaret();
-                if (omAtCaret != null)
+                if (_editController.Sync(omAtCaret, inPostCommitCooldown))
                 {
-                    if (inPostCommitCooldown)
-                    {
-                        HidePopup();
-                        return;
-                    }
-                    // Si on a DÉJÀ géré cet OMath (popup affichée OU dismissée
-                    // par l'utilisateur via Esc), on ne re-spawn pas. Le flag
-                    // _editingOMathStart marque "OMath traité" — il ne sera
-                    // remis à -1 que quand le caret QUITTE cet OMath.
-                    int omStart = -1;
-                    try { omStart = omAtCaret.Range.Start; } catch { }
-                    if (_editingOMathStart == omStart) return;
-
-                    var ok = TryEnterEditMode(omAtCaret);
-                    // On marque l'OMath comme traité dès qu'on a tenté d'ouvrir,
-                    // même en cas d'échec (pas d'OMath à nous → pas de re-tentative).
-                    _editingOMathStart = omStart;
+                    if (omAtCaret != null && inPostCommitCooldown) HidePopup();
                     return;
                 }
-                // Sortie propre du mode édition quand on quitte l'OMath
-                _editHandle = null;
-                _editingOMathStart = -1;
-                _editPopup?.HidePopup();
 
                 ParagraphRead paragraph;
                 int caretPos;
@@ -865,179 +851,6 @@ namespace MathCursor.Host
             _iterativeOMaths = omathRegions;
         }
 
-        /// <summary>
-        /// Si l'OMath au caret est à nous (bookmark mcEq_...), on ouvre la
-        /// popup d'édition qui propose « Revenir à la saisie initiale ».
-        /// Cf. brief docs/dev/briefs/2026-04-27-edit-mode-revert-to-source.md.
-        /// Retourne true si la popup edit a été (ou était déjà) affichée pour
-        /// cet OMath, false si l'OMath n'est pas à nous.
-        /// </summary>
-        private bool TryEnterEditMode(Word.OMath om)
-        {
-            var handleId = FindOurHandleForOMath(om);
-            if (handleId == null) return false;
-
-            // Cache la popup de suggestion si elle était ouverte — les deux
-            // popups ne doivent pas cohabiter.
-            HidePopup();
-
-            _editHandle = new EquationHandle(handleId);
-
-            if (_editPopup == null)
-            {
-                _editPopup = new EditModePopupWindow();
-                _editPopup.RevertRequested += OnRevertRequested;
-            }
-
-            // Position : on prend la position du caret (déjà fiable via Win32
-            // GetGUIThreadInfo) puis on décale en Y pour passer sous la boîte
-            // OMath. Bord droit de la popup aligné avec la position du caret —
-            // le caret est dans l'OMath, donc la popup vient se coller à
-            // gauche du caret, ne dépasse pas la droite de la zone math.
-            //
-            // Tentative précédente via Range.Information(wdHorizontalPosition…)
-            // sur le END de l'OMath retournait une coordonnée trop à droite
-            // (capture user 2026-04-28) — probablement à cause du dropdown
-            // handle Word ou du wrapping de la zone OMath. Caret position est
-            // plus fiable.
-            const double OMathExtraHeightDip = 18.0;
-            var caretPos = GetCaretScreenPosition();
-            _editPopup.ShowAt(caretPos.x, caretPos.y + OMathExtraHeightDip, alignRight: true);
-            LogDiag($"edit mode: handle={handleId} popup at caret-rightaligned ({caretPos.x:F0},{caretPos.y + OMathExtraHeightDip:F0})");
-            return true;
-        }
-
-
-        /// <summary>
-        /// Action OUI de la popup edit : remplace l'OMath au caret par le
-        /// texte source brut, supprime l'entrée du store, repositionne le caret
-        /// en fin du texte inséré.
-        /// </summary>
-        private void OnRevertRequested()
-        {
-            var handle = _editHandle;
-            if (handle == null) { LogDiag("revert: no _editHandle, abort"); return; }
-
-            // Retrouver l'OMath au caret (peut avoir bougé entre l'ouverture
-            // de la popup et le clic).
-            var om = FindOMathAtCaret();
-            if (om == null) { LogDiag("revert: no OMath at caret, abort"); return; }
-
-            // Lire le source
-            StoredEquation stored;
-            try { stored = _store.RetrieveAsync(handle).GetAwaiter().GetResult(); }
-            catch (Exception ex) { LogDiag("revert_retrieve_error: " + ex.Message); return; }
-            if (stored == null || string.IsNullOrEmpty(stored.Source))
-            {
-                LogDiag($"revert: source introuvable pour handle {handle.Id}");
-                return;
-            }
-
-            // Phase 3 sidecar : si l'équation stockée a un sidecar persisté,
-            // on le ré-injecte dans la mémoire pour que le cross-merge ou
-            // l'edit OMath re-l'utilise. Sinon (commit pré-Phase 3 ou 100%
-            // default) → mémoire reste vierge, default sera appliqué.
-            if (!string.IsNullOrEmpty(stored.Metadata?.SidecarJson))
-            {
-                var sc = MathCursor.Core.Resolution.SidecarSerializer.Deserialize(
-                    stored.Metadata!.SidecarJson);
-                _handleRegistry.Restore(handle.Id, sc);
-            }
-
-            string source = stored.Source;
-            int omStart, omEnd;
-            try { omStart = om.Range.Start; omEnd = om.Range.End; }
-            catch (Exception ex) { LogDiag("revert_range_error: " + ex.Message); return; }
-
-            try
-            {
-                var doc = _app.ActiveDocument;
-
-                // Étendre au bookmark mcEq_ si présent
-                string bmName = BookmarkPrefix + handle.Id;
-                if (doc.Bookmarks.Exists(bmName))
-                {
-                    var bm = doc.Bookmarks[bmName];
-                    var bmRange = bm.Range;
-                    omStart = Math.Min(omStart, bmRange.Start);
-                    omEnd = Math.Max(omEnd, bmRange.End);
-                    try { bm.Delete(); } catch { }
-                }
-
-                // Étendre au ContentControl wrapper si Word en a posé un
-                // autour de l'OMath (cas display-mode notamment). Suppression
-                // explicite du CC pour éviter de laisser un wrapper vide.
-                try
-                {
-                    foreach (Word.ContentControl cc in doc.ContentControls)
-                    {
-                        var ccRange = cc.Range;
-                        if (ccRange.Start <= omStart && ccRange.End >= omEnd)
-                        {
-                            omStart = Math.Min(omStart, ccRange.Start);
-                            omEnd = Math.Max(omEnd, ccRange.End);
-                            try { cc.Delete(true); } catch { } // delete avec contenu
-                            break;
-                        }
-                    }
-                }
-                catch (Exception ex) { LogDiag("revert_cc_scan_error: " + ex.Message); }
-
-                // Supprime explicitement l'OMath (sinon Word peut garder
-                // l'enveloppe math autour du nouveau texte).
-                try { om.Range.Delete(); } catch { }
-
-                // ⚠ Après Delete(), positions du doc shiftées : omEnd est stale.
-                // Utiliser [omStart, omEnd] comme range pour Text = ... ferait
-                // ÉCRASER le contenu qui suivait l'OMath. → On insère via range
-                // collapsé à omStart : pure insertion, pas de remplacement.
-                // Le source brut peut contenir \n (séparateurs de lignes d'un
-                // MultiLineBlock align*, cf. brief 30-04). On convertit chaque
-                // \n en paragraph mark Word (\r) pour recréer la structure
-                // multi-paragraphe d'origine.
-                string revertText = source.Replace("\n", "\r");
-                doc.Range(omStart, omStart).Text = revertText;
-
-                // Caret en fin du texte inséré
-                int newEnd = omStart + revertText.Length;
-                try { _app.Selection.SetRange(newEnd, newEnd); } catch { }
-
-                // Mode 2 cascade (ADR 04-05) : si source était multi-ligne, on
-                // mémorise la zone pour que TryFindCrossMergeAbove absorbe
-                // TOUS les paragraphes de la zone au prochain commit, y
-                // compris la première ligne qui n'a pas de marker.
-                if (source.IndexOf('\n') >= 0)
-                {
-                    _revertedMultiLineZoneStart = omStart;
-                    _revertedMultiLineZoneEnd = newEnd;
-                    _revertedHandleId = handle.Id;
-                    LogDiag($"revert: multi-ligne zone tracked [{omStart},{newEnd}] handle={handle.Id}");
-                }
-                else
-                {
-                    _revertedMultiLineZoneStart = -1;
-                    _revertedMultiLineZoneEnd = -1;
-                    _revertedHandleId = null;
-                }
-
-                // Click sur la popup WPF a volé le focus à Word. Sans ça, le
-                // tick polling qui suivra ne trouvera pas le caret via Win32
-                // GetGUIThreadInfo et la popup de conversion s'affichera en
-                // (200,200) = haut-gauche du document. On rebascule le focus.
-                try { _app.Activate(); } catch { }
-            }
-            catch (Exception ex) { LogDiag("revert_replace_error: " + ex.Message); return; }
-
-            // Cleanup store
-            try { _store.RemoveAsync(handle).GetAwaiter().GetResult(); }
-            catch (Exception ex) { LogDiag("revert_store_remove_error: " + ex.Message); }
-
-            // Reset état édition
-            _editHandle = null;
-            _editingOMathStart = -1;
-            _editPopup?.HidePopup();
-            LogDiag($"revert: handle={handle.Id} OMath remplacé par source=\"{source}\"");
-        }
 
         // Stopwords courts FR qui bornent la span du trigger manuel (Ctrl+Espace).
         // Idée : quand l'utilisateur force la popup, on prend le texte entre le
@@ -1120,7 +933,7 @@ namespace MathCursor.Host
                 int absEnd = paragraphAbsStart + spanEnd;
 
                 _lastZoneSource = span;
-                _editHandle = null;
+                _editController?.Close();
 
                 if (string.IsNullOrEmpty(resolved.TopLatex)) return;
                 ShowPopup(resolved, absStart, absEnd, span.Length, "manuel: " + span);
@@ -1225,7 +1038,7 @@ namespace MathCursor.Host
             int absStart = _iterativeParaAbsStart + _iterativeSpanStart;
             int absEnd = _iterativeParaAbsStart + _iterativeSpanEnd;
             _lastZoneSource = span;
-            _editHandle = null;
+            _editController?.Close();
             ShowPopup(resolved, absStart, absEnd, span.Length, "iterative: " + span);
             _popup?.EnterNavMode();
         }
@@ -1831,12 +1644,13 @@ namespace MathCursor.Host
             // popup soient combinés (last-write-wins via ZoneResolver pour
             // les pins divergents sur le même span).
             var initialSidecar = MathCursor.Core.Resolution.ResolutionSidecar.Empty;
-            if (_editHandle != null)
+            var editingHandle = _editController?.CurrentEditingHandle;
+            if (editingHandle != null)
             {
                 initialSidecar = MathCursor.Core.Resolution.SidecarMerger.Merge(
                     new[]
                     {
-                        GetSidecarForHandle(_editHandle.Id),
+                        GetSidecarForHandle(editingHandle.Id),
                         _popup?.CurrentSidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty,
                     },
                     new[] { 0, 0 });
@@ -1847,7 +1661,7 @@ namespace MathCursor.Host
                 source: source,
                 latex: latex,
                 sidecar: initialSidecar,
-                editingHandle: _editHandle);
+                editingHandle: editingHandle);
             // Wrap tout le pipeline dans un seul UndoRecord nommé Word →
             // un Ctrl+Z annule le commit entier d'un coup (pas étape par
             // étape) → fini les états partiels incohérents. Cf. ADR
@@ -1886,8 +1700,7 @@ namespace MathCursor.Host
             _lastZoneAbsStart = -1;
             _lastZoneAbsEnd = -1;
             _lastZoneSource = "";
-            _editHandle = null;
-            _editingOMathStart = -1;
+            _editController?.Close();
             _revertedMultiLineZoneStart = -1;
             _revertedMultiLineZoneEnd = -1;
             _revertedHandleId = null;
