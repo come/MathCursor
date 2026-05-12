@@ -3126,61 +3126,6 @@ namespace MathCursor.Host
         /// fullDocXml.
         /// </summary>
         /// <summary>
-        /// Cherche dans tout le doc l'OMath qui couvre <paramref name="absStart"/>.
-        /// Sortie via <paramref name="newStart"/>/<paramref name="newEnd"/>.
-        /// Retourne true si trouvée. Logs préfixés par
-        /// <paramref name="logPrefix"/> pour identifier la route appelante
-        /// (splice vs legacy transplant).
-        /// </summary>
-        private bool LocateInsertedOMath(Word.Document doc, int absStart, string logPrefix, out int newStart, out int newEnd)
-        {
-            newStart = absStart;
-            newEnd = absStart;
-            // Bug user 12-05 « T+1 » : la probe étroite [absStart-2,
-            // absStart+4] ratait les OMaths plus larges que la source.
-            // Word.Range.OMaths ne renvoie pas les OMaths qui DÉPASSENT
-            // le range probé. On scope au paragraphe entier (= petit
-            // scope rapide + tolérant à n'importe quelle largeur OMath).
-            try
-            {
-                int docEnd = doc.Content.End;
-                int probePos = Math.Min(Math.Max(0, absStart), Math.Max(0, docEnd - 1));
-                Word.Range paraRange = null;
-                try { paraRange = doc.Range(probePos, probePos).Paragraphs[1].Range; }
-                catch (Exception exP) { LogDiag($"{logPrefix}_locate_para_probe_error: " + exP.Message); }
-                if (paraRange != null)
-                {
-                    foreach (Word.OMath om in paraRange.OMaths)
-                    {
-                        var rng = om.Range;
-                        if (rng.Start <= absStart && rng.End > absStart)
-                        {
-                            LogDiag($"{logPrefix}: matched [{rng.Start},{rng.End}] (para probe)");
-                            newStart = rng.Start;
-                            newEnd = rng.End;
-                            return true;
-                        }
-                    }
-                }
-                // Fallback : scan global (gros doc lent mais correct).
-                foreach (Word.OMath om in doc.OMaths)
-                {
-                    var rng = om.Range;
-                    if (rng.Start <= absStart && rng.End > absStart)
-                    {
-                        LogDiag($"{logPrefix}: matched [{rng.Start},{rng.End}] (fallback global scan)");
-                        newStart = rng.Start;
-                        newEnd = rng.End;
-                        return true;
-                    }
-                }
-            }
-            catch (Exception ex) { LogDiag($"{logPrefix}_locate_error: " + ex.Message); }
-            LogDiag($"{logPrefix}: ok but OMath not found at absStart={absStart}");
-            return false;
-        }
-
-        /// <summary>
         /// Diag : quand para_splice skip, on dump (1) la STRUCTURE
         /// des <w:p> trouvés dans le XML, (2) compte ALL elements par
         /// LocalName (au cas où namespace bizarre), (3) sauvegarde le
@@ -3272,36 +3217,6 @@ namespace MathCursor.Host
         /// risque d'absorption d'OMaths voisins.
         /// </para>
         /// </summary>
-        /// <summary>
-        /// Texte typé en clair (= chars dans [absStart, absEnd] hors des
-        /// OMaths absorbées). Sans absorption, équivalent à Range.Text.
-        /// Avec absorption inline, exclut les chars de l'OMath voisine pour
-        /// que le tail-match du splicer matche les <c>&lt;w:r&gt;</c> typés.
-        /// </summary>
-        private string ComputeTypedTextInRange(Word.Document doc, int absStart, int absEnd)
-        {
-            var range = doc.Range(absStart, absEnd);
-            var omRanges = new System.Collections.Generic.List<(int s, int e)>();
-            try
-            {
-                foreach (Word.OMath om in range.OMaths)
-                    omRanges.Add((om.Range.Start, om.Range.End));
-            }
-            catch { }
-            if (omRanges.Count == 0) return range.Text ?? "";
-
-            omRanges.Sort((a, b) => a.s.CompareTo(b.s));
-            var sb = new System.Text.StringBuilder();
-            int cur = absStart;
-            foreach (var (s, e) in omRanges)
-            {
-                if (s > cur) sb.Append(doc.Range(cur, s).Text ?? "");
-                cur = Math.Max(cur, e);
-            }
-            if (cur < absEnd) sb.Append(doc.Range(cur, absEnd).Text ?? "");
-            return sb.ToString();
-        }
-
         /// <summary>
         /// Délègue à <see cref="OMathStagingService"/> (ghost doc). P2.6 du
         /// refactor archi — zéro mutation du doc actif. Le paramètre
