@@ -2439,47 +2439,61 @@ namespace MathCursor.Host
                     leftScan--;
                     leftHadSpace = true;
                 }
+                int docEnd = doc.Content.End;
                 LogDiag($"merge left: scan={leftScan} hadSpace={leftHadSpace} (looking for OMath ending at {leftScan + 1})");
                 // À leftScan il doit y avoir un OMath qui finit à leftScan+1.
+                // Perf gros doc 12-05 : on SCOPE la recherche au range
+                // [leftScan, leftScan+1] (au lieu de scanner doc.OMaths
+                // qui prenait 150ms × 64 OMaths). Word renvoie les OMaths
+                // qui overlap le range donné — donc max 1-2 OMaths à examiner.
                 if (leftScan >= 0)
                 {
+                    var swMergeLeft = System.Diagnostics.Stopwatch.StartNew();
                     int omathCount = 0;
-                    foreach (Word.OMath om in doc.OMaths)
+                    try
                     {
-                        omathCount++;
-                        var omEnd = om.Range.End;
-                        var omStart = om.Range.Start;
-                        if (omEnd == leftScan + 1)
+                        int probeStart = Math.Max(0, leftScan);
+                        int probeEnd = Math.Min(docEnd, leftScan + 1);
+                        if (probeEnd <= probeStart) probeEnd = probeStart + 1;
+                        var scopedOmaths = doc.Range(probeStart, probeEnd).OMaths;
+                        foreach (Word.OMath om in scopedOmaths)
                         {
-                            LogDiag($"merge left: candidate OMath range=[{omStart},{omEnd}]");
-                            var h = FindOurHandleForOMath(om);
-                            LogDiag($"merge left: handle={(h ?? "null")}");
-                            if (h != null)
+                            omathCount++;
+                            var omEnd = om.Range.End;
+                            var omStart = om.Range.Start;
+                            if (omEnd == leftScan + 1)
                             {
-                                try
+                                LogDiag($"merge left: candidate OMath range=[{omStart},{omEnd}]");
+                                var h = FindOurHandleForOMath(om);
+                                LogDiag($"merge left: handle={(h ?? "null")}");
+                                if (h != null)
                                 {
-                                    var stored = _store.RetrieveAsync(new EquationHandle(h)).GetAwaiter().GetResult();
-                                    if (stored != null && !string.IsNullOrEmpty(stored.Source))
+                                    try
                                     {
-                                        leftOMath = om;
-                                        leftHandle = h;
-                                        leftSource = stored.Source;
-                                        LogDiag($"merge left: source=\"{Preview(stored.Source)}\"");
+                                        var stored = _store.RetrieveAsync(new EquationHandle(h)).GetAwaiter().GetResult();
+                                        if (stored != null && !string.IsNullOrEmpty(stored.Source))
+                                        {
+                                            leftOMath = om;
+                                            leftHandle = h;
+                                            leftSource = stored.Source;
+                                            LogDiag($"merge left: source=\"{Preview(stored.Source)}\"");
+                                        }
+                                        else { LogDiag("merge left: stored null or empty source"); }
                                     }
-                                    else { LogDiag("merge left: stored null or empty source"); }
+                                    catch (Exception ex) { LogDiag($"merge_retrieve_left_error: {ex.Message}"); }
                                 }
-                                catch (Exception ex) { LogDiag($"merge_retrieve_left_error: {ex.Message}"); }
+                                break;
                             }
-                            break;
                         }
                     }
-                    LogDiag($"merge left: scanned {omathCount} OMaths total, leftOMath={(leftOMath != null ? "found" : "null")}");
+                    catch (Exception ex) { LogDiag($"merge_left_scoped_error: {ex.Message}"); }
+                    swMergeLeft.Stop();
+                    LogDiag($"PERF merge_left.scoped_scan={swMergeLeft.ElapsedMilliseconds}ms scanned={omathCount} leftOMath={(leftOMath != null ? "found" : "null")}");
                 }
                 else { LogDiag("merge left: leftScan < 0, skip"); }
 
                 // DROITE : 0 ou 1 espace entre absEnd et l'OMath droit (idem gauche).
                 int rightScan = absEnd;
-                int docEnd = doc.Content.End;
                 bool rightHadSpace = false;
                 if (rightScan < docEnd && IsSingleSpaceAt(doc, rightScan))
                 {
@@ -2489,33 +2503,46 @@ namespace MathCursor.Host
                 LogDiag($"merge right: scan={rightScan} hadSpace={rightHadSpace} docEnd={docEnd} (looking for OMath starting at {rightScan})");
                 if (rightScan < docEnd)
                 {
-                    foreach (Word.OMath om in doc.OMaths)
+                    var swMergeRight = System.Diagnostics.Stopwatch.StartNew();
+                    int rOmCount = 0;
+                    try
                     {
-                        if (om.Range.Start == rightScan)
+                        int probeStart = Math.Max(0, rightScan);
+                        int probeEnd = Math.Min(docEnd, rightScan + 1);
+                        if (probeEnd <= probeStart) probeEnd = probeStart + 1;
+                        var scopedOmaths = doc.Range(probeStart, probeEnd).OMaths;
+                        foreach (Word.OMath om in scopedOmaths)
                         {
-                            var omEnd = om.Range.End;
-                            LogDiag($"merge right: candidate OMath range=[{rightScan},{omEnd}]");
-                            var h = FindOurHandleForOMath(om);
-                            LogDiag($"merge right: handle={(h ?? "null")}");
-                            if (h != null)
+                            rOmCount++;
+                            if (om.Range.Start == rightScan)
                             {
-                                try
+                                var omEnd = om.Range.End;
+                                LogDiag($"merge right: candidate OMath range=[{rightScan},{omEnd}]");
+                                var h = FindOurHandleForOMath(om);
+                                LogDiag($"merge right: handle={(h ?? "null")}");
+                                if (h != null)
                                 {
-                                    var stored = _store.RetrieveAsync(new EquationHandle(h)).GetAwaiter().GetResult();
-                                    if (stored != null && !string.IsNullOrEmpty(stored.Source))
+                                    try
                                     {
-                                        rightOMath = om;
-                                        rightHandle = h;
-                                        rightSource = stored.Source;
-                                        LogDiag($"merge right: source=\"{Preview(stored.Source)}\"");
+                                        var stored = _store.RetrieveAsync(new EquationHandle(h)).GetAwaiter().GetResult();
+                                        if (stored != null && !string.IsNullOrEmpty(stored.Source))
+                                        {
+                                            rightOMath = om;
+                                            rightHandle = h;
+                                            rightSource = stored.Source;
+                                            LogDiag($"merge right: source=\"{Preview(stored.Source)}\"");
+                                        }
+                                        else { LogDiag("merge right: stored null or empty source"); }
                                     }
-                                    else { LogDiag("merge right: stored null or empty source"); }
+                                    catch (Exception ex) { LogDiag($"merge_retrieve_right_error: {ex.Message}"); }
                                 }
-                                catch (Exception ex) { LogDiag($"merge_retrieve_right_error: {ex.Message}"); }
+                                break;
                             }
-                            break;
                         }
                     }
+                    catch (Exception ex) { LogDiag($"merge_right_scoped_error: {ex.Message}"); }
+                    swMergeRight.Stop();
+                    LogDiag($"PERF merge_right.scoped_scan={swMergeRight.ElapsedMilliseconds}ms scanned={rOmCount} rightOMath={(rightOMath != null ? "found" : "null")}");
                 }
 
                 if (leftOMath == null && rightOMath == null)
