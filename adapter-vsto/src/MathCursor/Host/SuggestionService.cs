@@ -264,11 +264,12 @@ namespace MathCursor.Host
                     getPopupSidecar: () => _popup?.CurrentSidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty,
                     getSidecarForHandle: GetSidecarForHandle,
                     log: LogDiag),
-                new RevertedMultiLineMerger((s, e, src) =>
-                {
-                    var doc = _app.ActiveDocument;
-                    return doc == null ? null : TryAbsorbRevertedMultiLineZone(doc, s, e, src);
-                }),
+                new RevertedMultiLineMerger(
+                    getActiveDoc: () => _app.ActiveDocument,
+                    getZone: () => new RevertedMultiLineMerger.RevertedZone(
+                        _revertedMultiLineZoneStart, _revertedMultiLineZoneEnd, _revertedHandleId),
+                    getSidecarForHandle: GetSidecarForHandle,
+                    log: LogDiag),
                 new CasesChainCascadeMerger((s, e, src) =>
                 {
                     var doc = _app.ActiveDocument;
@@ -2244,130 +2245,7 @@ namespace MathCursor.Host
         /// </summary>
         private static readonly string[] AlignMarkers = { "<==>", "<=>", "==>", "=>", "<==", "<=", "=" };
 
-        /// <summary>
-        /// Phase 2 du pipeline cross-merge : détecte si la zone courante
-        /// (ligne en cours de commit) doit fusionner avec ce qui est au-dessus
-        /// pour former un bloc align* multi-ligne. Deux modes :
-        /// <list type="bullet">
-        /// <item><b>Mode 2 (revert)</b> : si l'utilisateur vient de revert un
-        /// OMath multi-ligne (cf. <see cref="_revertedMultiLineZoneStart"/>),
-        /// on absorbe TOUS les paragraphes de la zone reverted, y compris la
-        /// 1re ligne sans marker. Cf. ADR 04-05 multiline-edit-cascade.</item>
-        /// <item><b>Mode 1 (default)</b> : cascade montante conservatrice.
-        /// La source courante doit commencer par un marker align
-        /// (<c>=</c>/<c>&lt;=&gt;</c>/<c>=&gt;</c>/<c>&lt;=</c>). On absorbe
-        /// les paragraphes au-dessus tant qu'ils ont aussi un marker en tête,
-        /// et on s'arrête sur un OMath à nous (absorbé) ou un paragraphe sans
-        /// marker (non absorbé). Cf. brief 30-04 §3.2 + ADR 04-05.</item>
-        /// </list>
-        ///
-        /// <para>Si match, retourne un <see cref="MergeResult"/> dont le range
-        /// englobe <c>[chainStart, currentZoneEnd]</c> et le source mergé est
-        /// <c>line1\nline2\n...\ncurrentSource</c>. Le pipeline core (lattice
-        /// engine) détectera les <c>\n</c> comme LineBreaks et produira un
-        /// LaTeX <c>\begin{align*}...\end{align*}</c>.</para>
-        /// </summary>
-        private MergeResult TryFindCrossMergeAbove(int absStart, int absEnd, string currentSource)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(currentSource)) return null;
-                var doc = _app.ActiveDocument;
-                if (doc == null) return null;
 
-                // Mode 2 prioritaire : édition d'un multi-ligne reverted.
-                var mode2 = TryAbsorbRevertedMultiLineZone(doc, absStart, absEnd, currentSource);
-                if (mode2 != null) return mode2;
-
-                // Mode 1 : dispatch selon marker du current source.
-                // - Cases (Phase 2 ADR 05-05) : ligne courante commence par `{ `
-                // - Align (Phase 1) : marker align (`<=>`, `=>`, `<=`, `=`)
-                // Pas de mix : chaque cascade reconnaît exclusivement son marker.
-                if (CasesCascadeMerger.StartsWithCasesMarker(currentSource))
-                    return TryCascadeAbsorbCasesChain(doc, absStart, absEnd, currentSource);
-                return TryCascadeAbsorbMarkerChain(doc, absStart, absEnd, currentSource);
-            }
-            catch (Exception ex)
-            {
-                LogDiag("xparMerge_error: " + ex.Message);
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Mode 2 du cross-merge (cf. ADR 04-05 multiline-edit-cascade) :
-        /// si l'user a fait « Revenir à la saisie » sur un OMath multi-ligne
-        /// et que le commit courant est dans la zone reverted, on absorbe
-        /// TOUS les paragraphes de la zone (y compris la 1re ligne sans
-        /// marker). Le source mergé = concat des textes paragraphe par
-        /// paragraphe, séparés par <c>\n</c>.
-        /// </summary>
-        private MergeResult TryAbsorbRevertedMultiLineZone(Word.Document doc, int absStart, int absEnd, string currentSource)
-        {
-            if (_revertedMultiLineZoneStart < 0) return null;
-            if (absStart < _revertedMultiLineZoneStart || absStart > _revertedMultiLineZoneEnd + 1) return null;
-
-            try
-            {
-                var zoneRange = doc.Range(_revertedMultiLineZoneStart, Math.Min(_revertedMultiLineZoneEnd, doc.Content.End));
-                var paras = zoneRange.Paragraphs;
-                if (paras == null || paras.Count == 0) return null;
-
-                var paragraphTexts = new List<string>();
-                var paragraphStarts = new List<int>();
-                int chainStart = int.MaxValue;
-                int chainEnd = int.MinValue;
-                foreach (Word.Paragraph p in paras)
-                {
-                    var r = p.Range;
-                    if (r.Start < chainStart) chainStart = r.Start;
-                    if (r.End - 1 > chainEnd) chainEnd = r.End - 1; // exclut ¶ mark
-                    int contentEnd = Math.Max(r.Start, r.End - 1);
-                    string txt = doc.Range(r.Start, contentEnd).Text ?? "";
-                    paragraphTexts.Add(txt);
-                    paragraphStarts.Add(r.Start);
-                }
-                if (paragraphTexts.Count < 2) return null;
-
-                // Replace la ligne où le user a committé (= identifiée par
-                // absStart vs paragraphStarts) avec currentSource. Cf. bug user
-                // 05-05 : commit sur ligne 1 d'un revert 3-lignes ne doit PAS
-                // remplacer la dernière ligne (ancien comportement hardcodé).
-                // Logique extraite et testée dans RevertedZoneMerger.
-                string mergedSource = RevertedZoneMerger.BuildMergedSource(
-                    paragraphTexts, paragraphStarts, absStart, currentSource);
-                // ⚠ newAbsEnd = chainEnd (PAS chainEnd + 1) : on ne consomme PAS
-                // le ¶ qui termine la dernière ligne du zone reverted. Sinon
-                // BuildUp Word fusionne l'OMath avec le paragraphe suivant et
-                // mange le ¶ vide qu'on avait au-dessus du Block B (cf. bug
-                // user 04-05 : « ligne à la fin du paragraphe supprimée »).
-                int newAbsEnd = Math.Max(chainEnd, absEnd);
-                // Bug user 06-05 « revert + re-commit fait sauter les vec » :
-                // récupère le sidecar mémorisé du handle reverted (set par
-                // OnRevertRequested) pour le propager en MergedSidecar. La
-                // mergedSource ≈ source originale post-revert (modulo
-                // remplacement de la ligne courante), donc les offsets des
-                // pins du sidecar matchent encore.
-                var mergedSidecar = !string.IsNullOrEmpty(_revertedHandleId)
-                    ? GetSidecarForHandle(_revertedHandleId)
-                    : MathCursor.Core.Resolution.ResolutionSidecar.Empty;
-                LogDiag($"xparMerge_mode2: revert zone absorbed {paragraphTexts.Count} paragraphs, range=[{chainStart},{newAbsEnd}], sidecarPins={mergedSidecar.SpanPins.Count}");
-
-                return new MergeResult
-                {
-                    AbsStart = chainStart,
-                    AbsEnd = newAbsEnd,
-                    MergedSource = mergedSource,
-                    RemovedHandles = new List<string>(),
-                    MergedSidecar = mergedSidecar,
-                };
-            }
-            catch (Exception ex)
-            {
-                LogDiag("xparMerge_mode2_error: " + ex.Message);
-                return null;
-            }
-        }
 
         /// <summary>
         /// Mode 1 du cross-merge : cascade montante conservatrice.
