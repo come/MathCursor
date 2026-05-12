@@ -19,6 +19,9 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-05-12
+- `[forte]` Perf — [Stack 3 couches sur le commit pipeline (gros doc, ~290ms → ~30-90ms)](2026-05-12-Perf-commit-pipeline-three-stage-stack.md)
+
 ### 2026-05-11
 - `[molle]` Feat — [Notation d'angle au clavier : `^A`/`^ABC` et `angle(...)`](2026-05-11-Feat-angle-notation-caret-and-keyword.md)
 - `[molle]` Feat — [Duo Convertir/Colonnes dans TabHome + onglet "MathCursor" dédié pour le reste](2026-05-11-Feat-ribbon-home-duo-plus-dedicated-tab.md)
