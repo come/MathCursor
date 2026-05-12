@@ -49,18 +49,36 @@ namespace MathCursor.Host
 
             if (!EnsureStagingDoc()) return null;
 
+            // Capture l'ActiveDocument utilisateur : les mutations sur
+            // _stagingDoc (Delete, Text=, OMaths.Add) RE-activent
+            // implicitement le ghost doc côté Word. Sans restauration,
+            // _app.Selection pointe sur le ghost après BuildOMathXml →
+            // l'utilisateur perd la main dans le doc invisible.
+            Word.Document userDoc = null;
+            try { userDoc = _app.ActiveDocument; } catch { }
+            bool needRestoreActive = userDoc != null && !ReferenceEquals(userDoc, _stagingDoc);
+
+            bool prevScreenUpdating = true;
+            try { prevScreenUpdating = _app.ScreenUpdating; } catch { }
+
             var swTotal = Stopwatch.StartNew();
             try
             {
+                try { _app.ScreenUpdating = false; } catch { }
+
                 // Vide le ghost doc (sauf le ¶ mark final obligatoire).
                 int end = _stagingDoc.Content.End;
                 if (end > 1) _stagingDoc.Range(0, end - 1).Delete();
 
-                // Insert l'unicodeMath au début (le ¶ mark final reste).
-                _stagingDoc.Range(0, 0).Text = unicodeMath;
-
-                // BuildUp sur la range insérée → Word convertit en OMath.
-                var mathRange = _stagingDoc.Range(0, unicodeMath.Length);
+                // Insert "\r" + unicodeMath + "\r" pour isoler le math
+                // comme un ¶ standalone. BuildUp détecte alors le mode
+                // display pour les multi-lignes (m:oMathPara) — sans
+                // wrapping, certaines formes restent inline et le
+                // patcher EnsureDisplayWithLeftJc doit re-wrapper.
+                _stagingDoc.Range(0, 0).Text = "\r" + unicodeMath + "\r";
+                int mathStart = 1; // saute le \r leading
+                int mathEnd = mathStart + unicodeMath.Length;
+                var mathRange = _stagingDoc.Range(mathStart, mathEnd);
                 mathRange.OMaths.Add(mathRange);
                 mathRange.OMaths.BuildUp();
 
@@ -81,6 +99,15 @@ namespace MathCursor.Host
             {
                 _diagLog?.Invoke("staging.build_error: " + ex.Message);
                 return null;
+            }
+            finally
+            {
+                if (needRestoreActive)
+                {
+                    try { userDoc.Activate(); }
+                    catch (Exception ex) { _diagLog?.Invoke("staging.restore_active_error: " + ex.Message); }
+                }
+                try { _app.ScreenUpdating = prevScreenUpdating; } catch { }
             }
         }
 
