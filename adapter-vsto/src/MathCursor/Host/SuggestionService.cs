@@ -3177,21 +3177,29 @@ namespace MathCursor.Host
             int unicodeEnd = unicodeStart + unicodeMath.Length;
             string capturedXml = null;
 
+            var swIso = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 // 1. Insert "\r" + unicodeMath + "\r"
+                var swStep1 = System.Diagnostics.Stopwatch.StartNew();
                 doc.Range(insertPos, insertPos).Text = "\r" + unicodeMath + "\r";
+                swStep1.Stop();
 
                 // 2. BuildUp sur la portion unicodeMath isolée par les \r
                 //    → aucun voisin à absorber.
+                var swStep2 = System.Diagnostics.Stopwatch.StartNew();
                 var mathRange = doc.Range(unicodeStart, unicodeEnd);
                 mathRange.OMaths.Add(mathRange);
                 mathRange.OMaths.BuildUp();
+                swStep2.Stop();
 
                 // 3. Find the new OMath (couvre unicodeStart)
+                var swStep3 = System.Diagnostics.Stopwatch.StartNew();
                 Word.OMath newOMath = null;
+                int omathScanned = 0;
                 foreach (Word.OMath om in doc.OMaths)
                 {
+                    omathScanned++;
                     var rng = om.Range;
                     if (rng.Start <= unicodeStart && rng.End > unicodeStart)
                     {
@@ -3199,6 +3207,8 @@ namespace MathCursor.Host
                         break;
                     }
                 }
+                swStep3.Stop();
+                LogDiag($"PERF iso.step1_insert={swStep1.ElapsedMilliseconds}ms step2_buildup={swStep2.ElapsedMilliseconds}ms step3_find_omath={swStep3.ElapsedMilliseconds}ms (scanned={omathScanned})");
                 if (newOMath == null) { LogDiag("iso_build: OMath not found after BuildUp"); return null; }
 
                 Word.Paragraph omPara = null;
@@ -3208,7 +3218,10 @@ namespace MathCursor.Host
                 // 4. Capture FULL WordOpenXML package du paragraphe (= avec
                 //    pkg:package wrapper + namespaces). InsertXML demande ce
                 //    format complet, sinon « Impossible d'insérer le code XML ».
+                var swStep4 = System.Diagnostics.Stopwatch.StartNew();
                 capturedXml = omPara.Range.WordOpenXML;
+                swStep4.Stop();
+                LogDiag($"PERF iso.step4_capture_xml={swStep4.ElapsedMilliseconds}ms len={capturedXml?.Length ?? 0}");
                 if (string.IsNullOrEmpty(capturedXml))
                 {
                     LogDiag("iso_build: empty WordOpenXML capture");
@@ -3225,6 +3238,7 @@ namespace MathCursor.Host
                 // 5. Cleanup : supprime tout ce qu'on a ajouté à la fin du doc.
                 //    diff = ce que le doc a gagné en chars = exactement ce qu'on
                 //    a inséré (post-BuildUp). On le supprime depuis insertPos.
+                var swStep5 = System.Diagnostics.Stopwatch.StartNew();
                 try
                 {
                     int currentEnd = doc.Content.End;
@@ -3232,6 +3246,9 @@ namespace MathCursor.Host
                     if (diff > 0) doc.Range(insertPos, insertPos + diff).Delete();
                 }
                 catch (Exception ex) { LogDiag("iso_cleanup_error: " + ex.Message); }
+                swStep5.Stop();
+                swIso.Stop();
+                LogDiag($"PERF iso.step5_cleanup={swStep5.ElapsedMilliseconds}ms iso.total={swIso.ElapsedMilliseconds}ms");
             }
 
             return capturedXml;
@@ -3246,10 +3263,12 @@ namespace MathCursor.Host
         /// </summary>
         private (int newStart, int newEnd) InsertOMathAt(int absStart, int absEnd, string latex)
         {
+            var swTotal = System.Diagnostics.Stopwatch.StartNew();
             var doc = _app.ActiveDocument;
             if (doc == null) return (absStart, absEnd);
             int docStart = doc.Content.Start;
             int docEnd = doc.Content.End;
+            LogDiag($"PERF InsertOMathAt enter: absStart={absStart} absEnd={absEnd} docEnd={docEnd}");
             if (absStart < docStart) absStart = docStart;
             if (absEnd > docEnd) absEnd = docEnd;
             if (absEnd <= absStart) return (absStart, absEnd);
@@ -3310,68 +3329,73 @@ namespace MathCursor.Host
 
                     // 2. ROUTE PRINCIPALE inline single-¶ (cf. ADR
                     //    2026-05-07-Fix-insert-via-paragraph-xml-splice) :
-                    //    on splice la nouvelle OMath dans le <w:p> du ¶
-                    //    courant SEULEMENT (= firstPara.Range.WordOpenXML,
-                    //    pas doc.Content.WordOpenXML). Sur un gros doc
-                    //    (>50KB texte), full-doc InsertXML force Word à
-                    //    repaginer/rerender tout → 20s gel (bug user
-                    //    2026-05-11). En localisant à un seul ¶, on passe
-                    //    de ~MB d'XML à ~KB.
+                    //    splice de la nouvelle OMath dans le <w:p> du ¶
+                    //    courant uniquement (= firstPara.Range.WordOpenXML).
                     string newParaXmlSpliced = null;
                     if (!isDisplayMath && targetCount == 1)
                     {
                         try
                         {
+                            var swBuild = System.Diagnostics.Stopwatch.StartNew();
                             string capturedAlone = BuildOMathXmlIsolated(doc, latex);
+                            swBuild.Stop();
+                            LogDiag($"PERF para_splice.build_isolated={swBuild.ElapsedMilliseconds}ms");
+
                             string newOMathOnly = InlineOMathSplicer.ExtractOMathElement(capturedAlone);
                             if (!string.IsNullOrEmpty(newOMathOnly))
                             {
-                                // Range.Text safe ici : plage [absStart,
-                                // absEnd] = math source qu'on vient de
-                                // taper, jamais d'OMath dedans.
                                 string mathSource = doc.Range(absStart, absEnd).Text ?? "";
-                                // XML du ¶ courant uniquement (pkg avec UN
-                                // seul <w:p> + namespaces). Bcp plus petit
-                                // que doc.Content.WordOpenXML.
+                                var swReadXml = System.Diagnostics.Stopwatch.StartNew();
                                 string paraXml = firstPara.Range.WordOpenXML;
+                                swReadXml.Stop();
+                                LogDiag($"PERF para_splice.read_para_xml={swReadXml.ElapsedMilliseconds}ms paraXmlLen={paraXml?.Length ?? 0}");
 
+                                var swSplice = System.Diagnostics.Stopwatch.StartNew();
                                 newParaXmlSpliced = InlineOMathSplicer.SpliceOMathInDocXml(
                                     paraXml, mathSource, newOMathOnly);
+                                swSplice.Stop();
+                                LogDiag($"PERF para_splice.splice_xml={swSplice.ElapsedMilliseconds}ms");
+
                                 if (!string.IsNullOrEmpty(newParaXmlSpliced))
-                                {
                                     LogDiag($"para_splice: ok mathSource=\"{Preview(mathSource)}\" newParaLen={newParaXmlSpliced.Length}");
-                                }
                                 else
-                                {
                                     LogDiag($"para_splice: skip (no match for \"{Preview(mathSource)}\")");
-                                }
                             }
                         }
                         catch (Exception ex) { LogDiag("para_splice_error: " + ex.Message); }
                     }
 
-                    // 3. Si la route splice a réussi, on InsertXML sur le
-                    //    Range du ¶ courant uniquement (Word ne re-rend
-                    //    QUE ce ¶, pas le doc entier). Sinon (display math
-                    //    cases/align, ou splice failed), on tombe sur la
-                    //    route legacy plus bas.
-                    string capturedXml = newParaXmlSpliced != null
-                        ? null
-                        : BuildOMathXmlIsolated(doc, latex);
+                    // 3. Si la route splice a réussi → InsertXML sur le
+                    //    Range du ¶ courant uniquement. Sinon (display math
+                    //    cases/align, ou splice failed), route legacy +
+                    //    full-doc InsertXML.
+                    string capturedXml = null;
+                    if (newParaXmlSpliced == null)
+                    {
+                        var swBuildLegacy = System.Diagnostics.Stopwatch.StartNew();
+                        capturedXml = BuildOMathXmlIsolated(doc, latex);
+                        swBuildLegacy.Stop();
+                        LogDiag($"PERF legacy.build_isolated={swBuildLegacy.ElapsedMilliseconds}ms");
+                    }
 
                     if (newParaXmlSpliced != null)
                     {
                         try
                         {
+                            var swInsert = System.Diagnostics.Stopwatch.StartNew();
                             firstPara.Range.InsertXML(newParaXmlSpliced);
+                            swInsert.Stop();
                             usedXmlTransplant = true;
-                            LogDiag($"para_splice: paragraph InsertXML ok, len={newParaXmlSpliced.Length}");
+                            LogDiag($"PERF para_splice.insert_xml={swInsert.ElapsedMilliseconds}ms (len={newParaXmlSpliced.Length})");
                         }
                         catch (Exception ex) { LogDiag("para_splice_insertxml_error: " + ex.Message); }
 
                         if (usedXmlTransplant)
                         {
+                            var swLocate = System.Diagnostics.Stopwatch.StartNew();
                             omathCreated = LocateInsertedOMath(doc, absStart, "para_splice", out newStart, out newEnd);
+                            swLocate.Stop();
+                            LogDiag($"PERF para_splice.locate_omath={swLocate.ElapsedMilliseconds}ms");
                         }
                     }
 
@@ -3389,7 +3413,10 @@ namespace MathCursor.Host
                         //    paragraph qui causait fusion, cf. ADR 04-05).
                         try
                         {
+                            var swReadFull = System.Diagnostics.Stopwatch.StartNew();
                             string fullDocXml = doc.Content.WordOpenXML;
+                            swReadFull.Stop();
+                            LogDiag($"PERF legacy.read_full_doc_xml={swReadFull.ElapsedMilliseconds}ms len={fullDocXml?.Length ?? 0}");
                             string newParaWp = ExtractFirstWPElement(capturedXml);
                             if (string.IsNullOrEmpty(newParaWp))
                             {
@@ -3419,17 +3446,22 @@ namespace MathCursor.Host
                                     paragraphSources.Add(rawText);
                                 }
 
+                                var swReplace = System.Diagnostics.Stopwatch.StartNew();
                                 string modifiedDocXml = ReplaceParagraphsInDocXml(
                                     fullDocXml, paragraphSources, newParaWp);
+                                swReplace.Stop();
+                                LogDiag($"PERF legacy.replace_para_in_doc_xml={swReplace.ElapsedMilliseconds}ms");
                                 if (string.IsNullOrEmpty(modifiedDocXml))
                                 {
                                     LogDiag("insert_transplant: failed to splice doc XML (no match for paragraph sources)");
                                 }
                                 else
                                 {
+                                    var swInsertFull = System.Diagnostics.Stopwatch.StartNew();
                                     doc.Content.InsertXML(modifiedDocXml);
+                                    swInsertFull.Stop();
                                     usedXmlTransplant = true;
-                                    LogDiag($"insert_transplant: full-doc InsertXML ok, len={modifiedDocXml.Length}");
+                                    LogDiag($"PERF legacy.insert_full_doc={swInsertFull.ElapsedMilliseconds}ms (len={modifiedDocXml.Length})");
                                 }
                             }
                         }
@@ -3457,6 +3489,8 @@ namespace MathCursor.Host
             int afterPos = ComputeAfterOMathCaret(doc, newEnd);
             try { _app.Selection.SetRange(afterPos, afterPos); } catch { }
             NudgeCursorOutOfMath(doc, maxAttempts: 3);
+            swTotal.Stop();
+            LogDiag($"PERF InsertOMathAt total={swTotal.ElapsedMilliseconds}ms");
             return (newStart, newEnd);
         }
 
