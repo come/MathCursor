@@ -69,16 +69,9 @@ namespace MathCursor.Host
         private int _initialCaretPos = -1;
         private bool _userInteracted;
 
-        // Cache LaTeX → <m:oMath> XML extrait. Couche 2/3 du stack perf
-        // ADR 2026-05-12. Évite de re-faire BuildOMathXmlIsolated (~70ms)
-        // pour les formules répétées dans la session (`f(x)`, `\frac{a}{b}`,
-        // etc.). Capacité bornée (32 entrées) avec eviction LRU manuelle —
-        // pas de NuGet (contrainte CLAUDE.md "pas de dépendances lourdes").
-        private const int OMathCacheCapacity = 32;
-        private readonly System.Collections.Generic.Dictionary<string, string> _omathXmlCache
-            = new System.Collections.Generic.Dictionary<string, string>(StringComparer.Ordinal);
-        private readonly System.Collections.Generic.LinkedList<string> _omathXmlLru
-            = new System.Collections.Generic.LinkedList<string>();
+        // Cache LaTeX → <m:oMath> XML. Couche 2/3 perf (ADR 2026-05-12).
+        // Extrait en classe dédiée par P2.4 (ADR refactor pure-merger).
+        private readonly OMathXmlCache _omathXmlCache = new OMathXmlCache(capacity: 32);
 
         // Cache pré-fetch du paraXml. Couche 3/3 du stack perf (ADR
         // 2026-05-12). Refresh sur idle dans CheckAndUpdate quand le ¶
@@ -3368,48 +3361,6 @@ namespace MathCursor.Host
             return sb.ToString();
         }
 
-        /// <summary>
-        /// Cache lookup pour l'élément OMath extrait. Couche 2/3 du stack
-        /// perf (ADR 2026-05-12). Touch LRU = on déplace en tête si trouvé.
-        /// Retourne <c>null</c> si pas en cache.
-        /// </summary>
-        private string TryGetCachedOMathElement(string latex)
-        {
-            if (string.IsNullOrEmpty(latex)) return null;
-            if (!_omathXmlCache.TryGetValue(latex, out string xml)) return null;
-            // Touch LRU : on remet en tête.
-            _omathXmlLru.Remove(latex);
-            _omathXmlLru.AddFirst(latex);
-            return xml;
-        }
-
-        /// <summary>
-        /// Stocke un élément OMath extrait dans le cache LRU. Évince
-        /// l'entrée la moins récente si on dépasse la capacité.
-        /// </summary>
-        private void StoreOMathElementInCache(string latex, string omathElementXml)
-        {
-            if (string.IsNullOrEmpty(latex) || string.IsNullOrEmpty(omathElementXml)) return;
-            if (_omathXmlCache.ContainsKey(latex))
-            {
-                _omathXmlCache[latex] = omathElementXml;
-                _omathXmlLru.Remove(latex);
-                _omathXmlLru.AddFirst(latex);
-                return;
-            }
-            if (_omathXmlCache.Count >= OMathCacheCapacity)
-            {
-                var oldest = _omathXmlLru.Last;
-                if (oldest != null)
-                {
-                    _omathXmlCache.Remove(oldest.Value);
-                    _omathXmlLru.RemoveLast();
-                }
-            }
-            _omathXmlCache[latex] = omathElementXml;
-            _omathXmlLru.AddFirst(latex);
-        }
-
         private string BuildOMathXmlIsolated(Word.Document doc, string latex)
         {
             string unicodeMath;
@@ -3717,7 +3668,7 @@ namespace MathCursor.Host
                             // Cache hit → skip BuildOMathXmlIsolated (~70ms).
                             // Le mathSource n'influe pas sur l'OMath rendu
                             // (l'OMath n'embarque pas la source typée).
-                            string newOMathOnly = TryGetCachedOMathElement(latex);
+                            string newOMathOnly = _omathXmlCache.TryGet(latex);
                             if (newOMathOnly != null)
                             {
                                 LogDiag($"PERF para_splice.build_isolated=0ms (cache hit, latex=\"{Preview(latex)}\")");
@@ -3735,7 +3686,7 @@ namespace MathCursor.Host
                                 newOMathOnly = InlineOMathSplicer.ExtractOMathElement(capturedSharedXml);
                                 if (!string.IsNullOrEmpty(newOMathOnly))
                                 {
-                                    StoreOMathElementInCache(latex, newOMathOnly);
+                                    _omathXmlCache.Set(latex, newOMathOnly);
                                 }
                             }
                             if (!string.IsNullOrEmpty(newOMathOnly))
