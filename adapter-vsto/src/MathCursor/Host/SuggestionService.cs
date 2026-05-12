@@ -3420,6 +3420,18 @@ namespace MathCursor.Host
                     {
                         try
                         {
+                            // ORDRE CRITIQUE : on lit paraXml AVANT
+                            // BuildOMathXmlIsolated (qui mute le doc en
+                            // insérant/supprimant temporairement à la fin).
+                            // Sinon la ref COM firstPara peut renvoyer un
+                            // package "fantôme" (260KB de skeleton mais
+                            // <w:body> vide) — bug user 12-05 sur gros doc.
+                            string mathSource = doc.Range(absStart, absEnd).Text ?? "";
+                            var swReadXml = System.Diagnostics.Stopwatch.StartNew();
+                            string paraXml = firstPara.Range.WordOpenXML;
+                            swReadXml.Stop();
+                            LogDiag($"PERF para_splice.read_para_xml={swReadXml.ElapsedMilliseconds}ms paraXmlLen={paraXml?.Length ?? 0}");
+
                             var swBuild = System.Diagnostics.Stopwatch.StartNew();
                             capturedSharedXml = BuildOMathXmlIsolated(doc, latex);
                             swBuild.Stop();
@@ -3428,11 +3440,6 @@ namespace MathCursor.Host
                             string newOMathOnly = InlineOMathSplicer.ExtractOMathElement(capturedSharedXml);
                             if (!string.IsNullOrEmpty(newOMathOnly))
                             {
-                                string mathSource = doc.Range(absStart, absEnd).Text ?? "";
-                                var swReadXml = System.Diagnostics.Stopwatch.StartNew();
-                                string paraXml = firstPara.Range.WordOpenXML;
-                                swReadXml.Stop();
-                                LogDiag($"PERF para_splice.read_para_xml={swReadXml.ElapsedMilliseconds}ms paraXmlLen={paraXml?.Length ?? 0}");
 
                                 var swSplice = System.Diagnostics.Stopwatch.StartNew();
                                 newParaXmlSpliced = InlineOMathSplicer.SpliceOMathInDocXml(
