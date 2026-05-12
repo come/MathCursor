@@ -80,6 +80,16 @@ namespace MathCursor.Host
         private readonly System.Collections.Generic.LinkedList<string> _omathXmlLru
             = new System.Collections.Generic.LinkedList<string>();
 
+        // Cache pré-fetch du paraXml. Couche 3/3 du stack perf (ADR
+        // 2026-05-12). Refresh sur idle dans CheckAndUpdate quand le ¶
+        // courant est stable. À InsertOMathAt on vérifie hash+paraStart,
+        // si match on évite le 60ms read_para_xml. Une seule entrée (le ¶
+        // où est le curseur), pas de map.
+        private int _prefetchedParaStart = -1;
+        private int _prefetchedParaTextHash = 0;
+        private string _prefetchedParaXml = null;
+        private string _prefetchLastSeenText = null;
+
         // État de la dernière popup affichée — nécessaire pour commit sur Enter :
         // on a besoin des positions absolues dans le document (pas juste offsets
         // paragraphe), des choix présentés, et de la source brute pour la store.
@@ -752,6 +762,84 @@ namespace MathCursor.Host
             {
                 _inferenceInFlight = false;
             }
+
+            // Couche 3/3 perf stack (ADR 2026-05-12) : pré-fetch
+            // opportuniste du paraXml courant si on est sur un tick
+            // STABLE (= même texte que le tick précédent → user idle).
+            // Évite de payer 60ms de WordOpenXML pendant la frappe
+            // rapide ; payé seulement sur les pauses.
+            MaybePrefetchParaXml();
+        }
+
+        /// <summary>
+        /// Pré-fetch opportuniste du <c>firstPara.Range.WordOpenXML</c>
+        /// courant pour servir le cache hit dans <c>InsertOMathAt</c>.
+        /// Ne tire le coup qu'en cas d'idle (= 2 ticks consécutifs avec
+        /// même texte de ¶) ET si le cache n'est pas déjà à jour.
+        /// </summary>
+        private void MaybePrefetchParaXml()
+        {
+            try
+            {
+                if (_app.Documents.Count == 0) return;
+                var sel = _app.Selection;
+                if (sel == null) return;
+                Word.Range selRange;
+                try { selRange = sel.Range; } catch { return; }
+                if (selRange == null) return;
+                Word.Paragraph para = null;
+                try { para = selRange.Paragraphs[1]; } catch { return; }
+                if (para == null) return;
+
+                int paraStart;
+                string paraText;
+                try
+                {
+                    paraStart = para.Range.Start;
+                    paraText = para.Range.Text ?? "";
+                }
+                catch { return; }
+
+                int hash = paraText.GetHashCode();
+
+                // Cache déjà à jour ? skip.
+                if (_prefetchedParaStart == paraStart && _prefetchedParaTextHash == hash)
+                {
+                    _prefetchLastSeenText = paraText;
+                    return;
+                }
+
+                // Signal idle : current tick == last tick (user n'a rien
+                // tapé entre les 2). Sinon on attend que ça se stabilise.
+                if (_prefetchLastSeenText != paraText)
+                {
+                    _prefetchLastSeenText = paraText;
+                    return;
+                }
+
+                // Stable + cache stale → on rafraîchit.
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                string xml = para.Range.WordOpenXML;
+                sw.Stop();
+                _prefetchedParaStart = paraStart;
+                _prefetchedParaTextHash = hash;
+                _prefetchedParaXml = xml;
+                LogDiag($"PERF prefetch.read_para_xml={sw.ElapsedMilliseconds}ms len={xml?.Length ?? 0}");
+            }
+            catch (Exception ex) { LogDiag("prefetch_para_xml_error: " + ex.Message); }
+        }
+
+        /// <summary>
+        /// Récupère le paraXml pré-fetché si le ¶ courant matche
+        /// (paraStart + hash texte). Retourne <c>null</c> si stale ou
+        /// pas de cache.
+        /// </summary>
+        private string TryGetPrefetchedParaXml(int paraStart, string paraText)
+        {
+            if (_prefetchedParaXml == null) return null;
+            if (_prefetchedParaStart != paraStart) return null;
+            if (_prefetchedParaTextHash != paraText.GetHashCode()) return null;
+            return _prefetchedParaXml;
         }
 
         private void ApplyZones(IReadOnlyList<DetectedZone> zones, int caretInParagraph, int paragraphAbsStart, IReadOnlyList<(int start, int end)> omathRegions)
@@ -3626,10 +3714,24 @@ namespace MathCursor.Host
                             // package "fantôme" (260KB de skeleton mais
                             // <w:body> vide) — bug user 12-05 sur gros doc.
                             string mathSource = doc.Range(absStart, absEnd).Text ?? "";
-                            var swReadXml = System.Diagnostics.Stopwatch.StartNew();
-                            string paraXml = firstPara.Range.WordOpenXML;
-                            swReadXml.Stop();
-                            LogDiag($"PERF para_splice.read_para_xml={swReadXml.ElapsedMilliseconds}ms paraXmlLen={paraXml?.Length ?? 0}");
+                            // Couche 3/3 perf stack (ADR 2026-05-12) : on
+                            // regarde le cache pré-fetché. Hit si le ¶
+                            // courant (paraStart + hash texte) matche le
+                            // prefetch posé en idle par MaybePrefetchParaXml.
+                            int firstParaStartForCache = firstPara.Range.Start;
+                            string firstParaTextForCache = firstPara.Range.Text ?? "";
+                            string paraXml = TryGetPrefetchedParaXml(firstParaStartForCache, firstParaTextForCache);
+                            if (paraXml != null)
+                            {
+                                LogDiag($"PERF para_splice.read_para_xml=0ms (prefetch hit, len={paraXml.Length})");
+                            }
+                            else
+                            {
+                                var swReadXml = System.Diagnostics.Stopwatch.StartNew();
+                                paraXml = firstPara.Range.WordOpenXML;
+                                swReadXml.Stop();
+                                LogDiag($"PERF para_splice.read_para_xml={swReadXml.ElapsedMilliseconds}ms paraXmlLen={paraXml?.Length ?? 0}");
+                            }
 
                             // Couche 2/3 perf stack (ADR 2026-05-12) : on
                             // regarde d'abord le cache LRU latex → <m:oMath>.
