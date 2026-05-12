@@ -294,6 +294,11 @@
     <Compile Include="Host\ListModeStateMachine.cs" />
     <Compile Include="Host\OMathParaJcPatcher.cs" />
     <Compile Include="Host\InlineOMathSplicer.cs" />
+    <Compile Include="Host\Inserters\AtomicRangeInserter.cs" />
+    <Compile Include="Host\Inserters\InlineSpliceInserter.cs" />
+    <Compile Include="Host\Inserters\InsertContext.cs" />
+    <Compile Include="Host\Inserters\PureFastPathInserter.cs" />
+    <Compile Include="Host\Inserters\WordOMathFinder.cs" />
     <Compile Include="Host\OMathStagingService.cs" />
     <Compile Include="Host\OMathXmlCache.cs" />
     <Compile Include="Host\ParaXmlPrefetcher.cs" />

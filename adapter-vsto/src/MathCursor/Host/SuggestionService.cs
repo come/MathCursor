@@ -81,6 +81,12 @@ namespace MathCursor.Host
         // zéro mutation du doc actif user.
         private readonly OMathStagingService _omathStaging;
 
+        // Stratégies d'insertion (P2.7 refactor archi). Enchaînées dans
+        // l'ordre fast_path → splice → atomic. Première qui Success gagne.
+        private readonly Inserters.PureFastPathInserter _fastPathInserter;
+        private readonly Inserters.InlineSpliceInserter _spliceInserter;
+        private readonly Inserters.AtomicRangeInserter _atomicInserter;
+
         // État de la dernière popup affichée — nécessaire pour commit sur Enter :
         // on a besoin des positions absolues dans le document (pas juste offsets
         // paragraphe), des choix présentés, et de la source brute pour la store.
@@ -215,6 +221,9 @@ namespace MathCursor.Host
                 new WordParaXmlSource(_app),
                 LogDiag);
             _omathStaging = new OMathStagingService(_app, LogDiag);
+            _fastPathInserter = new Inserters.PureFastPathInserter(LogDiag);
+            _spliceInserter = new Inserters.InlineSpliceInserter(_omathXmlCache, _paraXmlPrefetcher, _omathStaging, LogDiag);
+            _atomicInserter = new Inserters.AtomicRangeInserter(_omathStaging, LogDiag);
 
             // Pipeline de mergers (cf. ADR 2026-05-06-Meta-zone-merger-pipeline) :
             // remplace l'empilement de `if (merged == null)` qui vivait dans
@@ -3323,320 +3332,35 @@ namespace MathCursor.Host
             if (absEnd <= absStart) return (absStart, absEnd);
 
             // Trim whitespaces aux bords de la zone détectée : le NER inclut
-            // parfois un espace avant/après dans la zone, et on ne veut PAS le
-            // remplacer. Sinon on colle l'OMath au mot précédent ("Soit V x" →
-            // NER zone "  V x" → remplacement engloutit l'espace → "Soit∀ x").
+            // parfois un espace avant/après, on ne veut pas le remplacer.
             while (absStart < absEnd && IsWhitespaceCharAt(doc, absStart)) absStart++;
             while (absEnd > absStart && IsWhitespaceCharAt(doc, absEnd - 1)) absEnd--;
             if (absEnd <= absStart) return (absStart, absEnd);
 
-            // === PATTERN UNIFIÉ XML TRANSPLANT (cf. ADR 04-05) ===
-            // Construit l'OMath en zone isolée fin de doc avec textBefore +
-            // unicodeMath + textAfter, capture le full paragraph WordOpenXML,
-            // remplace le paragraphe cible via InsertXML. Pour multi-ligne
-            // display (latex contient \begin{...}), on ne préserve pas de
-            // surround : la cible est remplacée intégralement par la zone
-            // math. Pour inline single-eq, on splice via InlineOMathSplicer
-            // dans le <w:p> existant pour préserver les OMaths voisines.
-            // Aucun BuildUp à la cible → aucune absorption possible des
-            // OMaths voisins.
-            bool isDisplayMath = latex.IndexOf("\\begin{align", StringComparison.Ordinal) >= 0
-                              || latex.IndexOf("\\begin{cases", StringComparison.Ordinal) >= 0;
+            var ctx = BuildInsertContext(doc, absStart, absEnd, latex, absorbedHandles);
+            if (ctx == null) return (absStart, absEnd);
 
-            int newStart = absStart;
-            int newEnd = absStart;
-            bool omathCreated = false;
-            bool usedXmlTransplant = false;
-
-            try
+            // Stratégies enchaînées : fast_path → splice → atomic. Première
+            // qui Success gagne. P2.7 du refactor archi.
+            int newStart = absStart, newEnd = absStart;
+            bool ok = false;
+            foreach (var result in TryInsertStrategies(ctx))
             {
-                // 1. Identifier les paragraphes cibles. Probe à absStart+1 / absEnd-1
-                //    pour être strictement DANS les paragraphes cibles.
-                    int safeProbeStart = Math.Min(absStart + 1, doc.Content.End - 1);
-                    int safeProbeEnd = Math.Max(absStart, Math.Min(absEnd - 1, doc.Content.End - 1));
-                    if (safeProbeStart > safeProbeEnd) safeProbeStart = safeProbeEnd;
-                    var firstPara = doc.Range(safeProbeStart, safeProbeStart).Paragraphs[1];
-                    var lastPara = doc.Range(safeProbeEnd, safeProbeEnd).Paragraphs[1];
-                    int firstParaStart = firstPara.Range.Start;
-                    int lastParaStart = lastPara.Range.Start;
-
-                    // Calcul `targetCount` (= nb de ¶s couverts par [absStart, absEnd]).
-                    // Optimisation perf gros doc 12-05 : on évite la boucle
-                    // doc.Paragraphs[i] qui prend O(N) Word interop par accès
-                    // (= 30s sur doc 1300 ¶s). Pour 99% des cas (single ¶),
-                    // on compare juste les positions de firstPara et lastPara.
-                    int targetCount;
-                    var swTargetCount = System.Diagnostics.Stopwatch.StartNew();
-                    if (firstParaStart == lastParaStart)
-                    {
-                        targetCount = 1;
-                    }
-                    else
-                    {
-                        // Multi-¶ : on itère via Paragraph.Next, navigation
-                        // linéaire bcp plus rapide que random access par index.
-                        targetCount = 1;
-                        var cursor = firstPara;
-                        while (cursor != null && cursor.Range.Start < lastParaStart)
-                        {
-                            try { cursor = cursor.Next(); }
-                            catch { cursor = null; }
-                            if (cursor == null) break;
-                            targetCount++;
-                            if (cursor.Range.Start >= lastParaStart) break;
-                        }
-                    }
-                    swTargetCount.Stop();
-                    LogDiag($"PERF target_count={swTargetCount.ElapsedMilliseconds}ms count={targetCount}");
-
-                    // 1bis. FAST PATH "pure paragraph" : si le ¶ ne contient
-                    //       QUE notre source typée (rien d'autre — pas de
-                    //       texte voisin, pas d'OMath, pas de table), on
-                    //       passe par BuildUp direct sur le range typé.
-                    //       Aucune absorption possible (pas de voisins à
-                    //       absorber). Skip BuildOMathXmlIsolated (~70ms) +
-                    //       splice XML (~5ms) + InsertXML 260KB (~110ms) =
-                    //       ~190ms gagné par commit. Cible : élève qui tape
-                    //       une formule sur sa ligne vide (cas dominant).
-                    //       Cf. ADR 2026-05-12-Perf-commit-pipeline-three-stage-stack.
-                    bool tookFastPath = false;
-                    if (!isDisplayMath && targetCount == 1)
-                    {
-                        try
-                        {
-                            var swFast = System.Diagnostics.Stopwatch.StartNew();
-                            string mathSource = (doc.Range(absStart, absEnd).Text ?? "").Trim();
-                            string paraTextRaw = firstPara.Range.Text ?? "";
-                            // Trim les marques de ¶ Word (\r, \a vert tab, \v form feed).
-                            while (paraTextRaw.Length > 0
-                                && (paraTextRaw[paraTextRaw.Length - 1] == '\r'
-                                    || paraTextRaw[paraTextRaw.Length - 1] == '\a'
-                                    || paraTextRaw[paraTextRaw.Length - 1] == '\v'
-                                    || paraTextRaw[paraTextRaw.Length - 1] == '\f'))
-                            {
-                                paraTextRaw = paraTextRaw.Substring(0, paraTextRaw.Length - 1);
-                            }
-                            string paraText = paraTextRaw.Trim();
-
-                            bool textMatchesExactly = paraText == mathSource;
-                            // Détection stricte : zéro OMath, zéro table.
-                            // Word.Range.OMaths / .Tables.Count = O(petit).
-                            int omathInPara = firstPara.Range.OMaths.Count;
-                            int tablesInPara = firstPara.Range.Tables.Count;
-                            bool isPure = textMatchesExactly && omathInPara == 0 && tablesInPara == 0;
-                            LogDiag($"fast_path probe: textEq={textMatchesExactly} omaths={omathInPara} tables={tablesInPara} → pure={isPure}");
-
-                            if (isPure)
-                            {
-                                // BuildUp direct sur le range typé.
-                                string unicodeMath;
-                                try { unicodeMath = LatexToUnicodeMath.Convert(latex); }
-                                catch (Exception exU) { LogDiag("fast_path_l2um_error: " + exU.Message); unicodeMath = null; }
-
-                                if (!string.IsNullOrEmpty(unicodeMath))
-                                {
-                                    var typedRange = doc.Range(absStart, absEnd);
-                                    typedRange.Text = unicodeMath;
-                                    int afterReplaceEnd = absStart + unicodeMath.Length;
-                                    var rebuiltRange = doc.Range(absStart, afterReplaceEnd);
-                                    rebuiltRange.OMaths.Add(rebuiltRange);
-                                    rebuiltRange.OMaths.BuildUp();
-
-                                    if (LocateInsertedOMath(doc, absStart, "fast_path", out newStart, out newEnd))
-                                    {
-                                        omathCreated = true;
-                                        usedXmlTransplant = true;
-                                        tookFastPath = true;
-                                        swFast.Stop();
-                                        LogDiag($"PERF fast_path.total={swFast.ElapsedMilliseconds}ms (skipped splice + isolated build)");
-                                    }
-                                    else
-                                    {
-                                        // Le BuildUp direct a échoué à produire un OMath
-                                        // localisable. On laisse le fallback splice gérer.
-                                        LogDiag("fast_path: BuildUp ok but OMath not found, fallback to splice");
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception ex) { LogDiag("fast_path_error: " + ex.Message); }
-                    }
-
-                    // 2. ROUTE PRINCIPALE inline single-¶ : splice de la
-                    //    nouvelle OMath dans firstPara.Range.WordOpenXML.
-                    //
-                    //    Build l'OMath UNE SEULE FOIS (cache pour fallback
-                    //    legacy si splice échoue — bug perf user 12-05 :
-                    //    on rebuildait à chaque échec).
-                    string capturedSharedXml = null;
-                    string newParaXmlSpliced = null;
-                    if (!tookFastPath && !isDisplayMath && targetCount == 1)
-                    {
-                        try
-                        {
-                            // ORDRE CRITIQUE : on lit paraXml AVANT
-                            // BuildOMathXmlIsolated (qui mute le doc en
-                            // insérant/supprimant temporairement à la fin).
-                            // Sinon la ref COM firstPara peut renvoyer un
-                            // package "fantôme" (260KB de skeleton mais
-                            // <w:body> vide) — bug user 12-05 sur gros doc.
-                            string mathSource = ComputeTypedTextInRange(doc, absStart, absEnd);
-                            // Couche 3/3 perf stack (ADR 2026-05-12) : on
-                            // regarde le cache pré-fetché. Hit si le ¶
-                            // courant (paraStart + hash texte) matche le
-                            // prefetch posé en idle par MaybePrefetchParaXml.
-                            int firstParaStartForCache = firstPara.Range.Start;
-                            string firstParaTextForCache = firstPara.Range.Text ?? "";
-                            string paraXml = _paraXmlPrefetcher.TryGet(firstParaStartForCache, firstParaTextForCache);
-                            if (paraXml != null)
-                            {
-                                LogDiag($"PERF para_splice.read_para_xml=0ms (prefetch hit, len={paraXml.Length})");
-                            }
-                            else
-                            {
-                                var swReadXml = System.Diagnostics.Stopwatch.StartNew();
-                                paraXml = firstPara.Range.WordOpenXML;
-                                swReadXml.Stop();
-                                LogDiag($"PERF para_splice.read_para_xml={swReadXml.ElapsedMilliseconds}ms paraXmlLen={paraXml?.Length ?? 0}");
-                            }
-
-                            // Couche 2/3 perf stack (ADR 2026-05-12) : on
-                            // regarde d'abord le cache LRU latex → <m:oMath>.
-                            // Cache hit → skip BuildOMathXmlIsolated (~70ms).
-                            // Le mathSource n'influe pas sur l'OMath rendu
-                            // (l'OMath n'embarque pas la source typée).
-                            string newOMathOnly = _omathXmlCache.TryGet(latex);
-                            if (newOMathOnly != null)
-                            {
-                                LogDiag($"PERF para_splice.build_isolated=0ms (cache hit, latex=\"{Preview(latex)}\")");
-                                // capturedSharedXml reste null : si le splice
-                                // échoue, la legacy fallback fera le build
-                                // complet — pas optimisé mais hors chemin
-                                // chaud.
-                            }
-                            else
-                            {
-                                var swBuild = System.Diagnostics.Stopwatch.StartNew();
-                                capturedSharedXml = BuildOMathXmlIsolated(doc, latex);
-                                swBuild.Stop();
-                                LogDiag($"PERF para_splice.build_isolated={swBuild.ElapsedMilliseconds}ms");
-                                newOMathOnly = InlineOMathSplicer.ExtractOMathElement(capturedSharedXml);
-                                if (!string.IsNullOrEmpty(newOMathOnly))
-                                {
-                                    _omathXmlCache.Set(latex, newOMathOnly);
-                                }
-                            }
-                            if (!string.IsNullOrEmpty(newOMathOnly))
-                            {
-
-                                var swSplice = System.Diagnostics.Stopwatch.StartNew();
-                                newParaXmlSpliced = InlineOMathSplicer.SpliceOMathInDocXml(
-                                    paraXml, mathSource, newOMathOnly, absorbedHandles);
-                                swSplice.Stop();
-                                LogDiag($"PERF para_splice.splice_xml={swSplice.ElapsedMilliseconds}ms");
-
-                                if (!string.IsNullOrEmpty(newParaXmlSpliced))
-                                {
-                                    LogDiag($"para_splice: ok mathSource=\"{Preview(mathSource)}\" newParaLen={newParaXmlSpliced.Length}");
-                                }
-                                else
-                                {
-                                    // Diag : dump les <w:r>/<w:t> trouvés pour
-                                    // diagnostiquer pourquoi le match a foiré.
-                                    LogDiag($"para_splice: skip (no match for \"{Preview(mathSource)}\")");
-                                    DumpParaRunsForDiag(paraXml, mathSource);
-                                }
-                            }
-                        }
-                        catch (Exception ex) { LogDiag("para_splice_error: " + ex.Message); }
-                    }
-
-                    // 3. Si splice OK → InsertXML sur firstPara.Range. Sinon
-                    //    fallback legacy : on RÉUTILISE capturedSharedXml
-                    //    (déjà construit dans étape 2) au lieu de rebuilder.
-                    //    Le fast path court-circuite tout ce qui suit.
-                    string capturedXml = null;
-                    if (!tookFastPath && newParaXmlSpliced == null)
-                    {
-                        if (capturedSharedXml != null)
-                        {
-                            capturedXml = capturedSharedXml;
-                            LogDiag("PERF legacy.build_isolated=0ms (cached from para_splice)");
-                        }
-                        else
-                        {
-                            // Display math (cases/align) : pas passé par la
-                            // tentative splice, donc pas encore construit.
-                            var swBuildLegacy = System.Diagnostics.Stopwatch.StartNew();
-                            capturedXml = BuildOMathXmlIsolated(doc, latex);
-                            swBuildLegacy.Stop();
-                            LogDiag($"PERF legacy.build_isolated={swBuildLegacy.ElapsedMilliseconds}ms");
-                        }
-                    }
-
-                    if (newParaXmlSpliced != null)
-                    {
-                        try
-                        {
-                            var swInsert = System.Diagnostics.Stopwatch.StartNew();
-                            firstPara.Range.InsertXML(newParaXmlSpliced);
-                            swInsert.Stop();
-                            usedXmlTransplant = true;
-                            LogDiag($"PERF para_splice.insert_xml={swInsert.ElapsedMilliseconds}ms (len={newParaXmlSpliced.Length})");
-                        }
-                        catch (Exception ex) { LogDiag("para_splice_insertxml_error: " + ex.Message); }
-
-                        if (usedXmlTransplant)
-                        {
-                            var swLocate = System.Diagnostics.Stopwatch.StartNew();
-                            omathCreated = LocateInsertedOMath(doc, absStart, "para_splice", out newStart, out newEnd);
-                            swLocate.Stop();
-                            LogDiag($"PERF para_splice.locate_omath={swLocate.ElapsedMilliseconds}ms");
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(capturedXml))
-                    {
-                        // Multi-¶ / display math : atomic Range.InsertXML sur
-                        // [absStart, absEnd]. Word remplace le range entier
-                        // (avec OMaths absorbées au passage) par le bloc
-                        // capturé en une seule transaction. Sur abort, le doc
-                        // reste intact. Cf. ADR 2026-05-12-Refactor-pure-merger.
-                        try
-                        {
-                            capturedXml = OMathParaJcPatcher.EnsureDisplayWithLeftJc(capturedXml, out _);
-                        }
-                        catch (Exception ex) { LogDiag("atomic_insert_ensure_error: " + ex.Message); }
-
-                        try
-                        {
-                            var swInsert = System.Diagnostics.Stopwatch.StartNew();
-                            doc.Range(absStart, absEnd).InsertXML(capturedXml);
-                            swInsert.Stop();
-                            usedXmlTransplant = true;
-                            LogDiag($"PERF atomic_insert.range_insertxml={swInsert.ElapsedMilliseconds}ms (range=[{absStart},{absEnd}] len={capturedXml.Length})");
-                        }
-                        catch (Exception ex) { LogDiag("atomic_insert_error: " + ex.Message); }
-
-                        if (usedXmlTransplant)
-                        {
-                            omathCreated = LocateInsertedOMath(doc, absStart, "atomic_insert", out newStart, out newEnd);
-                        }
-                    }
-                    else { LogDiag("insert: build-isolated returned null"); }
+                if (result.Success)
+                {
+                    newStart = result.NewStart;
+                    newEnd = result.NewEnd;
+                    ok = true;
+                    break;
                 }
-                catch (Exception ex) { LogDiag("insert_xml_transplant_error: " + ex.Message); }
+            }
+            if (!ok)
+            {
+                LogDiag($"commit ABORTED latex=\"{latex}\" — aucune stratégie d'insert n'a abouti, doc intact");
+            }
+            _lastInsertUsedXmlTransplant = ok;
 
-            // Pas de fallback API in-place : si le transplant XML a échoué,
-            // on ne re-tente pas via BuildUp direct (qui absorbait les
-            // OMaths voisines, cf. ADR 04-05). Le doc reste avec le texte
-            // brut typé par l'user, qui peut retrigger le commit.
-            _lastInsertUsedXmlTransplant = usedXmlTransplant;
-
-            // Positionne le curseur juste après l'OMath, puis vérifie qu'on n'est
-            // PAS resté dans l'éditeur math (Word interprète parfois "pile après"
-            // comme "encore dedans", surtout en display-mode). Nudge jusqu'à 3 fois
-            // pour sortir proprement sur une zone de texte libre.
+            // Positionne le curseur juste après l'OMath, puis nudge.
             int afterPos = ComputeAfterOMathCaret(doc, newEnd);
             try { _app.Selection.SetRange(afterPos, afterPos); } catch { }
             NudgeCursorOutOfMath(doc, maxAttempts: 3);
@@ -3644,6 +3368,67 @@ namespace MathCursor.Host
             LogDiag($"PERF InsertOMathAt total={swTotal.ElapsedMilliseconds}ms");
             return (newStart, newEnd);
         }
+
+        /// <summary>
+        /// Construit l'<see cref="Inserters.InsertContext"/> : identifie
+        /// firstPara, lastPara, targetCount, isDisplayMath. Retourne
+        /// <c>null</c> si Word interop échoue.
+        /// </summary>
+        private Inserters.InsertContext BuildInsertContext(
+            Word.Document doc, int absStart, int absEnd, string latex,
+            System.Collections.Generic.IReadOnlyList<string> absorbedHandles)
+        {
+            try
+            {
+                bool isDisplayMath = latex.IndexOf("\\begin{align", StringComparison.Ordinal) >= 0
+                                  || latex.IndexOf("\\begin{cases", StringComparison.Ordinal) >= 0;
+
+                int safeProbeStart = Math.Min(absStart + 1, doc.Content.End - 1);
+                int safeProbeEnd = Math.Max(absStart, Math.Min(absEnd - 1, doc.Content.End - 1));
+                if (safeProbeStart > safeProbeEnd) safeProbeStart = safeProbeEnd;
+                var firstPara = doc.Range(safeProbeStart, safeProbeStart).Paragraphs[1];
+                var lastPara = doc.Range(safeProbeEnd, safeProbeEnd).Paragraphs[1];
+                int firstParaStart = firstPara.Range.Start;
+                int lastParaStart = lastPara.Range.Start;
+
+                // targetCount via navigation Next() (évite doc.Paragraphs[i]
+                // qui est O(N) sur gros doc — bug perf 12-05).
+                int targetCount = 1;
+                if (firstParaStart != lastParaStart)
+                {
+                    var cursor = firstPara;
+                    while (cursor != null && cursor.Range.Start < lastParaStart)
+                    {
+                        try { cursor = cursor.Next(); } catch { cursor = null; }
+                        if (cursor == null) break;
+                        targetCount++;
+                        if (cursor.Range.Start >= lastParaStart) break;
+                    }
+                }
+                LogDiag($"PERF target_count count={targetCount}");
+
+                return new Inserters.InsertContext(doc, absStart, absEnd, latex,
+                    isDisplayMath, targetCount, firstPara, absorbedHandles);
+            }
+            catch (Exception ex)
+            {
+                LogDiag("build_insert_context_error: " + ex.Message);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Enchaîne les stratégies d'insertion dans l'ordre. Yields chaque
+        /// <see cref="Inserters.InsertResult"/> ; la 1re Success court-circuite.
+        /// </summary>
+        private System.Collections.Generic.IEnumerable<Inserters.InsertResult> TryInsertStrategies(
+            Inserters.InsertContext ctx)
+        {
+            yield return _fastPathInserter.TryInsert(ctx);
+            yield return _spliceInserter.TryInsert(ctx);
+            yield return _atomicInserter.TryInsert(ctx);
+        }
+
 
         /// <summary>
         /// Position où placer le caret juste après un OMath, sans déborder dans
