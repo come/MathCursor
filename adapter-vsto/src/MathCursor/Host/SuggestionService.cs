@@ -3481,6 +3481,79 @@ namespace MathCursor.Host
                     swTargetCount.Stop();
                     LogDiag($"PERF target_count={swTargetCount.ElapsedMilliseconds}ms count={targetCount}");
 
+                    // 1bis. FAST PATH "pure paragraph" : si le ¶ ne contient
+                    //       QUE notre source typée (rien d'autre — pas de
+                    //       texte voisin, pas d'OMath, pas de table), on
+                    //       passe par BuildUp direct sur le range typé.
+                    //       Aucune absorption possible (pas de voisins à
+                    //       absorber). Skip BuildOMathXmlIsolated (~70ms) +
+                    //       splice XML (~5ms) + InsertXML 260KB (~110ms) =
+                    //       ~190ms gagné par commit. Cible : élève qui tape
+                    //       une formule sur sa ligne vide (cas dominant).
+                    //       Cf. ADR 2026-05-12-Perf-commit-pipeline-three-stage-stack.
+                    bool tookFastPath = false;
+                    if (!isDisplayMath && targetCount == 1)
+                    {
+                        try
+                        {
+                            var swFast = System.Diagnostics.Stopwatch.StartNew();
+                            string mathSource = (doc.Range(absStart, absEnd).Text ?? "").Trim();
+                            string paraTextRaw = firstPara.Range.Text ?? "";
+                            // Trim les marques de ¶ Word (\r, \a vert tab, \v form feed).
+                            while (paraTextRaw.Length > 0
+                                && (paraTextRaw[paraTextRaw.Length - 1] == '\r'
+                                    || paraTextRaw[paraTextRaw.Length - 1] == '\a'
+                                    || paraTextRaw[paraTextRaw.Length - 1] == '\v'
+                                    || paraTextRaw[paraTextRaw.Length - 1] == '\f'))
+                            {
+                                paraTextRaw = paraTextRaw.Substring(0, paraTextRaw.Length - 1);
+                            }
+                            string paraText = paraTextRaw.Trim();
+
+                            bool textMatchesExactly = paraText == mathSource;
+                            // Détection stricte : zéro OMath, zéro table.
+                            // Word.Range.OMaths / .Tables.Count = O(petit).
+                            int omathInPara = firstPara.Range.OMaths.Count;
+                            int tablesInPara = firstPara.Range.Tables.Count;
+                            bool isPure = textMatchesExactly && omathInPara == 0 && tablesInPara == 0;
+                            LogDiag($"fast_path probe: textEq={textMatchesExactly} omaths={omathInPara} tables={tablesInPara} → pure={isPure}");
+
+                            if (isPure)
+                            {
+                                // BuildUp direct sur le range typé.
+                                string unicodeMath;
+                                try { unicodeMath = LatexToUnicodeMath.Convert(latex); }
+                                catch (Exception exU) { LogDiag("fast_path_l2um_error: " + exU.Message); unicodeMath = null; }
+
+                                if (!string.IsNullOrEmpty(unicodeMath))
+                                {
+                                    var typedRange = doc.Range(absStart, absEnd);
+                                    typedRange.Text = unicodeMath;
+                                    int afterReplaceEnd = absStart + unicodeMath.Length;
+                                    var rebuiltRange = doc.Range(absStart, afterReplaceEnd);
+                                    rebuiltRange.OMaths.Add(rebuiltRange);
+                                    rebuiltRange.OMaths.BuildUp();
+
+                                    if (LocateInsertedOMath(doc, absStart, "fast_path", out newStart, out newEnd))
+                                    {
+                                        omathCreated = true;
+                                        usedXmlTransplant = true;
+                                        tookFastPath = true;
+                                        swFast.Stop();
+                                        LogDiag($"PERF fast_path.total={swFast.ElapsedMilliseconds}ms (skipped splice + isolated build)");
+                                    }
+                                    else
+                                    {
+                                        // Le BuildUp direct a échoué à produire un OMath
+                                        // localisable. On laisse le fallback splice gérer.
+                                        LogDiag("fast_path: BuildUp ok but OMath not found, fallback to splice");
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex) { LogDiag("fast_path_error: " + ex.Message); }
+                    }
+
                     // 2. ROUTE PRINCIPALE inline single-¶ : splice de la
                     //    nouvelle OMath dans firstPara.Range.WordOpenXML.
                     //
@@ -3489,7 +3562,7 @@ namespace MathCursor.Host
                     //    on rebuildait à chaque échec).
                     string capturedSharedXml = null;
                     string newParaXmlSpliced = null;
-                    if (!isDisplayMath && targetCount == 1)
+                    if (!tookFastPath && !isDisplayMath && targetCount == 1)
                     {
                         try
                         {
@@ -3539,8 +3612,9 @@ namespace MathCursor.Host
                     // 3. Si splice OK → InsertXML sur firstPara.Range. Sinon
                     //    fallback legacy : on RÉUTILISE capturedSharedXml
                     //    (déjà construit dans étape 2) au lieu de rebuilder.
+                    //    Le fast path court-circuite tout ce qui suit.
                     string capturedXml = null;
-                    if (newParaXmlSpliced == null)
+                    if (!tookFastPath && newParaXmlSpliced == null)
                     {
                         if (capturedSharedXml != null)
                         {
