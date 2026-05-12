@@ -3113,25 +3113,26 @@ namespace MathCursor.Host
         {
             newStart = absStart;
             newEnd = absStart;
-            // On connaît la position exacte (absStart) → on demande à Word
-            // les OMaths du Range autour de cette position au lieu de
-            // scanner doc.OMaths (= ~170ms sur gros doc, bug perf 12-05).
-            // Range élargi de quelques chars pour tolérer l'éventuel décalage
-            // post-InsertXML.
+            // Bug user 12-05 « T+1 » : la probe étroite [absStart-2,
+            // absStart+4] ratait les OMaths plus larges que la source.
+            // Word.Range.OMaths ne renvoie pas les OMaths qui DÉPASSENT
+            // le range probé. On scope au paragraphe entier (= petit
+            // scope rapide + tolérant à n'importe quelle largeur OMath).
             try
             {
                 int docEnd = doc.Content.End;
-                int probeStart = Math.Max(0, absStart - 2);
-                int probeEnd = Math.Min(docEnd, absStart + 4);
-                if (probeStart < probeEnd)
+                int probePos = Math.Min(Math.Max(0, absStart), Math.Max(0, docEnd - 1));
+                Word.Range paraRange = null;
+                try { paraRange = doc.Range(probePos, probePos).Paragraphs[1].Range; }
+                catch (Exception exP) { LogDiag($"{logPrefix}_locate_para_probe_error: " + exP.Message); }
+                if (paraRange != null)
                 {
-                    var probeRange = doc.Range(probeStart, probeEnd);
-                    foreach (Word.OMath om in probeRange.OMaths)
+                    foreach (Word.OMath om in paraRange.OMaths)
                     {
                         var rng = om.Range;
                         if (rng.Start <= absStart && rng.End > absStart)
                         {
-                            LogDiag($"{logPrefix}: matched [{rng.Start},{rng.End}] (scoped probe)");
+                            LogDiag($"{logPrefix}: matched [{rng.Start},{rng.End}] (para probe)");
                             newStart = rng.Start;
                             newEnd = rng.End;
                             return true;
