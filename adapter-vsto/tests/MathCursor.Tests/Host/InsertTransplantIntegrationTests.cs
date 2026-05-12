@@ -364,56 +364,6 @@ namespace MathCursor.Tests.Host
             Assert.Contains(newOMath, result);
         }
 
-        // ─── Cas extension cases multi-ligne (route legacy display) ───
-
-        [Fact]
-        public void Cases_extension_replaces_target_paragraph_in_doc_xml()
-        {
-            // Reproduit le flow legacy display math (cascade merger
-            // cases multi-ligne) : on a un doc avec ¶[0]=cases system
-            // pre-deleted (= ¶ vide), ¶[1]="{ x+2 = 3" texte typé,
-            // ¶[2]=marker. Le cascade merger calcule mergedSource="...",
-            // construit la nouvelle cases OMath, et appelle
-            // ReplaceParagraphsInDocXml(idx0=1, count=1, newPara=cases).
-            string body =
-                "<w:p/>" // ¶[0] vide après pre-delete de l'ancienne cases
-                + "<w:p><w:r><w:t xml:space=\"preserve\">{ x+2 = 3</w:t></w:r></w:p>" // ¶[1]
-                + "<w:p><w:r><w:t xml:space=\"preserve\">{ </w:t></w:r></w:p>"; // ¶[2] marker
-            string fullDocXml = FullDocPkg(body);
-
-            // newPara représente la cases OMath multi-ligne mergée.
-            string newPara =
-                "<w:p>"
-                + "<m:oMathPara><m:oMathParaPr><m:jc m:val=\"left\"/></m:oMathParaPr>"
-                + "<m:oMath><m:r><m:t>NEW_CASES_2LINES</m:t></m:r></m:oMath>"
-                + "</m:oMathPara>"
-                + "</w:p>";
-
-            string result = InlineOMathSplicer.ReplaceParagraphsInDocXml(
-                fullDocXml, new[] { "{ x+2 = 3" }, newPara);
-
-            Assert.NotNull(result);
-            var parsed = XDocument.Parse(result);
-            XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-            XNamespace m = "http://schemas.openxmlformats.org/officeDocument/2006/math";
-            var bodyEl = parsed.Descendants(w + "body")
-                .First(b => b.Elements(w + "p").Any());
-            var paras = bodyEl.Elements(w + "p").ToList();
-            // Toujours 3 ¶s.
-            Assert.Equal(3, paras.Count);
-            // ¶[0] reste vide (le self-closing).
-            Assert.Empty(paras[0].Elements());
-            // ¶[1] contient la nouvelle cases (= NEW_CASES_2LINES).
-            Assert.Contains(paras[1].Descendants(m + "t"),
-                t => t.Value == "NEW_CASES_2LINES");
-            // L'ancien texte "{ x+2 = 3" doit avoir disparu de ¶[1].
-            Assert.DoesNotContain(paras[1].Descendants(w + "t"),
-                t => t.Value.Contains("{ x+2 = 3"));
-            // ¶[2] (marker) intact.
-            Assert.Equal("{ ",
-                paras[2].Descendants(w + "t").First().Value);
-        }
-
         [Fact]
         public void Self_closing_empty_paragraphs_are_ignored_by_content_match()
         {

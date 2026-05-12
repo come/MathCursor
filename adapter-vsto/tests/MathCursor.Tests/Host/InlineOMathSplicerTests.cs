@@ -11,10 +11,9 @@ namespace MathCursor.Tests.Host
     /// <c>2026-05-11-Fix-omath-splice-content-based-navigation</c>).
     ///
     /// API publique : <see cref="InlineOMathSplicer.ExtractOMathElement"/>,
-    /// <see cref="InlineOMathSplicer.SpliceOMathInDocXml"/>,
-    /// <see cref="InlineOMathSplicer.ReplaceParagraphsInDocXml"/>. Les
-    /// tests d'intégration plus riches (avec pkg:package complet et
-    /// scénarios users 2026-05-07) sont dans
+    /// <see cref="InlineOMathSplicer.SpliceOMathInDocXml"/>. Les tests
+    /// d'intégration plus riches (avec pkg:package complet et scénarios
+    /// users 2026-05-07) sont dans
     /// <see cref="InsertTransplantIntegrationTests"/>.
     /// </summary>
     public sealed class InlineOMathSplicerTests
@@ -175,141 +174,5 @@ namespace MathCursor.Tests.Host
                 t => t.Value == "eq_MATCHED");
         }
 
-        // ─── Cas 4 : cross-merge intra-cellule (système { sur 2 ¶s) ───
-
-        [Fact]
-        public void ReplaceParagraphs_groups_siblings_in_same_cell()
-        {
-            // 2 ¶s siblings dans la même cellule, sources brutes des
-            // deux lignes d'un système. ReplaceParagraphsInDocXml doit
-            // les fusionner en 1 nouveau ¶ (= la cases OMath mergée).
-            string body =
-                "<w:tbl><w:tr><w:tc>"
-                + "<w:p><w:r><w:t xml:space=\"preserve\">{ x = 1</w:t></w:r></w:p>"
-                + "<w:p><w:r><w:t xml:space=\"preserve\">{ y = 2</w:t></w:r></w:p>"
-                + "</w:tc></w:tr></w:tbl>";
-            string newPara =
-                "<w:p><m:oMathPara><m:oMathParaPr><m:jc m:val=\"left\"/></m:oMathParaPr>"
-                + "<m:oMath><m:r><m:t>CASES_MERGED</m:t></m:r></m:oMath>"
-                + "</m:oMathPara></w:p>";
-
-            string result = InlineOMathSplicer.ReplaceParagraphsInDocXml(
-                DocPkg(body),
-                new[] { "{ x = 1", "{ y = 2" },
-                newPara);
-
-            Assert.NotNull(result);
-            var parsed = XDocument.Parse(result);
-            // La cellule contient 2 ¶s : la cases mergée + un ¶ vide
-            // ajouté pour la landing zone du caret (cf. fix caret-trap
-            // multi-ligne en cellule, même ADR).
-            var tc = parsed.Descendants(W + "tc").Single();
-            var parasInCell = tc.Elements(W + "p").ToList();
-            Assert.Equal(2, parasInCell.Count);
-            // 1er ¶ : la cases mergée.
-            Assert.Contains(parasInCell[0].Descendants(M + "t"),
-                t => t.Value == "CASES_MERGED");
-            // 2e ¶ : vide (landing zone).
-            Assert.Empty(parasInCell[1].Elements());
-        }
-
-        // ─── Cas display math : caret-trap fix (bug 2026-05-11) ───────
-
-        [Fact]
-        public void ReplaceParagraphs_adds_empty_paragraph_after_when_no_next_sibling()
-        {
-            // Cellule mono-¶ avec une chaîne `=` multi-ligne (2 sources).
-            // Après remplacement par le display math mergé, il faut un
-            // <w:p> vide après dans la même cellule pour que le caret
-            // puisse atterrir dedans (sinon EndKey(wdLine) sort de la
-            // cellule).
-            string body =
-                "<w:tbl><w:tr><w:tc>"
-                + "<w:p><w:r><w:t xml:space=\"preserve\">x = 1</w:t></w:r></w:p>"
-                + "<w:p><w:r><w:t xml:space=\"preserve\">= 2x + 1</w:t></w:r></w:p>"
-                + "</w:tc></w:tr></w:tbl>";
-            string newPara =
-                "<w:p><m:oMathPara><m:oMathParaPr><m:jc m:val=\"left\"/></m:oMathParaPr>"
-                + "<m:oMath><m:r><m:t>EQUATION_CHAIN</m:t></m:r></m:oMath>"
-                + "</m:oMathPara></w:p>";
-
-            string result = InlineOMathSplicer.ReplaceParagraphsInDocXml(
-                DocPkg(body),
-                new[] { "x = 1", "= 2x + 1" },
-                newPara);
-
-            Assert.NotNull(result);
-            var parsed = XDocument.Parse(result);
-            var tc = parsed.Descendants(W + "tc").Single();
-            var parasInCell = tc.Elements(W + "p").ToList();
-            // 2 ¶s : le display math + un ¶ vide ajouté pour le caret.
-            Assert.Equal(2, parasInCell.Count);
-            // 1er ¶ : la chaîne mergée.
-            Assert.Contains(parasInCell[0].Descendants(M + "t"),
-                t => t.Value == "EQUATION_CHAIN");
-            // 2e ¶ : vide (pas d'enfants).
-            Assert.Empty(parasInCell[1].Elements());
-        }
-
-        [Fact]
-        public void ReplaceParagraphs_does_not_duplicate_when_next_sibling_already_exists()
-        {
-            // Hors cellule, avec un ¶ déjà présent après le multi-ligne.
-            // Le splicer ne doit pas en ajouter un en plus (sinon
-            // saut de ligne visuel parasite).
-            string body =
-                "<w:p><w:r><w:t xml:space=\"preserve\">x = 1</w:t></w:r></w:p>"
-                + "<w:p><w:r><w:t xml:space=\"preserve\">= 2x + 1</w:t></w:r></w:p>"
-                + "<w:p><w:r><w:t>contenu suivant</w:t></w:r></w:p>";
-            string newPara =
-                "<w:p><m:oMathPara><m:oMathParaPr><m:jc m:val=\"left\"/></m:oMathParaPr>"
-                + "<m:oMath><m:r><m:t>EQUATION_CHAIN</m:t></m:r></m:oMath>"
-                + "</m:oMathPara></w:p>";
-
-            string result = InlineOMathSplicer.ReplaceParagraphsInDocXml(
-                DocPkg(body),
-                new[] { "x = 1", "= 2x + 1" },
-                newPara);
-
-            Assert.NotNull(result);
-            var parsed = XDocument.Parse(result);
-            var bodyEl = parsed.Descendants(W + "body")
-                .First(b => b.Elements(W + "p").Any());
-            var paras = bodyEl.Elements(W + "p").ToList();
-            // 2 ¶s : le display math + le "contenu suivant" qui était
-            // déjà là. PAS de ¶ vide ajouté (le sibling suivant
-            // sert déjà de "landing zone" pour le caret).
-            Assert.Equal(2, paras.Count);
-            Assert.Contains(paras[0].Descendants(M + "t"),
-                t => t.Value == "EQUATION_CHAIN");
-            Assert.Contains(paras[1].Descendants(W + "t"),
-                t => t.Value == "contenu suivant");
-        }
-
-        // ─── Cas 5 : refus cross-merge frontière cellule ↔ body ───────
-
-        [Fact]
-        public void ReplaceParagraphs_refuses_when_paragraphs_cross_container_boundary()
-        {
-            // Une cellule avec un ¶, puis hors table un autre ¶. On
-            // demande une cross-merge des deux → refuser (sémantiquement
-            // absurde, casserait la structure OOXML).
-            string body =
-                "<w:tbl><w:tr><w:tc>"
-                + "<w:p><w:r><w:t xml:space=\"preserve\">{ ligne dans cellule</w:t></w:r></w:p>"
-                + "</w:tc></w:tr></w:tbl>"
-                + "<w:p><w:r><w:t xml:space=\"preserve\">{ ligne hors cellule</w:t></w:r></w:p>";
-            string newPara =
-                "<w:p><m:oMath><m:r><m:t>FORBIDDEN</m:t></m:r></m:oMath></w:p>";
-
-            string result = InlineOMathSplicer.ReplaceParagraphsInDocXml(
-                DocPkg(body),
-                new[] { "{ ligne dans cellule", "{ ligne hors cellule" },
-                newPara);
-
-            // Refus net : le sibling avant "{ ligne hors cellule" n'est
-            // pas un <w:p> (c'est un <w:tbl>), donc la remontée échoue.
-            Assert.Null(result);
-        }
     }
 }

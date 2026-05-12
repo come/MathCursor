@@ -3157,50 +3157,6 @@ namespace MathCursor.Host
         }
 
         /// <summary>
-        /// Crée un bookmark "mcEq_{id}" couvrant [absStart, absEnd]. Si un bookmark
-        /// de même nom existe déjà on l'écrase (cas improbable avec guid).
-        /// </summary>
-        /// <summary>
-        /// Supprime tous les OMaths du document qui sont entièrement contenus
-        /// dans [absStart, absEnd). Word.Range.Text = "..." refuse d'écraser
-        /// un OMath et lève "The range cannot be deleted" — il faut les
-        /// supprimer explicitement avant. Itère en ordre descendant pour que
-        /// les suppressions n'invalident pas les positions des OMaths
-        /// précédents. Retourne le nombre TOTAL de chars supprimés (= shrink
-        /// du range global).
-        /// </summary>
-        private int DeleteOMathsInRange(int absStart, int absEnd)
-        {
-            int totalShrink = 0;
-            try
-            {
-                var doc = _app.ActiveDocument;
-                if (doc == null) return 0;
-                var inRange = new List<Word.OMath>();
-                foreach (Word.OMath om in doc.OMaths)
-                {
-                    var omStart = om.Range.Start;
-                    var omEnd = om.Range.End;
-                    if (omStart >= absStart && omEnd <= absEnd) inRange.Add(om);
-                }
-                inRange.Sort((a, b) => b.Range.Start.CompareTo(a.Range.Start));
-                foreach (var om in inRange)
-                {
-                    try
-                    {
-                        int delLen = om.Range.End - om.Range.Start;
-                        om.Range.Delete();
-                        totalShrink += delLen;
-                        LogDiag($"merge_pre_delete_omath: deleted len={delLen} totalShrink={totalShrink}");
-                    }
-                    catch (Exception ex) { LogDiag("merge_pre_delete_omath_error: " + ex.Message); }
-                }
-            }
-            catch (Exception ex) { LogDiag("merge_pre_delete_scan_error: " + ex.Message); }
-            return totalShrink;
-        }
-
-        /// <summary>
         /// Supprime le bookmark Word `mcEq_<handleId>` s'il existe. Utilisé
         /// quand un handle est retiré du store (ex: merge OMath qui fusionne
         /// l'OMath dans un nouveau bloc) — sans ce nettoyage, le bookmark
@@ -3366,21 +3322,6 @@ namespace MathCursor.Host
             }
             catch (Exception ex) { LogDiag("para_splice_diag_error: " + ex.Message); }
         }
-
-        // Délégué pur (XDocument) — cf. InlineOMathSplicer pour
-        // l'implémentation. Évite la regex et gère self-closing,
-        // namespaces, attribute-order naturellement.
-        private static string ExtractFirstWPElement(string xml)
-            => InlineOMathSplicer.ExtractFirstWPElement(xml);
-
-        // Content-based wrapper : cf. ADR 2026-05-11. On passe les sources
-        // brutes des N ¶s cibles, plus d'index global. Le splicer trouve
-        // les <w:p> par contenu (queue match) et vérifie qu'ils sont
-        // siblings dans le même .Parent (sinon refuse).
-        private static string ReplaceParagraphsInDocXml(
-            string fullDocXml, System.Collections.Generic.IReadOnlyList<string> paragraphSources, string newParaWp)
-            => InlineOMathSplicer.ReplaceParagraphsInDocXml(
-                fullDocXml, paragraphSources, newParaWp);
 
         /// <summary>
         /// Pattern build-isolated → transplant XML (cf. ADR 04-05). Construit
