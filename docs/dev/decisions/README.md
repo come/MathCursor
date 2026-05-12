@@ -20,6 +20,7 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-05-12
+- `[forte]` Refactor — [Merger pur + insert atomique (élimine legacy path et pré-suppression)](2026-05-12-Refactor-pure-merger-atomic-insert.md)
 - `[forte]` Perf — [Stack 3 couches sur le commit pipeline (gros doc, ~290ms → ~30-90ms)](2026-05-12-Perf-commit-pipeline-three-stage-stack.md)
 
 ### 2026-05-11
