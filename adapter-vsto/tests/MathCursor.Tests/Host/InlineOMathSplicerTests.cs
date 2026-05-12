@@ -174,5 +174,169 @@ namespace MathCursor.Tests.Host
                 t => t.Value == "eq_MATCHED");
         }
 
+        // ─── Splice avec absorbedHandles (refactor C.1 atomic) ────────
+        // Le splicer enrichi prend en charge l'absorption inline d'OMaths
+        // voisines : retire le bookmark + l'OMath + glue whitespace entre
+        // OMath absorbée et texte typé, en plus de remplacer les runs
+        // typés par la nouvelle OMath. Cf. ADR 2026-05-12-Refactor-pure-
+        // merger-atomic-insert.
+
+        private static string BookmarkedOMath(string handle, string content, int bookmarkId = 1)
+            => $"<w:bookmarkStart w:id=\"{bookmarkId}\" w:name=\"mcEq_{handle}\"/>"
+             + FakeOMath(content)
+             + $"<w:bookmarkEnd w:id=\"{bookmarkId}\"/>";
+
+        [Fact]
+        public void Splice_with_left_absorb_removes_bookmark_oMath_and_glue()
+        {
+            // Scénario merge_left : ¶ = [absorbed OMath][espace][typé].
+            // absorbedHandles = handle de l'OMath absorbée → splice retire
+            // bookmarks + oMath + l'espace de glue, et remplace par la
+            // nouvelle OMath fusionnée.
+            string body = "<w:p>"
+                + BookmarkedOMath("eq_LEFT", "OLD_OMATH")
+                + "<w:r><w:t xml:space=\"preserve\"> </w:t></w:r>"
+                + "<w:r><w:t xml:space=\"preserve\">typed</w:t></w:r>"
+                + "</w:p>";
+
+            string result = InlineOMathSplicer.SpliceOMathInDocXml(
+                DocPkg(body), "typed", FakeOMath("MERGED"),
+                new[] { "eq_LEFT" });
+
+            Assert.NotNull(result);
+            var parsed = XDocument.Parse(result);
+            var para = parsed.Descendants(W + "p").Single();
+            // L'OMath absorbée doit avoir disparu, remplacée par MERGED.
+            Assert.DoesNotContain(para.Descendants(M + "t"),
+                t => t.Value == "OLD_OMATH");
+            Assert.Contains(para.Descendants(M + "t"),
+                t => t.Value == "MERGED");
+            // Le bookmark mcEq_eq_LEFT doit être parti.
+            Assert.DoesNotContain(para.Descendants(W + "bookmarkStart"),
+                bm => (string)bm.Attribute(W + "name") == "mcEq_eq_LEFT");
+            // Plus de run "typed" non plus.
+            Assert.DoesNotContain(para.Descendants(W + "t"),
+                t => t.Value == "typed");
+        }
+
+        [Fact]
+        public void Splice_with_right_absorb_removes_trailing_bookmark_and_oMath()
+        {
+            // Scénario merge_right : ¶ = [typé][espace][absorbed OMath].
+            // Le tail-match doit skipper les éléments absorbés en queue
+            // pour matcher le texte typé qui est AVANT.
+            string body = "<w:p>"
+                + "<w:r><w:t xml:space=\"preserve\">typed</w:t></w:r>"
+                + "<w:r><w:t xml:space=\"preserve\"> </w:t></w:r>"
+                + BookmarkedOMath("eq_RIGHT", "OLD_RIGHT")
+                + "</w:p>";
+
+            string result = InlineOMathSplicer.SpliceOMathInDocXml(
+                DocPkg(body), "typed", FakeOMath("MERGED"),
+                new[] { "eq_RIGHT" });
+
+            Assert.NotNull(result);
+            var parsed = XDocument.Parse(result);
+            var para = parsed.Descendants(W + "p").Single();
+            Assert.DoesNotContain(para.Descendants(M + "t"),
+                t => t.Value == "OLD_RIGHT");
+            Assert.Contains(para.Descendants(M + "t"),
+                t => t.Value == "MERGED");
+            Assert.DoesNotContain(para.Descendants(W + "bookmarkStart"),
+                bm => (string)bm.Attribute(W + "name") == "mcEq_eq_RIGHT");
+        }
+
+        [Fact]
+        public void Splice_with_both_left_and_right_absorb()
+        {
+            // Cas extrême : OMath gauche + glue + typé + glue + OMath droite,
+            // les 2 absorbées. Toute la séquence remplacée par la nouvelle.
+            string body = "<w:p>"
+                + "<w:r><w:t xml:space=\"preserve\">prefix </w:t></w:r>"
+                + BookmarkedOMath("eq_L", "LEFT", 10)
+                + "<w:r><w:t xml:space=\"preserve\"> </w:t></w:r>"
+                + "<w:r><w:t xml:space=\"preserve\">middle</w:t></w:r>"
+                + "<w:r><w:t xml:space=\"preserve\"> </w:t></w:r>"
+                + BookmarkedOMath("eq_R", "RIGHT", 11)
+                + "</w:p>";
+
+            string result = InlineOMathSplicer.SpliceOMathInDocXml(
+                DocPkg(body), "middle", FakeOMath("MERGED"),
+                new[] { "eq_L", "eq_R" });
+
+            Assert.NotNull(result);
+            var parsed = XDocument.Parse(result);
+            var para = parsed.Descendants(W + "p").Single();
+            // Aucune des 2 OMaths absorbées ne doit subsister.
+            Assert.DoesNotContain(para.Descendants(M + "t"),
+                t => t.Value == "LEFT" || t.Value == "RIGHT");
+            Assert.Contains(para.Descendants(M + "t"),
+                t => t.Value == "MERGED");
+            // Le préfixe "prefix " est préservé (pas absorbé).
+            Assert.Contains(para.Descendants(W + "t"),
+                t => t.Value.Contains("prefix"));
+        }
+
+        [Fact]
+        public void Splice_with_absorbedHandles_null_behaves_like_legacy()
+        {
+            // Sans absorbedHandles, le splicer doit fonctionner comme
+            // l'overload original (compat backward).
+            string body = "<w:p><w:r><w:t xml:space=\"preserve\">Soit f</w:t></w:r></w:p>";
+
+            string r1 = InlineOMathSplicer.SpliceOMathInDocXml(
+                DocPkg(body), "f", FakeOMath("F"));
+            string r2 = InlineOMathSplicer.SpliceOMathInDocXml(
+                DocPkg(body), "f", FakeOMath("F"), null);
+
+            Assert.NotNull(r1);
+            Assert.Equal(r1, r2);
+        }
+
+        [Fact]
+        public void Splice_with_unrelated_bookmark_does_not_absorb_it()
+        {
+            // Un bookmark mcEq_X présent dans le ¶ mais X PAS dans
+            // absorbedHandles ne doit pas être touché par le splicer.
+            // Important : seuls les handles explicitement marqués comme
+            // absorbés sont retirés.
+            string body = "<w:p>"
+                + BookmarkedOMath("eq_PRESERVED", "KEEP")
+                + "<w:r><w:t xml:space=\"preserve\"> et </w:t></w:r>"
+                + "<w:r><w:t xml:space=\"preserve\">typed</w:t></w:r>"
+                + "</w:p>";
+
+            string result = InlineOMathSplicer.SpliceOMathInDocXml(
+                DocPkg(body), "typed", FakeOMath("NEW"),
+                new[] { "eq_OTHER_NOT_IN_PARA" });
+
+            Assert.NotNull(result);
+            var parsed = XDocument.Parse(result);
+            var para = parsed.Descendants(W + "p").Single();
+            // L'OMath "KEEP" reste, et son bookmark aussi.
+            Assert.Contains(para.Descendants(M + "t"),
+                t => t.Value == "KEEP");
+            Assert.Contains(para.Descendants(W + "bookmarkStart"),
+                bm => (string)bm.Attribute(W + "name") == "mcEq_eq_PRESERVED");
+            // La nouvelle OMath est insérée.
+            Assert.Contains(para.Descendants(M + "t"),
+                t => t.Value == "NEW");
+        }
+
+        [Fact]
+        public void Splice_with_empty_absorbedHandles_list_behaves_like_legacy()
+        {
+            // Liste vide = pas d'absorption demandée. Doit se comporter
+            // exactement comme la version sans absorbedHandles.
+            string body = "<w:p><w:r><w:t xml:space=\"preserve\">Soit f</w:t></w:r></w:p>";
+
+            string r1 = InlineOMathSplicer.SpliceOMathInDocXml(
+                DocPkg(body), "f", FakeOMath("F"));
+            string r2 = InlineOMathSplicer.SpliceOMathInDocXml(
+                DocPkg(body), "f", FakeOMath("F"),
+                System.Array.Empty<string>());
+
+            Assert.Equal(r1, r2);
+        }
     }
 }
