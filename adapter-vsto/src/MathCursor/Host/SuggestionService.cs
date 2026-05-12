@@ -3185,33 +3185,78 @@ namespace MathCursor.Host
         }
 
         /// <summary>
-        /// Diag : quand para_splice skip avec "no match for X", on dump
-        /// les <w:r>/<w:t> trouvés dans le <w:p> pour comprendre pourquoi.
+        /// Diag : quand para_splice skip, on dump (1) la STRUCTURE
+        /// des <w:p> trouvés dans le XML, (2) compte ALL elements par
+        /// LocalName (au cas où namespace bizarre), (3) sauvegarde le
+        /// paraXml intégral dans %TEMP% pour inspection manuelle.
         /// </summary>
         private void DumpParaRunsForDiag(string paraXml, string mathSource)
         {
             try
             {
-                var rxRun = new System.Text.RegularExpressions.Regex(
-                    @"<w:r(?:\s[^>]*)?>(?:(?!</w:r>).)*?</w:r>",
-                    System.Text.RegularExpressions.RegexOptions.Singleline);
-                var rxText = new System.Text.RegularExpressions.Regex(
-                    @"<w:t(?:\s[^>]*)?>((?:(?!</w:t>).)*)</w:t>",
-                    System.Text.RegularExpressions.RegexOptions.Singleline);
-                var runs = rxRun.Matches(paraXml);
-                var sb = new System.Text.StringBuilder();
-                sb.Append("para_splice_diag: source=\"" + Preview(mathSource) + "\" runs=");
-                int n = 0;
-                foreach (System.Text.RegularExpressions.Match m in runs)
+                // 0. Toujours dumper paraXml sur disque pour inspection
+                //    offline (gros XML 260KB pas dumpable dans le log).
+                try
                 {
-                    var tm = rxText.Match(m.Value);
-                    string t = tm.Success ? tm.Groups[1].Value : "<no-t>";
-                    if (n > 0) sb.Append(" | ");
-                    sb.Append("[" + Preview(t) + "]");
-                    n++;
-                    if (n >= 10) { sb.Append(" ..."); break; }
+                    string tmpPath = System.IO.Path.Combine(
+                        System.IO.Path.GetTempPath(),
+                        $"mathcursor_diag_paraXml_{DateTime.Now:yyyyMMdd_HHmmss_fff}.xml");
+                    System.IO.File.WriteAllText(tmpPath, paraXml ?? "<null>");
+                    LogDiag($"para_splice_diag_dump: {tmpPath} (len={paraXml?.Length ?? 0})");
                 }
-                LogDiag(sb.ToString());
+                catch (Exception dumpEx) { LogDiag("para_splice_diag_dump_error: " + dumpEx.Message); }
+
+                // 1. Compte ALL <w:p>, <w:r>, <w:t> par LocalName (peu
+                //    importe le namespace prefix/URI).
+                try
+                {
+                    var xdoc = System.Xml.Linq.XDocument.Parse(paraXml);
+                    int pCount = 0, rCount = 0, tCount = 0, mOMathCount = 0;
+                    foreach (var el in xdoc.Descendants())
+                    {
+                        string ln = el.Name.LocalName;
+                        if (ln == "p" && el.Name.NamespaceName.Contains("wordprocessingml")) pCount++;
+                        else if (ln == "r" && el.Name.NamespaceName.Contains("wordprocessingml")) rCount++;
+                        else if (ln == "t" && el.Name.NamespaceName.Contains("wordprocessingml")) tCount++;
+                        else if (ln == "oMath" && el.Name.NamespaceName.Contains("officeDocument")) mOMathCount++;
+                    }
+                    LogDiag($"para_splice_diag: source=\"{Preview(mathSource)}\" w:p={pCount} w:r={rCount} w:t={tCount} m:oMath={mOMathCount}");
+
+                    // 2. Dump structure des paras (par LocalName, donc
+                    //    namespace-agnostic).
+                    var paras = xdoc.Descendants()
+                        .Where(e => e.Name.LocalName == "p" && e.Name.NamespaceName.Contains("wordprocessingml"))
+                        .ToList();
+                    int paraIdx = 0;
+                    foreach (var p in paras)
+                    {
+                        var sb1 = new System.Text.StringBuilder();
+                        sb1.Append($"para_splice_diag p[{paraIdx}]: children=[");
+                        int c = 0;
+                        foreach (var el in p.Elements())
+                        {
+                            if (c > 0) sb1.Append(",");
+                            string ln = el.Name.LocalName;
+                            string tail = "";
+                            if (ln == "r")
+                            {
+                                var t = el.Elements().FirstOrDefault(x => x.Name.LocalName == "t");
+                                if (t != null) tail = $"=\"{Preview(t.Value)}\"";
+                            }
+                            sb1.Append(ln + tail);
+                            c++;
+                            if (c >= 30) { sb1.Append(",..."); break; }
+                        }
+                        sb1.Append("]");
+                        LogDiag(sb1.ToString());
+                        paraIdx++;
+                        if (paraIdx >= 5) { LogDiag($"para_splice_diag: ... +{paras.Count - 5} more paras"); break; }
+                    }
+                }
+                catch (Exception parseEx)
+                {
+                    LogDiag($"para_splice_diag_parse_error: {parseEx.Message}");
+                }
             }
             catch (Exception ex) { LogDiag("para_splice_diag_error: " + ex.Message); }
         }
