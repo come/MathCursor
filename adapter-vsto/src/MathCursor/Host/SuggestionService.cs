@@ -3113,15 +3113,38 @@ namespace MathCursor.Host
         {
             newStart = absStart;
             newEnd = absStart;
+            // On connaît la position exacte (absStart) → on demande à Word
+            // les OMaths du Range autour de cette position au lieu de
+            // scanner doc.OMaths (= ~170ms sur gros doc, bug perf 12-05).
+            // Range élargi de quelques chars pour tolérer l'éventuel décalage
+            // post-InsertXML.
             try
             {
-                int omathCountAfter = doc.OMaths.Count;
+                int docEnd = doc.Content.End;
+                int probeStart = Math.Max(0, absStart - 2);
+                int probeEnd = Math.Min(docEnd, absStart + 4);
+                if (probeStart < probeEnd)
+                {
+                    var probeRange = doc.Range(probeStart, probeEnd);
+                    foreach (Word.OMath om in probeRange.OMaths)
+                    {
+                        var rng = om.Range;
+                        if (rng.Start <= absStart && rng.End > absStart)
+                        {
+                            LogDiag($"{logPrefix}: matched [{rng.Start},{rng.End}] (scoped probe)");
+                            newStart = rng.Start;
+                            newEnd = rng.End;
+                            return true;
+                        }
+                    }
+                }
+                // Fallback : scan global (gros doc lent mais correct).
                 foreach (Word.OMath om in doc.OMaths)
                 {
                     var rng = om.Range;
                     if (rng.Start <= absStart && rng.End > absStart)
                     {
-                        LogDiag($"{logPrefix}: OMaths.Count={omathCountAfter} matched [{rng.Start},{rng.End}]");
+                        LogDiag($"{logPrefix}: matched [{rng.Start},{rng.End}] (fallback global scan)");
                         newStart = rng.Start;
                         newEnd = rng.End;
                         return true;
@@ -3225,22 +3248,35 @@ namespace MathCursor.Host
                 mathRange.OMaths.BuildUp();
                 swStep2.Stop();
 
-                // 3. Find the new OMath (couvre unicodeStart)
+                // 3. Find the new OMath. On connaît la position EXACTE
+                //    (= mathRange) — pas besoin de scanner doc.OMaths
+                //    (= 165ms sur gros doc avec 65 OMaths, bug perf 12-05).
+                //    On accède direct via mathRange.OMaths[1] (la collection
+                //    contient l'OMath qu'on vient d'ajouter).
                 var swStep3 = System.Diagnostics.Stopwatch.StartNew();
                 Word.OMath newOMath = null;
-                int omathScanned = 0;
-                foreach (Word.OMath om in doc.OMaths)
+                try
                 {
-                    omathScanned++;
-                    var rng = om.Range;
-                    if (rng.Start <= unicodeStart && rng.End > unicodeStart)
+                    var omaths = mathRange.OMaths;
+                    if (omaths.Count >= 1) newOMath = omaths[1];
+                }
+                catch { /* fallback ci-dessous */ }
+                if (newOMath == null)
+                {
+                    // Fallback : scan limité au range mathRange (pas tout le
+                    // doc) si l'accès indexé a échoué pour une raison X.
+                    try
                     {
-                        newOMath = om;
-                        break;
+                        foreach (Word.OMath om in doc.Range(unicodeStart, unicodeEnd).OMaths)
+                        {
+                            newOMath = om;
+                            break;
+                        }
                     }
+                    catch { }
                 }
                 swStep3.Stop();
-                LogDiag($"PERF iso.step1_insert={swStep1.ElapsedMilliseconds}ms step2_buildup={swStep2.ElapsedMilliseconds}ms step3_find_omath={swStep3.ElapsedMilliseconds}ms (scanned={omathScanned})");
+                LogDiag($"PERF iso.step1_insert={swStep1.ElapsedMilliseconds}ms step2_buildup={swStep2.ElapsedMilliseconds}ms step3_find_omath={swStep3.ElapsedMilliseconds}ms");
                 if (newOMath == null) { LogDiag("iso_build: OMath not found after BuildUp"); return null; }
 
                 Word.Paragraph omPara = null;
