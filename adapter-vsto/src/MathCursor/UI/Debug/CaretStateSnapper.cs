@@ -18,6 +18,12 @@ namespace MathCursor.UI.Debug
             var info = new CaretStateInfo();
             if (app == null) { info.ErrorMessage = "app null"; return info; }
 
+            // Guard : pendant le boot Word, app.Selection.get peut jeter
+            // « Selection retournée null » si aucun doc actif. On évite
+            // l'appel quand on sait qu'il n'y a rien à inspecter.
+            int docsCount = TryGet(() => (int?)(app.Documents?.Count ?? 0)) ?? 0;
+            if (docsCount <= 0) { info.ErrorMessage = "no active document"; return info; }
+
             Word.Selection sel = TryGet(() => app.Selection);
             if (sel == null) { info.ErrorMessage = "selection null"; return info; }
 
