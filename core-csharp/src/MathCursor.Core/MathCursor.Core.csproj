@@ -17,12 +17,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\host-contract-csharp\src\MathCursor.HostContract\MathCursor.HostContract.csproj" />
-    <!-- Analyzers MathCursor (règles MC d'architecture). Cf. ADR
-         2026-05-13-Meta-harness-phase-0-1-mc0001. ReferenceOutputAssembly=false
-         car on ne veut que l'analyzer, pas la DLL référencée. -->
-    <ProjectReference Include="..\..\..\analyzers\MathCursor.Analyzers\MathCursor.Analyzers.csproj"
-                      OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
+    <!-- Analyzers MathCursor branchés via Directory.Build.props racine (Phase 2).
+         Avant Phase 2 : ref locale ici. Cf. ADR 2026-05-13-Meta-harness-phase-0-1-mc0001. -->
   </ItemGroup>
 
   <ItemGroup>

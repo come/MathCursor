@@ -1,0 +1,21 @@
+<Project>
+
+  <!--
+    Directory.Build.props racine : appliqué automatiquement par MSBuild à
+    tous les .csproj/.vbproj/.fsproj sous cette arborescence.
+
+    Branche les analyzers MathCursor (règles MC d'architecture) sur tous
+    les projets, sauf le projet de l'analyzer lui-même (auto-référence
+    proscrite).
+
+    Cf. ADR 2026-05-13-Meta-harness-phase-0-1-mc0001 (Phase 0+1 — branchement
+    sur Core uniquement) + Phase 2 (généralisation, ADR à venir).
+  -->
+
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'MathCursor.Analyzers'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)analyzers\MathCursor.Analyzers\MathCursor.Analyzers.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>
