@@ -1739,10 +1739,17 @@ namespace MathCursor.Host
             // dans certains cas — à reprendre plus tard avec une approche
             // qui ne touche pas aux OMath inline.
 
-            // Positionne le curseur juste après l'OMath, puis nudge.
-            int afterPos = _caretPositioner.ComputeAfterOMath(doc, newEnd);
-            try { _app.Selection.SetRange(afterPos, afterPos); } catch { }
-            _caretPositioner.NudgeOutOfMath(doc, maxAttempts: 3);
+            // Positionnement caret DÉSACTIVÉ 2026-05-13.
+            // Observation user via bouton debug : sans SetRange + Nudge
+            // post-insert, Word place le caret correctement tout seul après
+            // OMaths.Add + BuildUp. Notre pipeline ComputeAfterOMath + SetRange
+            // + NudgeOutOfMath casse ce comportement natif (intermittent :
+            // caret coincé dans OMath, dans le ghost, en col 2, etc.).
+            // On laisse Word gérer naturellement.
+            //
+            // int afterPos = _caretPositioner.ComputeAfterOMath(doc, newEnd);
+            // try { _app.Selection.SetRange(afterPos, afterPos); } catch { }
+            // _caretPositioner.NudgeOutOfMath(doc, maxAttempts: 3);
             swTotal.Stop();
             LogDiag($"PERF InsertOMathAt total={swTotal.ElapsedMilliseconds}ms");
             return (newStart, newEnd);
