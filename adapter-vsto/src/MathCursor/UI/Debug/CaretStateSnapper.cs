@@ -1,115 +1,125 @@
 using System;
-using System.Linq;
-using System.Xml.Linq;
 using Word = Microsoft.Office.Interop.Word;
 
 namespace MathCursor.UI.Debug
 {
     /// <summary>
     /// Lit la Selection courante de Word et produit un <see cref="CaretStateInfo"/>
-    /// inerte. Best-effort : toute exception Word interop est catchée et
-    /// notée dans <see cref="CaretStateInfo.ErrorMessage"/>.
+    /// inerte. Best-effort : <b>chaque accès Word interop est isolé dans son
+    /// propre try/catch</b> — les collections Word (OMaths, Cells, Paragraphs)
+    /// sont paresseuses et leurs accesseurs par index peuvent jeter même
+    /// quand Count &gt; 0. Une COMException sur une section ne doit pas
+    /// invalider les sections précédemment lues.
     /// </summary>
     internal static class CaretStateSnapper
     {
-        private static readonly XNamespace W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-        private static readonly XNamespace M = "http://schemas.openxmlformats.org/officeDocument/2006/math";
-
         public static CaretStateInfo Snapshot(Word.Application app)
         {
             var info = new CaretStateInfo();
             if (app == null) { info.ErrorMessage = "app null"; return info; }
 
-            Word.Selection sel;
-            try { sel = app.Selection; }
-            catch (Exception ex) { info.ErrorMessage = "selection: " + ex.Message; return info; }
-            if (sel == null) { info.ErrorMessage = "selection is null"; return info; }
+            Word.Selection sel = TryGet(() => app.Selection);
+            if (sel == null) { info.ErrorMessage = "selection null"; return info; }
 
-            try { info.SelStart = sel.Start; info.SelEnd = sel.End; } catch { }
-            try { info.SelOMathsCount = sel.OMaths?.Count ?? 0; } catch { }
+            // Selection : start, end, OMaths count — chaque accès séparé.
+            int? selStart = TryGet(() => (int?)sel.Start);
+            if (selStart.HasValue) info.SelStart = selStart.Value;
+            int? selEnd = TryGet(() => (int?)sel.End);
+            if (selEnd.HasValue) info.SelEnd = selEnd.Value;
+            int? selOMaths = TryGet(() => (int?)(sel.OMaths?.Count ?? 0));
+            if (selOMaths.HasValue) info.SelOMathsCount = selOMaths.Value;
 
-            // ¶ parent
-            Word.Range paraRange = null;
-            try { paraRange = sel.Paragraphs[1].Range; }
-            catch (Exception ex) { info.ErrorMessage = "paragraphs[1]: " + ex.Message; }
-            if (paraRange != null)
+            // ¶ parent : Paragraphs[1] peut jeter, Range et ses propriétés aussi.
+            Word.Paragraph para = TryGet(() =>
             {
-                try
+                var paras = sel.Paragraphs;
+                if (paras == null || paras.Count <= 0) return null;
+                return paras[1];
+            });
+            if (para != null)
+            {
+                Word.Range paraRng = TryGet(() => para.Range);
+                if (paraRng != null)
                 {
-                    info.ParaStart = paraRange.Start;
-                    info.ParaEnd = paraRange.End;
-                    string text = paraRange.Text ?? "";
-                    info.ParaTextPreview = Truncate(text.Replace('\r', '↵').Replace('\a', '⌐').Replace('\v', '↧'), 60);
+                    int? ps = TryGet(() => (int?)paraRng.Start);
+                    int? pe = TryGet(() => (int?)paraRng.End);
+                    if (ps.HasValue) info.ParaStart = ps.Value;
+                    if (pe.HasValue) info.ParaEnd = pe.Value;
+                    string t = TryGet(() => paraRng.Text);
+                    if (!string.IsNullOrEmpty(t))
+                        info.ParaTextPreview = Truncate(
+                            t.Replace('\r', '↵').Replace('\a', '⌐').Replace('\v', '↧'), 60);
                 }
-                catch { }
             }
 
-            // Tableau ?
-            try
+            // Tableau ? — Information[wdWithInTable] peut jeter, idem rownum/colnum.
+            bool? inTable = TryGet(() => (bool?)(bool)sel.Information[Word.WdInformation.wdWithInTable]);
+            if (inTable.HasValue) info.InTable = inTable.Value;
+
+            if (info.InTable)
             {
-                info.InTable = (bool)sel.Information[Word.WdInformation.wdWithInTable];
-                if (info.InTable)
+                int? row = TryGet(() => (int?)(int)sel.Information[Word.WdInformation.wdStartOfRangeRowNumber]);
+                if (row.HasValue) info.TableRow = row.Value;
+                int? col = TryGet(() => (int?)(int)sel.Information[Word.WdInformation.wdStartOfRangeColumnNumber]);
+                if (col.HasValue) info.TableCol = col.Value;
+
+                // Cells[1].Range : COLLECTION PARESSEUSE — Count peut mentir,
+                // accès [1] peut jeter « Le membre de la collection requis
+                // n'existe pas ». Chaque étape isolée.
+                Word.Cell cell = TryGet(() =>
                 {
-                    info.TableRow = (int)sel.Information[Word.WdInformation.wdStartOfRangeRowNumber];
-                    info.TableCol = (int)sel.Information[Word.WdInformation.wdStartOfRangeColumnNumber];
-                    try
+                    var cells = sel.Cells;
+                    if (cells == null) return null;
+                    int count = 0;
+                    try { count = cells.Count; } catch { return null; }
+                    if (count <= 0) return null;
+                    try { return cells[1]; } catch { return null; }
+                });
+                if (cell != null)
+                {
+                    Word.Range cellRng = TryGet(() => cell.Range);
+                    if (cellRng != null)
                     {
-                        var cells = sel.Cells;
-                        if (cells != null && cells.Count > 0)
-                        {
-                            var cellRange = cells[1].Range;
-                            info.CellStart = cellRange.Start;
-                            info.CellEnd = cellRange.End;
-                        }
+                        int? cs = TryGet(() => (int?)cellRng.Start);
+                        int? ce = TryGet(() => (int?)cellRng.End);
+                        if (cs.HasValue) info.CellStart = cs.Value;
+                        if (ce.HasValue) info.CellEnd = ce.Value;
                     }
-                    catch { }
                 }
             }
-            catch { }
 
-            // OMath englobante ?
-            try
+            // OMath englobante : même pattern (Count peut mentir, [1] peut jeter).
+            Word.OMath om = TryGet(() =>
             {
-                if (sel.OMaths != null && sel.OMaths.Count > 0)
+                var omaths = sel.OMaths;
+                if (omaths == null) return null;
+                int count = 0;
+                try { count = omaths.Count; } catch { return null; }
+                if (count <= 0) return null;
+                try { return omaths[1]; } catch { return null; }
+            });
+            if (om != null)
+            {
+                Word.Range omRng = TryGet(() => om.Range);
+                if (omRng != null)
                 {
-                    var omRange = sel.OMaths[1].Range;
-                    info.OMathStart = omRange.Start;
-                    info.OMathEnd = omRange.End;
+                    int? os = TryGet(() => (int?)omRng.Start);
+                    int? oe = TryGet(() => (int?)omRng.End);
+                    if (os.HasValue) info.OMathStart = os.Value;
+                    if (oe.HasValue) info.OMathEnd = oe.Value;
                 }
             }
-            catch { }
-
-            // Siblings via paraXml : DÉSACTIVÉ.
-            // La lecture `paraRange.WordOpenXML` à chaque WindowSelectionChange
-            // et ContextResolved cause des COMException intermittentes et
-            // potentiellement des crashs Word quand la lecture entre en
-            // collision avec une mutation Word en cours (commit OMath, etc.).
-            // Cf. retour user 2026-05-13 : crash quand l'inspecteur est lancé.
-            // Le reste de l'info caret (position, ¶, table, OMath englobante)
-            // suffit pour la validation visuelle des cas que l'on regarde.
 
             return info;
         }
 
-        private static string ExtractTextPreview(XElement el)
+        /// <summary>Wrap minimal pour un accès Word qui peut jeter. Retourne
+        /// <c>default</c> sur exception, ne propage rien — l'inspecteur est
+        /// best-effort, jamais bloquant.</summary>
+        private static T TryGet<T>(Func<T> getter)
         {
-            // Extrait le texte aggregé des descendants <w:t> et <m:t>.
-            var texts = el.Descendants().Where(d =>
-                d.Name.LocalName == "t").Select(t => t.Value);
-            string joined = string.Concat(texts);
-            return Truncate(joined, 40);
-        }
-
-        private static int ApproxRenderLength(XElement el)
-        {
-            // Approximation Word : 1 char par caractère texte. OMath = compté
-            // comme la longueur de son contenu texte (Word ne range pas un
-            // OMath comme 1 char monolithique, mais ses descendants comptent).
-            string s = string.Concat(
-                el.Descendants().Where(d => d.Name.LocalName == "t").Select(t => t.Value));
-            // Markers structurels (bookmarkStart, fldChar, etc.) ont une
-            // longueur "virtuelle" 0 côté Range.Text.
-            return s.Length;
+            try { return getter(); }
+            catch { return default; }
         }
 
         private static string Truncate(string s, int max)
