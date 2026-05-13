@@ -65,6 +65,32 @@
     <ProjectReference Include="..\..\..\core-csharp\src\MathCursor.Core\MathCursor.Core.csproj" />
   </ItemGroup>
 
+  <!-- Word interop pour les tests d'intégration `WordIntegration` :
+       lance une vraie instance Word `Visible=false` et pilote via COM.
+       Référence PIA directe (Office 15) — alignée avec le csproj VSTO
+       d'origine. `COMReference` ne fonctionne pas avec `dotnet build`
+       (MSBuild Core ne supporte pas ResolveComReference).
+       Skip si Word non installé via le filter `Category!=WordIntegration`. -->
+  <ItemGroup>
+    <Reference Include="Microsoft.Office.Interop.Word">
+      <HintPath>C:\Windows\assembly\GAC_MSIL\Microsoft.Office.Interop.Word\15.0.0.0__71e9bce111e9429c\Microsoft.Office.Interop.Word.dll</HintPath>
+      <Private>False</Private>
+      <EmbedInteropTypes>true</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Office">
+      <HintPath>C:\Windows\assembly\GAC_MSIL\office\15.0.0.0__71e9bce111e9429c\office.dll</HintPath>
+      <Private>False</Private>
+      <EmbedInteropTypes>true</EmbedInteropTypes>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Source adapter Word-coupled compilée dans le test pour le harness
+         WordIntegration (cf. Host\WordIntegration\). -->
+    <Compile Include="..\..\src\MathCursor\Host\Bookmarks\EquationBookmarkRegistry.cs"
+             Link="adapter-sources\Host\Bookmarks\EquationBookmarkRegistry.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- xunit.runner.json copié à côté de l'assembly pour désactiver le
          shadow-copy. Sinon les natives DLLs (onnxruntime.dll) ne sont pas
