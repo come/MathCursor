@@ -258,7 +258,9 @@
     <Compile Include="Cheatsheet\CheatsheetData.cs" />
     <Compile Include="Cheatsheet\CheatsheetViewModel.cs" />
     <Compile Include="Cheatsheet\CheatsheetPane.cs" />
-    <Compile Include="Cheatsheet\CheatsheetPaneHost.cs" />
+    <Compile Include="Cheatsheet\CheatsheetPaneHost.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Cheatsheet\CheatsheetPersistence.cs" />
     <EmbeddedResource Include="Cheatsheet\Resources\cheatsheet.json" />
     <Compile Include="Host\VstoEquationStore.cs" />
@@ -293,6 +295,7 @@
     <Compile Include="Host\Session\SessionState.cs" />
     <Compile Include="Host\ListModeMarkerInjector.cs" />
     <Compile Include="Host\ListModeStateMachine.cs" />
+    <Compile Include="Host\ListModeStripGuard.cs" />
     <Compile Include="Host\OMathParaJcPatcher.cs" />
     <Compile Include="Host\InlineOMathSplicer.cs" />
     <Compile Include="Host\Bookmarks\EquationBookmarkRegistry.cs" />
@@ -333,7 +336,9 @@
     <Compile Include="UI\WpfMathAdapter.cs" />
     <Compile Include="UI\MixedLatexRenderer.cs" />
     <Compile Include="UI\Debug\ContextInspectorPane.cs" />
-    <Compile Include="UI\Debug\ContextInspectorPaneHost.cs" />
+    <Compile Include="UI\Debug\ContextInspectorPaneHost.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="UI\SuggestionPopupWindow.cs" />
     <Compile Include="UI\EditModePopupWindow.cs" />
     <Compile Include="UI\FeedbackDialog.cs" />

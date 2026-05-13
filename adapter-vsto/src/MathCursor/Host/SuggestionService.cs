@@ -1185,6 +1185,14 @@ namespace MathCursor.Host
         /// Supprime le marker auto-injecté du ¶ courant (= remplace le contenu
         /// du ¶ par chaîne vide). Appelé sur ExitListMode quand l'user fait
         /// Enter sur une ligne marker-only.
+        ///
+        /// <para>Garde-fou contre le bug 2026-05-13 (perte formule après
+        /// cross-merge + Escape) : si le ¶ contient une OMath ou trop de
+        /// texte pour être un simple marker, on refuse le strip — la
+        /// méthode est censée nettoyer un marker auto-injecté, pas effacer
+        /// du contenu utilisateur. Cf.
+        /// <see cref="ListModeStripGuard.CanStripMarkerFromLine"/> +
+        /// ADR 2026-05-13-Fix-list-mode-strip-guard-omath.</para>
         /// </summary>
         private void StripListModeMarkerFromCurrentLine()
         {
@@ -1198,6 +1206,18 @@ namespace MathCursor.Host
                 int contentStart = paraRange.Start;
                 int contentEnd = Math.Max(contentStart, paraRange.End - 1);
                 if (contentEnd <= contentStart) return;
+                int contentLength = contentEnd - contentStart;
+
+                int omathsCount = 0;
+                try { omathsCount = paraRange.OMaths?.Count ?? 0; } catch { }
+
+                if (!ListModeStripGuard.CanStripMarkerFromLine(omathsCount, contentLength))
+                {
+                    LogDiag($"list_mode: strip REFUSED for ¶[{contentStart},{contentEnd}] " +
+                            $"omaths={omathsCount} contentLen={contentLength} — guard preserve user content");
+                    return;
+                }
+
                 var stripRange = doc.Range(contentStart, contentEnd);
                 stripRange.Text = string.Empty;
                 doc.Range(contentStart, contentStart).Select();
@@ -1555,8 +1575,15 @@ namespace MathCursor.Host
             }
             catch (Exception ex)
             {
-                LogDiag("list_mode_inject_error: " + ex.Message);
-                _listMode.ClearAnchor();
+                // Inject a échoué (typiquement Word refuse les ¶ marks dans
+                // une OMath). Reset COMPLET du list_mode (pas juste l'ancre) :
+                // si on laisse le state machine actif, ExitListMode pourra
+                // déclencher StripListModeMarkerFromCurrentLine plus tard sur
+                // un ¶ qui n'a pas de marker injecté → risque d'effacer du
+                // contenu user (bug 2026-05-13 perte formule).
+                // Cf. ADR 2026-05-13-Fix-list-mode-strip-guard-omath.
+                LogDiag("list_mode_inject_error: " + ex.Message + " — list_mode reset to inactive");
+                _listMode.Reset();
             }
         }
 

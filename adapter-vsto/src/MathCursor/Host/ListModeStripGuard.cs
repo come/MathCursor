@@ -16,6 +16,11 @@ namespace MathCursor.Host
     /// </summary>
     internal static class ListModeStripGuard
     {
+        /// <summary>Longueur max d'un marker auto-injecté. Couvre <c>"= "</c>,
+        /// <c>"{ "</c>, <c>"&amp;= "</c> avec marge. Au-delà = c'est du texte
+        /// utilisateur, on refuse de strip.</summary>
+        private const int MaxMarkerLength = 4;
+
         /// <summary>
         /// Décide si un ¶ candidat peut être nettoyé. Refuse si le ¶
         /// contient une OMath ou si son contenu est trop long pour être
@@ -23,9 +28,9 @@ namespace MathCursor.Host
         /// </summary>
         public static bool CanStripMarkerFromLine(int omathsInPara, int contentLength)
         {
-            // BUG INERTE (phase 1 TDD) : autorise tout, sera fixé en phase 2
-            // après commit RED. Cf. ADR
-            // 2026-05-13-Fix-list-mode-strip-guard-omath.
+            if (omathsInPara > 0) return false;          // jamais effacer une formule
+            if (contentLength <= 0) return false;        // rien à strip
+            if (contentLength > MaxMarkerLength) return false; // texte user, pas un marker
             return true;
         }
     }
