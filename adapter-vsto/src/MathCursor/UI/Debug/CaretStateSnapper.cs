@@ -79,48 +79,14 @@ namespace MathCursor.UI.Debug
             }
             catch { }
 
-            // Siblings via paraXml (parse XDocument)
-            if (paraRange != null)
-            {
-                try
-                {
-                    string xml = paraRange.WordOpenXML;
-                    if (!string.IsNullOrEmpty(xml))
-                    {
-                        var doc = XDocument.Parse(xml);
-                        var wp = doc.Descendants(W + "p").FirstOrDefault();
-                        if (wp != null)
-                        {
-                            int idxApprox = 0;
-                            int caretRelative = info.SelStart - info.ParaStart;
-                            foreach (var child in wp.Elements())
-                            {
-                                string kind = child.Name.LocalName;
-                                // Skip pPr (paragraph props) — bruit visuel
-                                if (kind == "pPr") continue;
-
-                                string preview = ExtractTextPreview(child);
-                                int approxLen = ApproxRenderLength(child);
-
-                                var sib = new CaretSiblingInfo
-                                {
-                                    Kind = kind,
-                                    TextPreview = preview,
-                                    ContainsCaret = caretRelative >= idxApprox
-                                                 && caretRelative < idxApprox + approxLen,
-                                };
-                                info.Siblings.Add(sib);
-                                idxApprox += approxLen;
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    if (string.IsNullOrEmpty(info.ErrorMessage))
-                        info.ErrorMessage = "siblings: " + ex.Message;
-                }
-            }
+            // Siblings via paraXml : DÉSACTIVÉ.
+            // La lecture `paraRange.WordOpenXML` à chaque WindowSelectionChange
+            // et ContextResolved cause des COMException intermittentes et
+            // potentiellement des crashs Word quand la lecture entre en
+            // collision avec une mutation Word en cours (commit OMath, etc.).
+            // Cf. retour user 2026-05-13 : crash quand l'inspecteur est lancé.
+            // Le reste de l'info caret (position, ¶, table, OMath englobante)
+            // suffit pour la validation visuelle des cas que l'on regarde.
 
             return info;
         }
