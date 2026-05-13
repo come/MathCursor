@@ -1720,71 +1720,109 @@ namespace MathCursor.Host
         private (int newStart, int newEnd) InsertOMathAt(int absStart, int absEnd, string latex,
             System.Collections.Generic.IReadOnlyList<string> absorbedHandles = null)
         {
-            var swTotal = System.Diagnostics.Stopwatch.StartNew();
+            // ┌─────────────────────────────────────────────────────────────┐
+            // │ RECETTE MINIMALE 2026-05-13 (validée user via bouton debug):│
+            // │                                                             │
+            // │   1. Selection.SetRange(absStart, absEnd) — étend la sél.   │
+            // │   2. Selection.TypeText(unicodeMath)       — replace + caret│
+            // │                                              à la fin natif│
+            // │   3. doc.Range(srcStart, end).OMaths.Add + BuildUp          │
+            // │   4. om.Justification = Left (silencieux si inline)         │
+            // │   5. NE PAS toucher au caret — Word le place                │
+            // │                                                             │
+            // │ + suspendre NER pendant l'opération (DebugInProgress) pour  │
+            // │   éviter re-entrancy WindowSelectionChange → crash tableau. │
+            // │                                                             │
+            // │ Marche partout (¶ normal, cellule, fin de doc). Aucun       │
+            // │ artifice : pas de ghost, pas de splice XML, pas de patcher  │
+            // │ Regex, pas de Policy caret, pas de Nudge. ~50 lignes au     │
+            // │ lieu de ~200+ avant.                                        │
+            // └─────────────────────────────────────────────────────────────┘
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             var doc = _app.ActiveDocument;
             if (doc == null) return (absStart, absEnd);
+
+            // Clamp + trim whitespaces aux bords.
             int docStart = doc.Content.Start;
             int docEnd = doc.Content.End;
-            LogDiag($"PERF InsertOMathAt enter: absStart={absStart} absEnd={absEnd} docEnd={docEnd}");
             if (absStart < docStart) absStart = docStart;
             if (absEnd > docEnd) absEnd = docEnd;
             if (absEnd <= absStart) return (absStart, absEnd);
-
-            // Trim whitespaces aux bords de la zone détectée : le NER inclut
-            // parfois un espace avant/après, on ne veut pas le remplacer.
             while (absStart < absEnd && IsWhitespaceCharAt(doc, absStart)) absStart++;
             while (absEnd > absStart && IsWhitespaceCharAt(doc, absEnd - 1)) absEnd--;
             if (absEnd <= absStart) return (absStart, absEnd);
 
-            var ctx = BuildInsertContext(doc, absStart, absEnd, latex, absorbedHandles);
-            if (ctx == null) return (absStart, absEnd);
+            // LaTeX → UnicodeMath (= format natif BuildUp).
+            string unicodeMath;
+            try { unicodeMath = MathCursor.Core.LatexToUnicodeMath.Convert(latex); }
+            catch (Exception ex) { LogDiag("insert_l2um_error: " + ex.Message); return (absStart, absEnd); }
+            if (string.IsNullOrEmpty(unicodeMath)) return (absStart, absEnd);
 
-            // Stratégies enchaînées : fast_path → splice → atomic. Première
-            // qui Success gagne. P2.7 du refactor archi.
-            int newStart = absStart, newEnd = absStart;
-            bool ok = false;
-            foreach (var result in TryInsertStrategies(ctx))
+            // Suspend NER pendant l'opération.
+            bool prevDebug = DebugInProgress;
+            DebugInProgress = true;
+            try
             {
-                if (result.Success)
+                var sel = _app.Selection;
+                if (sel == null) return (absStart, absEnd);
+
+                // 1. SetRange étend la sélection sur la range source.
+                try { sel.SetRange(absStart, absEnd); }
+                catch (Exception ex) { LogDiag("insert_setrange_error: " + ex.Message); return (absStart, absEnd); }
+
+                // 2. TypeText : Word remplace la sélection ET avance le caret
+                //    à la fin du texte tapé (= comportement natif Word).
+                try { sel.TypeText(unicodeMath); }
+                catch (Exception ex) { LogDiag("insert_typetext_error: " + ex.Message); return (absStart, absEnd); }
+
+                int afterEnd = sel.Start;
+                int srcStart = afterEnd - unicodeMath.Length;
+
+                // 3. OMaths.Add + BuildUp sur la range typée.
+                Word.OMath placedOM = null;
+                try
                 {
-                    newStart = result.NewStart;
-                    newEnd = result.NewEnd;
-                    ok = true;
-                    break;
+                    var mathRange = doc.Range(srcStart, afterEnd);
+                    mathRange.OMaths.Add(mathRange);
+                    mathRange.OMaths.BuildUp();
+
+                    // 4. Retrouve l'OMath créée et aligne à gauche (silencieux
+                    //    si inline = setter Justification n'est pas applicable).
+                    foreach (Word.OMath o in doc.OMaths)
+                    {
+                        if (o.Range.Start <= srcStart && o.Range.End >= srcStart)
+                        {
+                            placedOM = o;
+                            try { o.Justification = Word.WdOMathJc.wdOMathJcLeft; } catch { }
+                            break;
+                        }
+                    }
                 }
+                catch (Exception ex) { LogDiag("insert_buildup_error: " + ex.Message); return (srcStart, afterEnd); }
+
+                int newStart = placedOM?.Range.Start ?? srcStart;
+                int newEnd = placedOM?.Range.End ?? afterEnd;
+
+                // 5. Cleanup bookmarks des OMaths absorbées (= dans la range
+                //    qu'on vient d'écraser via TypeText).
+                if (absorbedHandles != null && absorbedHandles.Count > 0)
+                {
+                    foreach (var h in absorbedHandles)
+                    {
+                        try { _store.RemoveAsync(new MathCursor.HostContract.EquationHandle(h)).GetAwaiter().GetResult(); }
+                        catch (Exception ex) { LogDiag($"insert_remove_absorbed_error handle={h}: {ex.Message}"); }
+                        _handleRegistry.Forget(h);
+                    }
+                }
+
+                sw.Stop();
+                LogDiag($"PERF InsertOMathAt total={sw.ElapsedMilliseconds}ms (simplified pipeline) → range=[{newStart},{newEnd}]");
+                return (newStart, newEnd);
             }
-            if (!ok)
+            finally
             {
-                LogDiag($"commit ABORTED latex=\"{latex}\" — aucune stratégie d'insert n'a abouti, doc intact");
+                DebugInProgress = prevDebug;
             }
-
-            // Alignment uniforme post-insert : DÉSACTIVÉ 2026-05-13.
-            // EnforceOMathParagraphAlignment jette une COMException Word
-            // "Impossible de définir l'alignement des objets OMath insérés"
-            // pour les OMath inline (= la majorité des cas fast_path/splice
-            // où l'OMath n'est pas un display block oMathPara). L'exception
-            // est catchée mais perturbe Word + bruit dans le log VS.
-            // Le fix alignment uniforme reste actif pour le chemin
-            // AtomicRangeInserter (qui patch le m:jc directement dans le XML
-            // avant InsertXML) et pour cross-merge via LayoutImpl. Acceptable
-            // perte : fast_path et splice peuvent rendre l'OMath centrée
-            // dans certains cas — à reprendre plus tard avec une approche
-            // qui ne touche pas aux OMath inline.
-
-            // Positionnement caret DÉSACTIVÉ 2026-05-13.
-            // Observation user via bouton debug : sans SetRange + Nudge
-            // post-insert, Word place le caret correctement tout seul après
-            // OMaths.Add + BuildUp. Notre pipeline ComputeAfterOMath + SetRange
-            // + NudgeOutOfMath casse ce comportement natif (intermittent :
-            // caret coincé dans OMath, dans le ghost, en col 2, etc.).
-            // On laisse Word gérer naturellement.
-            //
-            // int afterPos = _caretPositioner.ComputeAfterOMath(doc, newEnd);
-            // try { _app.Selection.SetRange(afterPos, afterPos); } catch { }
-            // _caretPositioner.NudgeOutOfMath(doc, maxAttempts: 3);
-            swTotal.Stop();
-            LogDiag($"PERF InsertOMathAt total={swTotal.ElapsedMilliseconds}ms");
-            return (newStart, newEnd);
         }
 
         /// <summary>
