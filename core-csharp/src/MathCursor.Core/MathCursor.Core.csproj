@@ -7,12 +7,22 @@
     <LangVersion>10.0</LangVersion>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- MC0001 (Regex sur XML/OMath) reste en warning sans bloquer le build
+         tant que les hits existants (ex: LatexToUnicodeMath.cs `\begin{cases}`)
+         ne sont pas nettoyés. Cf. ADR 2026-05-13-Meta-harness-phase-0-1-mc0001. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);MC0001</WarningsNotAsErrors>
     <Version>0.1.0</Version>
     <Description>Pipeline de conversion texte → équation math. Aucune dépendance plateforme.</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\host-contract-csharp\src\MathCursor.HostContract\MathCursor.HostContract.csproj" />
+    <!-- Analyzers MathCursor (règles MC d'architecture). Cf. ADR
+         2026-05-13-Meta-harness-phase-0-1-mc0001. ReferenceOutputAssembly=false
+         car on ne veut que l'analyzer, pas la DLL référencée. -->
+    <ProjectReference Include="..\..\..\analyzers\MathCursor.Analyzers\MathCursor.Analyzers.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

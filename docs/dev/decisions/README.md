@@ -19,6 +19,10 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-05-13
+- `[molle]` Meta — [Harnais Phase 0+1 : projet analyzer + règle MC0001](2026-05-13-Meta-harness-phase-0-1-mc0001.md) — Roslyn analyzer + MC0001 (Regex sur XML), branché sur Core, severity warning non bloquante, 11/11 tests verts
+- `[molle]` Meta — [Projet `MathCursor.Core.Abstractions` (5 axes d'extensibilité)](2026-05-13-Meta-extensibility-axes-abstractions.md) — étape 2 du plan refacto, ajout pur, 0 régression test
+
 ### 2026-05-12
 - `[forte]` Refactor — [Merger pur + insert atomique (élimine legacy path et pré-suppression)](2026-05-12-Refactor-pure-merger-atomic-insert.md)
 - `[forte]` Perf — [Stack 3 couches sur le commit pipeline (gros doc, ~290ms → ~30-90ms)](2026-05-12-Perf-commit-pipeline-three-stage-stack.md)

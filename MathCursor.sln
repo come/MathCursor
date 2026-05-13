@@ -7,6 +7,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MathCursor.HostContract", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MathCursor.Core", "core-csharp\src\MathCursor.Core\MathCursor.Core.csproj", "{B1000002-0000-0000-0000-000000000002}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MathCursor.Core.Abstractions", "core-csharp\src\MathCursor.Core.Abstractions\MathCursor.Core.Abstractions.csproj", "{B1000004-0000-0000-0000-000000000004}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MathCursor.Analyzers", "analyzers\MathCursor.Analyzers\MathCursor.Analyzers.csproj", "{B1000005-0000-0000-0000-000000000005}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MathCursor.Analyzers.Tests", "analyzers\MathCursor.Analyzers.Tests\MathCursor.Analyzers.Tests.csproj", "{B1000006-0000-0000-0000-000000000006}"
+EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MathCursor.Core.Tests", "core-csharp\tests\MathCursor.Core.Tests\MathCursor.Core.Tests.csproj", "{B1000003-0000-0000-0000-000000000003}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MathCursor", "adapter-vsto\src\MathCursor\MathCursor.csproj", "{3B0AE2C4-0B49-47B3-934D-ADE9104C6254}"
@@ -57,6 +63,42 @@ Global
 		{B1000003-0000-0000-0000-000000000003}.Release|x64.Build.0 = Release|Any CPU
 		{B1000003-0000-0000-0000-000000000003}.Release|x86.ActiveCfg = Release|Any CPU
 		{B1000003-0000-0000-0000-000000000003}.Release|x86.Build.0 = Release|Any CPU
+		{B1000004-0000-0000-0000-000000000004}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1000004-0000-0000-0000-000000000004}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1000004-0000-0000-0000-000000000004}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B1000004-0000-0000-0000-000000000004}.Debug|x64.Build.0 = Debug|Any CPU
+		{B1000004-0000-0000-0000-000000000004}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B1000004-0000-0000-0000-000000000004}.Debug|x86.Build.0 = Debug|Any CPU
+		{B1000004-0000-0000-0000-000000000004}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1000004-0000-0000-0000-000000000004}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1000004-0000-0000-0000-000000000004}.Release|x64.ActiveCfg = Release|Any CPU
+		{B1000004-0000-0000-0000-000000000004}.Release|x64.Build.0 = Release|Any CPU
+		{B1000004-0000-0000-0000-000000000004}.Release|x86.ActiveCfg = Release|Any CPU
+		{B1000004-0000-0000-0000-000000000004}.Release|x86.Build.0 = Release|Any CPU
+		{B1000005-0000-0000-0000-000000000005}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1000005-0000-0000-0000-000000000005}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1000005-0000-0000-0000-000000000005}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B1000005-0000-0000-0000-000000000005}.Debug|x64.Build.0 = Debug|Any CPU
+		{B1000005-0000-0000-0000-000000000005}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B1000005-0000-0000-0000-000000000005}.Debug|x86.Build.0 = Debug|Any CPU
+		{B1000005-0000-0000-0000-000000000005}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1000005-0000-0000-0000-000000000005}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1000005-0000-0000-0000-000000000005}.Release|x64.ActiveCfg = Release|Any CPU
+		{B1000005-0000-0000-0000-000000000005}.Release|x64.Build.0 = Release|Any CPU
+		{B1000005-0000-0000-0000-000000000005}.Release|x86.ActiveCfg = Release|Any CPU
+		{B1000005-0000-0000-0000-000000000005}.Release|x86.Build.0 = Release|Any CPU
+		{B1000006-0000-0000-0000-000000000006}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1000006-0000-0000-0000-000000000006}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1000006-0000-0000-0000-000000000006}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B1000006-0000-0000-0000-000000000006}.Debug|x64.Build.0 = Debug|Any CPU
+		{B1000006-0000-0000-0000-000000000006}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B1000006-0000-0000-0000-000000000006}.Debug|x86.Build.0 = Debug|Any CPU
+		{B1000006-0000-0000-0000-000000000006}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1000006-0000-0000-0000-000000000006}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1000006-0000-0000-0000-000000000006}.Release|x64.ActiveCfg = Release|Any CPU
+		{B1000006-0000-0000-0000-000000000006}.Release|x64.Build.0 = Release|Any CPU
+		{B1000006-0000-0000-0000-000000000006}.Release|x86.ActiveCfg = Release|Any CPU
+		{B1000006-0000-0000-0000-000000000006}.Release|x86.Build.0 = Release|Any CPU
 		{3B0AE2C4-0B49-47B3-934D-ADE9104C6254}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{3B0AE2C4-0B49-47B3-934D-ADE9104C6254}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3B0AE2C4-0B49-47B3-934D-ADE9104C6254}.Debug|x64.ActiveCfg = Debug|Any CPU
