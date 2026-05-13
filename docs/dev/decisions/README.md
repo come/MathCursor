@@ -20,6 +20,7 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-05-13
+- `[molle]` Fix — [Ghost doc invisible dès création (`Documents.Add(Visible:false)`) + pre-warming au boot](2026-05-13-Fix-ghost-doc-invisible.md) — élimine le flash visuel au 1ᵉʳ commit math, ~50ms plus rapide en bonus
 - `[forte]` Refactor — [Visitor sur AST (`IAstVisitor<TResult>` + 18 Accept overrides + `LatexRenderingVisitor`)](2026-05-13-Refactor-ast-visitor.md) — étape 4, élimine le switch exhaustif de `LatexRenderer`, API publique inchangée, 0 régression
 - `[molle]` Meta — [Harnais Phase 0+1 : projet analyzer + règle MC0001](2026-05-13-Meta-harness-phase-0-1-mc0001.md) — Roslyn analyzer + MC0001 (Regex sur XML), branché sur Core, severity warning non bloquante, 11/11 tests verts
 - `[molle]` Meta — [Projet `MathCursor.Core.Abstractions` (5 axes d'extensibilité)](2026-05-13-Meta-extensibility-axes-abstractions.md) — étape 2 du plan refacto, ajout pur, 0 régression test

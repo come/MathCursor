@@ -378,6 +378,12 @@ namespace MathCursor.Host
             _pollTimer.Tick += (_, __) => CheckAndUpdate();
             _pollTimer.Start();
             _installed = true;
+
+            // Pré-création du ghost doc maintenant : Word est en plein boot,
+            // un Documents.Add invisible (déjà passé Visible:false) se noie
+            // dans le bruit. Évite le flash au 1ᵉʳ commit user.
+            // Cf. ADR 2026-05-13-Fix-ghost-doc-invisible.
+            try { _omathStaging?.WarmUp(); } catch { }
         }
 
         public void Dispose()

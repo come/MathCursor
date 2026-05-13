@@ -33,6 +33,22 @@ namespace MathCursor.Host
         }
 
         /// <summary>
+        /// Pré-crée le ghost doc dès maintenant (au lieu d'attendre le 1ᵉʳ
+        /// commit user). Coût : ~10-20 MB constant en mémoire. Bénéfice :
+        /// le coût visuel de la création se passe au boot de l'addin (moment
+        /// où Word ouvre tout déjà), pas pendant que l'utilisateur tape.
+        ///
+        /// <para>Idempotent : appels multiples = un seul ghost doc. Erreur
+        /// silencieuse (log diag) — le lazy-init prendra le relais au
+        /// 1ᵉʳ <see cref="BuildOMathXml"/> si le warm-up a raté.</para>
+        /// </summary>
+        public void WarmUp()
+        {
+            if (_disposed) return;
+            EnsureStagingDoc();
+        }
+
+        /// <summary>
         /// Construit le pkg:package WordOpenXML d'une OMath rendue à partir
         /// du <paramref name="latex"/>. Retourne <c>null</c> sur échec
         /// (conversion latex→unicodeMath, BuildUp Word, capture, etc.).
@@ -112,9 +128,18 @@ namespace MathCursor.Host
         }
 
         /// <summary>
-        /// Crée le ghost doc lazy si pas encore créé. Le doc est créé
-        /// caché (window.Visible=false) après réactivation du doc user.
-        /// Retourne <c>false</c> si la création a échoué.
+        /// Crée le ghost doc s'il n'existe pas encore.
+        ///
+        /// <para>Le doc est créé invisible <b>dès l'appel</b> via le 4ᵉ
+        /// paramètre <c>Visible</c> de <c>Documents.Add</c>. Sans ça la
+        /// fenêtre se créait visible puis on la masquait après — flash
+        /// perceptible côté user (cf. ADR <c>2026-05-13-Fix-ghost-doc-invisible</c>).</para>
+        ///
+        /// <para>Bretelle : si pour une raison quelconque la fenêtre est
+        /// quand même visible après l'Add (vieux Word qui ignore le param),
+        /// on force <c>Visible=false</c> post-création.</para>
+        ///
+        /// <para>Retourne <c>false</c> si la création a échoué.</para>
         /// </summary>
         private bool EnsureStagingDoc()
         {
@@ -129,9 +154,26 @@ namespace MathCursor.Host
             try
             {
                 _app.ScreenUpdating = false;
-                _stagingDoc = _app.Documents.Add();
-                try { _stagingDoc.ActiveWindow.Visible = false; }
+
+                // Documents.Add(Template, NewTemplate, DocumentType, Visible).
+                // Passer Visible:false dès l'appel = pas de flash de fenêtre.
+                // ref object obligatoire pour les params COM optionnels.
+                object missing = Type.Missing;
+                object visibleArg = false;
+                _stagingDoc = _app.Documents.Add(
+                    Template: ref missing,
+                    NewTemplate: ref missing,
+                    DocumentType: ref missing,
+                    Visible: ref visibleArg);
+
+                // Bretelle : forcer Visible=false si Word a ignoré le param.
+                try
+                {
+                    if (_stagingDoc.ActiveWindow != null && _stagingDoc.ActiveWindow.Visible)
+                        _stagingDoc.ActiveWindow.Visible = false;
+                }
                 catch (Exception ex) { _diagLog?.Invoke("staging.hide_window_error: " + ex.Message); }
+
                 userDoc?.Activate();
                 _diagLog?.Invoke("staging.doc_created");
                 return true;
