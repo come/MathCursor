@@ -8,6 +8,14 @@ de façon fluide au clavier. Objectif : comportement prévisible et sans frictio
 **Phase 1** : Word Desktop Windows via **VSTO** uniquement.
 **Phase 2** (après validation produit) : portage Office.js pour Word Web / Mac / iPad.
 
+## Où trouver l'état d'avancement (lire en premier)
+
+- **[`docs/dev/architecture/ROADMAP.md`](docs/dev/architecture/ROADMAP.md)** — état des chantiers en cours (refacto archi axes 1-8, harnais phases 0-9, source-mutation S0-S3), case à case. À jour à chaque sous-livraison.
+- **[`docs/dev/architecture/cartography.md`](docs/dev/architecture/cartography.md)** — image archi par fichier + dette identifiée.
+- **[`docs/dev/decisions/README.md`](docs/dev/decisions/README.md)** — index chrono de tous les ADRs.
+
+Quand tu reprends une session : ROADMAP.md → première case `[ ]` non cochée du chantier en cours. Si plusieurs chantiers ouverts, demander la priorité utilisateur.
+
 ## Validation produit (critère de succès phase 1)
 
 Produit utilisable au quotidien par :

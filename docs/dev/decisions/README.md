@@ -20,6 +20,8 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-05-13
+- `[forte]` Refactor — [S1 : `ScanUppercaseSequences` source-based + Mutations vec/paren](2026-05-13-Refactor-s1-twoupper-source-mutations.md) — fixe immédiatement le bug 06-05 single-line (pref vec sur AB rend `\vec{AB}`), +4 tests verts, 1 cross-merge multi-ligne reporté en S2
+- `[molle]` Fix — [WarmUp ghost doc déclenché par le 1ᵉʳ `WindowActivate`, plus inline dans `Install()`](2026-05-13-Fix-warmup-event-driven.md) — élimine la COMException `Selection.get returned null` au boot, handler one-shot auto-désabonnant (pas de timer ni de field flag), respect doctrine events natifs
 - `[forte]` Refactor — [Scanners d'ambiguïté en Strategy + Pipeline (`IAmbiguityScanner`)](2026-05-13-Refactor-ambiguity-scanners-strategy.md) — S0 du refacto source-mut, 10 scanners statiques extraits en classes indépendantes, alignement doctrine `IZoneMerger`/`ICommitStage`/`IContextSignal`
 - `[forte]` Refactor — [Source-mutation pure pour les pins sidecar (élimine MC0006 du Core de prod)](2026-05-13-Refactor-source-mutation-pins-sidecar.md) — unifie les 2 chemins d'application des pins sur le modèle ApplyPreferences (source-mut), splice latex devient fallback résiduel (bracket uniquement)
 - `[molle]` Meta — [Règles MC0006 (splice LaTeX) + MC0009 (SuppressMessage sans ADR)](2026-05-13-Meta-mc0006-mc0009.md) — Phase 2.5 du harnais, MC0006 capture l'anti-pattern du bug double-wrap (4 hits réels), MC0009 verrou anti-suppression (0 hit), 16 nouveaux tests verts

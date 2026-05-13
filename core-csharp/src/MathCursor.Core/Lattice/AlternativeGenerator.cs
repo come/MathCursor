@@ -840,21 +840,46 @@ namespace MathCursor.Core.Lattice
             return true;
         }
 
-        private static AmbiguitySpot MakeUpperSpot(string pair)
+        /// <summary>
+        /// Crée le Spot pour une pair/triplet de majuscules.
+        ///
+        /// <para>Si <paramref name="sourceOffset"/> est fourni (= scan
+        /// source-based depuis <see cref="ScanUppercaseSequences"/>), les
+        /// alts <c>vec</c> et <c>(...)</c> du length==2 reçoivent une
+        /// <see cref="SourceMutation"/>. L'adapter peut alors résoudre ces
+        /// alts par re-mutation de la source au lieu d'un splice du LaTeX
+        /// rendu (cf. ADR <c>2026-05-13-Refactor-source-mutation-pins-sidecar</c>).</para>
+        ///
+        /// <para>Bracket (<c>[AB]</c>) reste sans Mutation : <c>[AB]</c>
+        /// est parsé en intervalle FR par le parser, donc pas de forme
+        /// source naturelle équivalente. Fallback splice latex préservé.</para>
+        ///
+        /// <para>Length==3 : pas de Mutation pour S1 (RuleThreeUppercase
+        /// reste sur splice latex). Activation à S2 quand keywords
+        /// <c>triangle</c>/<c>widehat-pour-3-lettres</c> seront branchés
+        /// dans le pipeline.</para>
+        /// </summary>
+        private static AmbiguitySpot MakeUpperSpot(string pair, int? sourceOffset = null)
         {
             if (pair.Length == 2)
             {
+                SourceMutation? vecMut = sourceOffset.HasValue
+                    ? new SourceMutation(sourceOffset.Value, 2, "vec " + pair)
+                    : null;
+                SourceMutation? parenMut = sourceOffset.HasValue
+                    ? new SourceMutation(sourceOffset.Value, 2, "(" + pair + ")")
+                    : null;
                 return new AmbiguitySpot(
                     ruleId: RuleTwoUppercase,
                     defaultLatex: pair,
                     alternatives: new[]
                     {
-                        new AmbiguityAlternative($"\\vec{{{pair}}}"),
-                        new AmbiguityAlternative($"\\left({pair}\\right)"),
+                        new AmbiguityAlternative($"\\vec{{{pair}}}", vecMut),
+                        new AmbiguityAlternative($"\\left({pair}\\right)", parenMut),
                         new AmbiguityAlternative($"\\left[{pair}\\right]"),
                     });
             }
-            // length == 3
+            // length == 3 — S1 garde le splice latex pour widehat/triangle.
             return new AmbiguitySpot(
                 ruleId: RuleThreeUppercase,
                 defaultLatex: pair,
@@ -866,61 +891,70 @@ namespace MathCursor.Core.Lattice
         }
 
         /// <summary>
-        /// Parcourt <paramref name="topLatex"/> et émet un match pour chaque
-        /// séquence de 2 ou 3 majuscules consécutives entourées de non-lettres
-        /// (word boundary). Évite les positions déjà consommées par d'autres
-        /// matches AST-based.
+        /// Scan SOURCE (pas LaTeX rendu) : émet un match pour chaque
+        /// séquence de 2 ou 3 majuscules consécutives entourées de
+        /// non-lettres (word boundary). Le boundary est calculé sur la
+        /// source — la vérité user — avant toute mutation/rendu.
+        ///
+        /// <para>S1 du refacto source-mutation
+        /// (ADR <c>2026-05-13-Refactor-source-mutation-pins-sidecar</c>) :
+        /// le scan opère sur la source pour permettre aux alts vec/paren
+        /// (length==2) de porter une <see cref="SourceMutation"/> stable,
+        /// au lieu de splicer le LaTeX déjà rendu.</para>
+        ///
+        /// <para>Mapping source→topLatex pour le <c>Start</c>/<c>End</c>
+        /// du match : si la pair est intacte à la même position dans le
+        /// topLatex (cas majoritaire, aucune mutation upstream qui décale),
+        /// on prend cette position. Sinon fallback
+        /// <see cref="LastIndexOfWordBoundary"/> sur le topLatex (cas où
+        /// une mutation type V→∀ a ajouté des chars en amont).</para>
+        ///
+        /// <para>Évite les positions topLatex déjà consommées par d'autres
+        /// matches (AST-based, decorated, etc.).</para>
         /// </summary>
-        internal static void ScanUppercaseSequences(string topLatex,
+        internal static void ScanUppercaseSequences(string source, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
             int i = 0;
-            while (i < topLatex.Length)
+            while (i < source.Length)
             {
-                if (!char.IsUpper(topLatex[i]) || consumed[i]) { i++; continue; }
-                // Word boundary left
-                if (i > 0 && char.IsLetter(topLatex[i - 1])) { i++; continue; }
+                if (!char.IsUpper(source[i])) { i++; continue; }
+                // Word boundary left (source)
+                if (i > 0 && char.IsLetter(source[i - 1])) { i++; continue; }
                 int j = i;
-                while (j < topLatex.Length && char.IsUpper(topLatex[j]) && !consumed[j]) j++;
+                while (j < source.Length && char.IsUpper(source[j])) j++;
                 int len = j - i;
-                // Word boundary right (if more letters follow, c'est un mot plus
-                // long, on n'émet aucun match — ex: ABCD ne propose ni AB ni ABC)
-                if (j < topLatex.Length && char.IsLetter(topLatex[j])) { i = j; continue; }
+                // Word boundary right (source). Si plus de lettres suivent,
+                // c'est un mot plus long → aucun match (ABCD ne propose ni
+                // AB ni ABC).
+                if (j < source.Length && char.IsLetter(source[j])) { i = j; continue; }
+                if (len != 2 && len != 3) { i = j; continue; }
 
-                AmbiguitySpot? spot = null;
-                if (len == 2)
+                var pair = source.Substring(i, len);
+
+                // Map source pos → topLatex pos.
+                int topPos;
+                bool trivialMap = i + len <= topLatex.Length
+                                  && string.CompareOrdinal(topLatex, i, pair, 0, len) == 0;
+                if (trivialMap)
                 {
-                    var pair = topLatex.Substring(i, 2);
-                    spot = new AmbiguitySpot(
-                        ruleId: RuleTwoUppercase,
-                        defaultLatex: pair,
-                        alternatives: new[]
-                        {
-                            new AmbiguityAlternative($"\\vec{{{pair}}}"),
-                            new AmbiguityAlternative($"\\left({pair}\\right)"),
-                            new AmbiguityAlternative($"\\left[{pair}\\right]"),
-                        });
+                    topPos = i;
                 }
-                else if (len == 3)
+                else
                 {
-                    var triplet = topLatex.Substring(i, 3);
-                    spot = new AmbiguitySpot(
-                        ruleId: RuleThreeUppercase,
-                        defaultLatex: triplet,
-                        alternatives: new[]
-                        {
-                            new AmbiguityAlternative($"\\widehat{{{triplet}}}"),
-                            new AmbiguityAlternative($"\\triangle {triplet}"),
-                        });
+                    topPos = LastIndexOfWordBoundary(topLatex, pair, consumed);
+                    if (topPos < 0) { i = j; continue; }
                 }
-                // 4+ majuscules : on n'émet rien (pas de pattern géométrique
-                // standard pour 4 lettres, et l'utilisateur n'a probablement
-                // pas tapé ça sciemment).
-                if (spot != null)
-                {
-                    for (int k = i; k < j; k++) consumed[k] = true;
-                    output.Add(new AmbiguityMatch(spot, i, j));
-                }
+
+                // Vérifie que la plage topLatex est libre.
+                bool free = topPos + len <= consumed.Length;
+                for (int k = topPos; free && k < topPos + len; k++)
+                    if (consumed[k]) free = false;
+                if (!free) { i = j; continue; }
+
+                var spot = MakeUpperSpot(pair, sourceOffset: i);
+                for (int k = topPos; k < topPos + len; k++) consumed[k] = true;
+                output.Add(new AmbiguityMatch(spot, topPos, topPos + len));
                 i = j;
             }
         }

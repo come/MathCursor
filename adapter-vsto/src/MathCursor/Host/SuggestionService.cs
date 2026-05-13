@@ -377,13 +377,16 @@ namespace MathCursor.Host
             };
             _pollTimer.Tick += (_, __) => CheckAndUpdate();
             _pollTimer.Start();
-            _installed = true;
 
-            // Pré-création du ghost doc maintenant : Word est en plein boot,
-            // un Documents.Add invisible (déjà passé Visible:false) se noie
-            // dans le bruit. Évite le flash au 1ᵉʳ commit user.
-            // Cf. ADR 2026-05-13-Fix-ghost-doc-invisible.
-            try { _omathStaging?.WarmUp(); } catch { }
+            // Pré-création du ghost doc : event-driven sur le 1ᵉʳ
+            // WindowActivate (Word a fini son boot + un user doc est rendu).
+            // Pas de timer ni de WarmUp inline dans Install() : Word peut
+            // avoir Selection==null transitoirement pendant son init, ce qui
+            // déclenche une COMException dans les consumers du poll timer.
+            // Auto-désabonnement après 1ᵉʳ fire = one-shot sans field flag.
+            // Cf. ADR 2026-05-13-Fix-warmup-event-driven.
+            _app.WindowActivate += OnFirstWindowActivateForWarmUp;
+            _installed = true;
         }
 
         public void Dispose()
@@ -391,6 +394,9 @@ namespace MathCursor.Host
             try { if (_installed) _app.WindowSelectionChange -= OnSelectionChange; } catch { }
             try { if (_installed) _app.WindowDeactivate -= OnWindowDeactivate; } catch { }
             try { if (_installed) _app.WindowActivate -= OnWindowActivate; } catch { }
+            // Défensif : si Dispose() est appelé avant le 1ᵉʳ WindowActivate,
+            // le handler one-shot n'a pas pu se désabonner lui-même.
+            try { if (_installed) _app.WindowActivate -= OnFirstWindowActivateForWarmUp; } catch { }
             try { _pollTimer?.Stop(); } catch { }
             try { _popup?.Close(); } catch { }
             try { _editController?.Close(); } catch { }
@@ -620,6 +626,19 @@ namespace MathCursor.Host
         private void OnWindowActivate(Word.Document doc, Word.Window wnd)
         {
             try { _pollTimer?.Start(); } catch { }
+        }
+
+        /// <summary>
+        /// Handler one-shot : se désabonne après le 1ᵉʳ fire. Le 1ᵉʳ
+        /// <c>WindowActivate</c> garantit que Word a fini son boot et qu'un
+        /// doc user est rendu — moment sûr pour créer le ghost doc sans
+        /// race avec un <c>Selection==null</c> transitoire.
+        /// Cf. ADR 2026-05-13-Fix-warmup-event-driven.
+        /// </summary>
+        private void OnFirstWindowActivateForWarmUp(Word.Document doc, Word.Window wnd)
+        {
+            try { _app.WindowActivate -= OnFirstWindowActivateForWarmUp; } catch { }
+            try { _omathStaging?.WarmUp(); } catch { }
         }
 
         private void CheckAndUpdate()
