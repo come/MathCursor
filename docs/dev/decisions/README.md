@@ -20,6 +20,8 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-05-13
+- `[forte]` Refactor — [Scanners d'ambiguïté en Strategy + Pipeline (`IAmbiguityScanner`)](2026-05-13-Refactor-ambiguity-scanners-strategy.md) — S0 du refacto source-mut, 10 scanners statiques extraits en classes indépendantes, alignement doctrine `IZoneMerger`/`ICommitStage`/`IContextSignal`
+- `[forte]` Refactor — [Source-mutation pure pour les pins sidecar (élimine MC0006 du Core de prod)](2026-05-13-Refactor-source-mutation-pins-sidecar.md) — unifie les 2 chemins d'application des pins sur le modèle ApplyPreferences (source-mut), splice latex devient fallback résiduel (bracket uniquement)
 - `[molle]` Meta — [Règles MC0006 (splice LaTeX) + MC0009 (SuppressMessage sans ADR)](2026-05-13-Meta-mc0006-mc0009.md) — Phase 2.5 du harnais, MC0006 capture l'anti-pattern du bug double-wrap (4 hits réels), MC0009 verrou anti-suppression (0 hit), 16 nouveaux tests verts
 - `[molle]` Fix — [Ghost doc invisible dès création (`Documents.Add(Visible:false)`) + pre-warming au boot](2026-05-13-Fix-ghost-doc-invisible.md) — élimine le flash visuel au 1ᵉʳ commit math, ~50ms plus rapide en bonus
 - `[forte]` Refactor — [Visitor sur AST (`IAstVisitor<TResult>` + 18 Accept overrides + `LatexRenderingVisitor`)](2026-05-13-Refactor-ast-visitor.md) — étape 4, élimine le switch exhaustif de `LatexRenderer`, API publique inchangée, 0 régression

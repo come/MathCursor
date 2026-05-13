@@ -231,83 +231,20 @@ namespace MathCursor.Core.Lattice
         /// </summary>
         private static IReadOnlyList<AmbiguityMatch> CollectAllMatches(AstNode topAst, string topLatex, string source)
         {
-            var matches = new List<AmbiguityMatch>();
-            var consumed = new bool[topLatex.Length];
-            // 0) Angle 2-lettres (default avec placeholder) AVANT toute autre
-            //    scan : on ne veut PAS que ScanUppercaseSequences capture les
-            //    `AB` à l'intérieur de `\widehat{AB\square}` et propose vec.
-            ScanAngleTwoLetterPlaceholder(topAst, topLatex, matches, consumed);
-            // 1) Patterns AST-based (Sup d'une lettre par un nombre, etc.)
-            CollectAllMatchesRec(topAst, topLatex, matches, consumed);
-            // 1bis) Patterns 2/3-majuscules DÉJÀ DÉCORÉS par le parser : Atom
-            //    direct (ou chaîne implicite) sous Group (user `(AB)`), sous Vec
-            //    (user `vec AB`), sous Angle (user `angle ABC` / `^ABC`).
-            //    Émet le match avec bornes couvrant la décoration ENTIÈRE dans
-            //    le topLatex → splice de l'alt courante = identité, pas de
-            //    double wrap (bug double `\left(\left(AB\right)\right)`,
-            //    `\widehat{\widehat{ABC}}`, `\vec{\vec{AB}}`).
-            //    DOIT tourner avant ScanUppercaseSequences pour réserver les
-            //    positions via consumed[].
-            ScanDecoratedTwoThreeUpper(topAst, topLatex, matches, consumed);
-            // 2) Patterns STRING-based sur le LaTeX rendu : séquences de
-            //    majuscules adjacentes. On scanne en passant par-dessus l'AST
-            //    parce que l'arbre gauche-associatif ne regroupe pas toujours
-            //    C et D ensemble (ex: AB*CD donne ((A*B)*C)*D, donc CD n'est
-            //    jamais un sous-Bin direct). Le scan string capture toutes
-            //    les séquences majuscules quelle que soit leur structure AST.
-            ScanUppercaseSequences(topLatex, matches, consumed);
-            // 3) Patterns SOURCE-mutation : règles qui ré-écrivent la source et
-            //    relancent le pipeline (V→forall, à venir : intervalles, U, etc.).
-            //    Scannent la source brute (pas le LaTeX rendu) pour avoir les
-            //    positions exactes à muter.
-            ScanVAsForallEAsExists(source, topLatex, matches, consumed);
-            // 4) Lettres canoniques R/N/Z/Q/C isolées : popup ensemble vs lettre.
-            ScanCanonicalSetLetters(source, topLatex, matches, consumed);
-            // 5) Function-typique + parens avec 2/3 args virgule : `f(1, 2)`.
-            //    Default = function call (top-1), alt = vec coords ligne via
-            //    mutation source `f` → `u` (un ident vec-typique) qui force
-            //    le parser à reconnaître le pattern coords.
-            //    Cf. brief 2026-04-29-vector-coordinates-shorthand §3.1.
-            ScanFunctionTypicalWithCommaCoords(source, topLatex, matches, consumed);
-            // 6) Col↔ligne pour VectorCoordinates top-level : si l'AST entier
-            //    est une seule VectorCoordinates (cas `u (1 2)`, `u(1, 2)`,
-            //    `OM (x y z)`, etc.), proposer le layout opposé en alt. On
-            //    limite au top-level pour éviter les conflits avec d'autres
-            //    ambig nested (V/E, AB, etc.). V2 étendra aux nested.
-            ScanVectorLayoutFlipTopLevel(topAst, topLatex, matches, consumed);
-            // 7) Élargissement tight de la chaîne (cf. ADR 30-04
-            //    Feat-tight-implicit-mult-grouping). Default : `1/x+1` →
-            //    \frac{1}{x}+1 (PEMDAS, chaîne implicite uniquement). Alt :
-            //    \frac{1}{x+1} (chaîne tight élargie aux ops). Re-parse avec
-            //    TightExtendsToOps=true et compare.
-            ScanTightChainExtension(source, topLatex, matches, consumed);
-            // 8) Décimal vs multiplication pour `\d+\.\d+` (ADR 30-04
-            //    Feat-dot-as-multiplier). Default = mult (`3 \cdot 4`),
-            //    alt = décimal (`3{,}4`). Permet aux utilisateurs anglo
-            //    qui tapent `3.4` pour "trois virgule quatre" de switcher
-            //    rapidement.
-            ScanDecimalVsMultiplication(source, topLatex, matches, consumed);
-            // Angle 2-lettres : scan déplacé en étape (0) tout en haut
-            // pour passer avant ScanUppercaseSequences qui capterait les
-            // `AB` dans le rendu `\widehat{AB\square}`.
-            // Tri : priorité aux règles structurantes (V→∀, E→∃ qui changent
-            // la sémantique globale) puis aux règles locales (canonical-set,
-            // AB→vec, x²→x_2). En cas d'égalité de priorité, rightmost first
-            // (= la plus proche du caret).
-            matches.Sort((a, b) =>
-            {
-                int prioA = GetRulePriority(a.Spot.RuleId);
-                int prioB = GetRulePriority(b.Spot.RuleId);
-                if (prioA != prioB) return prioA.CompareTo(prioB);
-                return b.Start.CompareTo(a.Start);
-            });
-            return matches;
+            // Délégation à AmbiguityScannerPipeline.Default (Strategy + Pipeline,
+            // cf. ADR 2026-05-13-Refactor-ambiguity-scanners-strategy). Les 10
+            // Scan* qui vivent encore dans ce fichier sont appelées par les
+            // wrappers dans Lattice/Ambiguity/Scanners/. Vrai déplacement du
+            // code en S0.7 cleanup.
+            var ctx = new MathCursor.Core.Lattice.Ambiguity.ScanContext(topAst, topLatex, source);
+            return MathCursor.Core.Lattice.Ambiguity.AmbiguityScannerPipeline.Default.Run(ctx);
         }
 
         // Priorité des règles d'ambig (1 = haute, traité en premier).
         // Rules structurantes (changent la sémantique globale, ex V→∀ vs V
         // variable) sortent avant les locales (modifient juste un atome).
-        private static int GetRulePriority(string ruleId) => ruleId switch
+        // Visibilité internal pour exposition à AmbiguityScannerPipeline.
+        internal static int GetRulePriority(string ruleId) => ruleId switch
         {
             RuleVAsForall => 1,
             RuleEAsExists => 1,
@@ -367,7 +304,7 @@ namespace MathCursor.Core.Lattice
         /// (`+`, `-`, `*`, `/`, `^`, `_`) NE sont pas considérés isolants
         /// car ils suggèrent un contexte arithmétique (variable).
         /// </summary>
-        private static void ScanCanonicalSetLetters(string source, string topLatex,
+        internal static void ScanCanonicalSetLetters(string source, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
             for (int i = 0; i < source.Length; i++)
@@ -446,7 +383,7 @@ namespace MathCursor.Core.Lattice
         /// l'AST top n'est PAS une VectorCoordinates (c'est un Bin) et on ne
         /// propose pas le flip — V2 si besoin.
         /// </summary>
-        private static void ScanVectorLayoutFlipTopLevel(AstNode topAst, string topLatex,
+        internal static void ScanVectorLayoutFlipTopLevel(AstNode topAst, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
             if (!(topAst is VectorCoordinates vc)) return;
@@ -498,7 +435,7 @@ namespace MathCursor.Core.Lattice
         /// rester simple. V2 ciblera la sous-expression précise si plusieurs
         /// élargissements coexistent dans la formule.
         /// </summary>
-        private static void ScanTightChainExtension(string source, string topLatex,
+        internal static void ScanTightChainExtension(string source, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
             if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(topLatex)) return;
@@ -549,7 +486,7 @@ namespace MathCursor.Core.Lattice
         /// La position dans topLatex est récupérée par recherche du
         /// substring `n\\cdot m` (ou `n\\times m` selon setting).
         /// </summary>
-        private static void ScanDecimalVsMultiplication(string source, string topLatex,
+        internal static void ScanDecimalVsMultiplication(string source, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
             if (string.IsNullOrEmpty(source)) return;
@@ -601,7 +538,7 @@ namespace MathCursor.Core.Lattice
         /// compléter), et propose en alt le rendu sans placeholder (= angle
         /// littéral 2 lettres).
         /// </summary>
-        private static void ScanAngleTwoLetterPlaceholder(AstNode topAst, string topLatex,
+        internal static void ScanAngleTwoLetterPlaceholder(AstNode topAst, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
             if (topAst == null || string.IsNullOrEmpty(topLatex)) return;
@@ -647,7 +584,7 @@ namespace MathCursor.Core.Lattice
             catch { return null; }
         }
 
-        private static void ScanFunctionTypicalWithCommaCoords(string source, string topLatex,
+        internal static void ScanFunctionTypicalWithCommaCoords(string source, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
             for (int i = 0; i < source.Length; i++)
@@ -837,7 +774,7 @@ namespace MathCursor.Core.Lattice
         /// émis ici, et <see cref="ScanUppercaseSequences"/> émet un match
         /// normal sur les lettres (comportement préservé).</para>
         /// </summary>
-        private static void ScanDecoratedTwoThreeUpper(
+        internal static void ScanDecoratedTwoThreeUpper(
             AstNode? topAst, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
@@ -845,7 +782,7 @@ namespace MathCursor.Core.Lattice
             ScanDecoratedWalk(topAst, topLatex, output, consumed);
         }
 
-        private static void ScanDecoratedWalk(
+        internal static void ScanDecoratedWalk(
             AstNode node, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
@@ -934,7 +871,7 @@ namespace MathCursor.Core.Lattice
         /// (word boundary). Évite les positions déjà consommées par d'autres
         /// matches AST-based.
         /// </summary>
-        private static void ScanUppercaseSequences(string topLatex,
+        internal static void ScanUppercaseSequences(string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
             int i = 0;
@@ -1010,7 +947,7 @@ namespace MathCursor.Core.Lattice
         /// (V*x, V+x, Vx, V), V_x) ne déclenchent PAS l'ambig (V garde sa
         /// sémantique de variable / multiplicateur).
         /// </summary>
-        private static void ScanVAsForallEAsExists(string source, string topLatex,
+        internal static void ScanVAsForallEAsExists(string source, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
             for (int i = 0; i < source.Length; i++)
@@ -1063,7 +1000,7 @@ namespace MathCursor.Core.Lattice
             }
         }
 
-        private static void CollectAllMatchesRec(AstNode node, string topLatex,
+        internal static void CollectAllMatchesRec(AstNode node, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
             var spot = MatchAmbiguity(node);
