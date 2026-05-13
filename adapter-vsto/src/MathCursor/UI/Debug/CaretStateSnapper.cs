@@ -29,12 +29,19 @@ namespace MathCursor.UI.Debug
             int? selOMaths = TryGet(() => (int?)(sel.OMaths?.Count ?? 0));
             if (selOMaths.HasValue) info.SelOMathsCount = selOMaths.Value;
 
-            // ¶ parent : Paragraphs[1] peut jeter, Range et ses propriétés aussi.
+            // ¶ parent : foreach + break (cohérent avec cells/omaths, évite
+            // Paragraphs[1] qui peut jeter sur collection paresseuse).
             Word.Paragraph para = TryGet(() =>
             {
                 var paras = sel.Paragraphs;
-                if (paras == null || paras.Count <= 0) return null;
-                return paras[1];
+                if (paras == null) return null;
+                Word.Paragraph first = null;
+                try
+                {
+                    foreach (Word.Paragraph p in paras) { first = p; break; }
+                }
+                catch { return null; }
+                return first;
             });
             if (para != null)
             {
@@ -63,17 +70,21 @@ namespace MathCursor.UI.Debug
                 int? col = TryGet(() => (int?)(int)sel.Information[Word.WdInformation.wdStartOfRangeColumnNumber]);
                 if (col.HasValue) info.TableCol = col.Value;
 
-                // Cells[1].Range : COLLECTION PARESSEUSE — Count peut mentir,
-                // accès [1] peut jeter « Le membre de la collection requis
-                // n'existe pas ». Chaque étape isolée.
+                // Cells[1] jette parfois « Le membre de la collection requis
+                // n'existe pas » même si Count > 0 (collection Word paresseuse).
+                // Utiliser foreach + break = via IEnumerator, plus tolérant
+                // aux états transitoires que l'accès indexé.
                 Word.Cell cell = TryGet(() =>
                 {
                     var cells = sel.Cells;
                     if (cells == null) return null;
-                    int count = 0;
-                    try { count = cells.Count; } catch { return null; }
-                    if (count <= 0) return null;
-                    try { return cells[1]; } catch { return null; }
+                    Word.Cell first = null;
+                    try
+                    {
+                        foreach (Word.Cell c in cells) { first = c; break; }
+                    }
+                    catch { return null; }
+                    return first;
                 });
                 if (cell != null)
                 {
@@ -88,15 +99,18 @@ namespace MathCursor.UI.Debug
                 }
             }
 
-            // OMath englobante : même pattern (Count peut mentir, [1] peut jeter).
+            // OMath englobante : foreach + break (idem cells, évite Item[1] qui jette).
             Word.OMath om = TryGet(() =>
             {
                 var omaths = sel.OMaths;
                 if (omaths == null) return null;
-                int count = 0;
-                try { count = omaths.Count; } catch { return null; }
-                if (count <= 0) return null;
-                try { return omaths[1]; } catch { return null; }
+                Word.OMath first = null;
+                try
+                {
+                    foreach (Word.OMath o in omaths) { first = o; break; }
+                }
+                catch { return null; }
+                return first;
             });
             if (om != null)
             {
