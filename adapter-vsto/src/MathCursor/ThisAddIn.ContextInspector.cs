@@ -43,6 +43,7 @@ namespace MathCursor
                     }
                     _inspectorHost = new ContextInspectorPaneHost();
                     _suggestions.ContextResolved += OnContextResolvedForInspector;
+                    Application.WindowSelectionChange += OnSelectionChangeForCaretInspector;
 
                     _inspectorTaskPane = CustomTaskPanes.Add(
                         _inspectorHost, Strings.ContextInspectorPaneTitle);
@@ -75,6 +76,22 @@ namespace MathCursor
                 _inspectorHost.WpfPane.Dispatcher.BeginInvoke(
                     new Action(() => _inspectorHost.WpfPane.Update(
                         e.RawSource, e.Snapshot, e.Hints, e.Resolved)));
+            }
+            catch { /* debug pane, jamais propager */ }
+        }
+
+        private void OnSelectionChangeForCaretInspector(Microsoft.Office.Interop.Word.Selection sel)
+        {
+            try
+            {
+                if (_inspectorHost?.WpfPane == null) return;
+                if (_inspectorTaskPane == null || !_inspectorTaskPane.Visible) return;
+
+                // Snapshot inerte hors Dispatcher (= sur le thread Word) puis
+                // push au pane via Dispatcher.
+                var info = CaretStateSnapper.Snapshot(Application);
+                _inspectorHost.WpfPane.Dispatcher.BeginInvoke(
+                    new Action(() => _inspectorHost.WpfPane.UpdateCaretState(info)));
             }
             catch { /* debug pane, jamais propager */ }
         }

@@ -26,12 +26,16 @@ namespace MathCursor.UI.Debug
     {
         private readonly TextBox _content;
         private readonly TextBlock _status;
+        private readonly TextBlock _caretHeader;
+        private readonly TextBox _caretState;
 
         public ContextInspectorPane()
         {
             var grid = new Grid();
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(180) });
 
             _status = new TextBlock
             {
@@ -64,7 +68,95 @@ namespace MathCursor.UI.Debug
             Grid.SetRow(_content, 1);
             grid.Children.Add(_content);
 
+            _caretHeader = new TextBlock
+            {
+                Margin = new Thickness(8, 8, 8, 4),
+                FontFamily = new FontFamily("Segoe UI Semibold"),
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Color.FromRgb(60, 60, 60)),
+                Text = "Caret state (live)",
+            };
+            Grid.SetRow(_caretHeader, 2);
+            grid.Children.Add(_caretHeader);
+
+            _caretState = new TextBox
+            {
+                Margin = new Thickness(8, 0, 8, 8),
+                FontFamily = new FontFamily("Cascadia Code, Consolas, Lucida Console, monospace"),
+                FontSize = 11,
+                IsReadOnly = true,
+                IsReadOnlyCaretVisible = true,
+                AcceptsReturn = true,
+                TextWrapping = TextWrapping.NoWrap,
+                BorderThickness = new Thickness(1),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
+                Background = new SolidColorBrush(Color.FromRgb(250, 250, 250)),
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                UndoLimit = 0,
+                Text = "(en attente d'un mouvement de caret…)",
+            };
+            Grid.SetRow(_caretState, 3);
+            grid.Children.Add(_caretState);
+
             Content = grid;
+        }
+
+        /// <summary>
+        /// Met à jour la section caret state. Appelé à chaque WindowSelectionChange.
+        /// </summary>
+        public void UpdateCaretState(CaretStateInfo info)
+        {
+            if (info == null) { _caretState.Text = "(null)"; return; }
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"Sel: [{info.SelStart}, {info.SelEnd})  OMaths={info.SelOMathsCount}");
+
+            if (info.ParaStart >= 0)
+            {
+                sb.AppendLine($"¶: [{info.ParaStart}, {info.ParaEnd})  \"{info.ParaTextPreview}\"");
+            }
+            else
+            {
+                sb.AppendLine("¶: (non lu)");
+            }
+
+            if (info.InTable)
+            {
+                sb.Append("Table: ");
+                if (info.TableRow.HasValue && info.TableCol.HasValue)
+                    sb.Append($"cell ({info.TableRow}, {info.TableCol}) ");
+                if (info.CellStart.HasValue && info.CellEnd.HasValue)
+                    sb.Append($"[{info.CellStart}, {info.CellEnd})");
+                sb.AppendLine();
+            }
+            else
+            {
+                sb.AppendLine("Table: (no)");
+            }
+
+            if (info.OMathStart.HasValue && info.OMathEnd.HasValue)
+                sb.AppendLine($"OMath englobante: [{info.OMathStart}, {info.OMathEnd})  ← caret DANS l'OMath");
+            else
+                sb.AppendLine("OMath englobante: (caret hors OMath)");
+
+            if (info.Siblings != null && info.Siblings.Count > 0)
+            {
+                sb.AppendLine($"Siblings (¶ children) :");
+                int i = 0;
+                foreach (var sib in info.Siblings)
+                {
+                    string mark = sib.ContainsCaret ? "▶" : " ";
+                    string preview = string.IsNullOrEmpty(sib.TextPreview) ? "" : $" \"{sib.TextPreview}\"";
+                    sb.AppendLine($"  {mark} [{i}] {sib.Kind}{preview}");
+                    i++;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(info.ErrorMessage))
+                sb.AppendLine($"⚠ {info.ErrorMessage}");
+
+            _caretState.Text = sb.ToString();
         }
 
         /// <summary>

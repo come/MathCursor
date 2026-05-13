@@ -335,6 +335,8 @@
     <Compile Include="Host\ContextResolveEventArgs.cs" />
     <Compile Include="UI\WpfMathAdapter.cs" />
     <Compile Include="UI\MixedLatexRenderer.cs" />
+    <Compile Include="UI\Debug\CaretStateInfo.cs" />
+    <Compile Include="UI\Debug\CaretStateSnapper.cs" />
     <Compile Include="UI\Debug\ContextInspectorPane.cs" />
     <Compile Include="UI\Debug\ContextInspectorPaneHost.cs">
       <SubType>UserControl</SubType>
