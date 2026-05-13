@@ -124,6 +124,11 @@
                   size="normal"
                   getImage="OnGetButtonImage"
                   onAction="OnContextInspectorClicked" />
+          <button id="DebugInsertOMathButton"
+                  label="Debug : f(x)=1"
+                  screentip="Insère une OMath simple f(x)=1 au curseur et place le caret à la fin. Outil de test pour isoler les bugs d'insertion sans passer par NER/popup."
+                  size="normal"
+                  onAction="OnDebugInsertOMathClicked" />
           <button id="AboutButton"
                   getLabel="OnGetAboutButtonLabel"
                   getScreentip="OnGetAboutButtonScreentip"

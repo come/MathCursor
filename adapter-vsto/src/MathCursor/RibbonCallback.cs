@@ -283,6 +283,68 @@ namespace MathCursor
         }
 
         /// <summary>
+        /// Bouton de debug : insère une OMath simple <c>f(x)=1</c> à la
+        /// position du curseur via le chemin Word natif minimal
+        /// (Selection.TypeText + OMaths.Add + BuildUp), puis place le caret
+        /// à la fin. Sert à isoler les bugs d'insertion/caret sans passer
+        /// par le pipeline NER + popup + staging.
+        /// </summary>
+        public void OnDebugInsertOMathClicked(IRibbonControl control)
+        {
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null) return;
+                var doc = app.ActiveDocument;
+                if (doc == null) return;
+                var sel = app.Selection;
+                if (sel == null) return;
+
+                int insertPos = sel.Start;
+                LogDebug($"debug_insert: start at sel.Start={insertPos} docEnd={doc.Content.End}");
+
+                // 1. Type "f(x)=1" à la position du caret.
+                sel.TypeText("f(x)=1");
+
+                // 2. Convertit la range typed en OMath via le pipeline Word natif.
+                int afterTypedEnd = insertPos + 6;
+                var typedRange = doc.Range(insertPos, afterTypedEnd);
+                typedRange.OMaths.Add(typedRange);
+                typedRange.OMaths.BuildUp();
+
+                // 3. Retrouve l'OMath fraîchement créée et place le caret juste
+                //    après. Pas de Nudge, pas de Policy, juste un SetRange brut
+                //    pour observer le comportement Word natif.
+                Microsoft.Office.Interop.Word.OMath om = null;
+                foreach (Microsoft.Office.Interop.Word.OMath o in doc.OMaths)
+                {
+                    if (o.Range.Start >= insertPos && o.Range.End <= afterTypedEnd + 30)
+                    { om = o; break; }
+                }
+                if (om != null)
+                {
+                    int caretTarget = Math.Min(om.Range.End + 1, doc.Content.End);
+                    LogDebug($"debug_insert: om.Range=[{om.Range.Start},{om.Range.End}] → caret target={caretTarget}");
+                    try { sel.SetRange(caretTarget, caretTarget); }
+                    catch (Exception exSet) { LogDebug("debug_insert.setrange_error: " + exSet.Message); }
+                }
+                else
+                {
+                    LogDebug("debug_insert: OMath not found post-BuildUp");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogDebug("debug_insert_error: " + ex.Message);
+                MessageBox.Show(
+                    "Debug insert OMath failed :\n" + ex.Message,
+                    "MathCursor — Debug",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
         /// Ouvre la fenêtre WPF "Signaler une erreur" pré-remplie depuis le
         /// dernier <see cref="MathCursor.Host.LastActionSnapshot"/> (saisie /
         /// proposé / inséré). 3 actions dans la fenêtre : Annuler, Copier
