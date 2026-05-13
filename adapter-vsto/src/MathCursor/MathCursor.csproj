@@ -298,6 +298,7 @@
     <Compile Include="Host\Bookmarks\EquationBookmarkRegistry.cs" />
     <Compile Include="Host\EditMode\EditModeController.cs" />
     <Compile Include="Host\Inserters\AtomicRangeInserter.cs" />
+    <Compile Include="Host\Layout\PostCommitLayoutFinalizer.cs" />
     <Compile Include="Host\Inserters\InlineSpliceInserter.cs" />
     <Compile Include="Host\Inserters\InsertContext.cs" />
     <Compile Include="Host\Inserters\PureFastPathInserter.cs" />
