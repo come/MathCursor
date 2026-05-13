@@ -76,6 +76,15 @@ namespace MathCursor
                 _inspectorHost.WpfPane.Dispatcher.BeginInvoke(
                     new Action(() => _inspectorHost.WpfPane.Update(
                         e.RawSource, e.Snapshot, e.Hints, e.Resolved)));
+
+                // Refresh aussi le caret state : chaque keypress dans la
+                // popup NER déclenche un re-resolve mais ne fait pas
+                // toujours fire WindowSelectionChange (= caret non bougé
+                // côté Word, seulement le texte tapé). L'utilisateur veut
+                // voir l'état caret à chaque frappe.
+                var caretInfo = CaretStateSnapper.Snapshot(Application);
+                _inspectorHost.WpfPane.Dispatcher.BeginInvoke(
+                    new Action(() => _inspectorHost.WpfPane.UpdateCaretState(caretInfo)));
             }
             catch { /* debug pane, jamais propager */ }
         }
