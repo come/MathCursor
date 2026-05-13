@@ -310,6 +310,8 @@ namespace MathCursor
         /// </summary>
         public void OnDebugReplaceByOMathClicked(IRibbonControl control)
         {
+            // NER déjà désactivé pour toute la session via DebugInProgress=true
+            // dans ThisAddIn.Startup (TODO retirer quand user demande remise).
             try
             {
                 var app = Globals.ThisAddIn?.Application;
@@ -323,48 +325,41 @@ namespace MathCursor
                 // - Sélection étendue → remplace la sélection
                 // - Caret simple → remplace les 6 chars avant (= simule
                 //   « f(x)=1 » fraîchement tapé par l'utilisateur)
-                int srcStart, srcEnd;
-                if (sel.Start != sel.End)
-                {
-                    srcStart = sel.Start;
-                    srcEnd = sel.End;
-                }
-                else
-                {
-                    srcStart = Math.Max(0, sel.Start - 6);
-                    srcEnd = sel.Start;
-                }
-                LogDebug($"debug_replace: src range=[{srcStart},{srcEnd}]");
+                // Si pas de sélection, étend backward de 6 chars (= simule
+                // « f(x)=1 » tapé). NER désactivé pour la session donc pas
+                // de re-entrancy sur SetRange.
+                if (sel.Start == sel.End)
+                    sel.SetRange(Math.Max(0, sel.Start - 6), sel.Start);
 
-                // 1. Replace la source par unicodeMath
+                // 1. TypeText : remplace la sélection ET avance le caret à
+                //    la fin (= recette qui marche partout, prouvée par le
+                //    bouton « Debug : f(x)=1 » avec sélection préalable).
                 string unicodeMath = MathCursor.Core.LatexToUnicodeMath.Convert("f(x)=1");
-                var srcRange = doc.Range(srcStart, srcEnd);
-                srcRange.Text = unicodeMath;
-                int afterReplaceEnd = srcStart + unicodeMath.Length;
-                LogDebug($"debug_replace: replaced with \"{unicodeMath}\" (len={unicodeMath.Length}) → afterEnd={afterReplaceEnd}");
+                int srcStart = sel.Start;
+                sel.TypeText(unicodeMath);
+                int afterEnd = sel.Start;
 
-                // 2. Convertit en OMath via Word natif
-                var mathRange = doc.Range(srcStart, afterReplaceEnd);
+                // 2. OMaths.Add + BuildUp.
+                var mathRange = doc.Range(srcStart, afterEnd);
                 mathRange.OMaths.Add(mathRange);
                 mathRange.OMaths.BuildUp();
 
-                // 3. Retrouve l'OMath et aligne à gauche (silencieux si inline)
-                foreach (Microsoft.Office.Interop.Word.OMath o in doc.OMaths)
+                // 3. Aligne à gauche (silencieux si OMath inline).
+                try
                 {
-                    if (o.Range.Start <= srcStart && o.Range.End >= srcStart)
+                    foreach (Microsoft.Office.Interop.Word.OMath o in doc.OMaths)
                     {
-                        LogDebug($"debug_replace: om.Range=[{o.Range.Start},{o.Range.End}]");
-                        try
+                        if (o.Range.Start <= srcStart && o.Range.End >= srcStart)
                         {
-                            o.Justification = Microsoft.Office.Interop.Word.WdOMathJc.wdOMathJcLeft;
-                            LogDebug("debug_replace: om.Justification = Left → OK");
+                            try { o.Justification = Microsoft.Office.Interop.Word.WdOMathJc.wdOMathJcLeft; }
+                            catch (Exception exJ) { LogDebug("debug_replace.justification_error: " + exJ.Message); }
+                            break;
                         }
-                        catch (Exception exA) { LogDebug("debug_replace.align_error: " + exA.Message); }
-                        break;
                     }
                 }
+                catch (Exception exF) { LogDebug("debug_replace.foreach_omaths_error: " + exF.Message); }
 
-                // 4. NE TOUCHE PAS au caret. Word le pose naturellement.
+                LogDebug($"debug_replace: END sel.Start={sel.Start}");
             }
             catch (Exception ex)
             {
@@ -375,6 +370,14 @@ namespace MathCursor
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
+        }
+
+        /// <summary>Helper safe pour lire <c>Selection.OMaths.Count</c>
+        /// sans jeter (collection Word peut être null ou indisponible).</summary>
+        private static int SafeOMathsCount(Microsoft.Office.Interop.Word.Selection sel)
+        {
+            try { return sel?.OMaths?.Count ?? -1; }
+            catch { return -1; }
         }
 
         public void OnDebugInsertOMathClicked(IRibbonControl control)

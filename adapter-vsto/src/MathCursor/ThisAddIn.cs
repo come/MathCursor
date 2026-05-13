@@ -64,6 +64,9 @@ namespace MathCursor
                 _engine = Engine.LoadEmbedded("fr");
 
                 _suggestions = new SuggestionService(this.Application, _ner, _engine, _store);
+                // TODO 2026-05-13 : POPUP DÉSACTIVÉE pour session de debug.
+                // À RETIRER quand l'utilisateur demande de remettre la popup.
+                _suggestions.DebugInProgress = true;
                 _suggestions.Install();
 
                 // Hook clavier : Enter valide le candidat sélectionné UNIQUEMENT

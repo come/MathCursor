@@ -634,8 +634,42 @@ namespace MathCursor.Host
             try { _omathStaging?.WarmUp(); } catch { }
         }
 
+        /// <summary>
+        /// Lit <c>_app.Selection.Start</c> de façon silencieuse :
+        /// - Guard <c>Documents.Count &gt; 0</c> pour éviter le boot Word
+        ///   (<c>Selection.get</c> jette si aucun doc actif).
+        /// - <c>[DebuggerHidden]</c> + <c>[DebuggerStepThrough]</c> empêchent
+        ///   VS de signaler les COMException levées dans cette méthode dans
+        ///   la fenêtre Output Debug. Crucial pour ne pas polluer le log
+        ///   pendant le développement avec des exceptions catchées
+        ///   silencieusement (= rien à faire côté user, l'opération est
+        ///   no-op en cas d'échec).
+        /// </summary>
+        [System.Diagnostics.DebuggerHidden]
+        [System.Diagnostics.DebuggerStepThrough]
+        private bool TryGetCaretSilently(out int caret)
+        {
+            caret = -1;
+            try
+            {
+                int docsCount = 0;
+                try { docsCount = _app.Documents?.Count ?? 0; } catch { return false; }
+                if (docsCount <= 0) return false;
+                caret = _app.Selection.Start;
+                return true;
+            }
+            catch { return false; }
+        }
+
+        /// <summary>Flag du bouton debug : quand true, CheckAndUpdate est
+        /// no-op. Permet aux callbacks ribbon de manipuler le doc sans que
+        /// le NER tire en parallèle (= évite re-entrancy et cascade d'events
+        /// qui crashe Word en cellule de tableau).</summary>
+        internal bool DebugInProgress { get; set; }
+
         private void CheckAndUpdate()
         {
+            if (DebugInProgress) return;
             if (_inferenceInFlight) return;
             try
             {
@@ -649,9 +683,7 @@ namespace MathCursor.Host
                 // pas bougé depuis l'ouverture, on ne fait rien d'autre que
                 // d'enregistrer la position. Un seul mouvement (clic ou frappe)
                 // suffit à lever la garde pour le reste de la session.
-                int currentCaret;
-                try { currentCaret = _app.Selection.Start; }
-                catch { return; }
+                if (!TryGetCaretSilently(out int currentCaret)) return;
                 if (!_userInteracted)
                 {
                     if (_initialCaretPos < 0)
