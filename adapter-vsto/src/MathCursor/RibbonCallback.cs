@@ -323,26 +323,6 @@ namespace MathCursor
                 if (om != null)
                 {
                     LogDebug($"debug_insert: om.Range=[{om.Range.Start},{om.Range.End}] (caret laissé où Word le place naturellement)");
-
-                    // 4. Alignement gauche : patch m:jc=left dans le ¶ XML
-                    //    via OMathParaJcPatcher, puis re-insère le ¶ patché.
-                    //    Évite om.Justification setter (qui jette sur OMath
-                    //    inline « Impossible de définir l'alignement »).
-                    try
-                    {
-                        var paraRange = om.Range.Paragraphs[1].Range;
-                        string xml = paraRange.WordOpenXML;
-                        if (!string.IsNullOrEmpty(xml))
-                        {
-                            string patched = OMathParaJcPatcher.EnsureDisplayWithLeftJc(xml, out bool changed);
-                            LogDebug($"debug_insert: align xml changed={changed} (xmlLen={xml.Length} patchedLen={patched?.Length ?? 0})");
-                            if (changed)
-                            {
-                                paraRange.InsertXML(patched);
-                            }
-                        }
-                    }
-                    catch (Exception exAlign) { LogDebug("debug_insert.align_error: " + exAlign.Message); }
                 }
                 else
                 {
