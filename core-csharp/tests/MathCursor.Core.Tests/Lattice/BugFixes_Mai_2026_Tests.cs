@@ -291,5 +291,86 @@ namespace MathCursor.Core.Tests.Lattice
             // signalerait un point littéral entre 2 commandes.
             Assert.DoesNotContain("}. ", dotAlt);
         }
+
+        // ───────────────────────────────────────────────────────────────────
+        // Bug user 11-05 (report 1d6a9ca0) : double wrap autour d'un span
+        // déjà décoré par le parser à partir des délimiteurs source. Cf.
+        // ScanDecoratedTwoThreeUpper dans AlternativeGenerator.
+        // ───────────────────────────────────────────────────────────────────
+
+        [Fact(DisplayName = "Bug 11-05 : `(AB)` seul, top ne doit pas être \\left(\\left(AB\\right)\\right)")]
+        public void Parens_around_AB_alone_must_not_be_duplicated()
+        {
+            var top = _engine.Convert("(AB)")[0].Latex;
+            Assert.DoesNotContain(@"\left(\left(AB\right)\right)", top);
+            int leftCount = System.Text.RegularExpressions.Regex.Matches(top, @"\\left\(").Count;
+            Assert.True(leftCount <= 1,
+                $"Attendu au plus 1 `\\left(` autour de AB. TopLatex = \"{top}\"");
+        }
+
+        [Fact(DisplayName = "Bug 11-05 : `(AB) perp EF`, propagation du wrap interdit")]
+        public void Parens_around_AB_must_not_be_duplicated_when_followed_by_perp()
+        {
+            var top = _engine.Convert("(AB) perp EF")[0].Latex;
+            Assert.DoesNotContain(@"\left(\left(AB\right)\right)", top);
+            Assert.Contains(@"\perp", top);
+        }
+
+        [Fact(DisplayName = "Bug 11-05 (repro fidèle) : RulePin two-uppercase=parens + `(AB) perp EF`")]
+        public void Parens_RulePin_on_pre_parenthesized_AB_must_not_double_wrap()
+        {
+            // Repro fidèle du log_tail (report 1d6a9ca0) :
+            //   proposed_latex = `\left(\left(AB\right)\right) \perp \left(EF\right)`
+            // Avec ScanDecoratedTwoThreeUpper, le match pour `(AB)` couvre tout
+            // `\left(AB\right)` → pin paren splice `\left(AB\right)` sur lui-même
+            // = identité. Plus de double wrap.
+            var sidecar = new MathCursor.Core.Resolution.ResolutionSidecar(
+                spanPins: null,
+                zoneVotes: null,
+                rulePins: new[] { new MathCursor.Core.Resolution.RulePin(AlternativeGenerator.RuleTwoUppercase, 1) },
+                spanOverrides: null);
+
+            var resolved = _resolver.Resolve("(AB) perp EF", sidecar);
+            var top = resolved.TopLatex;
+
+            Assert.False(top.Contains(@"\left(\left(AB\right)\right)"),
+                $"BUG REPRO : double wrap parens autour de AB. TopLatex = \"{top}\"");
+        }
+
+        [Fact(DisplayName = "Bug 11-05 generalisation : `angle ABC` + pin widehat ne doit pas faire \\widehat{\\widehat{ABC}}")]
+        public void Widehat_on_already_widehat_ABC_must_not_double_wrap()
+        {
+            // Même classe de bug : `angle ABC` source produit `\widehat{ABC}`
+            // dans le top, et si pin widehat applique, splice naïf produirait
+            // `\widehat{\widehat{ABC}}`. Avec ScanDecoratedTwoThreeUpper,
+            // le match couvre tout le `\widehat{ABC}` → splice = identité.
+            var sidecar = new MathCursor.Core.Resolution.ResolutionSidecar(
+                spanPins: null,
+                zoneVotes: null,
+                rulePins: new[] { new MathCursor.Core.Resolution.RulePin(AlternativeGenerator.RuleThreeUppercase, 0) },
+                spanOverrides: null);
+
+            var resolved = _resolver.Resolve("angle ABC", sidecar);
+            var top = resolved.TopLatex;
+
+            Assert.False(top.Contains(@"\widehat{\widehat{ABC}}"),
+                $"BUG REPRO : double widehat autour de ABC. TopLatex = \"{top}\"");
+        }
+
+        [Fact(DisplayName = "Bug 11-05 generalisation : `vec AB` + pin vec ne doit pas faire \\vec{\\vec{AB}}")]
+        public void Vec_on_already_vec_AB_must_not_double_wrap()
+        {
+            var sidecar = new MathCursor.Core.Resolution.ResolutionSidecar(
+                spanPins: null,
+                zoneVotes: null,
+                rulePins: new[] { new MathCursor.Core.Resolution.RulePin(AlternativeGenerator.RuleTwoUppercase, 0) },
+                spanOverrides: null);
+
+            var resolved = _resolver.Resolve("vec AB", sidecar);
+            var top = resolved.TopLatex;
+
+            Assert.False(top.Contains(@"\vec{\vec{AB}}"),
+                $"BUG REPRO : double vec autour de AB. TopLatex = \"{top}\"");
+        }
     }
 }

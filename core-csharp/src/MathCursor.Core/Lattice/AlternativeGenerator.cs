@@ -239,6 +239,16 @@ namespace MathCursor.Core.Lattice
             ScanAngleTwoLetterPlaceholder(topAst, topLatex, matches, consumed);
             // 1) Patterns AST-based (Sup d'une lettre par un nombre, etc.)
             CollectAllMatchesRec(topAst, topLatex, matches, consumed);
+            // 1bis) Patterns 2/3-majuscules DÉJÀ DÉCORÉS par le parser : Atom
+            //    direct (ou chaîne implicite) sous Group (user `(AB)`), sous Vec
+            //    (user `vec AB`), sous Angle (user `angle ABC` / `^ABC`).
+            //    Émet le match avec bornes couvrant la décoration ENTIÈRE dans
+            //    le topLatex → splice de l'alt courante = identité, pas de
+            //    double wrap (bug double `\left(\left(AB\right)\right)`,
+            //    `\widehat{\widehat{ABC}}`, `\vec{\vec{AB}}`).
+            //    DOIT tourner avant ScanUppercaseSequences pour réserver les
+            //    positions via consumed[].
+            ScanDecoratedTwoThreeUpper(topAst, topLatex, matches, consumed);
             // 2) Patterns STRING-based sur le LaTeX rendu : séquences de
             //    majuscules adjacentes. On scanne en passant par-dessus l'AST
             //    parce que l'arbre gauche-associatif ne regroupe pas toujours
@@ -793,6 +803,129 @@ namespace MathCursor.Core.Lattice
             if (paths.Count == 0) return source;
             var ast = new Parser(paths[0].Edges).Parse();
             return LatexRenderer.Render(ast);
+        }
+
+        /// <summary>
+        /// Scanne l'AST pour les Atom 2/3-majuscules DÉJÀ DÉCORÉS par le parser
+        /// (= l'utilisateur a explicitement tapé la décoration dans la source) :
+        /// <list type="bullet">
+        /// <item><c>Group(Atom("AB"))</c> ← source <c>(AB)</c> → décoration
+        ///   <c>\left(AB\right)</c>.</item>
+        /// <item><c>Vec(Name="AB")</c> ← source <c>vec AB</c> → décoration
+        ///   <c>\vec{AB}</c>.</item>
+        /// <item><c>Angle(Name="ABC")</c> ← source <c>angle ABC</c>, <c>^ABC</c>
+        ///   → décoration <c>\widehat{ABC}</c> (filtré aux 2/3 majuscules ici,
+        ///   1-char serait <c>\hat{X}</c> sans alts dans la règle).</item>
+        /// </list>
+        ///
+        /// <para>Émet un <see cref="AmbiguityMatch"/> dont les bornes couvrent
+        /// la décoration ENTIÈRE dans <paramref name="topLatex"/>, pas seulement
+        /// les lettres. Conséquence : un splice ultérieur (par RulePin / sidecar
+        /// / hint) remplace tout le bloc décoré au lieu d'insérer DANS le bloc.
+        /// Le splice avec l'alt = décoration courante devient identité (= no-op),
+        /// éliminant le bug double-wrap (`(AB)` + pin paren →
+        /// <c>\left(\left(AB\right)\right)</c>, `angle ABC` + pin widehat →
+        /// <c>\widehat{\widehat{ABC}}</c>, etc.).</para>
+        ///
+        /// <para>Doit tourner avant <see cref="ScanUppercaseSequences"/> : on
+        /// marque la plage entière de la décoration dans <paramref name="consumed"/>,
+        /// le scan string-based skip ensuite ces positions et ne re-émet pas de
+        /// match partiel sur les lettres internes.</para>
+        ///
+        /// <para>Cas non touché : <c>f(AB)</c> = <c>Func("f", Atom("AB"))</c> —
+        /// l'Atom AB n'est PAS enfant d'un Group/Vec/Angle, donc rien n'est
+        /// émis ici, et <see cref="ScanUppercaseSequences"/> émet un match
+        /// normal sur les lettres (comportement préservé).</para>
+        /// </summary>
+        private static void ScanDecoratedTwoThreeUpper(
+            AstNode? topAst, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            if (topAst == null) return;
+            ScanDecoratedWalk(topAst, topLatex, output, consumed);
+        }
+
+        private static void ScanDecoratedWalk(
+            AstNode node, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            AmbiguitySpot? spot = null;
+            string? decoration = null;
+
+            switch (node)
+            {
+                case Group g:
+                    // Le parser parse `AB` (juxtaposition) en
+                    // `Bin(*, Atom("A"), Atom("B"))` — pas un Atom direct.
+                    // On passe par le rendu du contenu pour récupérer la pair
+                    // (le Bin implicite rend lhs+rhs sans opérateur visible).
+                    {
+                        var inner = LatexRenderer.Render(g.Expr);
+                        if (IsAllUpperPair(inner))
+                        {
+                            decoration = $"\\left({inner}\\right)";
+                            spot = MakeUpperSpot(inner);
+                        }
+                    }
+                    break;
+                case Vec v when v.Name != null && IsAllUpperPair(v.Name):
+                    decoration = $"\\vec{{{v.Name}}}";
+                    spot = MakeUpperSpot(v.Name);
+                    break;
+                case Angle ang when !ang.HasPlaceholder
+                                    && IsAllUpperPair(ang.Name):
+                    decoration = $"\\widehat{{{ang.Name}}}";
+                    spot = MakeUpperSpot(ang.Name);
+                    break;
+            }
+
+            if (spot != null && decoration != null)
+            {
+                int idx = LastIndexOfWordBoundary(topLatex, decoration, consumed);
+                if (idx >= 0)
+                {
+                    int end = idx + decoration.Length;
+                    for (int k = idx; k < end; k++) consumed[k] = true;
+                    output.Add(new AmbiguityMatch(spot, idx, end));
+                    return; // décoration capturée, pas de descente plus profonde
+                }
+            }
+
+            foreach (var child in GetChildrenRightFirst(node))
+                ScanDecoratedWalk(child, topLatex, output, consumed);
+        }
+
+        private static bool IsAllUpperPair(string? s)
+        {
+            if (s == null) return false;
+            if (s.Length != 2 && s.Length != 3) return false;
+            foreach (var c in s) if (!char.IsUpper(c)) return false;
+            return true;
+        }
+
+        private static AmbiguitySpot MakeUpperSpot(string pair)
+        {
+            if (pair.Length == 2)
+            {
+                return new AmbiguitySpot(
+                    ruleId: RuleTwoUppercase,
+                    defaultLatex: pair,
+                    alternatives: new[]
+                    {
+                        new AmbiguityAlternative($"\\vec{{{pair}}}"),
+                        new AmbiguityAlternative($"\\left({pair}\\right)"),
+                        new AmbiguityAlternative($"\\left[{pair}\\right]"),
+                    });
+            }
+            // length == 3
+            return new AmbiguitySpot(
+                ruleId: RuleThreeUppercase,
+                defaultLatex: pair,
+                alternatives: new[]
+                {
+                    new AmbiguityAlternative($"\\widehat{{{pair}}}"),
+                    new AmbiguityAlternative($"\\triangle {pair}"),
+                });
         }
 
         /// <summary>
