@@ -88,6 +88,9 @@ namespace MathCursor.Host
         // Layout finalizer post-commit (P2.13 refactor archi).
         private readonly Layout.PostCommitLayoutFinalizer _layoutFinalizer;
 
+        // Caret positioner post-OMath (P2.15 refactor archi).
+        private readonly Caret.CaretPositioner _caretPositioner;
+
         // Stratégies d'insertion (P2.7 refactor archi). Enchaînées dans
         // l'ordre fast_path → splice → atomic. Première qui Success gagne.
         private readonly Inserters.PureFastPathInserter _fastPathInserter;
@@ -230,6 +233,7 @@ namespace MathCursor.Host
             _omathStaging = new OMathStagingService(_app, LogDiag);
             _bookmarks = new Bookmarks.EquationBookmarkRegistry(() => _app.ActiveDocument, LogDiag);
             _layoutFinalizer = new Layout.PostCommitLayoutFinalizer(_app, () => _lastInsertUsedXmlTransplant, LogDiag);
+            _caretPositioner = new Caret.CaretPositioner(_app, LogDiag);
             _editController = new EditMode.EditModeController(
                 app: _app,
                 store: _store,
@@ -1932,9 +1936,9 @@ namespace MathCursor.Host
             _lastInsertUsedXmlTransplant = ok;
 
             // Positionne le curseur juste après l'OMath, puis nudge.
-            int afterPos = ComputeAfterOMathCaret(doc, newEnd);
+            int afterPos = _caretPositioner.ComputeAfterOMath(doc, newEnd);
             try { _app.Selection.SetRange(afterPos, afterPos); } catch { }
-            NudgeCursorOutOfMath(doc, maxAttempts: 3);
+            _caretPositioner.NudgeOutOfMath(doc, maxAttempts: 3);
             swTotal.Stop();
             LogDiag($"PERF InsertOMathAt total={swTotal.ElapsedMilliseconds}ms");
             return (newStart, newEnd);
@@ -2001,76 +2005,6 @@ namespace MathCursor.Host
         }
 
 
-        /// <summary>
-        /// Position où placer le caret juste après un OMath, sans déborder dans
-        /// le ¶ suivant. Bug user 05-05 « soit f » Ctrl+Espace → cursor descend :
-        /// quand l'OMath est en fin de ¶, <c>omEnd + 1</c> tombe sur le ¶ mark
-        /// (= start du ¶ suivant). On clamp à <c>paraContentEnd</c> (= juste
-        /// avant le ¶ mark). La logique pure est dans <see cref="CaretPositionCalculator"/>.
-        /// </summary>
-        private int ComputeAfterOMathCaret(Word.Document doc, int omEnd)
-        {
-            int paraContentEnd;
-            try
-            {
-                var paraRange = doc.Range(omEnd, omEnd).Paragraphs[1].Range;
-                paraContentEnd = Math.Max(paraRange.Start, paraRange.End - 1);
-            }
-            catch (Exception ex)
-            {
-                LogDiag("compute_after_omath_para_error: " + ex.Message);
-                paraContentEnd = omEnd; // fallback : pas de débordement
-            }
-            return CaretPositionCalculator.ClampAfterOMathToParagraph(omEnd, paraContentEnd, doc.Content.End);
-        }
-
-        /// <summary>
-        /// Force la sortie de l'éditeur OMath après une insertion. Word a tendance
-        /// à garder le caret "en mode math" quand il est positionné pile à la fin
-        /// d'une équation — il faut plusieurs leviers pour sortir proprement :
-        ///  1. SetRange(omEnd + 1) : suffit parfois pour inline simple.
-        ///  2. Selection.EndKey(wdLine) : pousse jusqu'à la fin de ligne, ce qui
-        ///     sort systématiquement d'un OMath display-mode (la ligne suivante
-        ///     est en texte libre).
-        ///  3. Répétition jusqu'à maxAttempts (caret toujours dans un OMath → on
-        ///     re-tente en augmentant la position).
-        /// </summary>
-        private void NudgeCursorOutOfMath(Word.Document doc, int maxAttempts)
-        {
-            for (int i = 0; i < maxAttempts; i++)
-            {
-                try
-                {
-                    var sel = _app.Selection;
-                    if (sel.OMaths == null || sel.OMaths.Count == 0) return;
-
-                    // Niveau 1 : SetRange juste après la fin de l'OMath courant.
-                    // Clamp au ¶ courant (= juste avant le ¶ mark) sinon on
-                    // déborde dans le ¶ suivant quand l'OMath est en fin de
-                    // ligne (cf. bug user 05-05).
-                    int omEnd = sel.OMaths[1].Range.End;
-                    int target = ComputeAfterOMathCaret(doc, omEnd);
-                    if (target > sel.Start) _app.Selection.SetRange(target, target);
-
-                    // Niveau 2 : si toujours dans un OMath, EndKey(wdLine) pour
-                    // sortir jusqu'à la fin de la ligne courante (late-bind :
-                    // wdLine = 5, wdMove = 0 dans toutes les versions Word).
-                    if (_app.Selection.OMaths != null && _app.Selection.OMaths.Count > 0)
-                    {
-                        try
-                        {
-                            _app.Selection.GetType().InvokeMember(
-                                "EndKey",
-                                System.Reflection.BindingFlags.InvokeMethod,
-                                null, _app.Selection,
-                                new object[] { 5, 0 });
-                        }
-                        catch { }
-                    }
-                }
-                catch { return; }
-            }
-        }
 
         private (double x, double y) GetCaretScreenPosition()
         {
