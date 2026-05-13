@@ -173,16 +173,8 @@ namespace MathCursor.Host
         // qui ouvre la popup ; chaque appui suivant tant que la popup est
         // ouverte étend la zone d'un cran vers la gauche.
         // Reset à HidePopup ou OnSelectionChange.
-        //  - _iterativeParagraph : snapshot du texte du paragraphe
-        //  - _iterativeParaAbsStart : start absolu du paragraphe dans le doc
-        //  - _iterativeSpanStart : offset paragraph du début de la span courante
-        //  - _iterativeSpanEnd : offset paragraph de la fin (= caret au 1er trigger)
-        //  - _iterativeOMaths : snapshot des regions OMath du paragraphe
-        private string _iterativeParagraph;
-        private int _iterativeParaAbsStart = -1;
-        private int _iterativeSpanStart = -1;
-        private int _iterativeSpanEnd = -1;
-        private IReadOnlyList<(int start, int end)> _iterativeOMaths;
+        // État iteratif déplacé dans ManualTriggerController (P2.16).
+        private ManualTrigger.ManualTriggerController _manualTrigger;
 
         // Cooldown post-commit : après une insertion, le caret peut rester
         // momentanément DANS l'OMath créé (NudgeCursorOutOfMath n'est pas
@@ -234,6 +226,21 @@ namespace MathCursor.Host
             _bookmarks = new Bookmarks.EquationBookmarkRegistry(() => _app.ActiveDocument, LogDiag);
             _layoutFinalizer = new Layout.PostCommitLayoutFinalizer(_app, () => _lastInsertUsedXmlTransplant, LogDiag);
             _caretPositioner = new Caret.CaretPositioner(_app, LogDiag);
+            _manualTrigger = new ManualTrigger.ManualTriggerController(
+                app: _app,
+                contextReader: _contextReader,
+                resolveWithContext: s => ResolveWithContext(s),
+                isCaretInOurOMath: () => FindOMathAtCaret() != null,
+                passThroughToPolling: CheckAndUpdate,
+                isSuggestionPopupVisible: () => _popup?.IsVisible == true,
+                closeEditMode: () => _editController?.Close(),
+                setLastZoneSource: s => _lastZoneSource = s,
+                showPopupAndEnterNavMode: (resolved, s, e, rawLen, dbg) =>
+                {
+                    ShowPopup(resolved, s, e, rawLen, dbg);
+                    _popup?.EnterNavMode();
+                },
+                log: LogDiag);
             _editController = new EditMode.EditModeController(
                 app: _app,
                 store: _store,
@@ -401,7 +408,7 @@ namespace MathCursor.Host
             _popup?.HidePopup(resetCaches: true);
             _editController?.HidePopup();
             _resolver?.Clear();
-            ResetIterativeExpansion();
+            _manualTrigger?.Reset();
         }
 
         private void HidePopupTransient()
@@ -423,7 +430,7 @@ namespace MathCursor.Host
                 // Caret bougé volontairement → reset l'état d'extension itérative
                 // (cf. ADR 29-04) : le prochain Ctrl+Espace repart d'une détection
                 // neuve. Le polling CheckAndUpdate continue normalement.
-                ResetIterativeExpansion();
+                _manualTrigger?.Reset();
                 // Mode 2 cascade (ADR 04-05) : invalide la zone reverted si
                 // l'utilisateur a quitté la zone (clic ailleurs, scroll).
                 try { InvalidateRevertedMultiLineZoneIfCaretLeft(sel?.Start ?? -1); } catch { }
@@ -855,274 +862,14 @@ namespace MathCursor.Host
             // (cf. ADR 29-04 iterative-zone-expansion). Sans ce hook,
             // l'extension itérative ne marche que pour les popups venues
             // du manual trigger (TriggerManual), pas du polling NER.
-            _iterativeParagraph = _lastParagraph ?? "";
-            _iterativeParaAbsStart = paragraphAbsStart;
-            _iterativeSpanStart = target.Start;
-            _iterativeSpanEnd = target.End;
-            _iterativeOMaths = omathRegions;
-        }
-
-
-        // Stopwords courts FR qui bornent la span du trigger manuel (Ctrl+Espace).
-        // Idée : quand l'utilisateur force la popup, on prend le texte entre le
-        // caret et le dernier "mot-outil" (ou délimiteur, ou OMath précédent).
-        // Liste volontairement petite et ciblée — des mots qui introduisent ou
-        // séparent des expressions math dans un cours de lycée français.
-        private static readonly HashSet<string> ManualTriggerStopwords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "soit", "soient", "et", "ou", "donc", "alors", "avec", "si",
-            "on", "car", "mais", "ainsi", "puis", "comme", "tout",
-            "un", "une", "le", "la", "les", "des", "du", "de",
-            "pour", "par", "sur", "dans", "au", "aux",
-        };
-
-        // Délimiteurs qui bornent la span du trigger manuel. Inclut les relations
-        // `=`/`<`/`>` : quand l'utilisateur tape "g(x) = (1+x)/V(x+1)" et
-        // Ctrl+Espace, il veut convertir le membre droit "(1+x)/V(x+1)", pas
-        // la span entière qui commencerait par un `=` (engine produit alors du
-        // bruit : "= (1+x)" dropping le reste, etc.).
-        // `,` retiré : depuis ADR 29-04 (virgule comme opérateur Bin(",")),
-        // la virgule fait partie d'expressions math légitimes (`Vx,y`,
-        // `f(x,y)`, `forall x,y dans R`). Plus de coupure manuelle dessus.
-        // `:` retiré : depuis ADR 29-04 function-definition, `:` est
-        // l'opérateur de définition de fonction (`f:x->expr`). Plus de
-        // coupure manuelle dessus.
-        private static readonly char[] ManualTriggerDelimiters =
-            { '.', ';', '!', '?', '=', '<', '>', '\n', '\r' };
-
-        /// <summary>
-        /// Trigger explicite (Ctrl+Espace) : bypass NER, calcule la span
-        /// texte à partir du caret en remontant jusqu'au premier "séparateur"
-        /// (délimiteur ponctuation, stopword mot-outil, fin d'OMath précédent
-        /// ou début du paragraphe), envoie au pattern engine, affiche la popup.
-        ///
-        /// Utile quand le NER a rendu une partie muette (ex: "Soit f et g"
-        /// après conversion de f → "g" n'est plus détecté contextuellement).
-        /// L'utilisateur force la conversion de ce qu'il vient de taper.
-        /// </summary>
-        public void TriggerManual()
-        {
-            try
-            {
-                if (_app.Documents.Count == 0) return;
-
-                // Si on est dans un OMath, laisser le flux édition habituel tourner.
-                if (FindOMathAtCaret() != null) { CheckAndUpdate(); return; }
-
-                // Extension itérative (ADR 29-04) : si la popup est ouverte
-                // ET qu'on a un état d'extension actif, ce Ctrl+Espace étend
-                // la zone d'un cran vers la gauche au lieu de re-détecter.
-                if (_popup != null && _popup.IsVisible && _iterativeSpanStart >= 0)
-                {
-                    ExtendOneStop();
-                    return;
-                }
-
-                var paragraph = _contextReader.ReadCurrentParagraph();
-                int caretInParagraph = paragraph.CaretOffset;
-                int paragraphAbsStart = paragraph.ParagraphAbsStart;
-                string text = paragraph.Text ?? "";
-                if (string.IsNullOrEmpty(text) || caretInParagraph <= 0) return;
-
-                int spanStart = ComputeManualSpanStart(text, caretInParagraph, paragraph.OMathRegions);
-                // Trim whitespace aux bords. On NE trim PAS les opérateurs
-                // binaires (`+`, `-`…) parce que `+inf`, `-5`, `-inf` sont des
-                // unaires légitimes en début de span.
-                while (spanStart < caretInParagraph && char.IsWhiteSpace(text[spanStart])) spanStart++;
-                int spanEnd = caretInParagraph;
-                while (spanEnd > spanStart && char.IsWhiteSpace(text[spanEnd - 1])) spanEnd--;
-                if (spanEnd <= spanStart) return;
-
-                string span = text.Substring(spanStart, spanEnd - spanStart);
-                LogDiag($"manual trigger span=[{spanStart},{spanEnd}] → \"{Preview(span)}\"");
-
-                ResolvedZone resolved;
-                try { resolved = ResolveWithContext(span); }
-                catch (Exception ex) { LogDiag("manual_engine_error: " + ex.Message); return; }
-
-                int absStart = paragraphAbsStart + spanStart;
-                int absEnd = paragraphAbsStart + spanEnd;
-
-                _lastZoneSource = span;
-                _editController?.Close();
-
-                if (string.IsNullOrEmpty(resolved.TopLatex)) return;
-                ShowPopup(resolved, absStart, absEnd, span.Length, "manuel: " + span);
-                // Entre direct en mode nav : l'utilisateur a demandé explicitement
-                // la conversion.
-                _popup?.EnterNavMode();
-
-                // Initialise l'état d'extension itérative : chaque Ctrl+Espace
-                // suivant tant que la popup est ouverte étendra la zone d'un cran.
-                _iterativeParagraph = text;
-                _iterativeParaAbsStart = paragraphAbsStart;
-                _iterativeSpanStart = spanStart;
-                _iterativeSpanEnd = spanEnd;
-                _iterativeOMaths = paragraph.OMathRegions;
-            }
-            catch (Exception ex)
-            {
-                LogDiag("manual_trigger_error: " + ex.Message);
-            }
+            _manualTrigger.InitFromAutoZone(_lastParagraph ?? "", paragraphAbsStart,
+                target.Start, target.End, omathRegions);
         }
 
         /// <summary>
-        /// Remonte depuis le caret pour trouver le début de la span manuelle.
-        /// Boundary = max de : début du paragraphe, fin du dernier OMath avant
-        /// caret, position juste après le dernier délimiteur, position juste
-        /// après le dernier stopword mot-outil.
-        ///
-        /// Détail important : <c>;</c> et <c>,</c> ne sont des délimiteurs QUE
-        /// hors brackets/parens. À l'intérieur de <c>[...]</c> ou <c>(...)</c>
-        /// ce sont des séparateurs d'intervalle ou d'arguments de fonction, pas
-        /// des ruptures de phrase. Sans ce check, <c>[0;+inf[</c> serait coupé
-        /// sur le <c>;</c> et la span ne capturerait que <c>+inf[</c>.
+        /// Trigger explicite (Ctrl+Espace). Délégué à <see cref="ManualTrigger.ManualTriggerController"/>.
         /// </summary>
-        /// <summary>
-        /// Extension itérative (ADR 29-04) : étend la span vers la gauche
-        /// d'un cran. Passe OUTRE la borne actuelle (délim/stopword qui
-        /// bloquait le span précédent) et cherche la borne suivante en amont.
-        /// Si la borne est un OMath, STOP FINAL : on n'étend pas au-delà.
-        /// </summary>
-        private void ExtendOneStop()
-        {
-            if (string.IsNullOrEmpty(_iterativeParagraph))
-            {
-                LogDiag("iterative extend: empty paragraph, no-op");
-                return;
-            }
-            if (_iterativeSpanStart <= 0)
-            {
-                LogDiag($"iterative extend: at paragraph start (spanStart=0), no-op");
-                return;
-            }
-
-            // Recule d'un cran au-delà de la borne courante : on saute le
-            // whitespace puis le caractère qui bloquait. Sinon
-            // ComputeManualSpanStart trouve la même borne et retourne la
-            // même position → no-op.
-            int boundary = _iterativeSpanStart - 1;
-            while (boundary >= 0 && char.IsWhiteSpace(_iterativeParagraph[boundary])) boundary--;
-            if (boundary < 0)
-            {
-                LogDiag($"iterative extend: at paragraph start, no-op");
-                return;
-            }
-
-            // Si la borne est DANS un OMath, c'est un stop final : on n'étend
-            // pas au-delà (l'OMath précédent est une formule autonome qui ne
-            // doit pas être absorbée par l'extension texte).
-            if (_iterativeOMaths != null)
-            {
-                foreach (var (s, e) in _iterativeOMaths)
-                {
-                    if (s <= boundary && boundary < e)
-                    {
-                        LogDiag($"iterative extend: blocked by OMath at [{s},{e}], no-op (stop final)");
-                        return;
-                    }
-                }
-            }
-
-            // Cherche la borne suivante en amont, en partant de `boundary` (=
-            // un cran avant l'ancienne borne, donc strictement plus à gauche).
-            int newStart = ComputeManualSpanStart(_iterativeParagraph, boundary, _iterativeOMaths);
-            // Trim whitespace en début de la nouvelle zone
-            while (newStart < _iterativeSpanEnd && char.IsWhiteSpace(_iterativeParagraph[newStart])) newStart++;
-
-            if (newStart >= _iterativeSpanStart)
-            {
-                // Vraiment pas d'extension possible.
-                LogDiag($"iterative extend no-op: spanStart={_iterativeSpanStart} unchanged (newStart={newStart}, boundary={boundary})");
-                return;
-            }
-
-            _iterativeSpanStart = newStart;
-            string span = _iterativeParagraph.Substring(_iterativeSpanStart, _iterativeSpanEnd - _iterativeSpanStart);
-            LogDiag($"iterative extend: span=[{_iterativeSpanStart},{_iterativeSpanEnd}] → \"{Preview(span)}\"");
-
-            ResolvedZone resolved;
-            try { resolved = ResolveWithContext(span); }
-            catch (Exception ex) { LogDiag("iterative_extend_error: " + ex.Message); return; }
-            if (string.IsNullOrEmpty(resolved.TopLatex)) return;
-
-            int absStart = _iterativeParaAbsStart + _iterativeSpanStart;
-            int absEnd = _iterativeParaAbsStart + _iterativeSpanEnd;
-            _lastZoneSource = span;
-            _editController?.Close();
-            ShowPopup(resolved, absStart, absEnd, span.Length, "iterative: " + span);
-            _popup?.EnterNavMode();
-        }
-
-        /// <summary>Reset l'état d'extension itérative (HidePopup, déplacement caret, etc.).</summary>
-        private void ResetIterativeExpansion()
-        {
-            if (_iterativeSpanStart < 0) return; // already reset, skip log
-            _iterativeParagraph = null;
-            _iterativeParaAbsStart = -1;
-            _iterativeSpanStart = -1;
-            _iterativeSpanEnd = -1;
-            _iterativeOMaths = null;
-        }
-
-        private static int ComputeManualSpanStart(string text, int caret, IReadOnlyList<(int start, int end)> omathRegions)
-        {
-            int start = 0;
-
-            // Après le dernier délimiteur (point, virgule, etc.) — walk backward
-            // avec suivi de profondeur brackets/parens pour ignorer `;` et `,`
-            // internes à une structure math.
-            int bracketDepth = 0;
-            int parenDepth = 0;
-            for (int k = caret - 1; k >= 0; k--)
-            {
-                char c = text[k];
-                if (c == ']') { bracketDepth++; continue; }
-                if (c == '[') { if (bracketDepth > 0) bracketDepth--; continue; }
-                if (c == ')') { parenDepth++; continue; }
-                if (c == '(') { if (parenDepth > 0) parenDepth--; continue; }
-
-                if (Array.IndexOf(ManualTriggerDelimiters, c) < 0) continue;
-                // `;` et `,` : séparateurs math internes si on est dans [...] ou (...)
-                if ((c == ';' || c == ',') && (bracketDepth > 0 || parenDepth > 0)) continue;
-                start = Math.Max(start, k + 1);
-                break;
-            }
-
-            // Après la fin du dernier OMath qui se termine avant le caret
-            if (omathRegions != null)
-            {
-                foreach (var (s, e) in omathRegions)
-                {
-                    if (e <= caret) start = Math.Max(start, e);
-                }
-            }
-
-            // Après le dernier stopword (mot entier)
-            int i = caret - 1;
-            while (i >= start)
-            {
-                // skip whitespace
-                while (i >= start && char.IsWhiteSpace(text[i])) i--;
-                if (i < start) break;
-                // fin du mot est à i (inclus)
-                int wordEnd = i + 1;
-                while (i >= start && IsWordChar(text[i])) i--;
-                int wordStart = i + 1;
-                if (wordEnd <= wordStart) { i--; continue; }
-                string w = text.Substring(wordStart, wordEnd - wordStart);
-                if (ManualTriggerStopwords.Contains(w))
-                {
-                    start = wordEnd;
-                    break;
-                }
-                // Sinon on continue à remonter
-            }
-
-            return start;
-        }
-
-        private static bool IsWordChar(char c) => char.IsLetter(c) || c == '\'' || c == '-';
+        public void TriggerManual() => _manualTrigger.Trigger();
 
         // MathPrefixKeywords déplacé dans Host/Detection/ZoneRefiner.cs (P2.14).
 
