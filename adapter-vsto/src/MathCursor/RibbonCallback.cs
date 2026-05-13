@@ -323,6 +323,21 @@ namespace MathCursor
                 if (om != null)
                 {
                     LogDebug($"debug_insert: om.Range=[{om.Range.Start},{om.Range.End}] (caret laissé où Word le place naturellement)");
+
+                    // 4. Alignement gauche via om.Justification setter direct.
+                    //    Marche sur les oMathPara display. Jette « Impossible
+                    //    de définir l'alignement » sur les OMath inline →
+                    //    try/catch silencieux, on accepte l'échec pour les
+                    //    inline (où la propriété n'est pas applicable).
+                    try
+                    {
+                        om.Justification = Microsoft.Office.Interop.Word.WdOMathJc.wdOMathJcLeft;
+                        LogDebug("debug_insert: om.Justification = Left → OK");
+                    }
+                    catch (Exception exAlign)
+                    {
+                        LogDebug("debug_insert.align_justification_error: " + exAlign.Message);
+                    }
                 }
                 else
                 {
