@@ -1726,15 +1726,18 @@ namespace MathCursor.Host
                 LogDiag($"commit ABORTED latex=\"{latex}\" — aucune stratégie d'insert n'a abouti, doc intact");
             }
 
-            // Alignment uniforme post-insert : pose m:jc=left sur l'OMath
-            // pour TOUS les chemins (fast_path / splice / atomic). Sans ça
-            // Word applique son default centerGroup → OMath centré. Cf. ADR
-            // 2026-05-13-Fix-omath-alignment-uniform-post-insert.
-            if (ok)
-            {
-                try { _layoutFinalizer.EnforceOMathParagraphAlignment(doc, newStart); }
-                catch (Exception ex) { LogDiag("enforce_align_post_insert_error: " + ex.Message); }
-            }
+            // Alignment uniforme post-insert : DÉSACTIVÉ 2026-05-13.
+            // EnforceOMathParagraphAlignment jette une COMException Word
+            // "Impossible de définir l'alignement des objets OMath insérés"
+            // pour les OMath inline (= la majorité des cas fast_path/splice
+            // où l'OMath n'est pas un display block oMathPara). L'exception
+            // est catchée mais perturbe Word + bruit dans le log VS.
+            // Le fix alignment uniforme reste actif pour le chemin
+            // AtomicRangeInserter (qui patch le m:jc directement dans le XML
+            // avant InsertXML) et pour cross-merge via LayoutImpl. Acceptable
+            // perte : fast_path et splice peuvent rendre l'OMath centrée
+            // dans certains cas — à reprendre plus tard avec une approche
+            // qui ne touche pas aux OMath inline.
 
             // Positionne le curseur juste après l'OMath, puis nudge.
             int afterPos = _caretPositioner.ComputeAfterOMath(doc, newEnd);
