@@ -247,7 +247,7 @@ namespace MathCursor.Host
                 bookmarks: _bookmarks,
                 handleRegistry: _handleRegistry,
                 hideSuggestionPopup: HidePopup,
-                getCaretScreenPos: GetCaretScreenPosition,
+                getCaretScreenPos: Caret.CaretScreenPositionReader.Read,
                 log: LogDiag);
             _editController.MultiLineReverted += (s, e, h) =>
             {
@@ -1022,7 +1022,7 @@ namespace MathCursor.Host
             double popupX, popupY;
             if (shouldReposition)
             {
-                var pos = GetCaretScreenPosition();
+                var pos = Caret.CaretScreenPositionReader.Read();
                 double zoneWidth = Math.Max(0, rawZoneLength) * AvgCharWidthDip;
                 double offset = Math.Min(zoneWidth, PopupWidthDip);
                 popupX = pos.x - offset;
@@ -1751,46 +1751,6 @@ namespace MathCursor.Host
             yield return _atomicInserter.TryInsert(ctx);
         }
 
-
-
-        private (double x, double y) GetCaretScreenPosition()
-        {
-            // GetGUIThreadInfo renvoie atomiquement hwndCaret (fenêtre qui
-            // possède le caret) et rcCaret (rect du caret dans ce référentiel).
-            // On convertit ensuite avec hwndCaret, pas GetFocus() : dès qu'un
-            // OMath existe dans le doc, Word multiplie les sous-fenêtres
-            // (éditeur math, pane texte) et les deux HWND peuvent diverger,
-            // ce qui décalait la popup.
-            try
-            {
-                var gti = new GUITHREADINFO { cbSize = (uint)Marshal.SizeOf(typeof(GUITHREADINFO)) };
-                if (!GetGUIThreadInfo(0, ref gti) || gti.hwndCaret == IntPtr.Zero)
-                {
-                    return (200, 200);
-                }
-                var pt = new POINT { X = gti.rcCaret.Left, Y = gti.rcCaret.Bottom };
-                ClientToScreen(gti.hwndCaret, ref pt);
-                double scale = GetDpiScale();
-                return (pt.X / scale, pt.Y / scale + 4);
-            }
-            catch
-            {
-                return (200, 200);
-            }
-        }
-
-        private static double GetDpiScale()
-        {
-            try
-            {
-                using (var g = System.Drawing.Graphics.FromHwnd(IntPtr.Zero))
-                {
-                    return g.DpiX / 96.0;
-                }
-            }
-            catch { return 1.0; }
-        }
-
         private static string Preview(string s)
         {
             if (string.IsNullOrEmpty(s)) return "";
@@ -1811,34 +1771,5 @@ namespace MathCursor.Host
             }
             catch { }
         }
-
-        // --- Win32 ---
-        [StructLayout(LayoutKind.Sequential)]
-        private struct POINT { public int X; public int Y; }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct RECT { public int Left, Top, Right, Bottom; }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct GUITHREADINFO
-        {
-            public uint cbSize;
-            public uint flags;
-            public IntPtr hwndActive;
-            public IntPtr hwndFocus;
-            public IntPtr hwndCapture;
-            public IntPtr hwndMenuOwner;
-            public IntPtr hwndMoveSize;
-            public IntPtr hwndCaret;
-            public RECT rcCaret;
-        }
-
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO lpgui);
-
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
     }
 }
