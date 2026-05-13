@@ -734,7 +734,7 @@ namespace MathCursor.Host
                     // Filtre : on jette les zones NER qui chevauchent une région OMath.
                     // Ces zones sont déjà converties — les re-proposer serait redondant
                     // (et piégeux : on insèrerait un 2e OMath par-dessus).
-                    var filteredZones = FilterOutOMathOverlap(zones, omathRegions);
+                    var filteredZones = Detection.ZoneRefiner.FilterOutOMathOverlap(zones, omathRegions);
                     LogDiag($"zones={zones.Count} → filtered={filteredZones.Count} (omath_overlap dropped={zones.Count - filteredZones.Count})");
 
                     // Retour sur le thread UI pour mettre à jour la popup
@@ -773,7 +773,7 @@ namespace MathCursor.Host
             // SEULEMENT si la zone le justifie (cf. ShouldExtendZoneForward).
             // Sinon (formule complète sans slot vacant, dernière partie pas
             // un opérateur en attente d'opérande), on ferme.
-            var target = PickNearestZone(zones, caretInParagraph, out int dist);
+            var target = Detection.ZoneRefiner.PickNearestZone(zones, caretInParagraph, out int dist);
             LogDiag($"pick caret={caretInParagraph} target={(target == null ? "null" : target.ToString())} dist={dist}");
             if (target == null) { HidePopupTransient(); return; }
             if (dist > 0)
@@ -784,7 +784,7 @@ namespace MathCursor.Host
                     HidePopupTransient();
                     return;
                 }
-                target = TryExtendForwardWhitespace(_lastParagraph, target, caretInParagraph);
+                target = Detection.ZoneRefiner.TryExtendForwardWhitespace(_lastParagraph, target, caretInParagraph);
                 if (target == null || (caretInParagraph - target.End) > 0)
                 {
                     LogDiag("hide_reason=caret_still_outside_after_forward_extend");
@@ -797,7 +797,7 @@ namespace MathCursor.Host
             // Le NER rate parfois des mots-clés math en début de zone (lim, sqrt, etc.)
             // On tente une extension arrière : si le mot immédiatement avant la zone est
             // un keyword math connu, on l'absorbe.
-            target = ExtendZoneBackwardWithKeyword(_lastParagraph, target);
+            target = Detection.ZoneRefiner.ExtendBackwardWithKeyword(_lastParagraph, target);
             LogDiag($"backward_extended target={target}");
 
             // Pipeline lattice via le ZoneResolver : applique les prefs
@@ -1120,18 +1120,7 @@ namespace MathCursor.Host
 
         private static bool IsWordChar(char c) => char.IsLetter(c) || c == '\'' || c == '-';
 
-        // Liste de mots-clés math que le NER rate parfois en début d'expression.
-        // On les absorbe dans la zone détectée si ils précèdent immédiatement celle-ci.
-        private static readonly HashSet<string> MathPrefixKeywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "lim", "limite", "lmt",
-            "sqrt", "rac", "racine",
-            "int", "integrale", "integ", "integral",
-            "sum", "somme",
-            "forall", "qq", "qqe",
-            "exists", "existe",
-            "vec", "vect", "vecteur",
-        };
+        // MathPrefixKeywords déplacé dans Host/Detection/ZoneRefiner.cs (P2.14).
 
         /// <summary>
         /// Décide si une zone NER mérite d'être étendue à droite quand le caret
@@ -1147,95 +1136,6 @@ namespace MathCursor.Host
             catch { return false; }
         }
 
-        /// <summary>
-        /// Si le caret est juste après la zone NER avec UNIQUEMENT du whitespace
-        /// entre (l'utilisateur a tapé un espace pour étendre la formule), on
-        /// pousse l'end de la zone jusqu'au caret. Sinon retourne la zone telle
-        /// quelle. Évite la fermeture clignotante de la popup à chaque espace
-        /// tapé pendant la saisie continue (somme[espace]k[espace]…).
-        /// </summary>
-        private static DetectedZone TryExtendForwardWhitespace(string paragraph, DetectedZone zone, int caret)
-        {
-            if (zone == null || string.IsNullOrEmpty(paragraph)) return zone;
-            if (caret <= zone.End) return zone; // déjà dans/avant l'end
-            int gap = caret - zone.End;
-            if (gap > 5) return zone; // trop loin pour étendre
-            for (int i = zone.End; i < caret && i < paragraph.Length; i++)
-                if (!char.IsWhiteSpace(paragraph[i])) return zone; // non-whitespace → pas notre zone
-            // Tout whitespace entre zone.End et caret → on étend
-            int newEnd = Math.Min(caret, paragraph.Length);
-            string newText = paragraph.Substring(zone.Start, newEnd - zone.Start);
-            return new DetectedZone(zone.Start, newEnd, newText, zone.Confidence);
-        }
-
-        private static DetectedZone ExtendZoneBackwardWithKeyword(string paragraph, DetectedZone zone)
-        {
-            if (string.IsNullOrEmpty(paragraph) || zone == null) return zone;
-
-            int i = zone.Start;
-            // Skip whitespace juste avant la zone
-            while (i > 0 && char.IsWhiteSpace(paragraph[i - 1])) i--;
-            int wordEnd = i;
-            // Remonte sur le mot alphabétique
-            while (i > 0 && char.IsLetter(paragraph[i - 1])) i--;
-            int wordStart = i;
-            if (wordEnd <= wordStart) return zone;
-
-            string prevWord = paragraph.Substring(wordStart, wordEnd - wordStart);
-            if (!MathPrefixKeywords.Contains(prevWord)) return zone;
-
-            // Extension : la zone inclut désormais le mot-clé
-            int newEnd = zone.End;
-            int newStart = wordStart;
-            if (newStart >= 0 && newEnd <= paragraph.Length && newEnd > newStart)
-            {
-                string newText = paragraph.Substring(newStart, newEnd - newStart);
-                return new DetectedZone(newStart, newEnd, newText, zone.Confidence);
-            }
-            return zone;
-        }
-
-        /// <summary>
-        /// Jette les zones NER qui chevauchent une région OMath : ces zones sont
-        /// déjà converties, pas besoin de les re-proposer.
-        /// </summary>
-        private static IReadOnlyList<DetectedZone> FilterOutOMathOverlap(
-            IReadOnlyList<DetectedZone> zones, IReadOnlyList<(int start, int end)> regions)
-        {
-            if (zones == null || zones.Count == 0 || regions == null || regions.Count == 0)
-                return zones ?? Array.Empty<DetectedZone>();
-            var kept = new List<DetectedZone>(zones.Count);
-            foreach (var z in zones)
-            {
-                bool overlaps = false;
-                foreach (var (s, e) in regions)
-                {
-                    // Chevauchement strict : [z.Start, z.End) intersecte [s, e)
-                    if (z.End > s && z.Start < e) { overlaps = true; break; }
-                }
-                if (!overlaps) kept.Add(z);
-            }
-            return kept;
-        }
-
-        private static DetectedZone PickNearestZone(IReadOnlyList<DetectedZone> zones, int caret, out int bestDist)
-        {
-            DetectedZone best = null;
-            bestDist = int.MaxValue;
-            foreach (var z in zones)
-            {
-                int dist;
-                if (caret >= z.Start && caret <= z.End) dist = 0;       // curseur dedans ou collé au bord
-                else if (caret < z.Start) dist = z.Start - caret;       // zone après le curseur
-                else dist = caret - z.End;                              // zone avant le curseur
-                if (dist < bestDist)
-                {
-                    bestDist = dist;
-                    best = z;
-                }
-            }
-            return best;
-        }
 
         // ============================================================
         // Positionnement popup (inchangé du heuristique)
@@ -1957,88 +1857,6 @@ namespace MathCursor.Host
         private void CreateBookmarkForRange(string handleId, int absStart, int absEnd)
             => _bookmarks.Create(handleId, absStart, absEnd);
 
-        /// <summary>
-        /// Extrait le premier élément <c>&lt;w:p ... &gt;...&lt;/w:p&gt;</c>
-        /// d'un XML WordOpenXML package. Utilisé pour récupérer juste le
-        /// paragraphe (sans pkg:package wrapper) à splicer dans un autre
-        /// fullDocXml.
-        /// </summary>
-        /// <summary>
-        /// Diag : quand para_splice skip, on dump (1) la STRUCTURE
-        /// des <w:p> trouvés dans le XML, (2) compte ALL elements par
-        /// LocalName (au cas où namespace bizarre), (3) sauvegarde le
-        /// paraXml intégral dans %TEMP% pour inspection manuelle.
-        /// </summary>
-        private void DumpParaRunsForDiag(string paraXml, string mathSource)
-        {
-            try
-            {
-                // 0. Toujours dumper paraXml sur disque pour inspection
-                //    offline (gros XML 260KB pas dumpable dans le log).
-                try
-                {
-                    string tmpPath = System.IO.Path.Combine(
-                        System.IO.Path.GetTempPath(),
-                        $"mathcursor_diag_paraXml_{DateTime.Now:yyyyMMdd_HHmmss_fff}.xml");
-                    System.IO.File.WriteAllText(tmpPath, paraXml ?? "<null>");
-                    LogDiag($"para_splice_diag_dump: {tmpPath} (len={paraXml?.Length ?? 0})");
-                }
-                catch (Exception dumpEx) { LogDiag("para_splice_diag_dump_error: " + dumpEx.Message); }
-
-                // 1. Compte ALL <w:p>, <w:r>, <w:t> par LocalName (peu
-                //    importe le namespace prefix/URI).
-                try
-                {
-                    var xdoc = System.Xml.Linq.XDocument.Parse(paraXml);
-                    int pCount = 0, rCount = 0, tCount = 0, mOMathCount = 0;
-                    foreach (var el in xdoc.Descendants())
-                    {
-                        string ln = el.Name.LocalName;
-                        if (ln == "p" && el.Name.NamespaceName.Contains("wordprocessingml")) pCount++;
-                        else if (ln == "r" && el.Name.NamespaceName.Contains("wordprocessingml")) rCount++;
-                        else if (ln == "t" && el.Name.NamespaceName.Contains("wordprocessingml")) tCount++;
-                        else if (ln == "oMath" && el.Name.NamespaceName.Contains("officeDocument")) mOMathCount++;
-                    }
-                    LogDiag($"para_splice_diag: source=\"{Preview(mathSource)}\" w:p={pCount} w:r={rCount} w:t={tCount} m:oMath={mOMathCount}");
-
-                    // 2. Dump structure des paras (par LocalName, donc
-                    //    namespace-agnostic).
-                    var paras = xdoc.Descendants()
-                        .Where(e => e.Name.LocalName == "p" && e.Name.NamespaceName.Contains("wordprocessingml"))
-                        .ToList();
-                    int paraIdx = 0;
-                    foreach (var p in paras)
-                    {
-                        var sb1 = new System.Text.StringBuilder();
-                        sb1.Append($"para_splice_diag p[{paraIdx}]: children=[");
-                        int c = 0;
-                        foreach (var el in p.Elements())
-                        {
-                            if (c > 0) sb1.Append(",");
-                            string ln = el.Name.LocalName;
-                            string tail = "";
-                            if (ln == "r")
-                            {
-                                var t = el.Elements().FirstOrDefault(x => x.Name.LocalName == "t");
-                                if (t != null) tail = $"=\"{Preview(t.Value)}\"";
-                            }
-                            sb1.Append(ln + tail);
-                            c++;
-                            if (c >= 30) { sb1.Append(",..."); break; }
-                        }
-                        sb1.Append("]");
-                        LogDiag(sb1.ToString());
-                        paraIdx++;
-                        if (paraIdx >= 5) { LogDiag($"para_splice_diag: ... +{paras.Count - 5} more paras"); break; }
-                    }
-                }
-                catch (Exception parseEx)
-                {
-                    LogDiag($"para_splice_diag_parse_error: {parseEx.Message}");
-                }
-            }
-            catch (Exception ex) { LogDiag("para_splice_diag_error: " + ex.Message); }
-        }
 
         /// <summary>
         /// Pattern build-isolated → transplant XML (cf. ADR 04-05). Construit
