@@ -129,6 +129,11 @@
                   screentip="Insère une OMath simple f(x)=1 au curseur et place le caret à la fin. Outil de test pour isoler les bugs d'insertion sans passer par NER/popup."
                   size="normal"
                   onAction="OnDebugInsertOMathClicked" />
+          <button id="DebugReplaceByOMathButton"
+                  label="Debug : replace → f(x)=1"
+                  screentip="Replace la sélection (ou les 6 chars avant le caret) par une OMath f(x)=1 alignée à gauche. Simule la recette minimale post-popup : range.Text = unicodeMath + OMaths.Add + BuildUp + om.Justification, sans toucher au caret."
+                  size="normal"
+                  onAction="OnDebugReplaceByOMathClicked" />
           <button id="AboutButton"
                   getLabel="OnGetAboutButtonLabel"
                   getScreentip="OnGetAboutButtonScreentip"

@@ -289,6 +289,94 @@ namespace MathCursor
         /// à la fin. Sert à isoler les bugs d'insertion/caret sans passer
         /// par le pipeline NER + popup + staging.
         /// </summary>
+        /// <summary>
+        /// Bouton de debug n°2 : recette minimale post-popup. Replace la
+        /// sélection (ou les 6 chars avant le caret) par une OMath
+        /// <c>f(x)=1</c> alignée à gauche.
+        ///
+        /// <para>Flow ultra-simple :</para>
+        /// <list type="number">
+        /// <item><c>doc.Range(srcStart, srcEnd).Text = unicodeMath</c> —
+        /// remplace la source par le texte unicode math.</item>
+        /// <item><c>OMaths.Add + BuildUp</c> sur la range résultante.</item>
+        /// <item><c>om.Justification = wdOMathJcLeft</c> avec try/catch
+        /// silencieux (= échec accepté pour les OMath inline).</item>
+        /// <item><b>Aucun SetRange / Nudge</b> : Word place le caret.</item>
+        /// </list>
+        ///
+        /// <para>Sert à valider que la recette minimale couvre le cas
+        /// commit-popup standard sans aucun artifice (pas de ghost, pas
+        /// de splice XML, pas de Policy caret).</para>
+        /// </summary>
+        public void OnDebugReplaceByOMathClicked(IRibbonControl control)
+        {
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null) return;
+                var doc = app.ActiveDocument;
+                if (doc == null) return;
+                var sel = app.Selection;
+                if (sel == null) return;
+
+                // Détermine la range source à remplacer :
+                // - Sélection étendue → remplace la sélection
+                // - Caret simple → remplace les 6 chars avant (= simule
+                //   « f(x)=1 » fraîchement tapé par l'utilisateur)
+                int srcStart, srcEnd;
+                if (sel.Start != sel.End)
+                {
+                    srcStart = sel.Start;
+                    srcEnd = sel.End;
+                }
+                else
+                {
+                    srcStart = Math.Max(0, sel.Start - 6);
+                    srcEnd = sel.Start;
+                }
+                LogDebug($"debug_replace: src range=[{srcStart},{srcEnd}]");
+
+                // 1. Replace la source par unicodeMath
+                string unicodeMath = MathCursor.Core.LatexToUnicodeMath.Convert("f(x)=1");
+                var srcRange = doc.Range(srcStart, srcEnd);
+                srcRange.Text = unicodeMath;
+                int afterReplaceEnd = srcStart + unicodeMath.Length;
+                LogDebug($"debug_replace: replaced with \"{unicodeMath}\" (len={unicodeMath.Length}) → afterEnd={afterReplaceEnd}");
+
+                // 2. Convertit en OMath via Word natif
+                var mathRange = doc.Range(srcStart, afterReplaceEnd);
+                mathRange.OMaths.Add(mathRange);
+                mathRange.OMaths.BuildUp();
+
+                // 3. Retrouve l'OMath et aligne à gauche (silencieux si inline)
+                foreach (Microsoft.Office.Interop.Word.OMath o in doc.OMaths)
+                {
+                    if (o.Range.Start <= srcStart && o.Range.End >= srcStart)
+                    {
+                        LogDebug($"debug_replace: om.Range=[{o.Range.Start},{o.Range.End}]");
+                        try
+                        {
+                            o.Justification = Microsoft.Office.Interop.Word.WdOMathJc.wdOMathJcLeft;
+                            LogDebug("debug_replace: om.Justification = Left → OK");
+                        }
+                        catch (Exception exA) { LogDebug("debug_replace.align_error: " + exA.Message); }
+                        break;
+                    }
+                }
+
+                // 4. NE TOUCHE PAS au caret. Word le pose naturellement.
+            }
+            catch (Exception ex)
+            {
+                LogDebug("debug_replace_error: " + ex.Message);
+                MessageBox.Show(
+                    "Debug replace OMath failed :\n" + ex.Message,
+                    "MathCursor — Debug",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
         public void OnDebugInsertOMathClicked(IRibbonControl control)
         {
             try
