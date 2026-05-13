@@ -8,6 +8,7 @@ namespace MathCursor.Core.Lattice.Ast
         public string Kind { get; }   // "number" | "ident" | "greek"
         public string Value { get; }
         public Atom(string kind, string value) { Kind = kind; Value = value; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>
@@ -19,6 +20,7 @@ namespace MathCursor.Core.Lattice.Ast
     {
         public int Idx { get; }
         public Hole(int idx) { Idx = idx; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Constante symbolique (\\infty, \\forall, \\exists, \\in).</summary>
@@ -26,6 +28,7 @@ namespace MathCursor.Core.Lattice.Ast
     {
         public string Value { get; }
         public Const(string value) { Value = value; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Opérateur unaire : +x, -x.</summary>
@@ -34,6 +37,7 @@ namespace MathCursor.Core.Lattice.Ast
         public string Op { get; }
         public AstNode Arg { get; }
         public Unary(string op, AstNode arg) { Op = op; Arg = arg; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>
@@ -53,6 +57,7 @@ namespace MathCursor.Core.Lattice.Ast
         {
             Op = op; Tight = tight; Implicit = isImplicit; Lhs = lhs; Rhs = rhs;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Exposant : base^exp.
@@ -71,6 +76,7 @@ namespace MathCursor.Core.Lattice.Ast
         {
             Base = @base; Exp = exp; IsImplicit = isImplicit;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Indice : base_idx.</summary>
@@ -79,6 +85,7 @@ namespace MathCursor.Core.Lattice.Ast
         public AstNode Base { get; }
         public AstNode Idx { get; }
         public Sub(AstNode @base, AstNode idx) { Base = @base; Idx = idx; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Groupe parenthésé. Le renderer décide si les parens
@@ -88,6 +95,7 @@ namespace MathCursor.Core.Lattice.Ast
     {
         public AstNode Expr { get; }
         public Group(AstNode expr) { Expr = expr; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Fraction.</summary>
@@ -96,6 +104,7 @@ namespace MathCursor.Core.Lattice.Ast
         public AstNode Num { get; }
         public AstNode Den { get; }
         public Frac(AstNode num, AstNode den) { Num = num; Den = den; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Racine carrée.</summary>
@@ -103,6 +112,7 @@ namespace MathCursor.Core.Lattice.Ast
     {
         public AstNode Arg { get; }
         public Sqrt(AstNode arg) { Arg = arg; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Vecteur (nom = chaîne d'identifiants concaténés, ex : AB → \\vec{AB}).</summary>
@@ -110,6 +120,7 @@ namespace MathCursor.Core.Lattice.Ast
     {
         public string? Name { get; }
         public Vec(string? name) { Name = name; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>
@@ -128,6 +139,7 @@ namespace MathCursor.Core.Lattice.Ast
             Name = name ?? string.Empty;
             HasPlaceholder = hasPlaceholder;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Fonction nommée : sin, cos, ln, exp…</summary>
@@ -136,6 +148,7 @@ namespace MathCursor.Core.Lattice.Ast
         public string Name { get; }
         public AstNode Arg { get; }
         public Func(string name, AstNode arg) { Name = name; Arg = arg; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Somme/produit. <see cref="Symbol"/> = "sum" ou "prod".</summary>
@@ -150,6 +163,7 @@ namespace MathCursor.Core.Lattice.Ast
         {
             Symbol = symbol; Var = var; Start = start; End = end; Body = body;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Limite : lim_{var → target} body.</summary>
@@ -162,6 +176,7 @@ namespace MathCursor.Core.Lattice.Ast
         {
             Var = var; Target = target; Body = body;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Intégrale : ∫_low^high body.</summary>
@@ -174,6 +189,7 @@ namespace MathCursor.Core.Lattice.Ast
         {
             Low = low; High = high; Body = body;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Définition de fonction : f : x ↦ expr (ou f : (x,y) ↦ expr).
@@ -188,6 +204,7 @@ namespace MathCursor.Core.Lattice.Ast
         {
             Name = name; Vars = vars; Body = body;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Intervalle français : <c>[a,b]</c>, <c>[a,b[</c>, <c>]a,b]</c>, <c>]a,b[</c>.
@@ -205,6 +222,7 @@ namespace MathCursor.Core.Lattice.Ast
         {
             Low = low; High = high; LeftClosed = leftClosed; RightClosed = rightClosed;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>
@@ -231,6 +249,7 @@ namespace MathCursor.Core.Lattice.Ast
         {
             Name = name; Values = values; Layout = layout; IsPoint = isPoint;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>
@@ -262,5 +281,6 @@ namespace MathCursor.Core.Lattice.Ast
         {
             Mode = mode; Lines = lines; LinePrefix = linePrefix;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 }
