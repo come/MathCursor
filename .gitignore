@@ -30,8 +30,15 @@ coverage/
 .idea/
 .vscode/
 
-# Claude Code local state
-.claude/
+# Claude Code local state — on versionne les skills (workflow équipe + harnais),
+# mais pas les settings locaux ni l'état IDE perso.
+.claude/settings.local.json
+.claude/projects/
+.claude/worktrees/
+.claude/cache/
+.claude/conversations/
+.claude/agents/
+.claude/*.log
 
 # Certificats (clé privée) — jamais commiter
 *.pfx
