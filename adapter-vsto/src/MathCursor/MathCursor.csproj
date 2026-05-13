@@ -271,6 +271,7 @@
     <Compile Include="Host\Merging\MergeResult.cs" />
     <Compile Include="Host\Merging\MergerPipeline.cs" />
     <Compile Include="Host\Merging\IntraOMathsMerger.cs" />
+    <Compile Include="Host\Merging\ParagraphCascadeProbe.cs" />
     <Compile Include="Host\Merging\RevertedMultiLineMerger.cs" />
     <Compile Include="Host\Merging\CasesChainCascadeMerger.cs" />
     <Compile Include="Host\Merging\MarkerChainCascadeMerger.cs" />
