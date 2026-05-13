@@ -116,5 +116,33 @@ namespace MathCursor.Tests.Host
             int got = CaretPositionCalculator.ClampAfterOMathToParagraph(omEnd, paraContentEnd, docContentEnd);
             Assert.Equal(expected, got);
         }
+
+        // ─────────────────────────────────────────────────────────────────
+        //  Cellule de tableau : paraRange = cellule, le clamp ne doit pas
+        //  déborder hors cellule.
+        //
+        //  Validation user-facing demande à 2026-05-13 (« si on est dans
+        //  un tableau pareil » — caret doit rester dans la cellule).
+        //  Logique pure : la classe ne voit pas qu'on est en cellule,
+        //  elle clamp sur paraContentEnd quel qu'il soit. Suffisant tant
+        //  que CaretPositioner.ComputeAfterOMath utilise Paragraphs[1]
+        //  qui dans une cellule = ¶ de la cellule (pas du body global).
+        // ─────────────────────────────────────────────────────────────────
+
+        [Fact(DisplayName = "OMath dans cellule de tableau : clamp respecte les bornes de cellule")]
+        public void OMathInTableCell_ClampsToCellEnd()
+        {
+            // Cellule : positions [100..120], paraContentEnd = 120 (juste
+            // avant le marqueur de cellule), doc continue à 500.
+            // OMath occupe la cellule : omEnd = 120.
+            int omEnd = 120;
+            int paraContentEnd = 120;
+            int docContentEnd = 500;
+
+            int got = CaretPositionCalculator.ClampAfterOMathToParagraph(omEnd, paraContentEnd, docContentEnd);
+
+            // Attendu : 120 = reste dans la cellule (pas 121 = cellule suivante).
+            Assert.Equal(120, got);
+        }
     }
 }
