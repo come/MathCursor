@@ -312,9 +312,8 @@ namespace MathCursor
                 typedRange.OMaths.Add(typedRange);
                 typedRange.OMaths.BuildUp();
 
-                // 3. Retrouve l'OMath fraîchement créée et place le caret juste
-                //    après. Pas de Nudge, pas de Policy, juste un SetRange brut
-                //    pour observer le comportement Word natif.
+                // 3. Retrouve l'OMath fraîchement créée pour logger sa range
+                //    (= observer où Word l'a effectivement insérée).
                 Microsoft.Office.Interop.Word.OMath om = null;
                 foreach (Microsoft.Office.Interop.Word.OMath o in doc.OMaths)
                 {
@@ -323,15 +322,42 @@ namespace MathCursor
                 }
                 if (om != null)
                 {
-                    int caretTarget = Math.Min(om.Range.End + 1, doc.Content.End);
-                    LogDebug($"debug_insert: om.Range=[{om.Range.Start},{om.Range.End}] → caret target={caretTarget}");
-                    try { sel.SetRange(caretTarget, caretTarget); }
-                    catch (Exception exSet) { LogDebug("debug_insert.setrange_error: " + exSet.Message); }
+                    LogDebug($"debug_insert: om.Range=[{om.Range.Start},{om.Range.End}] (caret laissé où Word le place naturellement)");
+
+                    // 4. Alignement gauche : patch m:jc=left dans le ¶ XML
+                    //    via OMathParaJcPatcher, puis re-insère le ¶ patché.
+                    //    Évite om.Justification setter (qui jette sur OMath
+                    //    inline « Impossible de définir l'alignement »).
+                    try
+                    {
+                        var paraRange = om.Range.Paragraphs[1].Range;
+                        string xml = paraRange.WordOpenXML;
+                        if (!string.IsNullOrEmpty(xml))
+                        {
+                            string patched = OMathParaJcPatcher.EnsureDisplayWithLeftJc(xml, out bool changed);
+                            LogDebug($"debug_insert: align xml changed={changed} (xmlLen={xml.Length} patchedLen={patched?.Length ?? 0})");
+                            if (changed)
+                            {
+                                paraRange.InsertXML(patched);
+                            }
+                        }
+                    }
+                    catch (Exception exAlign) { LogDebug("debug_insert.align_error: " + exAlign.Message); }
                 }
                 else
                 {
                     LogDebug("debug_insert: OMath not found post-BuildUp");
                 }
+
+                // 4. Positionnement du caret — DÉSACTIVÉ pour observer où
+                //    Word laisse le caret naturellement après OMaths.Add +
+                //    BuildUp, sans qu'on touche au Selection.
+                // if (om != null)
+                // {
+                //     int caretTarget = Math.Min(om.Range.End + 1, doc.Content.End);
+                //     try { sel.SetRange(caretTarget, caretTarget); }
+                //     catch (Exception exSet) { LogDebug("debug_insert.setrange_error: " + exSet.Message); }
+                // }
             }
             catch (Exception ex)
             {
