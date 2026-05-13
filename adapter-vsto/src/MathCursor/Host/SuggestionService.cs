@@ -162,13 +162,6 @@ namespace MathCursor.Host
         // + l'ancre paragraphe (anchorParaStart). Cf. ADR 06-05 Phase 4c L4.
         private readonly ListModeController _listMode = new ListModeController();
 
-        // Flag : la dernière InsertOMathAt a-t-elle utilisé le pattern XML
-        // transplant ? Si oui, l'alignement (m:jc) a déjà été pré-patché dans
-        // le XML capturé avant l'unique InsertXML — pas besoin d'un 2e
-        // InsertXML via PatchOMathParaJustificationViaXml en finalize, qui
-        // causerait une fusion avec l'OMath voisin (cf. bug user 04-05).
-        private bool _lastInsertUsedXmlTransplant;
-
         // État d'extension itérative (ADR 29-04). Activé au 1er Ctrl+Espace
         // qui ouvre la popup ; chaque appui suivant tant que la popup est
         // ouverte étend la zone d'un cran vers la gauche.
@@ -224,7 +217,7 @@ namespace MathCursor.Host
                 LogDiag);
             _omathStaging = new OMathStagingService(_app, LogDiag);
             _bookmarks = new Bookmarks.EquationBookmarkRegistry(() => _app.ActiveDocument, LogDiag);
-            _layoutFinalizer = new Layout.PostCommitLayoutFinalizer(_app, () => _lastInsertUsedXmlTransplant, LogDiag);
+            _layoutFinalizer = new Layout.PostCommitLayoutFinalizer(_app, LogDiag);
             _caretPositioner = new Caret.CaretPositioner(_app, LogDiag);
             _manualTrigger = new ManualTrigger.ManualTriggerController(
                 app: _app,
@@ -1705,7 +1698,16 @@ namespace MathCursor.Host
             {
                 LogDiag($"commit ABORTED latex=\"{latex}\" — aucune stratégie d'insert n'a abouti, doc intact");
             }
-            _lastInsertUsedXmlTransplant = ok;
+
+            // Alignment uniforme post-insert : pose m:jc=left sur l'OMath
+            // pour TOUS les chemins (fast_path / splice / atomic). Sans ça
+            // Word applique son default centerGroup → OMath centré. Cf. ADR
+            // 2026-05-13-Fix-omath-alignment-uniform-post-insert.
+            if (ok)
+            {
+                try { _layoutFinalizer.EnforceOMathParagraphAlignment(doc, newStart); }
+                catch (Exception ex) { LogDiag("enforce_align_post_insert_error: " + ex.Message); }
+            }
 
             // Positionne le curseur juste après l'OMath, puis nudge.
             int afterPos = _caretPositioner.ComputeAfterOMath(doc, newEnd);

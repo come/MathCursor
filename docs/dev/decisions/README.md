@@ -20,6 +20,7 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-05-13
+- `[molle]` Fix — [Alignment `m:jc=left` uniforme post-insert (tous chemins)](2026-05-13-Fix-omath-alignment-uniform-post-insert.md) — remonte l'appel `EnforceOMathParagraphAlignment` à `InsertOMathAt` (1 call site uniforme), supprime duplication + flag `_wasXmlTransplant`, élimine OMath centré sur fast_path/splice
 - `[forte]` Refactor — [S1 : `ScanUppercaseSequences` source-based + Mutations vec/paren](2026-05-13-Refactor-s1-twoupper-source-mutations.md) — fixe immédiatement le bug 06-05 single-line (pref vec sur AB rend `\vec{AB}`), +4 tests verts, 1 cross-merge multi-ligne reporté en S2
 - `[molle]` Fix — [WarmUp ghost doc déclenché par le 1ᵉʳ `WindowActivate`, plus inline dans `Install()`](2026-05-13-Fix-warmup-event-driven.md) — élimine la COMException `Selection.get returned null` au boot, handler one-shot auto-désabonnant (pas de timer ni de field flag), respect doctrine events natifs
 - `[forte]` Refactor — [Scanners d'ambiguïté en Strategy + Pipeline (`IAmbiguityScanner`)](2026-05-13-Refactor-ambiguity-scanners-strategy.md) — S0 du refacto source-mut, 10 scanners statiques extraits en classes indépendantes, alignement doctrine `IZoneMerger`/`ICommitStage`/`IContextSignal`

@@ -18,25 +18,26 @@ namespace MathCursor.Host.Layout
     internal sealed class PostCommitLayoutFinalizer
     {
         private readonly Word.Application _app;
-        private readonly Func<bool> _wasXmlTransplant;
         private readonly Action<string> _log;
 
         public PostCommitLayoutFinalizer(
             Word.Application app,
-            Func<bool> wasXmlTransplant,
             Action<string> log)
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
-            _wasXmlTransplant = wasXmlTransplant ?? (() => false);
             _log = log ?? (s => { });
         }
 
         /// <summary>
-        /// Pipeline complet de finalisation post-cross-merge :
+        /// Pipeline de finalisation post-cross-merge :
         /// (1) strip ¶ vide résiduel à l'amont du nouvel OMath,
-        /// (2) sync alignment OMath ↔ ¶ (skip si transplant XML l'a fait),
-        /// (3) append ¶ vide d'atterrissage si l'OMath est dernier ¶,
-        /// (4) caret au début du ¶ suivant.
+        /// (2) append ¶ vide d'atterrissage si l'OMath est dernier ¶,
+        /// (3) caret au début du ¶ suivant.
+        ///
+        /// <para>L'alignment OMath ↔ ¶ n'est plus appelé ici : il est posé
+        /// uniformément post-insert par <c>SuggestionService.InsertOMathAt</c>
+        /// pour tous les chemins (fast_path/splice/atomic). Cf. ADR
+        /// <c>2026-05-13-Fix-omath-alignment-uniform-post-insert</c>.</para>
         /// </summary>
         public void FinalizeCrossMerge(Word.Document doc, int replaceStart,
             ref int newStart, ref int newEnd, out bool didCreateAnchorPara)
@@ -45,10 +46,6 @@ namespace MathCursor.Host.Layout
             try
             {
                 StripLeadingResidualEmptyParagraph(doc, replaceStart, ref newStart, ref newEnd);
-                if (!_wasXmlTransplant())
-                {
-                    EnforceOMathParagraphAlignment(doc, newStart);
-                }
                 int caretPos = AppendEmptyParagraphAfterOMath(doc, newStart, out didCreateAnchorPara);
                 if (caretPos >= 0) SetCaretAtPosition(caretPos);
             }
