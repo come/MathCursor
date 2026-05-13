@@ -29,3 +29,5 @@ indent_size = 2
 #
 [*.cs]
 dotnet_diagnostic.MC0001.severity = warning   # Regex sur contenu structuré
+dotnet_diagnostic.MC0006.severity = warning   # Splice LaTeX sur texte rendu (anti-pattern)
+dotnet_diagnostic.MC0009.severity = warning   # SuppressMessage sans ADR référencé
