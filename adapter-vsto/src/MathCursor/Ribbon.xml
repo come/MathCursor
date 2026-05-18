@@ -154,6 +154,21 @@
                   screentip="Scanne doc.ContentControls et liste les CCs MathCursor sans OMath dedans (= orphelins fantômes). Affiche le diag dans le pane + supprime les orphelins trouvés."
                   size="normal"
                   onAction="OnDebugCleanupOrphanCCsClicked" />
+          <button id="DebugStepStartButton"
+                  label="POC Step : start [=1]"
+                  screentip="Capture la sélection courante comme zone d'insertion, source = '=1', latex = '= 1'. Réinit le step runner. Sélectionne ton '=1' plain text dans le doc avant de cliquer."
+                  size="normal"
+                  onAction="OnDebugStepStartClicked" />
+          <button id="DebugStepNextButton"
+                  label="POC Step : next"
+                  screentip="Avance d'une étape dans la séquence d'InsertOMathAt. Affiche dans le pane debug l'état du doc après l'étape. Cycle : Normalize → SetRange → Delete → TypeText → CC wrap → OMath build → Tag → CcSticky."
+                  size="normal"
+                  onAction="OnDebugStepNextClicked" />
+          <button id="DebugDumpCharPositionsButton"
+                  label="POC : dump char positions"
+                  screentip="Itère paragraph.Range.Characters du ¶ courant et dump pour chaque char : Range.Start, Range.End, Range.Text (escapé). Sert à valider si Word.Characters[i].Start = position interne du char visible i (= alternative au translator string→internal)."
+                  size="normal"
+                  onAction="OnDebugDumpCharPositionsClicked" />
           <button id="AboutButton"
                   getLabel="OnGetAboutButtonLabel"
                   getScreentip="OnGetAboutButtonScreentip"

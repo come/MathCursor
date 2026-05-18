@@ -869,6 +869,111 @@ namespace MathCursor
             }
         }
 
+        /// <summary>Step debug — start. Capture la sélection courante comme zone
+        /// d'insertion, hardcode source/latex pour le scénario typique
+        /// f(x) + =1. Reset le step runner pour repartir au step 0.</summary>
+        public void OnDebugStepStartClicked(IRibbonControl control)
+        {
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null) return;
+                var trace = MathCursor.Host.CCMeta.PocStepRunner.Start(app, source: "=1", latex: "= 1");
+                Globals.ThisAddIn.PushDebugTrace(trace);
+            }
+            catch (Exception ex)
+            {
+                Globals.ThisAddIn.PushDebugTrace("=== POC Step start ERROR ===\n" + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// POC diagnostic — dump des positions Word de chaque char du ¶
+        /// courant via <c>Range.Characters</c>. Pour valider si Word peut
+        /// nous donner directement la position interne d'un char visible
+        /// (= alternative à un translator string→internal).
+        /// </summary>
+        public void OnDebugDumpCharPositionsClicked(IRibbonControl control)
+        {
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null) return;
+                var doc = app.ActiveDocument;
+                if (doc == null) return;
+                var sel = app.Selection;
+                if (sel == null) return;
+
+                var paraRange = sel.Paragraphs[1].Range;
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("=== POC : dump char positions ===");
+                sb.AppendLine($"paragraph.Range = [{paraRange.Start}, {paraRange.End})");
+                sb.AppendLine($"paragraph.Range.Text.Length = {(paraRange.Text ?? "").Length}");
+                sb.AppendLine($"paragraph.Range.Characters.Count = {paraRange.Characters.Count}");
+                sb.AppendLine($"sel = [{sel.Start}, {sel.End})");
+                sb.AppendLine();
+                sb.AppendLine("Iter Range.Characters :");
+                sb.AppendLine("  idx | Start, End  | Text (escaped)");
+                sb.AppendLine("  ----+-------------+----------------");
+
+                int i = 0;
+                foreach (Microsoft.Office.Interop.Word.Range c in paraRange.Characters)
+                {
+                    try
+                    {
+                        string text = c.Text ?? "";
+                        string escaped = text.Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t");
+                        // Surrogate-pair friendly preview
+                        if (escaped.Length > 12) escaped = escaped.Substring(0, 12) + "…";
+                        sb.AppendLine($"  {i,3} | [{c.Start,3}, {c.End,3}) | \"{escaped}\" (len={text.Length})");
+                    }
+                    catch (Exception exC) { sb.AppendLine($"  {i,3} | ERR : {exC.Message}"); }
+                    i++;
+                    if (i > 80) { sb.AppendLine("  (… troncated, > 80 chars)"); break; }
+                }
+
+                sb.AppendLine();
+                sb.AppendLine("OMaths dans le ¶ :");
+                try
+                {
+                    int omIdx = 0;
+                    foreach (Microsoft.Office.Interop.Word.OMath om in paraRange.OMaths)
+                    {
+                        omIdx++;
+                        string omText = "";
+                        try { omText = om.Range.Text ?? ""; } catch { }
+                        sb.AppendLine($"  OMath #{omIdx} : Range=[{om.Range.Start},{om.Range.End}) (width={om.Range.End - om.Range.Start}, text.Length={omText.Length})");
+                    }
+                }
+                catch (Exception exO) { sb.AppendLine("  ERR OMaths iter : " + exO.Message); }
+
+                LogDebug($"poc_dump_chars: paragraph=[{paraRange.Start},{paraRange.End}) sel=[{sel.Start},{sel.End}) chars={paraRange.Characters.Count}");
+                Globals.ThisAddIn.PushDebugTrace(sb.ToString());
+            }
+            catch (Exception ex)
+            {
+                LogDebug("poc_dump_chars_error: " + ex.Message);
+                Globals.ThisAddIn.PushDebugTrace("=== POC : dump char positions ERROR ===\n" + ex.Message);
+            }
+        }
+
+        /// <summary>Step debug — next. Avance d'une étape dans la séquence
+        /// InsertOMathAt et affiche l'état du doc post-étape.</summary>
+        public void OnDebugStepNextClicked(IRibbonControl control)
+        {
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null) return;
+                var trace = MathCursor.Host.CCMeta.PocStepRunner.Next(app);
+                Globals.ThisAddIn.PushDebugTrace(trace);
+            }
+            catch (Exception ex)
+            {
+                Globals.ThisAddIn.PushDebugTrace("=== POC Step next ERROR ===\n" + ex.Message);
+            }
+        }
+
         /// <summary>Helper safe pour lire <c>Selection.OMaths.Count</c>
         /// sans jeter (collection Word peut être null ou indisponible).</summary>
         private static int SafeOMathsCount(Microsoft.Office.Interop.Word.Selection sel)

@@ -84,8 +84,21 @@ namespace MathCursor.Host
         // État de la dernière popup affichée — nécessaire pour commit sur Enter :
         // on a besoin des positions absolues dans le document (pas juste offsets
         // paragraphe), des choix présentés, et de la source brute pour la store.
+        // ⚠ Ces 2 fields stockent les positions de la zone NER en MIXED
+        // coords : paragraphAbsStart (Word interne) + target.Start (STRING
+        // pos dans paragraphText). C'est OK pour positionner la popup à
+        // l'écran (approximation suffisante) mais PAS pour SetRange au
+        // commit. Au commit on traduit via ParagraphPositionTranslator en
+        // utilisant les fields _lastZone(Paragraph|String)* ci-dessous.
         private int _lastZoneAbsStart = -1;
         private int _lastZoneAbsEnd = -1;
+        // Fields pour traduction string→interne au commit (2026-05-18).
+        // _lastZoneStringStart/End = offset dans paragraphText (= position
+        // string du NER). _lastZoneParaRangeStart = paragraph.Range.Start
+        // au moment du popup show (= paragraphAbsStart en Word interne).
+        private int _lastZoneStringStart = -1;
+        private int _lastZoneStringEnd = -1;
+        private int _lastZoneParaRangeStart = -1;
         private string _lastZoneSource = "";
 
         // Snapshot de la dernière action user (popup + commit éventuel) pour
@@ -957,6 +970,15 @@ namespace MathCursor.Host
             // _lastZoneSource = source brute telle que dans Word (pas mutée).
             // Les mutations sont gérées à la volée par le résolveur.
             _lastZoneSource = target.Text ?? "";
+
+            // Pour traduction string→interne au commit : on mémorise les
+            // string-positions et le start du ¶ (Word interne). Pas de
+            // traduction maintenant pour ne pas itérer Range.Characters à
+            // chaque tick — c'est fait dans OnPopupCommitRequested.
+            _lastZoneStringStart = target.Start;
+            _lastZoneStringEnd = target.End;
+            _lastZoneParaRangeStart = paragraphAbsStart;
+
             ShowPopup(resolved, absStart, absEnd, rawLen, target.Text ?? "");
 
             // Initialise l'état d'extension itérative depuis la zone NER
@@ -1435,9 +1457,37 @@ namespace MathCursor.Host
                     },
                     new[] { 0, 0 });
             }
+            // Traduction string-pos NER → Word interne pos pour les
+            // positions de la zone. Le NER renvoie des offsets dans
+            // paragraphText (avec OMath masquées) ; SetRange attend des
+            // positions internes (qui incluent les wrappers cachés).
+            // On itère paragraph.Range.Characters pour mapper proprement
+            // (cf. ParagraphPositionTranslator). Fait UNIQUEMENT au commit
+            // (pas au tick polling). En mode édition, on bypasse — les
+            // _lastZone* sont déjà en coords internes via TryEnterEditMode.
+            int absStartForCtx = _lastZoneAbsStart;
+            int absEndForCtx = _lastZoneAbsEnd;
+            if (editingHandle == null && _lastZoneStringStart >= 0 && _lastZoneParaRangeStart >= 0)
+            {
+                try
+                {
+                    var doc = _app.ActiveDocument;
+                    if (doc != null)
+                    {
+                        var paraRange = doc.Range(_lastZoneParaRangeStart, _lastZoneParaRangeStart)
+                            .Paragraphs[1].Range;
+                        absStartForCtx = Detection.ParagraphPositionTranslator
+                            .StringPosToInternal(paraRange, _lastZoneStringStart);
+                        absEndForCtx = Detection.ParagraphPositionTranslator
+                            .StringPosToInternal(paraRange, _lastZoneStringEnd);
+                    }
+                }
+                catch (Exception ex) { LogDiag("commit_translate_error: " + ex.Message); }
+            }
+
             var ctx = new MathCursor.Host.Pipeline.CommitContext(
-                absStart: _lastZoneAbsStart,
-                absEnd: _lastZoneAbsEnd,
+                absStart: absStartForCtx,
+                absEnd: absEndForCtx,
                 source: source,
                 latex: latex,
                 sidecar: initialSidecar,
@@ -1446,15 +1496,15 @@ namespace MathCursor.Host
             // Trace commit (debug inspecteur) : ouvre un buffer, capture les
             // logs des stages + InsertOMathAt, fire CommitTraced à la fin.
             _commitTrace = new System.Text.StringBuilder();
-            _commitOrigAbsStart = _lastZoneAbsStart;
-            _commitOrigAbsEnd = _lastZoneAbsEnd;
+            _commitOrigAbsStart = absStartForCtx;
+            _commitOrigAbsEnd = absEndForCtx;
             _commitOrigSource = source;
             _commitPreInsertAbsStart = -1;
             _commitPreInsertAbsEnd = -1;
             _commitInternalStart = -1;
             _commitInternalEnd = -1;
             Log($"=== COMMIT @ {DateTime.Now:HH:mm:ss.fff} ===");
-            Log($"INPUT  absStart={_lastZoneAbsStart} absEnd={_lastZoneAbsEnd} source=\"{Preview(source)}\" latex=\"{Preview(latex)}\" editing={(editingHandle != null ? editingHandle.Id : "no")}");
+            Log($"INPUT  stringPos=[{_lastZoneStringStart},{_lastZoneStringEnd}) paraStart={_lastZoneParaRangeStart} → internal=[{absStartForCtx},{absEndForCtx}) source=\"{Preview(source)}\" latex=\"{Preview(latex)}\" editing={(editingHandle != null ? editingHandle.Id : "no")}");
 
             // UndoRecordScope conservé : sans, le BuildUp crée une entrée
             // undo séparée du TypeText (1 Ctrl+Z annule le BuildUp, 2e
@@ -1505,6 +1555,9 @@ namespace MathCursor.Host
             // Reset état
             _lastZoneAbsStart = -1;
             _lastZoneAbsEnd = -1;
+            _lastZoneStringStart = -1;
+            _lastZoneStringEnd = -1;
+            _lastZoneParaRangeStart = -1;
             _lastZoneSource = "";
             _editController?.Close();
             _revertedMultiLineZoneStart = -1;
