@@ -1,6 +1,6 @@
 # ROADMAP — État des chantiers MathCursor
 
-**Dernière mise à jour** : 2026-05-13
+**Dernière mise à jour** : 2026-05-14
 **Audience** : moi-future / Claude Code re-démarré / contributeur tiers
 
 Document unique d'orientation. Lecture en 2 minutes → état complet des
@@ -87,6 +87,43 @@ plans en cours. **Mis à jour à chaque fin de sous-livraison.**
 | MC0009 | SuppressMessage sans ADR | warning | 0 |
 
 `WarningsNotAsErrors` côté `MathCursor.Core.csproj` : `MC0001;MC0006` (à retirer au fil du nettoyage).
+
+---
+
+## Chantier 5 — Pipeline d'insertion simplifié (2026-05-14)
+
+**Insight** : la recette minimale `SetRange + TypeText + OMaths.Add + BuildUp + Justification` (validée par bouton debug) couvre 99% des cas d'insertion proprement. Tout le reste (ghost, splice XML, atomic insert, patcher Regex, CaretPositioner) est de l'archi inutile.
+
+### Phases NeighborFinder (extraction méthode UNIQUE de probe voisins)
+
+- [x] **Phase 1+2** — Extraire `NeighborFinder` d'`IntraOMathsMerger`, méthode unique de probe gauche/droite (intra-merge). 0 changement de comportement.
+- [ ] **Phase 3** — Propager les `Neighbor` trouvés dans `CommitContext` (champ `AbsorbedNeighbors`)
+- [ ] **Phase 4** — `InsertOMathAt` utilise les `Neighbor` pour étendre `absStart/absEnd` correctement (fix bug `F(x) commit + =1 commit → F(x)F(x)=1`). Cleanup bookmarks via `Handle`.
+- [ ] **Phase 5** — Ajouter `NeighborFinder.FindAbove(absStart)` pour le ¶ précédent. `MarkerChainCascadeMerger` utilise la même API. **Une seule méthode** de recherche pour intra + cross-merge.
+
+### Cas restants à traiter
+
+- [ ] **Cas « collé à un OMath »** : sera résolu par Phases 3+4 (extension absStart via Neighbor.RangeStart).
+- [ ] **Cas multi-ligne (cross-merge align*, cases)** : Phase 5 + adaptation `MarkerChainCascadeMerger`. La recette `OMaths.Add + BuildUp` native fonctionne ?  À tester. Sinon garder `AtomicRangeInserter` + `OMathStagingService` uniquement pour ce cas spécifique.
+
+### Cleanup post-refacto pipeline (à faire avant fin de session 2026-05-14)
+
+- [x] `InsertOMathAt` réécrit en recette minimale (commit `d5962d0`)
+- [x] `UndoRecordScope` restauré (BuildUp est une opération undo séparée, le wrapper groupe)
+- [x] `om.Justification` setter direct (= retour de `OMaths.Add` qui donne la Range)
+- [ ] **Supprimer code mort** (à faire) :
+  - `Host/OMathStagingService.cs` (~200 lignes)
+  - `Host/Inserters/` (4 fichiers ~400 lignes : PureFastPath, InlineSplice, AtomicRange, WordOMathFinder, InsertContext)
+  - `Host/InlineOMathSplicer.cs` (~250 lignes)
+  - `Host/OMathParaJcPatcher.cs` (~140 lignes, élimine 5 MC0001 Regex)
+  - `Host/Caret/CaretPositioner.cs` + `CaretAfterOMathPolicy.cs`
+  - `Host/CaretPositionCalculator.cs`
+  - `Host/OMathXmlCache.cs` + `ParaXmlPrefetcher.cs` (si plus utilisés)
+  - `BuildInsertContext` + `TryInsertStrategies` dans `SuggestionService`
+  - `EnforceOMathParagraphAlignment` + helpers dans `PostCommitLayoutFinalizer`
+  - Tests associés (`CaretPositionCalculatorTests`, `OMathParaJcPatcherTests`, `InlineOMathSplicerTests`, `InsertTransplantIntegrationTests`, `Perf/InsertPipelinePerfTests`)
+- [ ] `WarmUp` event-driven retiré (plus de ghost à pre-warm)
+- [ ] ADR de bilan : pourquoi la recette minimale a remplacé le pipeline complexe (= snapshot des décisions)
 
 ---
 

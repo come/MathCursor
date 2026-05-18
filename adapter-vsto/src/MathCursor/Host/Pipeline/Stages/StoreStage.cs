@@ -1,33 +1,24 @@
 using System;
-using MathCursor.Core.Resolution;
 using MathCursor.HostContract;
 
 namespace MathCursor.Host.Pipeline.Stages
 {
     /// <summary>
-    /// Stage : persiste la source brute + sidecar JSON dans le
-    /// <c>CustomXMLPart</c> du document via <see cref="IEquationStore"/>.
-    /// En mode édition : update entrée existante. En nouveau commit : crée
-    /// le handle, le bookmark, mémorise le sidecar, et store.
-    /// <para>
-    /// Phase 4b (ADR 06-05 L4) : logique extraite du SuggestionService.
-    /// Le stage prend <see cref="IEquationStore"/> + <see cref="EquationHandleRegistry"/>
-    /// au constructeur — toutes les ops touchent Word indirectement via le
-    /// registry (qui délègue les bookmarks à des Func injectés).
-    /// </para>
+    /// Stage : mémorise le sidecar (pins/votes) en mémoire pour le handle
+    /// courant. La SOURCE et le LATEX vivent maintenant dans le
+    /// <c>cc.Tag</c> JSON de l'OMath (cf. <see cref="MathCursor.Host.CCMeta.MCMeta"/>),
+    /// posé par <c>InsertOMathAt</c>. Plus de <c>CustomXMLPart</c>, plus de
+    /// bookmark — ce stage devient un simple stash in-memory.
+    ///
+    /// <para>Phase B brief 2026-05-18 (probe minimale + backlink natif).</para>
     /// </summary>
     internal sealed class StoreStage : ICommitStage
     {
-        private readonly IEquationStore _store;
         private readonly EquationHandleRegistry _registry;
         private readonly Action<string> _log;
 
-        public StoreStage(
-            IEquationStore store,
-            EquationHandleRegistry registry,
-            Action<string> log = null)
+        public StoreStage(EquationHandleRegistry registry, Action<string> log = null)
         {
-            _store = store ?? throw new ArgumentNullException(nameof(store));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _log = log ?? (_ => { });
         }
@@ -37,42 +28,25 @@ namespace MathCursor.Host.Pipeline.Stages
         public CommitContext Apply(CommitContext ctx)
         {
             if (ctx == null) return null;
-            var editing = ctx.EditingHandle;
 
-            if (editing != null)
+            // Mode édition : sidecar déjà connu via _registry, juste un re-stash
+            // pour s'assurer qu'il est à jour avec les pins post-popup.
+            if (ctx.EditingHandle != null)
             {
-                _log($"edit commit handle={editing.Id} latex=\"{ctx.Latex}\"");
-                _registry.Stash(editing.Id);
-                var json = SidecarSerializer.Serialize(_registry.GetSidecar(editing.Id));
-                try
-                {
-                    _store.StoreAsync(editing, ctx.Source, new EquationMetadata
-                    {
-                        SourceLanguage = "fr",
-                        CreatedAt = DateTimeOffset.UtcNow,
-                        SidecarJson = string.IsNullOrEmpty(json) ? null : json,
-                    }).GetAwaiter().GetResult();
-                }
-                catch (Exception ex) { _log("edit_store_save_error: " + ex.Message); }
+                _log($"edit commit handle={ctx.EditingHandle.Id} latex=\"{ctx.Latex}\"");
+                _registry.Stash(ctx.EditingHandle.Id);
                 return ctx;
             }
 
-            var handle = new EquationHandle(_registry.NewHandleId());
-            _registry.CreateBookmark(handle.Id, ctx.AbsStart, ctx.AbsEnd);
-            _registry.Stash(handle.Id, ctx.Sidecar);
-            var sidecarJson = SidecarSerializer.Serialize(_registry.GetSidecar(handle.Id));
-            try
+            // Nouveau commit : handle généré par InsertOMathAt et posé sur
+            // ctx.NewHandle. On stash le sidecar in-memory.
+            if (ctx.NewHandle != null)
             {
-                _store.StoreAsync(handle, ctx.Source, new EquationMetadata
-                {
-                    SourceLanguage = "fr",
-                    CreatedAt = DateTimeOffset.UtcNow,
-                    SidecarJson = string.IsNullOrEmpty(sidecarJson) ? null : sidecarJson,
-                }).GetAwaiter().GetResult();
+                _registry.Stash(ctx.NewHandle.Id, ctx.Sidecar);
+                _log($"insert commit handle={ctx.NewHandle.Id} range=[{ctx.AbsStart},{ctx.AbsEnd}] latex=\"{ctx.Latex}\" source=\"{ctx.Source}\"");
             }
-            catch (Exception ex) { _log("store_save_error: " + ex.Message); }
-            _log($"insert commit handle={handle.Id} range=[{ctx.AbsStart},{ctx.AbsEnd}] latex=\"{ctx.Latex}\" source=\"{ctx.Source}\" sidecarBytes={(sidecarJson?.Length ?? 0)}");
-            return ctx.WithNewHandle(handle);
+
+            return ctx;
         }
     }
 }

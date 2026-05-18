@@ -67,19 +67,37 @@ namespace MathCursor.Host
                 // fois qu'on aura un cache pré-appel pour éviter de
                 // sérialiser le XML à chaque tick _pollTimer.
                 var rangeText = doc.Range(paraStart, paraEnd).Text ?? "";
-                var omathAbsRegions = new List<(int absStart, int absEnd)>();
+
+                // Pour chaque OMath, calcule sa position ET sa largeur en
+                // chars STRING (pas en positions internes Word — les deux
+                // espaces ne sont PAS alignés à cause des wrappers cachés).
+                // Bug 2026-05-18 : positions internes utilisées comme STRING
+                // → mask trop large qui mange les chars user après l'OMath.
+                var omathStringRegions = new List<(int stringStart, int stringLen)>();
                 try
                 {
                     foreach (Word.OMath om in doc.OMaths)
                     {
                         var r = om.Range;
                         if (r.End <= paraStart || r.Start >= paraEnd) continue;
-                        omathAbsRegions.Add((r.Start, r.End));
+
+                        // Position string = nb de chars du préfixe entre
+                        // paraStart et om.Range.Start (Word fait le mapping).
+                        int stringStart;
+                        int stringLen;
+                        try
+                        {
+                            stringStart = (doc.Range(paraStart, r.Start).Text ?? "").Length;
+                            stringLen = (r.Text ?? "").Length;
+                        }
+                        catch (Exception ex) { LogDiag("omath_string_pos_error: " + ex.Message); continue; }
+
+                        omathStringRegions.Add((stringStart, stringLen));
                     }
                 }
                 catch (Exception ex) { LogDiag("omath_iter_error: " + ex.Message); }
 
-                var (text, regions) = FallbackFromRangeText(rangeText, paraStart, omathAbsRegions);
+                var (text, regions) = MaskOMathsInString(rangeText, omathStringRegions);
 
                 if (regions.Count > 0)
                     LogDiag($"paragraph reconstructed (OMaths={regions.Count}, len={text.Length}) → \"{Preview(text)}\"");
@@ -99,30 +117,30 @@ namespace MathCursor.Host
         }
 
         /// <summary>
-        /// Fallback : reconstruit (text, regions) à partir du Range.Text
-        /// Word (avec ses chars de contrôle internes) + Normalize. Utilisé
-        /// quand le chemin XML échoue ou que l'invariant 1:1 casse.
-        /// Comportement identique au pré-ADR 2026-05-11.
+        /// Reconstruit (text, regions) à partir de <paramref name="rangeText"/> et
+        /// des régions OMath exprimées en <b>positions STRING</b> (pas Word
+        /// internes). Masque chaque région avec des espaces de même longueur
+        /// → préserve l'alignement de positions caret/zones du NER, sans
+        /// masquer accidentellement les chars user après l'OMath.
         /// </summary>
-        private static (string text, IReadOnlyList<(int start, int end)> regions) FallbackFromRangeText(
-            string rangeText, int paraStart, IReadOnlyList<(int absStart, int absEnd)> omathAbsRegions)
+        private static (string text, IReadOnlyList<(int start, int end)> regions) MaskOMathsInString(
+            string rangeText, IReadOnlyList<(int stringStart, int stringLen)> omathStringRegions)
         {
             string normalized = AutocorrectNormalizer.Normalize(rangeText ?? "");
             var regions = new List<(int start, int end)>();
             if (normalized.Length == 0) return (normalized, regions);
 
             var sb = new StringBuilder(normalized);
-            foreach (var (absStart, absEnd) in omathAbsRegions)
+            foreach (var (stringStart, stringLen) in omathStringRegions)
             {
-                int omRelStart = Math.Max(0, absStart - paraStart);
-                int omRelEnd = Math.Min(sb.Length, absEnd - paraStart);
-                int regionLen = omRelEnd - omRelStart;
-                if (regionLen <= 0) continue;
+                int start = Math.Max(0, stringStart);
+                int end = Math.Min(sb.Length, stringStart + stringLen);
+                int len = end - start;
+                if (len <= 0) continue;
 
-                for (int i = 0; i < regionLen; i++)
-                    sb[omRelStart + i] = ' ';
+                for (int i = 0; i < len; i++) sb[start + i] = ' ';
 
-                regions.Add((omRelStart, omRelEnd));
+                regions.Add((start, end));
             }
             return (sb.ToString(), regions);
         }

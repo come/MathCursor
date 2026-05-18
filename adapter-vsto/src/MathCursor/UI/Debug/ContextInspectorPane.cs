@@ -74,7 +74,7 @@ namespace MathCursor.UI.Debug
                 FontFamily = new FontFamily("Segoe UI Semibold"),
                 FontSize = 11,
                 Foreground = new SolidColorBrush(Color.FromRgb(60, 60, 60)),
-                Text = "Caret state (live)",
+                Text = "NER live trace (chaque tick)",
             };
             Grid.SetRow(_caretHeader, 2);
             grid.Children.Add(_caretHeader);
@@ -103,24 +103,43 @@ namespace MathCursor.UI.Debug
         }
 
         /// <summary>
-        /// Met à jour la section caret state. Appelé à chaque WindowSelectionChange.
+        /// DEBUG 2026-05-15 — Commit trace push (NeighborFinder + merger +
+        /// InsertOMathAt). Reçu via <c>SuggestionService.CommitTraced</c>.
+        /// Doit être appelé sur le thread UI.
+        /// </summary>
+        public void SetCommitTrace(string trace)
+        {
+            _status.Text = $"⟳ COMMIT TRACE  |  {DateTime.Now:HH:mm:ss.fff}";
+            _content.Text = trace ?? "(empty)";
+        }
+
+        /// <summary>
+        /// DEBUG 2026-05-18 — NER live trace : ce qui part au modèle de
+        /// détection à chaque tick (paragraphe masqué + cut nerOffset +
+        /// zones détectées). Mis à jour très fréquemment (5 Hz polling).
+        /// </summary>
+        public void SetNerLiveTrace(string trace)
+        {
+            _caretState.Text = trace ?? "";
+        }
+
+        /// <summary>
+        /// DESACTIVÉ 2026-05-15 — affichage caret state désactivé pendant la
+        /// session de debug du chantier d'insertion. La méthode est conservée
+        /// pour ne pas casser les call sites mais devient no-op.
         /// </summary>
         public void UpdateCaretState(CaretStateInfo info)
         {
+            // No-op : on garde l'inspecteur focalisé sur la commit trace.
+            // Décommenter quand on aura fini le chantier d'insertion.
+            /*
             if (info == null) { _caretState.Text = "(null)"; return; }
-
             var sb = new StringBuilder();
             sb.AppendLine($"Sel: [{info.SelStart}, {info.SelEnd})  OMaths={info.SelOMathsCount}");
-
             if (info.ParaStart >= 0)
-            {
                 sb.AppendLine($"¶: [{info.ParaStart}, {info.ParaEnd})  \"{info.ParaTextPreview}\"");
-            }
             else
-            {
                 sb.AppendLine("¶: (non lu)");
-            }
-
             if (info.InTable)
             {
                 sb.Append("Table: ");
@@ -131,15 +150,11 @@ namespace MathCursor.UI.Debug
                 sb.AppendLine();
             }
             else
-            {
                 sb.AppendLine("Table: (no)");
-            }
-
             if (info.OMathStart.HasValue && info.OMathEnd.HasValue)
                 sb.AppendLine($"OMath englobante: [{info.OMathStart}, {info.OMathEnd})  ← caret DANS l'OMath");
             else
                 sb.AppendLine("OMath englobante: (caret hors OMath)");
-
             if (info.Siblings != null && info.Siblings.Count > 0)
             {
                 sb.AppendLine($"Siblings (¶ children) :");
@@ -152,56 +167,46 @@ namespace MathCursor.UI.Debug
                     i++;
                 }
             }
-
             if (!string.IsNullOrEmpty(info.ErrorMessage))
                 sb.AppendLine($"⚠ {info.ErrorMessage}");
-
             _caretState.Text = sb.ToString();
+            */
         }
 
         /// <summary>
-        /// Reformatte le pane avec un nouveau contexte/hints. À appeler sur
-        /// le thread UI (l'appelant doit Dispatcher.Invoke si besoin).
+        /// DESACTIVÉ 2026-05-15 — affichage resolver/sidecar/hints désactivé
+        /// pendant la session de debug du chantier d'insertion. Conservé
+        /// no-op pour ne pas casser <c>ThisAddIn.OnContextResolvedForInspector</c>.
+        /// L'inspecteur n'affiche que la commit trace via <see cref="SetCommitTrace"/>.
         /// </summary>
         public void Update(string rawSource, ContextSnapshot snapshot, ScoringHints hints, ResolvedZone resolved)
         {
+            // No-op pendant le chantier d'insertion. Décommenter pour
+            // restaurer l'affichage scoring/hints/sidecar.
+            /*
             _status.Text = $"⟳ {DateTime.Now:HH:mm:ss.fff}  |  source: \"{Truncate(rawSource, 40)}\"";
-
             var sb = new StringBuilder();
-
             sb.AppendLine("=== Raw source ===");
             sb.AppendLine(rawSource ?? "<null>");
             sb.AppendLine();
-
-            // Résultat effectif de la résolution. C'est la vérité terrain :
-            // le scoring contextuel (Hints ci-dessous) ne sert à rien si
-            // aucune AmbiguityMatch ne correspond aux hints émis.
             if (resolved != null)
             {
                 sb.AppendLine("=== Top LaTeX (rendu final post-splice) ===");
                 sb.AppendLine(resolved.TopLatex ?? "<null>");
                 sb.AppendLine($"IsIncomplete: {resolved.IsIncomplete}");
                 sb.AppendLine();
-
                 sb.AppendLine($"=== Ambiguïtés détectées sur cette zone : {resolved.AllMatches.Count} ===");
                 if (resolved.AllMatches.Count == 0)
-                {
                     sb.AppendLine("  (aucune ambig détectée — rule jamais activée sur ce rawSource)");
-                }
                 else
-                {
                     foreach (var m in resolved.AllMatches)
-                    {
                         sb.AppendLine($"  • [{m.Start}..{m.End}) rule={m.Spot.RuleId} default=\"{m.Spot.DefaultLatex}\" alts={m.Spot.Alternatives.Count}");
-                    }
-                }
                 if (resolved.Spot != null)
                     sb.AppendLine($"Spot rightmost (popup va s'ouvrir) : rule={resolved.Spot.RuleId}");
                 else
                     sb.AppendLine("Spot rightmost : (none — pas de popup d'ambig)");
                 sb.AppendLine();
             }
-
             if (snapshot != null)
             {
                 sb.AppendLine($"=== Sidecar (zone OMath en cours) ===");
@@ -213,21 +218,18 @@ namespace MathCursor.UI.Debug
                     foreach (var av in rv.Value)
                         sb.AppendLine($"  • {rv.Key}:{av.Key} = {av.Value}");
                 sb.AppendLine();
-
                 sb.AppendLine($"=== Historique ¶ courant (L2) ===");
                 sb.AppendLine($"Pins ¶            : {snapshot.RecentParagraphPins.Count}");
                 foreach (var p in snapshot.RecentParagraphPins)
                     sb.AppendLine($"  • rule={p.Rule} alt={p.AltIdx}");
                 sb.AppendLine();
             }
-
             if (hints != null && hints.AltScores.Count > 0)
             {
                 sb.AppendLine("=== Scoring hints (alts triées par score décroissant) ===");
                 foreach (var kv in hints.AltScores.OrderByDescending(kv => kv.Value))
                     sb.AppendLine($"  {kv.Value,7:F3}   {kv.Key}");
                 sb.AppendLine();
-
                 sb.AppendLine($"=== Trace ({hints.Trace.Count} contributions) ===");
                 foreach (var line in hints.Trace)
                     sb.AppendLine($"  {line}");
@@ -237,8 +239,8 @@ namespace MathCursor.UI.Debug
                 sb.AppendLine("=== Scoring hints ===");
                 sb.AppendLine("(aucun hint — contexte vide ou aucun signal applicable)");
             }
-
             _content.Text = sb.ToString();
+            */
         }
 
         private static string Truncate(string s, int max)

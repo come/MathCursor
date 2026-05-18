@@ -339,27 +339,23 @@ namespace MathCursor
                 sel.TypeText(unicodeMath);
                 int afterEnd = sel.Start;
 
-                // 2. OMaths.Add + BuildUp.
+                // 2. OMaths.Add retourne la Range de la nouvelle OMath.
                 var mathRange = doc.Range(srcStart, afterEnd);
-                mathRange.OMaths.Add(mathRange);
-                mathRange.OMaths.BuildUp();
+                var addedRange = mathRange.OMaths.Add(mathRange);
+                addedRange.OMaths.BuildUp();
 
-                // 3. Aligne à gauche (silencieux si OMath inline).
-                try
+                // 3. Récupère l'OMath via la range et aligne (silencieux).
+                // TODO nettoyer : foreach + break pour récupérer le seul
+                // élément (équivalent Item[1] mais tolérant aux collections
+                // paresseuses Word).
+                Microsoft.Office.Interop.Word.OMath om = null;
+                foreach (Microsoft.Office.Interop.Word.OMath o in addedRange.OMaths) { om = o; break; }
+                if (om != null)
                 {
-                    foreach (Microsoft.Office.Interop.Word.OMath o in doc.OMaths)
-                    {
-                        if (o.Range.Start <= srcStart && o.Range.End >= srcStart)
-                        {
-                            try { o.Justification = Microsoft.Office.Interop.Word.WdOMathJc.wdOMathJcLeft; }
-                            catch (Exception exJ) { LogDebug("debug_replace.justification_error: " + exJ.Message); }
-                            break;
-                        }
-                    }
+                    try { om.Justification = Microsoft.Office.Interop.Word.WdOMathJc.wdOMathJcLeft; }
+                    catch (Exception exJ) { LogDebug("debug_replace.justification_error: " + exJ.Message); }
+                    LogDebug($"debug_replace: om.Range=[{om.Range.Start},{om.Range.End}] sel.Start={sel.Start}");
                 }
-                catch (Exception exF) { LogDebug("debug_replace.foreach_omaths_error: " + exF.Message); }
-
-                LogDebug($"debug_replace: END sel.Start={sel.Start}");
             }
             catch (Exception ex)
             {
@@ -369,6 +365,507 @@ namespace MathCursor
                     "MathCursor — Debug",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// POC Phase A (brief 2026-05-18) — Wrap l'OMath collée au caret
+        /// dans un ContentControl Hidden avec Title="MathCursor" + Tag JSON.
+        /// Sert à valider :
+        ///  - Création du CC sur une OMath existante (pas de COMException)
+        ///  - Tag JSON sérialisé correctement
+        ///  - Hidden = invisible visuellement dans le doc
+        ///  - Backlink <c>om.Range.ParentContentControl</c> trouve le CC
+        ///  - Hash OMML calculé sur le WordOpenXML stable
+        ///
+        /// Probe locale : <c>doc.Range(caret-1, caret).OMaths</c> au lieu
+        /// de scanner doc.OMaths complet.
+        /// </summary>
+        public void OnDebugWrapOMathInCCClicked(IRibbonControl control)
+        {
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null) return;
+                var doc = app.ActiveDocument;
+                if (doc == null) return;
+                var sel = app.Selection;
+                if (sel == null) return;
+
+                int caret = sel.Range.Start;
+                if (caret <= 0)
+                {
+                    Globals.ThisAddIn.PushDebugTrace("POC wrap CC — caret en début de doc, pas d'OMath avant.");
+                    return;
+                }
+
+                // Probe locale (brief §1) : OMath collée juste avant le caret.
+                var probe = doc.Range(caret - 1, caret);
+                if (probe.OMaths.Count == 0)
+                {
+                    Globals.ThisAddIn.PushDebugTrace($"POC wrap CC — pas d'OMath collée au caret (probe [caret-1, caret]).\ncaret = {caret}");
+                    return;
+                }
+
+                Microsoft.Office.Interop.Word.OMath om = null;
+                foreach (Microsoft.Office.Interop.Word.OMath o in probe.OMaths) { om = o; break; }
+                if (om == null) return;
+
+                // Anti-duplicate : déjà wrappée → no-op.
+                if (om.Range.ParentContentControl?.Title == MathCursor.Host.CCMeta.MCMetaJson.CcTitle) return;
+
+                // 1. Wrap d'abord (le wrap modifie l'OOXML — ajoute <w:sdt>).
+                var cc = om.Range.ContentControls.Add(
+                    Microsoft.Office.Interop.Word.WdContentControlType.wdContentControlRichText);
+                cc.Title = MathCursor.Host.CCMeta.MCMetaJson.CcTitle;
+                try { cc.Appearance = Microsoft.Office.Interop.Word.WdContentControlAppearance.wdContentControlHidden; }
+                catch (Exception exApp) { LogDebug("poc_wrap.appearance_error: " + exApp.Message); }
+                try { cc.LockContentControl = false; } catch { }
+                try { cc.LockContents = false; } catch { }
+
+                // 2. Hash APRÈS wrap : sinon store-hash et read-hash diffèrent
+                //    toujours (le wrap lui-même change l'OOXML lu via
+                //    om.Range.WordOpenXML) → stale=True systématique.
+                string hash = MathCursor.Host.CCMeta.Sha1Helper.Compute(om.Range.WordOpenXML ?? "");
+
+                // 3. Construit + sérialise la métadonnée + assigne le Tag.
+                var meta = new MathCursor.Host.CCMeta.MCMeta
+                {
+                    V = 1,
+                    Steno = "(POC — wrapped from existing OMath)",
+                    Latex = "(POC)",
+                    Version = typeof(RibbonCallback).Assembly.GetName().Version?.ToString() ?? "0",
+                    OmmlHash = hash,
+                    ParsedAt = DateTime.UtcNow,
+                };
+                string tag = MathCursor.Host.CCMeta.MCMetaJson.Serialize(meta);
+                cc.Tag = tag;
+
+                LogDebug($"poc_wrap: om=[{om.Range.Start},{om.Range.End}] cc.Range=[{cc.Range.Start},{cc.Range.End}] tag_len={tag.Length} hash={hash.Substring(0, 8)}…");
+
+                Globals.ThisAddIn.PushDebugTrace(
+                    $"=== POC wrap CC — OK ===\n"
+                    + $"om.Range  = [{om.Range.Start}, {om.Range.End})\n"
+                    + $"cc.Range  = [{cc.Range.Start}, {cc.Range.End})\n"
+                    + $"Title     = {cc.Title}\n"
+                    + $"Appearance = {cc.Appearance}\n"
+                    + $"Tag JSON ({tag.Length} chars):\n{tag}");
+            }
+            catch (Exception ex)
+            {
+                LogDebug("poc_wrap_error: " + ex.Message);
+                Globals.ThisAddIn.PushDebugTrace("=== POC wrap CC — ERROR ===\n" + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// POC Phase A — Lit le CC parent de l'OMath collée au caret et
+        /// affiche son contenu (Title + Tag JSON parsé + détection stale
+        /// via hash). Valide le backlink natif O(1).
+        /// </summary>
+        public void OnDebugReadCCAtCaretClicked(IRibbonControl control)
+        {
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null) return;
+                var doc = app.ActiveDocument;
+                if (doc == null) return;
+                var sel = app.Selection;
+                if (sel == null) return;
+
+                int caret = sel.Range.Start;
+                int docEnd = doc.Content.End;
+
+                // Cascade de probes, plus large que l'insertion (qui exige
+                // l'OMath collée pile derrière le caret) :
+                //   1. sel.OMaths       — caret strictement DANS une OMath
+                //   2. [caret-1, caret) — collée juste derrière (cas standard)
+                //   3. [caret, caret+1) — collée juste devant
+                //   4. [caret-5, caret+5) — fenêtre 10 chars autour
+                //   5. para.OMaths      — n'importe où dans le ¶ courant
+                Microsoft.Office.Interop.Word.OMath om = null;
+                string hitFrom = null;
+                try
+                {
+                    if (sel.OMaths != null && sel.OMaths.Count > 0)
+                    {
+                        foreach (Microsoft.Office.Interop.Word.OMath o in sel.OMaths) { om = o; hitFrom = "sel.OMaths"; break; }
+                    }
+                }
+                catch { }
+                if (om == null && caret > 0)
+                {
+                    try
+                    {
+                        var p = doc.Range(caret - 1, caret);
+                        foreach (Microsoft.Office.Interop.Word.OMath o in p.OMaths) { om = o; hitFrom = "[caret-1,caret)"; break; }
+                    }
+                    catch { }
+                }
+                if (om == null && caret < docEnd)
+                {
+                    try
+                    {
+                        var p = doc.Range(caret, Math.Min(caret + 1, docEnd));
+                        foreach (Microsoft.Office.Interop.Word.OMath o in p.OMaths) { om = o; hitFrom = "[caret,caret+1)"; break; }
+                    }
+                    catch { }
+                }
+                if (om == null)
+                {
+                    try
+                    {
+                        int lo = Math.Max(0, caret - 5);
+                        int hi = Math.Min(docEnd, caret + 5);
+                        var p = doc.Range(lo, hi);
+                        foreach (Microsoft.Office.Interop.Word.OMath o in p.OMaths) { om = o; hitFrom = $"[{lo},{hi}) ±5"; break; }
+                    }
+                    catch { }
+                }
+                if (om == null)
+                {
+                    try
+                    {
+                        var paraRange = sel.Paragraphs[1].Range;
+                        foreach (Microsoft.Office.Interop.Word.OMath o in paraRange.OMaths) { om = o; hitFrom = "para.OMaths"; break; }
+                    }
+                    catch { }
+                }
+                if (om == null)
+                {
+                    Globals.ThisAddIn.PushDebugTrace(
+                        $"=== POC read CC — no OMath ===\n"
+                        + $"Aucune OMath trouvée autour du caret (cascade : sel, ±1, ±5, ¶ courant).\n"
+                        + $"caret = {caret}");
+                    return;
+                }
+
+                // Backlink natif principal : depuis la range de l'OMath.
+                var cc = om.Range.ParentContentControl;
+                string ccFrom = "om.Range.ParentContentControl";
+
+                // Fallbacks : tester ParentContentControl sur des positions
+                // alternatives (= différentes Range collapsées) au cas où
+                // Word ne remonte pas le CC depuis la range exacte de l'OMath.
+                if (cc == null)
+                {
+                    int mid = (om.Range.Start + om.Range.End) / 2;
+                    int[] probes = {
+                        om.Range.Start,
+                        om.Range.Start + 1,
+                        om.Range.End - 1,
+                        caret,
+                        mid,
+                    };
+                    foreach (var p in probes)
+                    {
+                        if (p < 0 || p > docEnd) continue;
+                        try
+                        {
+                            var c = doc.Range(p, p).ParentContentControl;
+                            if (c != null) { cc = c; ccFrom = $"doc.Range({p},{p}).ParentContentControl"; break; }
+                        }
+                        catch { }
+                    }
+                }
+
+                // Probe inverse : CCs CONTENUES dans la range de l'OMath
+                // (cas où om.Range est plus large que cc.Range — display
+                // math avec CC en sub-anchor). Pas un backlink natif mais
+                // local à la range, pas un scan doc complet.
+                if (cc == null)
+                {
+                    try
+                    {
+                        foreach (Microsoft.Office.Interop.Word.ContentControl c in om.Range.ContentControls)
+                        {
+                            if (c.Title == MathCursor.Host.CCMeta.MCMetaJson.CcTitle)
+                            {
+                                cc = c;
+                                ccFrom = "om.Range.ContentControls (inverse probe)";
+                                break;
+                            }
+                        }
+                    }
+                    catch { }
+                }
+
+                if (cc == null)
+                {
+                    var sb = new System.Text.StringBuilder();
+                    sb.AppendLine("=== POC read CC — backlink NULL ===");
+                    sb.AppendLine($"OMath trouvée à [{om.Range.Start}, {om.Range.End}) via probe « {hitFrom} ».");
+                    sb.AppendLine("Backlink ParentContentControl : NULL sur toutes les variantes :");
+                    sb.AppendLine("  - om.Range.ParentContentControl");
+                    sb.AppendLine("  - doc.Range(omStart, omStart).ParentContentControl");
+                    sb.AppendLine("  - doc.Range(omStart+1, omStart+1).ParentContentControl");
+                    sb.AppendLine("  - doc.Range(omEnd-1, omEnd-1).ParentContentControl");
+                    sb.AppendLine("  - doc.Range(caret, caret).ParentContentControl");
+                    sb.AppendLine();
+                    sb.AppendLine("Sanity-check — CCs MathCursor dans le doc :");
+                    int total = 0, mc = 0;
+                    try
+                    {
+                        foreach (Microsoft.Office.Interop.Word.ContentControl c in doc.ContentControls)
+                        {
+                            total++;
+                            if (c.Title == MathCursor.Host.CCMeta.MCMetaJson.CcTitle)
+                            {
+                                mc++;
+                                sb.AppendLine($"  • cc.Range=[{c.Range.Start},{c.Range.End}) Title={c.Title} Tag.Length={c.Tag?.Length ?? 0}");
+                            }
+                        }
+                    }
+                    catch (Exception exEnum) { sb.AppendLine("  (énum failed: " + exEnum.Message + ")"); }
+                    sb.AppendLine();
+                    sb.AppendLine($"Total CCs={total}, dont MathCursor={mc}.");
+                    sb.AppendLine($"caret={caret}, om.Range=[{om.Range.Start},{om.Range.End})");
+
+                    LogDebug($"poc_read.no_backlink: om=[{om.Range.Start},{om.Range.End}) total_ccs={total} mc={mc}");
+                    Globals.ThisAddIn.PushDebugTrace(sb.ToString());
+                    return;
+                }
+
+                if (cc.Title != MathCursor.Host.CCMeta.MCMetaJson.CcTitle)
+                {
+                    Globals.ThisAddIn.PushDebugTrace(
+                        $"=== POC read CC — wrong Title ===\n"
+                        + $"CC trouvé mais Title=\"{cc.Title}\" (≠ MathCursor) → pas à nous.");
+                    return;
+                }
+
+                var meta = MathCursor.Host.CCMeta.MCMetaJson.TryParse(cc.Tag);
+                string currentHash = MathCursor.Host.CCMeta.Sha1Helper.Compute(om.Range.WordOpenXML ?? "");
+                bool stale = meta != null && !string.Equals(meta.OmmlHash, currentHash, StringComparison.Ordinal);
+
+                string msg = $"=== POC read CC — OK ===\n"
+                    + $"Backlink OK via probe OMath « {hitFrom} » + backlink CC « {ccFrom} ».\n"
+                    + $"om.Range = [{om.Range.Start}, {om.Range.End})\n"
+                    + $"cc.Range = [{cc.Range.Start}, {cc.Range.End})\n"
+                    + $"Title    = {cc.Title}\n";
+                if (meta != null)
+                {
+                    msg += $"v        = {meta.V}\n"
+                        + $"steno    = {meta.Steno}\n"
+                        + $"latex    = {meta.Latex}\n"
+                        + $"version  = {meta.Version}\n"
+                        + $"omml_hash stored  = {meta.OmmlHash?.Substring(0, Math.Min(8, meta.OmmlHash?.Length ?? 0))}…\n"
+                        + $"omml_hash current = {currentHash.Substring(0, 8)}…\n"
+                        + $"stale (user a édité) = {stale}\n"
+                        + $"parsedAt = {meta.ParsedAt:o}\n";
+                }
+                else { msg += "Tag JSON non parseable :\n" + cc.Tag; }
+
+                LogDebug($"poc_read: cc.Range=[{cc.Range.Start},{cc.Range.End}] stale={stale}");
+                Globals.ThisAddIn.PushDebugTrace(msg);
+            }
+            catch (Exception ex)
+            {
+                LogDebug("poc_read_error: " + ex.Message);
+                Globals.ThisAddIn.PushDebugTrace("=== POC read CC — ERROR ===\n" + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// POC Phase A — Insère <c>g(x)=2</c> au caret en OMath ET enveloppe
+        /// dans un CC MathCursor avec Tag JSON. Simule le full flow que
+        /// <c>InsertOMathAt</c> aura en Phase B/C.
+        ///
+        /// <para>Order tenté ici (« CC first ») : TypeText → CC wrap sur le
+        /// texte plat → OMaths.Add + BuildUp à l'intérieur du CC →
+        /// Justification → hash post-wrap → Tag final. Théorie : faire le CC
+        /// AVANT BuildUp évite que Word laisse le caret « catché » dans la
+        /// zone math au moment du wrap (le wrap se fait sur du plain text
+        /// donc Word ne place pas le caret en math context).</para>
+        /// </summary>
+        public void OnDebugInsertWrappedOMathClicked(IRibbonControl control)
+        {
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null) return;
+                var doc = app.ActiveDocument;
+                if (doc == null) return;
+                var sel = app.Selection;
+                if (sel == null) return;
+
+                int insertPos = sel.Start;
+                string unicodeMath = MathCursor.Core.LatexToUnicodeMath.Convert("g(x)=2");
+
+                int caretAfterStep1 = -1, caretAfterStep2 = -1;
+                int caretAfterStep3 = -1, caretAfterStep4 = -1;
+                Microsoft.Office.Interop.Word.OMath om = null;
+                Microsoft.Office.Interop.Word.ContentControl cc = null;
+                string hash = null;
+                string tag = null;
+
+                // Tout grouper en 1 seule entrée d'undo nommée. Sans ça,
+                // BuildUp + CC + TypeText génèrent 3-4 entrées séparées et
+                // l'utilisateur doit Ctrl+Z plusieurs fois pour défaire son
+                // commit. Évite aussi la désynchro CC/formule en cas d'undo
+                // partiel (cc orphelin ou formule sans cc).
+                using (var _undo = new MathCursor.Host.UndoRecordScope(app, "Insert g(x)=2 wrappé"))
+                {
+                    // 1. Type "g(x)=2" au caret.
+                    sel.TypeText(unicodeMath);
+                    int afterTypeText = sel.Start;
+                    caretAfterStep1 = sel.Start;
+
+                    // 2. CC d'abord sur la range plain text.
+                    var typedRange = doc.Range(insertPos, afterTypeText);
+                    cc = typedRange.ContentControls.Add(
+                        Microsoft.Office.Interop.Word.WdContentControlType.wdContentControlRichText);
+                    cc.Title = MathCursor.Host.CCMeta.MCMetaJson.CcTitle;
+                    try { cc.Appearance = Microsoft.Office.Interop.Word.WdContentControlAppearance.wdContentControlHidden; }
+                    catch (Exception exApp) { LogDebug("poc_insert_wrap.appearance_error: " + exApp.Message); }
+                    try { cc.LockContentControl = false; } catch { }
+                    try { cc.LockContents = false; } catch { }
+                    caretAfterStep2 = sel.Start;
+
+                    // 3. OMaths.Add + BuildUp sur la range INTERNE du CC.
+                    var innerRange = cc.Range;
+                    var addedRange = innerRange.OMaths.Add(innerRange);
+                    addedRange.OMaths.BuildUp();
+                    caretAfterStep3 = sel.Start;
+
+                    foreach (Microsoft.Office.Interop.Word.OMath o in addedRange.OMaths) { om = o; break; }
+                    if (om == null)
+                    {
+                        Globals.ThisAddIn.PushDebugTrace("=== POC insert+wrap (CC first) — addedRange.OMaths empty ===");
+                        return;
+                    }
+
+                    try { om.Justification = Microsoft.Office.Interop.Word.WdOMathJc.wdOMathJcLeft; }
+                    catch (Exception exJ) { LogDebug("poc_insert_wrap.justification_error: " + exJ.Message); }
+                    caretAfterStep4 = sel.Start;
+
+                    // 4. Hash APRÈS wrap pour stable store/read.
+                    hash = MathCursor.Host.CCMeta.Sha1Helper.Compute(om.Range.WordOpenXML ?? "");
+
+                    // 5. Tag JSON final.
+                    var meta = new MathCursor.Host.CCMeta.MCMeta
+                    {
+                        V = 1,
+                        Steno = "g x = 2",
+                        Latex = "g(x)=2",
+                        Version = typeof(RibbonCallback).Assembly.GetName().Version?.ToString() ?? "0",
+                        OmmlHash = hash,
+                        ParsedAt = DateTime.UtcNow,
+                    };
+                    tag = MathCursor.Host.CCMeta.MCMetaJson.Serialize(meta);
+                    cc.Tag = tag;
+
+                    // Sort le caret de la sticky-zone du CC pour que la
+                    // prochaine frappe user ne soit pas absorbée.
+                    MathCursor.Host.CCMeta.CcSticky.EscapeCaretAfter(app, cc);
+                }
+                // Sortie du using → l'entrée d'undo « Insert g(x)=2 wrappé »
+                // est close. 1 Ctrl+Z défait l'ensemble.
+
+                LogDebug($"poc_insert_wrap (CC first): om=[{om.Range.Start},{om.Range.End}] cc=[{cc.Range.Start},{cc.Range.End}] hash={hash.Substring(0, 8)}");
+
+                Globals.ThisAddIn.PushDebugTrace(
+                    $"=== POC insert+wrap g(x)=2 (CC first, undo grouped) — OK ===\n"
+                    + $"insertPos    = {insertPos}\n"
+                    + $"unicodeMath  = \"{unicodeMath}\" ({unicodeMath.Length} chars)\n"
+                    + $"\n"
+                    + $"Caret tracking par étape :\n"
+                    + $"  step 1 (post TypeText)     : {caretAfterStep1}\n"
+                    + $"  step 2 (post CC wrap)      : {caretAfterStep2}\n"
+                    + $"  step 3 (post BuildUp)      : {caretAfterStep3}\n"
+                    + $"  step 4 (post Justification): {caretAfterStep4}\n"
+                    + $"  final sel.Start            : {sel.Start}\n"
+                    + $"\n"
+                    + $"om.Range  = [{om.Range.Start}, {om.Range.End})\n"
+                    + $"cc.Range  = [{cc.Range.Start}, {cc.Range.End})\n"
+                    + $"Title     = {cc.Title}\n"
+                    + $"Appearance = {cc.Appearance}\n"
+                    + $"hash      = {hash.Substring(0, 12)}…\n"
+                    + $"\nTag JSON ({tag.Length} chars):\n{tag}");
+            }
+            catch (Exception ex)
+            {
+                LogDebug("poc_insert_wrap_error: " + ex.Message);
+                Globals.ThisAddIn.PushDebugTrace("=== POC insert+wrap (CC first) — ERROR ===\n" + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// POC diagnostic — scanne <c>doc.ContentControls</c>, identifie les
+        /// CCs MathCursor SANS OMath dedans (= orphelins fantômes laissés par
+        /// Word après certaines suppressions). Affiche le diag dans le pane
+        /// puis supprime les orphelins.
+        /// </summary>
+        public void OnDebugCleanupOrphanCCsClicked(IRibbonControl control)
+        {
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null) return;
+                var doc = app.ActiveDocument;
+                if (doc == null) return;
+
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("=== POC cleanup orphan CCs ===");
+
+                // Collecte d'abord, supprime ensuite : éviter de muter la
+                // collection pendant l'itération (Word interop est fragile).
+                var orphans = new System.Collections.Generic.List<Microsoft.Office.Interop.Word.ContentControl>();
+                var alive = new System.Collections.Generic.List<Microsoft.Office.Interop.Word.ContentControl>();
+                int total = 0;
+                foreach (Microsoft.Office.Interop.Word.ContentControl c in doc.ContentControls)
+                {
+                    total++;
+                    if (c.Title != MathCursor.Host.CCMeta.MCMetaJson.CcTitle) continue;
+                    int omCount = 0;
+                    try { omCount = c.Range.OMaths.Count; } catch { }
+                    if (omCount == 0) orphans.Add(c);
+                    else alive.Add(c);
+                }
+
+                sb.AppendLine($"Total CCs={total}, MathCursor alive={alive.Count}, orphans={orphans.Count}");
+                sb.AppendLine();
+
+                if (alive.Count > 0)
+                {
+                    sb.AppendLine("CCs avec OMath (sains) :");
+                    foreach (var c in alive)
+                    {
+                        sb.AppendLine($"  • cc.Range=[{c.Range.Start},{c.Range.End}) OMaths={c.Range.OMaths.Count}");
+                    }
+                    sb.AppendLine();
+                }
+
+                if (orphans.Count > 0)
+                {
+                    sb.AppendLine("CCs ORPHELINS (à supprimer) :");
+                    foreach (var c in orphans)
+                    {
+                        sb.AppendLine($"  • cc.Range=[{c.Range.Start},{c.Range.End}) Tag.Length={c.Tag?.Length ?? 0}");
+                    }
+                    sb.AppendLine();
+
+                    int deleted = 0;
+                    foreach (var c in orphans)
+                    {
+                        try { c.Delete(false); deleted++; } // false = supprime wrapper seul
+                        catch (Exception ex) { sb.AppendLine($"  ERROR cc.Delete: {ex.Message}"); }
+                    }
+                    sb.AppendLine($"→ {deleted} orphelin(s) supprimé(s).");
+                }
+                else
+                {
+                    sb.AppendLine("Aucun orphelin trouvé.");
+                }
+
+                LogDebug($"poc_cleanup: total={total} alive={alive.Count} orphans={orphans.Count}");
+                Globals.ThisAddIn.PushDebugTrace(sb.ToString());
+            }
+            catch (Exception ex)
+            {
+                LogDebug("poc_cleanup_error: " + ex.Message);
+                Globals.ThisAddIn.PushDebugTrace("=== POC cleanup — ERROR ===\n" + ex.Message);
             }
         }
 
@@ -397,29 +894,21 @@ namespace MathCursor
                 // 1. Type "f(x)=1" à la position du caret.
                 sel.TypeText("f(x)=1");
 
-                // 2. Convertit la range typed en OMath via le pipeline Word natif.
+                // 2. OMaths.Add retourne la Range de la nouvelle OMath.
                 int afterTypedEnd = insertPos + 6;
                 var typedRange = doc.Range(insertPos, afterTypedEnd);
-                typedRange.OMaths.Add(typedRange);
-                typedRange.OMaths.BuildUp();
+                var addedRange = typedRange.OMaths.Add(typedRange);
+                addedRange.OMaths.BuildUp();
 
-                // 3. Retrouve l'OMath fraîchement créée pour logger sa range
-                //    (= observer où Word l'a effectivement insérée).
+                // 3. Récupère l'OMath via la range et aligne (silencieux).
+                // TODO nettoyer : foreach + break pour récupérer le seul
+                // élément (équivalent Item[1] mais tolérant aux collections
+                // paresseuses Word).
                 Microsoft.Office.Interop.Word.OMath om = null;
-                foreach (Microsoft.Office.Interop.Word.OMath o in doc.OMaths)
-                {
-                    if (o.Range.Start >= insertPos && o.Range.End <= afterTypedEnd + 30)
-                    { om = o; break; }
-                }
+                foreach (Microsoft.Office.Interop.Word.OMath o in addedRange.OMaths) { om = o; break; }
                 if (om != null)
                 {
-                    LogDebug($"debug_insert: om.Range=[{om.Range.Start},{om.Range.End}] (caret laissé où Word le place naturellement)");
-
-                    // 4. Alignement gauche via om.Justification setter direct.
-                    //    Marche sur les oMathPara display. Jette « Impossible
-                    //    de définir l'alignement » sur les OMath inline →
-                    //    try/catch silencieux, on accepte l'échec pour les
-                    //    inline (où la propriété n'est pas applicable).
+                    LogDebug($"debug_insert: om.Range=[{om.Range.Start},{om.Range.End}]");
                     try
                     {
                         om.Justification = Microsoft.Office.Interop.Word.WdOMathJc.wdOMathJcLeft;
@@ -430,20 +919,8 @@ namespace MathCursor
                         LogDebug("debug_insert.align_justification_error: " + exAlign.Message);
                     }
                 }
-                else
-                {
-                    LogDebug("debug_insert: OMath not found post-BuildUp");
-                }
 
-                // 4. Positionnement du caret — DÉSACTIVÉ pour observer où
-                //    Word laisse le caret naturellement après OMaths.Add +
-                //    BuildUp, sans qu'on touche au Selection.
-                // if (om != null)
-                // {
-                //     int caretTarget = Math.Min(om.Range.End + 1, doc.Content.End);
-                //     try { sel.SetRange(caretTarget, caretTarget); }
-                //     catch (Exception exSet) { LogDebug("debug_insert.setrange_error: " + exSet.Message); }
-                // }
+                // 4. Pas de SetRange — Word place le caret naturellement.
             }
             catch (Exception ex)
             {

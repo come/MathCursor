@@ -1,6 +1,6 @@
 using System;
 using MathCursor.Core.Resolution;
-using MathCursor.Host.Bookmarks;
+using MathCursor.Host.CCMeta;
 using MathCursor.HostContract;
 using MathCursor.UI;
 using Word = Microsoft.Office.Interop.Word;
@@ -11,7 +11,7 @@ namespace MathCursor.Host.EditMode
     /// Bounded context "édition d'une équation existante" (DDD).
     ///
     /// <para>Pilote le cycle complet quand le caret atterrit sur l'une de
-    /// NOS OMaths (identifiée par bookmark <c>mcEq_*</c>) :</para>
+    /// NOS OMaths (identifiée par CC MathCursor + cc.Tag MCMeta) :</para>
     /// <list type="number">
     /// <item>Détection au polling : <see cref="Sync"/> est appelé à chaque
     /// tick. Ouvre la popup edit si le caret est sur une OMath à nous,
@@ -19,18 +19,15 @@ namespace MathCursor.Host.EditMode
     /// <item>Garde "déjà géré" : <see cref="_editingOMathStart"/> empêche
     /// le respawn de la popup tant que le caret reste sur la même OMath.</item>
     /// <item>Action revert : <see cref="OnRevertRequested"/> remplace
-    /// l'OMath par la source brute (avec ré-injection sidecar), supprime
-    /// le store entry et délète le bookmark.</item>
+    /// l'OMath par la source brute (lue depuis cc.Tag).</item>
     /// </list>
     ///
-    /// <para>P2.10 du refactor archi (continuité ADR
-    /// <c>2026-05-12-Refactor-pure-merger-atomic-insert</c>).</para>
+    /// <para>Phase B (2026-05-18) : identification + source via CC.Tag
+    /// au lieu de bookmark + IEquationStore.</para>
     /// </summary>
     internal sealed class EditModeController
     {
         private readonly Word.Application _app;
-        private readonly IEquationStore _store;
-        private readonly EquationBookmarkRegistry _bookmarks;
         private readonly EquationHandleRegistry _handleRegistry;
         private readonly Action _hideSuggestionPopup;
         private readonly Func<(double x, double y)> _getCaretScreenPos;
@@ -57,16 +54,12 @@ namespace MathCursor.Host.EditMode
 
         public EditModeController(
             Word.Application app,
-            IEquationStore store,
-            EquationBookmarkRegistry bookmarks,
             EquationHandleRegistry handleRegistry,
             Action hideSuggestionPopup,
             Func<(double x, double y)> getCaretScreenPos,
             Action<string> log)
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
-            _store = store ?? throw new ArgumentNullException(nameof(store));
-            _bookmarks = bookmarks ?? throw new ArgumentNullException(nameof(bookmarks));
             _handleRegistry = handleRegistry ?? throw new ArgumentNullException(nameof(handleRegistry));
             _hideSuggestionPopup = hideSuggestionPopup ?? (() => { });
             _getCaretScreenPos = getCaretScreenPos ?? throw new ArgumentNullException(nameof(getCaretScreenPos));
@@ -121,11 +114,11 @@ namespace MathCursor.Host.EditMode
 
         private bool TryEnter(Word.OMath om)
         {
-            var handleId = _bookmarks.FindHandleForOMath(om);
-            if (handleId == null) return false;
+            var (_, meta) = CcMetaResolver.ResolveAt(om);
+            if (meta == null || string.IsNullOrEmpty(meta.HandleId)) return false;
 
             _hideSuggestionPopup();
-            _editHandle = new EquationHandle(handleId);
+            _editHandle = new EquationHandle(meta.HandleId);
 
             if (_popup == null)
             {
@@ -136,7 +129,7 @@ namespace MathCursor.Host.EditMode
             const double OMathExtraHeightDip = 18.0;
             var caretPos = _getCaretScreenPos();
             _popup.ShowAt(caretPos.x, caretPos.y + OMathExtraHeightDip, alignRight: true);
-            _log($"edit mode: handle={handleId} popup at caret-rightaligned ({caretPos.x:F0},{caretPos.y + OMathExtraHeightDip:F0})");
+            _log($"edit mode: handle={meta.HandleId} popup at caret-rightaligned ({caretPos.x:F0},{caretPos.y + OMathExtraHeightDip:F0})");
             return true;
         }
 
@@ -147,96 +140,68 @@ namespace MathCursor.Host.EditMode
             var handle = _editHandle;
             if (handle == null) { _log("revert: no _editHandle, abort"); return; }
 
+            // 1. OMath sous le caret.
             var om = FindOMathAtCaret();
             if (om == null) { _log("revert: no OMath at caret, abort"); return; }
 
-            StoredEquation stored;
-            try { stored = _store.RetrieveAsync(handle).GetAwaiter().GetResult(); }
-            catch (Exception ex) { _log("revert_retrieve_error: " + ex.Message); return; }
-            if (stored == null || string.IsNullOrEmpty(stored.Source))
+            // 2. Lit le CC + parse Tag → sténo initiale.
+            var (cc, meta) = CcMetaResolver.ResolveAt(om);
+            if (meta == null || string.IsNullOrEmpty(meta.Steno))
             {
-                _log($"revert: source introuvable pour handle {handle.Id}");
+                _log($"revert: source introuvable pour handle {handle.Id} (CC manquant ou tag corrompu)");
                 return;
             }
-
-            // Ré-injection sidecar si persisté côté store (sinon mémoire vierge).
-            if (!string.IsNullOrEmpty(stored.Metadata?.SidecarJson))
-            {
-                var sc = SidecarSerializer.Deserialize(stored.Metadata!.SidecarJson);
-                _handleRegistry.Restore(handle.Id, sc);
-            }
-
-            string source = stored.Source;
-            int omStart, omEnd;
-            try { omStart = om.Range.Start; omEnd = om.Range.End; }
-            catch (Exception ex) { _log("revert_range_error: " + ex.Message); return; }
+            string source = meta.Steno;
+            string revertText = source.Replace("\n", "\r");
 
             try
             {
-                var doc = _app.ActiveDocument;
+                var sel = _app.Selection;
 
-                // Étendre au bookmark mcEq_ si présent.
-                string bmName = EquationBookmarkRegistry.Prefix + handle.Id;
-                if (doc.Bookmarks.Exists(bmName))
+                // 3. Sélectionne TOUT l'OMath, en bornant À DROITE par
+                //    om.Range.End — pas cc.Range.End ! Le CC peut être
+                //    sur-étendu par auto-grow Word (test 2026-05-18 le
+                //    montre : cc.Range peut englober ¶+ et OMath voisine).
+                //    selStart = cc.Range.Start pour capturer le wrapper
+                //    d'ouverture. selEnd clamp à l'OMath = sûr.
+                int selStart = cc?.Range.Start ?? om.Range.Start;
+                int selEnd = om.Range.End;
+                sel.SetRange(selStart, selEnd);
+                _log($"revert: select [{selStart},{selEnd}) (om.End clamped) post-snap sel=[{sel.Start},{sel.End})");
+
+                // 4. Remplace : Delete + TypeText avec la sténo brute.
+                sel.Delete();
+                sel.TypeText(revertText);
+                int newEnd = sel.Start;
+
+                // 5. Dispose le CC wrapper (= devenu un wrapper d'OMath
+                //    « ghost » que Word préserve cosmétiquement, et
+                //    possiblement du contenu absorbé après l'OMath).
+                //    cc.Delete(false) = wrapper-only, contenu préservé.
+                if (cc != null)
                 {
-                    var bm = doc.Bookmarks[bmName];
-                    var bmRange = bm.Range;
-                    omStart = Math.Min(omStart, bmRange.Start);
-                    omEnd = Math.Max(omEnd, bmRange.End);
-                    try { bm.Delete(); } catch { }
+                    try { cc.Delete(false); } catch (Exception exCc) { _log("revert_cc_dispose_error: " + exCc.Message); }
                 }
 
-                // Étendre au ContentControl si Word en a posé un (display mode).
-                try
-                {
-                    foreach (Word.ContentControl cc in doc.ContentControls)
-                    {
-                        var ccRange = cc.Range;
-                        if (ccRange.Start <= omStart && ccRange.End >= omEnd)
-                        {
-                            omStart = Math.Min(omStart, ccRange.Start);
-                            omEnd = Math.Max(omEnd, ccRange.End);
-                            try { cc.Delete(true); } catch { }
-                            break;
-                        }
-                    }
-                }
-                catch (Exception ex) { _log("revert_cc_scan_error: " + ex.Message); }
-
-                // Delete explicite de l'OMath (Word peut garder son enveloppe sinon).
-                try { om.Range.Delete(); } catch { }
-
-                // Insert via range collapsé à omStart : pure insertion, pas remplacement.
-                // Convertit \n source en \r Word pour recréer la structure multi-¶.
-                string revertText = source.Replace("\n", "\r");
-                doc.Range(omStart, omStart).Text = revertText;
-
-                int newEnd = omStart + revertText.Length;
-                try { _app.Selection.SetRange(newEnd, newEnd); } catch { }
-
-                // Notification au caller du tracking multi-ligne.
                 if (source.IndexOf('\n') >= 0)
                 {
-                    _log($"revert: multi-ligne zone tracked [{omStart},{newEnd}] handle={handle.Id}");
-                    MultiLineReverted?.Invoke(omStart, newEnd, handle.Id);
+                    _log($"revert: multi-ligne zone tracked [{selStart},{newEnd}] handle={handle.Id}");
+                    MultiLineReverted?.Invoke(selStart, newEnd, handle.Id);
                 }
                 else
                 {
                     InlineReverted?.Invoke();
                 }
 
-                // Click popup WPF a volé le focus à Word — re-focus.
                 try { _app.Activate(); } catch { }
             }
-            catch (Exception ex) { _log("revert_replace_error: " + ex.Message); return; }
+            catch (Exception ex) { _log("revert_error: " + ex.Message); return; }
 
-            try { _store.RemoveAsync(handle).GetAwaiter().GetResult(); }
-            catch (Exception ex) { _log("revert_store_remove_error: " + ex.Message); }
-
+            _handleRegistry.Forget(handle.Id);
             _editHandle = null;
             _editingOMathStart = -1;
             _popup?.HidePopup();
-            _log($"revert: handle={handle.Id} OMath remplacé par source=\"{source}\"");
+            _log($"revert: handle={handle.Id} → \"{source}\"");
         }
 
         /// <summary>Cherche un OMath inclus dans la sélection actuelle.</summary>

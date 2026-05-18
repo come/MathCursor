@@ -43,6 +43,7 @@ namespace MathCursor
                     }
                     _inspectorHost = new ContextInspectorPaneHost();
                     _suggestions.ContextResolved += OnContextResolvedForInspector;
+                    _suggestions.CommitTraced += OnCommitTracedForInspector;
                     Application.WindowSelectionChange += OnSelectionChangeForCaretInspector;
 
                     _inspectorTaskPane = CustomTaskPanes.Add(
@@ -85,6 +86,59 @@ namespace MathCursor
                 var caretInfo = CaretStateSnapper.Snapshot(Application);
                 _inspectorHost.WpfPane.Dispatcher.BeginInvoke(
                     new Action(() => _inspectorHost.WpfPane.UpdateCaretState(caretInfo)));
+            }
+            catch { /* debug pane, jamais propager */ }
+        }
+
+        /// <summary>
+        /// Reçoit la commit trace émise par <see cref="MathCursor.Host.SuggestionService.CommitTraced"/>
+        /// à chaque commit pipeline et la pousse dans le pane debug.
+        /// </summary>
+        private void OnCommitTracedForInspector(object sender, string trace)
+        {
+            try
+            {
+                if (_inspectorHost?.WpfPane == null) return;
+                if (_inspectorTaskPane == null || !_inspectorTaskPane.Visible) return;
+                _inspectorHost.WpfPane.Dispatcher.BeginInvoke(
+                    new Action(() => _inspectorHost.WpfPane.SetCommitTrace(trace)));
+            }
+            catch { /* debug pane, jamais propager */ }
+        }
+
+        /// <summary>
+        /// Pousse du texte arbitraire dans le pane debug (= remplace la
+        /// commit trace courante). Utilisé par les boutons POC du ruban
+        /// pour afficher leur résultat sans bloquer l'utilisateur avec une
+        /// MessageBox. Auto-ouvre le pane s'il est fermé.
+        /// </summary>
+        public void PushDebugTrace(string text)
+        {
+            try
+            {
+                if (_inspectorTaskPane == null) ToggleContextInspectorPane();
+                if (_inspectorTaskPane != null && !_inspectorTaskPane.Visible) _inspectorTaskPane.Visible = true;
+                if (_inspectorHost?.WpfPane == null) return;
+                _inspectorHost.WpfPane.Dispatcher.BeginInvoke(
+                    new Action(() => _inspectorHost.WpfPane.SetCommitTrace(text)));
+            }
+            catch { /* debug pane, jamais propager */ }
+        }
+
+        /// <summary>
+        /// Pousse une trace NER live (= ce qui part au modèle à chaque tick
+        /// polling). Affiché dans la section basse du pane. Skip si pane
+        /// fermé pour ne pas le forcer à s'ouvrir (= moins intrusif que
+        /// PushDebugTrace).
+        /// </summary>
+        public void PushNerLive(string text)
+        {
+            try
+            {
+                if (_inspectorHost?.WpfPane == null) return;
+                if (_inspectorTaskPane == null || !_inspectorTaskPane.Visible) return;
+                _inspectorHost.WpfPane.Dispatcher.BeginInvoke(
+                    new Action(() => _inspectorHost.WpfPane.SetNerLiveTrace(text)));
             }
             catch { /* debug pane, jamais propager */ }
         }

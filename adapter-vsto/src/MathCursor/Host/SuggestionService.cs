@@ -34,9 +34,6 @@ namespace MathCursor.Host
         // bookmark "mcEq_<handleId>" pour (a) identifier que l'équation nous
         // appartient et (b) retrouver la source brute en CustomXMLPart au moment
         // où le caret revient dessus (mode édition).
-        // BookmarkPrefix gardé pour compat. Préférer Bookmarks.EquationBookmarkRegistry.Prefix.
-        private const string BookmarkPrefix = Bookmarks.EquationBookmarkRegistry.Prefix;
-
         private readonly Word.Application _app;
         private readonly WordContextReader _contextReader;
         private readonly MathNerDetector _ner;
@@ -52,7 +49,8 @@ namespace MathCursor.Host
         // -1 = pas encore tracké. Au changement (caret a quitté le ¶),
         // l'historique paragraphe du _globalCtx est reset.
         private int _lastTrackedParaStart = -1;
-        private readonly IEquationStore _store;
+        // _store + IEquationStore retirés (Phase B) — source/latex/hash vivent
+        // dans cc.Tag MCMeta. Cf. brief 2026-05-18 backlink natif.
 
         private SuggestionPopupWindow _popup;
         private DispatcherTimer _pollTimer;
@@ -70,32 +68,18 @@ namespace MathCursor.Host
         private int _initialCaretPos = -1;
         private bool _userInteracted;
 
-        // Cache LaTeX → <m:oMath> XML. Couche 2/3 perf (ADR 2026-05-12).
-        // Extrait en classe dédiée par P2.4 (ADR refactor pure-merger).
-        private readonly OMathXmlCache _omathXmlCache = new OMathXmlCache(capacity: 32);
-
-        // Pré-fetch du paraXml courant. Couche 3/3 perf (ADR 2026-05-12).
-        // Extrait en classe dédiée par P2.5 (refactor archi).
-        private readonly ParaXmlPrefetcher _paraXmlPrefetcher;
-
-        // Ghost doc pour BuildUp en isolation. P2.6 du refactor archi —
-        // zéro mutation du doc actif user.
-        private readonly OMathStagingService _omathStaging;
-
-        // Registre des bookmarks mcEq_* (P2.8 refactor archi).
-        private readonly Bookmarks.EquationBookmarkRegistry _bookmarks;
+        // _bookmarks supprimé (Phase B) — identification "à nous" via
+        // CC MathCursor + cc.Tag, plus de scan doc.Bookmarks.
 
         // Layout finalizer post-commit (P2.13 refactor archi).
         private readonly Layout.PostCommitLayoutFinalizer _layoutFinalizer;
 
-        // Caret positioner post-OMath (P2.15 refactor archi).
-        private readonly Caret.CaretPositioner _caretPositioner;
-
-        // Stratégies d'insertion (P2.7 refactor archi). Enchaînées dans
-        // l'ordre fast_path → splice → atomic. Première qui Success gagne.
-        private readonly Inserters.PureFastPathInserter _fastPathInserter;
-        private readonly Inserters.InlineSpliceInserter _spliceInserter;
-        private readonly Inserters.AtomicRangeInserter _atomicInserter;
+        // Caches XML (OMathXmlCache, ParaXmlPrefetcher), ghost-doc staging
+        // (OMathStagingService), CaretPositioner, 3 Inserters (fast_path,
+        // splice, atomic) tous supprimés 2026-05-14 : InsertOMathAt utilise
+        // la recette minimale SetRange + TypeText + OMaths.Add + BuildUp
+        // natif. Plus de splice XML, plus de ghost doc, plus de stratégies
+        // enchaînées, plus de caret custom.
 
         // État de la dernière popup affichée — nécessaire pour commit sur Enter :
         // on a besoin des positions absolues dans le document (pas juste offsets
@@ -183,7 +167,7 @@ namespace MathCursor.Host
         // le tracker — il disparaît quand Word est redémarré.
         private readonly string _sessionId = Guid.NewGuid().ToString("D");
 
-        public SuggestionService(Word.Application app, MathNerDetector ner, Engine engine, IEquationStore store)
+        public SuggestionService(Word.Application app, MathNerDetector ner, Engine engine)
         {
             // CANARY LOG (Phase 4 + bug fixes 06-05) : log distinctif au
             // démarrage pour confirmer que la DLL chargée est la version
@@ -204,21 +188,12 @@ namespace MathCursor.Host
             _globalCtx = new MathCursor.Core.Resolution.GlobalContext();
             _globalCtx.AddSignal(new MathCursor.Core.Resolution.Signals.SidecarSignal());
             _globalCtx.AddSignal(new MathCursor.Core.Resolution.Signals.ParagraphResolutionsSignal());
-            _store = store ?? throw new ArgumentNullException(nameof(store));
             _contextReader = new WordContextReader(_app);
             _lastActionTracker = new LastActionTracker(ReadParagraphContextForReport);
             _handleRegistry = new EquationHandleRegistry(
-                createBookmark: CreateBookmarkForRange,
-                deleteBookmark: DeleteBookmarkByHandle,
                 popupSidecar: () => _popup?.CurrentSidecar
                                     ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty);
-            _paraXmlPrefetcher = new ParaXmlPrefetcher(
-                new WordParaXmlSource(_app),
-                LogDiag);
-            _omathStaging = new OMathStagingService(_app, LogDiag);
-            _bookmarks = new Bookmarks.EquationBookmarkRegistry(() => _app.ActiveDocument, LogDiag);
             _layoutFinalizer = new Layout.PostCommitLayoutFinalizer(_app, LogDiag);
-            _caretPositioner = new Caret.CaretPositioner(_app, LogDiag);
             _manualTrigger = new ManualTrigger.ManualTriggerController(
                 app: _app,
                 contextReader: _contextReader,
@@ -236,8 +211,6 @@ namespace MathCursor.Host
                 log: LogDiag);
             _editController = new EditMode.EditModeController(
                 app: _app,
-                store: _store,
-                bookmarks: _bookmarks,
                 handleRegistry: _handleRegistry,
                 hideSuggestionPopup: HidePopup,
                 getCaretScreenPos: Caret.CaretScreenPositionReader.Read,
@@ -254,65 +227,104 @@ namespace MathCursor.Host
                 _revertedMultiLineZoneEnd = -1;
                 _revertedHandleId = null;
             };
-            _fastPathInserter = new Inserters.PureFastPathInserter(LogDiag);
-            _spliceInserter = new Inserters.InlineSpliceInserter(_omathXmlCache, _paraXmlPrefetcher, _omathStaging, LogDiag);
-            _atomicInserter = new Inserters.AtomicRangeInserter(_omathStaging, LogDiag);
-
-            // Pipeline de mergers (cf. ADR 2026-05-06-Meta-zone-merger-pipeline) :
-            // remplace l'empilement de `if (merged == null)` qui vivait dans
-            // OnPopupCommitRequested. Ordre = priorité (intra avant cross,
-            // reverted avant cases avant marker). Chaque merger est self-guarding :
-            // il retourne null si non-applicable au commit courant.
-            _mergerPipeline = new MergerPipeline(new IZoneMerger[]
-            {
-                new IntraOMathsMerger(
-                    getActiveDoc: () => _app.ActiveDocument,
-                    store: _store,
-                    bookmarks: _bookmarks,
-                    getPopupSidecar: () => _popup?.CurrentSidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty,
-                    getSidecarForHandle: GetSidecarForHandle,
-                    log: LogDiag),
-                new RevertedMultiLineMerger(
-                    getActiveDoc: () => _app.ActiveDocument,
-                    getZone: () => new RevertedMultiLineMerger.RevertedZone(
-                        _revertedMultiLineZoneStart, _revertedMultiLineZoneEnd, _revertedHandleId),
-                    getSidecarForHandle: GetSidecarForHandle,
-                    log: LogDiag),
-                new CasesChainCascadeMerger(
-                    getActiveDoc: () => _app.ActiveDocument,
-                    probe: new ParagraphCascadeProbe(_bookmarks, _store, LogDiag),
-                    getPopupSidecar: () => _popup?.CurrentSidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty,
-                    getSidecarForHandle: GetSidecarForHandle,
-                    log: LogDiag),
-                new MarkerChainCascadeMerger(
-                    getActiveDoc: () => _app.ActiveDocument,
-                    probe: new ParagraphCascadeProbe(_bookmarks, _store, LogDiag),
-                    getPopupSidecar: () => _popup?.CurrentSidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty,
-                    getSidecarForHandle: GetSidecarForHandle,
-                    log: LogDiag),
-            }, log: LogDiag);
-
-            // Pipeline du commit (cf. ADR 2026-05-06-Meta-l4-pipeline-and-session,
-            // Phase 3a). Phase 3a livre seulement les 2 stages réels (Merger,
-            // Resolver) ; les 5 autres stages (Renderer/Inserter/Store/Layout/
-            // Caret/Snapshot) sont posés en code (Phase 2.5) mais non branchés
-            // ici — ils s'intégreront en Phase 3b/4 avec l'extraction effective
-            // de la logique métier.
+            // Pipeline merger DÉBRANCHÉ 2026-05-18 (étape intermédiaire user
+            // request) : le pipeline ne traite que la zone NER courante,
+            // insère un OMath pour celle-ci uniquement. Pas d'absorption de
+            // voisins, pas de cascade marker, pas de revert-multi-line.
+            // Les classes Merging/* restent en place pour le moment, à virer
+            // au prochain cleanup ou à re-câbler avec la nouvelle approche
+            // (Phase 5 = NeighborFinder.FindAbove unifié intra+cross).
             _commitPipeline = new MathCursor.Host.Pipeline.CommitPipeline(
                 new MathCursor.Host.Pipeline.ICommitStage[]
                 {
-                    new MathCursor.Host.Pipeline.Stages.MergerStage(
-                        _mergerPipeline, ExtractMarkerFromMergedSource),
                     new MathCursor.Host.Pipeline.Stages.ResolverStage(_resolver),
                     new MathCursor.Host.Pipeline.Stages.SnapshotStage(_lastActionTracker),
                     new MathCursor.Host.Pipeline.Stages.InserterStage(InserterImpl),
-                    new MathCursor.Host.Pipeline.Stages.StoreStage(_store, _handleRegistry, LogDiag),
+                    new MathCursor.Host.Pipeline.Stages.StoreStage(_handleRegistry, LogDiag),
                     new MathCursor.Host.Pipeline.Stages.LayoutStage(LayoutImpl),
                 },
                 log: LogDiag);
         }
 
-        private readonly MergerPipeline _mergerPipeline;
+        // ─── Debug commit trace (2026-05-15) ──────────────────────────
+        // Buffer rempli pendant un commit (NeighborFinder + merger +
+        // InsertOMathAt). Reset à chaque start de commit, fired via
+        // CommitTraced à la fin → ContextInspectorPane affiche le contenu.
+        // null = on n'est PAS dans une commit, Log() bypass le buffer.
+        private System.Text.StringBuilder _commitTrace;
+
+        // Données pour bloc SUMMARY (compte des chars à remplacer, voisins
+        // mergés). Set au début du commit + dans InserterImpl, lu à la fin
+        // pour formatter le résumé human-readable.
+        private int _commitOrigAbsStart = -1;
+        private int _commitOrigAbsEnd = -1;
+        private string _commitOrigSource;
+        private int _commitPreInsertAbsStart = -1;
+        private int _commitPreInsertAbsEnd = -1;
+        // Sources des voisins absorbés — capturées AVANT que InserterImpl
+        // ne les retire du store en post-success.
+        private string _commitMergedNeighborSources;
+        // Bornes internes Word post-SetRange snap (= vraie range à remplacer
+        // dans le doc, wrappers OMath inclus). Capturées dans InsertOMathAt.
+        private int _commitInternalStart = -1;
+        private int _commitInternalEnd = -1;
+
+        /// <summary>Event fired after each commit pipeline run (succès ou
+        /// abort), avec la trace concaténée des logs émis pendant le commit.
+        /// Consommé par <c>ThisAddIn.ContextInspector</c> pour afficher dans
+        /// le pane de debug. Pas de fire si pas d'abonné.</summary>
+        public event EventHandler<string> CommitTraced;
+
+        /// <summary>Log instance : <see cref="LogDiag"/> + append au buffer
+        /// de trace commit s'il est actif. Permet aux delegate <c>log:</c>
+        /// passés à NeighborFinder/IntraOMathsMerger/... d'être capturés
+        /// dans la trace sans toucher à leur API.</summary>
+        private void Log(string message)
+        {
+            LogDiag(message);
+            var buf = _commitTrace;
+            if (buf != null)
+            {
+                try { lock (buf) buf.AppendLine(message); } catch { }
+            }
+        }
+
+        /// <summary>Bloc SUMMARY human-readable affiché à la fin du commit
+        /// dans l'inspecteur debug. Lit les fields _commitOrig* +
+        /// _commitPreInsert* + le ctx final pour décomposer :
+        ///  - Current formula (source tapée par l'user)
+        ///  - Merged (sources des voisins absorbés par le merger)
+        ///  - Final convert (latex + unicodeMath + nb char)
+        ///  - Nb char à remplacer dans le doc : currentformula + oMathToMerge = TOTAL
+        /// </summary>
+        private void EmitCommitSummary(MathCursor.Host.Pipeline.CommitContext ctx)
+        {
+            Log("");
+            Log("==== SUMMARY ====");
+            Log($"Current formula  => \"{Preview(_commitOrigSource)}\"");
+            string mergedNeighbors = string.IsNullOrEmpty(_commitMergedNeighborSources)
+                ? "(none)"
+                : "\"" + _commitMergedNeighborSources + "\"";
+            Log($"Merged           => {mergedNeighbors}");
+
+            string finalUnicode = "";
+            try { finalUnicode = MathCursor.Core.LatexToUnicodeMath.Convert(ctx?.Latex ?? "") ?? ""; } catch { }
+            Log($"Final convert    => latex \"{Preview(ctx?.Latex)}\"  unicode \"{Preview(finalUnicode)}\" (nb char = {finalUnicode.Length})");
+
+            Log("");
+            Log("Nb char à remplacer dans le doc :");
+            int currentChars = (_commitOrigAbsEnd >= 0 && _commitOrigAbsStart >= 0)
+                ? (_commitOrigAbsEnd - _commitOrigAbsStart) : -1;
+            // Word interne = bornes post-SetRange snap. C'est ÇA que Word va
+            // toucher (wrappers OMath inclus). Merger rapporte seulement la
+            // largeur d'ancre (souvent 1) ce qui est trompeur — pas affiché.
+            int totalCharsInternal = (_commitInternalEnd >= 0 && _commitInternalStart >= 0)
+                ? (_commitInternalEnd - _commitInternalStart) : -1;
+            int omathCharsInternal = (totalCharsInternal >= 0 && currentChars >= 0) ? (totalCharsInternal - currentChars) : -1;
+            Log($"  currentformula => {currentChars}");
+            Log($"  oMathToMerge   => {omathCharsInternal}  (range Word interne — wrappers inclus)");
+            Log($"  TOTAL          => {totalCharsInternal}  (= ce que SetRange opère réellement)");
+        }
         private readonly MathCursor.Host.Pipeline.CommitPipeline _commitPipeline;
 
         /// <summary>
@@ -357,6 +369,11 @@ namespace MathCursor.Host
             catch { return string.Empty; }
         }
 
+        // Doc dont on a hooké ContentControlOnExit pour cleanup auto des
+        // CCs orphelins. Best-effort single-doc (Phase B). Multi-doc à
+        // affiner si besoin.
+        private Word.Document _hookedDocForCcExit;
+
         public void Install()
         {
             if (_installed) return;
@@ -364,21 +381,25 @@ namespace MathCursor.Host
             _app.WindowDeactivate += OnWindowDeactivate;
             _app.WindowActivate += OnWindowActivate;
 
+            // Hook cleanup opportuniste : quand le caret quitte un CC,
+            // on vérifie qu'il a encore son OMath dedans. Sinon → delete
+            // le wrapper. Brief 2026-05-18 §4 (cycle de vie CC).
+            try
+            {
+                _hookedDocForCcExit = _app.ActiveDocument;
+                if (_hookedDocForCcExit != null)
+                {
+                    _hookedDocForCcExit.ContentControlOnExit += OnContentControlExit;
+                }
+            }
+            catch (Exception ex) { LogDiag("install_cc_hook_error: " + ex.Message); }
+
             _pollTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
                 Interval = TimeSpan.FromMilliseconds(PollIntervalMs),
             };
             _pollTimer.Tick += (_, __) => CheckAndUpdate();
             _pollTimer.Start();
-
-            // Pré-création du ghost doc : event-driven sur le 1ᵉʳ
-            // WindowActivate (Word a fini son boot + un user doc est rendu).
-            // Pas de timer ni de WarmUp inline dans Install() : Word peut
-            // avoir Selection==null transitoirement pendant son init, ce qui
-            // déclenche une COMException dans les consumers du poll timer.
-            // Auto-désabonnement après 1ᵉʳ fire = one-shot sans field flag.
-            // Cf. ADR 2026-05-13-Fix-warmup-event-driven.
-            _app.WindowActivate += OnFirstWindowActivateForWarmUp;
             _installed = true;
         }
 
@@ -387,16 +408,37 @@ namespace MathCursor.Host
             try { if (_installed) _app.WindowSelectionChange -= OnSelectionChange; } catch { }
             try { if (_installed) _app.WindowDeactivate -= OnWindowDeactivate; } catch { }
             try { if (_installed) _app.WindowActivate -= OnWindowActivate; } catch { }
-            // Défensif : si Dispose() est appelé avant le 1ᵉʳ WindowActivate,
-            // le handler one-shot n'a pas pu se désabonner lui-même.
-            try { if (_installed) _app.WindowActivate -= OnFirstWindowActivateForWarmUp; } catch { }
+            try { if (_hookedDocForCcExit != null) _hookedDocForCcExit.ContentControlOnExit -= OnContentControlExit; } catch { }
+            _hookedDocForCcExit = null;
             try { _pollTimer?.Stop(); } catch { }
             try { _popup?.Close(); } catch { }
             try { _editController?.Close(); } catch { }
-            try { _omathStaging?.Dispose(); } catch { }
             _popup = null;
             _pollTimer = null;
             _installed = false;
+        }
+
+        /// <summary>
+        /// Hook event-driven : quand le caret quitte un ContentControl,
+        /// vérifie qu'il y a toujours une OMath dedans. Sinon → CC orphelin
+        /// (vidé par une suppression user ou un Word quirk), on supprime le
+        /// wrapper seul. Évite l'accumulation de CCs fantômes.
+        /// </summary>
+        private void OnContentControlExit(Word.ContentControl cc, ref bool cancel)
+        {
+            try
+            {
+                if (cc == null) return;
+                if (cc.Title != MathCursor.Host.CCMeta.MCMetaJson.CcTitle) return;
+                int omCount = 0;
+                try { omCount = cc.Range.OMaths.Count; } catch { }
+                if (omCount > 0) return; // CC sain, OMath toujours dedans
+                int rs = -1, re = -1;
+                try { rs = cc.Range.Start; re = cc.Range.End; } catch { }
+                try { cc.Delete(false); } catch { return; }
+                LogDiag($"cc_on_exit: orphan MathCursor CC deleted, was at [{rs},{re})");
+            }
+            catch { /* event handler, jamais propager */ }
         }
 
         public bool IsPopupVisible => (_popup?.IsVisible == true);
@@ -607,9 +649,6 @@ namespace MathCursor.Host
             }
         }
 
-        /// <summary>Délégué — cf. <see cref="Bookmarks.EquationBookmarkRegistry.FindHandleForOMath"/>.</summary>
-        private string FindOurHandleForOMath(Word.OMath om) => _bookmarks.FindHandleForOMath(om);
-
         private void OnWindowDeactivate(Word.Document doc, Word.Window wnd)
         {
             HidePopup();
@@ -619,19 +658,6 @@ namespace MathCursor.Host
         private void OnWindowActivate(Word.Document doc, Word.Window wnd)
         {
             try { _pollTimer?.Start(); } catch { }
-        }
-
-        /// <summary>
-        /// Handler one-shot : se désabonne après le 1ᵉʳ fire. Le 1ᵉʳ
-        /// <c>WindowActivate</c> garantit que Word a fini son boot et qu'un
-        /// doc user est rendu — moment sûr pour créer le ghost doc sans
-        /// race avec un <c>Selection==null</c> transitoire.
-        /// Cf. ADR 2026-05-13-Fix-warmup-event-driven.
-        /// </summary>
-        private void OnFirstWindowActivateForWarmUp(Word.Document doc, Word.Window wnd)
-        {
-            try { _app.WindowActivate -= OnFirstWindowActivateForWarmUp; } catch { }
-            try { _omathStaging?.WarmUp(); } catch { }
         }
 
         /// <summary>
@@ -754,22 +780,13 @@ namespace MathCursor.Host
                 _inferenceInFlight = true;
                 Task.Run(() =>
                 {
-                    // Coupe le paragraphe APRÈS la dernière région OMath qui
-                    // se termine avant le caret. Évite que le NER voit le
-                    // contexte math résiduel et drag des stopwords ("et",
-                    // "donc"...) dans le span MATH suivant.
-                    // Cf. bug user 30-04 : `f(x) = 1/x² et g(x)=rac(x+1)`
-                    // avec OMath rendu pour `f(x) = 1/x²` faisait que le NER
-                    // classait `et g(x)=rac(x+1)` ENTIER comme MATH.
-                    int nerOffset = 0;
-                    foreach (var (s, e) in omathRegions)
-                    {
-                        if (e <= caretInParagraph && e > nerOffset) nerOffset = e;
-                    }
-                    string nerInput = nerOffset > 0
-                        ? paragraphText.Substring(nerOffset)
-                        : paragraphText;
-                    LogDiag($"ner_input offset={nerOffset} len={nerInput.Length} omaths={omathRegions.Count} text=\"{nerInput.Replace("\r", "\\r").Replace("\n", "\\n")}\"");
+                    // NER input = ce qu'il y a autour du caret entre les
+                    // OMaths les plus proches (ou bornes du paragraphe).
+                    // Cf. Detection.NerInputWindow.
+                    var window = Detection.NerInputWindow.Compute(paragraphText, omathRegions, caretInParagraph);
+                    int nerOffset = window.LeftCut;
+                    string nerInput = window.Input;
+                    LogDiag($"ner_input offset={nerOffset} rightCut={window.RightCut} len={nerInput.Length} omaths={omathRegions.Count} text=\"{nerInput.Replace("\r", "\\r").Replace("\n", "\\n")}\"");
 
                     IReadOnlyList<DetectedZone> zones;
                     try { zones = _ner.Detect(nerInput); }
@@ -798,6 +815,29 @@ namespace MathCursor.Host
                     var filteredZones = Detection.ZoneRefiner.FilterOutOMathOverlap(zones, omathRegions);
                     LogDiag($"zones={zones.Count} → filtered={filteredZones.Count} (omath_overlap dropped={zones.Count - filteredZones.Count})");
 
+                    // Push live trace au pane debug — visible à chaque tick.
+                    try
+                    {
+                        var sb = new System.Text.StringBuilder();
+                        sb.AppendLine($"⟳ NER tick @ {DateTime.Now:HH:mm:ss.fff}");
+                        sb.AppendLine();
+                        sb.AppendLine($"Paragraphe masqué (len={paragraphText.Length}, caret={caretInParagraph}):");
+                        sb.AppendLine($"  \"{paragraphText.Replace("\r", "\\r").Replace("\n", "\\n")}\"");
+                        sb.AppendLine();
+                        sb.AppendLine($"OMath regions ({omathRegions.Count}) :");
+                        foreach (var (s, e) in omathRegions) sb.AppendLine($"  [{s},{e}) string-pos");
+                        sb.AppendLine();
+                        sb.AppendLine($"nerOffset = {nerOffset}");
+                        sb.AppendLine($"nerInput  (len={nerInput.Length}) :");
+                        sb.AppendLine($"  \"{nerInput.Replace("\r", "\\r").Replace("\n", "\\n")}\"");
+                        sb.AppendLine();
+                        sb.AppendLine($"Zones détectées : {zones.Count}  (filtrées : {filteredZones.Count})");
+                        foreach (var z in zones)
+                            sb.AppendLine($"  [{z.Start},{z.End}) conf={z.Confidence:F2} text=\"{z.Text}\"");
+                        Globals.ThisAddIn?.PushNerLive(sb.ToString());
+                    }
+                    catch { /* debug pane, jamais propager */ }
+
                     // Retour sur le thread UI pour mettre à jour la popup
                     var capturedOmaths = omathRegions; // closure capture
                     _pollTimer?.Dispatcher.BeginInvoke(new Action(() =>
@@ -812,12 +852,6 @@ namespace MathCursor.Host
                 _inferenceInFlight = false;
             }
 
-            // Couche 3/3 perf stack (ADR 2026-05-12) : pré-fetch
-            // opportuniste du paraXml courant si on est sur un tick
-            // STABLE (= même texte que le tick précédent → user idle).
-            // Évite de payer 60ms de WordOpenXML pendant la frappe
-            // rapide ; payé seulement sur les pauses.
-            _paraXmlPrefetcher.Tick();
         }
 
         private void ApplyZones(IReadOnlyList<DetectedZone> zones, int caretInParagraph, int paragraphAbsStart, IReadOnlyList<(int start, int end)> omathRegions)
@@ -839,20 +873,38 @@ namespace MathCursor.Host
             if (target == null) { HidePopupTransient(); return; }
             if (dist > 0)
             {
-                if (!ShouldExtendZoneForward(target))
+                // Tolérance : si le caret est pile sur le paragraph mark
+                // (`\r`, dist=1), c'est qu'on est en fin de ¶ — on ne peut
+                // pas être plus près. On laisse la popup ouverte pour
+                // permettre le commit (ex: tape "=1" puis Enter pour
+                // merger avec OMath au-dessus).
+                bool caretOnParaMark = (dist == 1)
+                    && target.End >= 0
+                    && _lastParagraph != null
+                    && target.End < _lastParagraph.Length
+                    && _lastParagraph[target.End] == '\r';
+
+                if (!caretOnParaMark)
                 {
-                    LogDiag($"hide_reason=zone_complete_no_extend (target end='{target.Text}')");
-                    HidePopupTransient();
-                    return;
+                    if (!ShouldExtendZoneForward(target))
+                    {
+                        LogDiag($"hide_reason=zone_complete_no_extend (target end='{target.Text}')");
+                        HidePopupTransient();
+                        return;
+                    }
+                    target = Detection.ZoneRefiner.TryExtendForwardWhitespace(_lastParagraph, target, caretInParagraph);
+                    if (target == null || (caretInParagraph - target.End) > 0)
+                    {
+                        LogDiag("hide_reason=caret_still_outside_after_forward_extend");
+                        HidePopupTransient();
+                        return;
+                    }
+                    LogDiag($"forward_extended target={target}");
                 }
-                target = Detection.ZoneRefiner.TryExtendForwardWhitespace(_lastParagraph, target, caretInParagraph);
-                if (target == null || (caretInParagraph - target.End) > 0)
+                else
                 {
-                    LogDiag("hide_reason=caret_still_outside_after_forward_extend");
-                    HidePopupTransient();
-                    return;
+                    LogDiag($"caret on \\r at dist=1, keep popup open (zone end at end of ¶)");
                 }
-                LogDiag($"forward_extended target={target}");
             }
 
             // Le NER rate parfois des mots-clés math en début de zone (lim, sqrt, etc.)
@@ -1390,18 +1442,44 @@ namespace MathCursor.Host
                 latex: latex,
                 sidecar: initialSidecar,
                 editingHandle: editingHandle);
-            // Wrap tout le pipeline dans un seul UndoRecord nommé Word →
-            // un Ctrl+Z annule le commit entier d'un coup (pas étape par
-            // étape) → fini les états partiels incohérents. Cf. ADR
-            // 2026-05-11-Fix-commit-grouped-in-single-undo-record.
+
+            // Trace commit (debug inspecteur) : ouvre un buffer, capture les
+            // logs des stages + InsertOMathAt, fire CommitTraced à la fin.
+            _commitTrace = new System.Text.StringBuilder();
+            _commitOrigAbsStart = _lastZoneAbsStart;
+            _commitOrigAbsEnd = _lastZoneAbsEnd;
+            _commitOrigSource = source;
+            _commitPreInsertAbsStart = -1;
+            _commitPreInsertAbsEnd = -1;
+            _commitInternalStart = -1;
+            _commitInternalEnd = -1;
+            Log($"=== COMMIT @ {DateTime.Now:HH:mm:ss.fff} ===");
+            Log($"INPUT  absStart={_lastZoneAbsStart} absEnd={_lastZoneAbsEnd} source=\"{Preview(source)}\" latex=\"{Preview(latex)}\" editing={(editingHandle != null ? editingHandle.Id : "no")}");
+
+            // UndoRecordScope conservé : sans, le BuildUp crée une entrée
+            // undo séparée du TypeText (1 Ctrl+Z annule le BuildUp, 2e
+            // annule le TypeText). Avec le wrapper, tout le pipeline est
+            // groupé en 1 seul undo nommé « Convertir formule ».
+            // Cf. ADR 2026-05-11-Fix-commit-grouped-in-single-undo-record.
             using (var _undoScope = new UndoRecordScope(_app, "Convertir formule"))
             {
                 try
                 {
                     ctx = _commitPipeline.Run(ctx);
                 }
-                catch (Exception ex) { LogDiag("commit_pipeline_error: " + ex.Message); }
+                catch (Exception ex) { Log("commit_pipeline_error: " + ex.Message); }
             }
+
+            // Émission de la trace au pane debug.
+            try
+            {
+                EmitCommitSummary(ctx);
+                Log($"FINAL  absStart={ctx?.AbsStart} absEnd={ctx?.AbsEnd} aborted={ctx?.IsAborted} newHandle={(ctx?.NewHandle?.Id ?? "null")}");
+                var traceText = _commitTrace?.ToString() ?? string.Empty;
+                _commitTrace = null;
+                CommitTraced?.Invoke(this, traceText);
+            }
+            catch { _commitTrace = null; }
 
             // Propage les pins du popup vers l'historique paragraphe du
             // _globalCtx. Permet aux zones suivantes du même ¶ de bénéficier
@@ -1459,31 +1537,47 @@ namespace MathCursor.Host
             // Cf. ADR 2026-05-12-Refactor-pure-merger-atomic-insert.
             if (ctx.RemovedHandles != null && ctx.RemovedHandles.Count > 0)
             {
-                LogDiag($"merge: {ctx.RemovedHandles.Count} OMath(s) absorbés range=[{ctx.AbsStart},{ctx.AbsEnd}] mergedSource=\"{ctx.Source}\" latex=\"{ctx.Latex}\"");
+                Log($"merge: {ctx.RemovedHandles.Count} OMath(s) absorbés range=[{ctx.AbsStart},{ctx.AbsEnd}] mergedSource=\"{Preview(ctx.Source)}\" latex=\"{Preview(ctx.Latex)}\" handles=[{string.Join(",", ctx.RemovedHandles)}]");
+            }
+            else
+            {
+                Log($"InserterImpl: no neighbors absorbed by merger — bounds=[{ctx.AbsStart},{ctx.AbsEnd}] source=\"{Preview(ctx.Source)}\" latex=\"{Preview(ctx.Latex)}\"");
             }
 
             int replaceStart = ctx.AbsStart;
-            var (newStart, newEnd) = InsertOMathAt(ctx.AbsStart, ctx.AbsEnd, ctx.Latex, ctx.RemovedHandles);
+            // Capture pour le bloc SUMMARY (bornes post-merge, pré-insert).
+            _commitPreInsertAbsStart = ctx.AbsStart;
+            _commitPreInsertAbsEnd = ctx.AbsEnd;
+
+            // Capture des sources voisins AVANT InsertOMathAt (qui supprime
+            // les handles du store en post-success → trop tard pour SUMMARY).
+            _commitMergedNeighborSources = null;
+            // SUMMARY : pour les sources voisines, on n'a plus de store —
+            // elles sont déjà dans ctx.Source (mergedSource). Pas besoin de
+            // retrieve séparé.
+            _commitMergedNeighborSources = (ctx.RemovedHandles != null && ctx.RemovedHandles.Count > 0)
+                ? $"({ctx.RemovedHandles.Count} handle(s) absorbé(s), sources mergées dans ctx.Source)"
+                : null;
+
+            var (newStart, newEnd, newHandle) = InsertOMathAt(ctx.AbsStart, ctx.AbsEnd, ctx.Latex, ctx.Source, ctx.RemovedHandles);
             if (newEnd <= newStart)
             {
-                LogDiag($"commit ABORTED latex=\"{ctx.Latex}\" — OMath build failed, doc intact (no pre-mutation)");
+                Log($"commit ABORTED latex=\"{ctx.Latex}\" — OMath build failed, doc intact (no pre-mutation)");
                 return ctx.WithAbort();
             }
 
-            // Post-success uniquement : on retire les handles absorbés du
-            // store. Les bookmarks Word des OMaths absorbées ont été
-            // évacuées avec elles par Range.InsertXML (atomique).
+            // Cleanup sidecar in-memory uniquement. Les CCs des OMaths
+            // absorbées ont été supprimées par sel.Delete dans InsertOMathAt.
             if (ctx.RemovedHandles != null && ctx.RemovedHandles.Count > 0)
             {
                 foreach (var h in ctx.RemovedHandles)
                 {
-                    try { _store.RemoveAsync(new EquationHandle(h)).GetAwaiter().GetResult(); }
-                    catch (Exception ex) { LogDiag($"merge_remove_error handle={h}: {ex.Message}"); }
                     _handleRegistry.Forget(h);
                 }
             }
 
-            return ctx.WithInsertedBounds(newStart, newEnd, replaceStart);
+            var withBounds = ctx.WithInsertedBounds(newStart, newEnd, replaceStart);
+            return newHandle != null ? withBounds.WithNewHandle(new EquationHandle(newHandle)) : withBounds;
         }
 
         /// <summary>LayoutStage : finalise le layout post-insert. Cas :
@@ -1664,10 +1758,15 @@ namespace MathCursor.Host
 
         private static bool IsWhitespaceCharAt(Word.Document doc, int pos)
         {
+            // Strict ' '/'\t' uniquement (pas char.IsWhiteSpace) : l'ancre
+            // d'une OMath buildup renvoie un caractère Unicode que
+            // char.IsWhiteSpace considère comme whitespace, ce qui faisait
+            // trimmer l'OMath voisine et produire le bug f(x)F(x)=1
+            // (2026-05-15). Aligne sur NeighborFinder.IsSingleSpaceAt.
             try
             {
                 var t = doc.Range(pos, pos + 1).Text ?? "";
-                return t.Length > 0 && char.IsWhiteSpace(t[0]);
+                return t.Length > 0 && (t[0] == ' ' || t[0] == '\t');
             }
             catch { return false; }
         }
@@ -1680,83 +1779,65 @@ namespace MathCursor.Host
             return Guid.NewGuid().ToString("N").Substring(0, 16);
         }
 
-        /// <summary>Délégués — cf. <see cref="Bookmarks.EquationBookmarkRegistry"/>.</summary>
-        private void DeleteBookmarkByHandle(string handleId) => _bookmarks.Delete(handleId);
-        private void CreateBookmarkForRange(string handleId, int absStart, int absEnd)
-            => _bookmarks.Create(handleId, absStart, absEnd);
-
-
-        /// <summary>
-        /// Pattern build-isolated → transplant XML (cf. ADR 04-05). Construit
-        /// l'OMath dans une zone temporaire isolée à la fin du document, en
-        /// l'entourant de <paramref name="textBefore"/> et
-        /// <paramref name="textAfter"/> (vides pour multi-ligne display, =
-        /// contenu du paragraphe cible avant/après le math zone pour inline).
-        /// Capture le <b>full WordOpenXML package</b> du paragraphe résultant
-        /// (avec <c>&lt;pkg:package&gt;</c> wrapper + namespaces, format
-        /// requis par <c>Range.InsertXML</c>) puis nettoie la zone temporaire.
-        /// <para>
-        /// Le XML capturé peut ensuite être inséré via <c>Range.InsertXML</c>
-        /// pour remplacer le paragraphe cible — sans BuildUp, donc sans
-        /// risque d'absorption d'OMaths voisins.
-        /// </para>
-        /// </summary>
-        /// <summary>
-        /// Délègue à <see cref="OMathStagingService"/> (ghost doc). P2.6 du
-        /// refactor archi — zéro mutation du doc actif. Le paramètre
-        /// <paramref name="doc"/> est conservé pour compat avec call sites
-        /// existants mais ignoré.
-        /// </summary>
-        private string BuildOMathXmlIsolated(Word.Document doc, string latex)
-            => _omathStaging.BuildOMathXml(latex);
 
         /// <summary>
         /// Remplace le range [absStart, absEnd) du document par un OMath construit
         /// à partir du LaTeX fourni. Word's BuildUp ne parse pas le LaTeX nativement,
-        /// on convertit donc d'abord en UnicodeMath (le format natif qu'il comprend).
-        /// Renvoie (newStart, newEnd) = bornes réelles de l'OMath inséré pour qu'on
-        /// puisse accrocher un bookmark dessus.
+        /// on convertit donc d'abord en UnicodeMath. Enveloppe ensuite l'OMath
+        /// dans un <c>ContentControl</c> MathCursor + Tag JSON
+        /// (<see cref="MathCursor.Host.CCMeta.MCMeta"/>) pour le backlink O(1).
+        /// Retourne (newStart, newEnd) = bornes de l'OMath ET le handleId
+        /// fraîchement généré (mémorisé dans le Tag, clé du registry sidecar).
         /// </summary>
-        private (int newStart, int newEnd) InsertOMathAt(int absStart, int absEnd, string latex,
+        private (int newStart, int newEnd, string newHandle) InsertOMathAt(int absStart, int absEnd, string latex,
+            string source,
             System.Collections.Generic.IReadOnlyList<string> absorbedHandles = null)
         {
             // ┌─────────────────────────────────────────────────────────────┐
-            // │ RECETTE MINIMALE 2026-05-13 (validée user via bouton debug):│
+            // │ RECETTE ROBUSTE 2026-05-15 — positions internes Word        │
             // │                                                             │
-            // │   1. Selection.SetRange(absStart, absEnd) — étend la sél.   │
-            // │   2. Selection.TypeText(unicodeMath)       — replace + caret│
-            // │                                              à la fin natif│
-            // │   3. doc.Range(srcStart, end).OMaths.Add + BuildUp          │
-            // │   4. om.Justification = Left (silencieux si inline)         │
-            // │   5. NE PAS toucher au caret — Word le place                │
+            // │ Word reporte OMath.Range.Start/End en positions « visibles »│
+            // │ mais en interne stocke des wrapper chars cachés autour des  │
+            // │ OMaths. SetRange snap silencieusement aux bornes internes,  │
+            // │ TypeText laisse parfois survivre une OMath au début de la   │
+            // │ sélection. Bug f(x)F(x)=1 et 𝐴A=1.                          │
             // │                                                             │
-            // │ + suspendre NER pendant l'opération (DebugInProgress) pour  │
-            // │   éviter re-entrancy WindowSelectionChange → crash tableau. │
+            // │ Solution générique (pas de if "est-ce une OMath") :         │
+            // │   1. Normaliser absStart/absEnd via SetRange + readback     │
+            // │      → on connaît les vraies bornes internes Word           │
+            // │   2. SetRange sur ces bornes internes                       │
+            // │   3. sel.Delete() explicite → force la suppression incluant │
+            // │      OMaths (TypeText seul ne les supprime pas toujours)    │
+            // │   4. TypeText sur range vide → comportement linéaire        │
+            // │   5. OMaths.Add + BuildUp + Justification = Left            │
+            // │   6. NE PAS toucher au caret — Word le place                │
             // │                                                             │
-            // │ Marche partout (¶ normal, cellule, fin de doc). Aucun       │
-            // │ artifice : pas de ghost, pas de splice XML, pas de patcher  │
-            // │ Regex, pas de Policy caret, pas de Nudge. ~50 lignes au     │
-            // │ lieu de ~200+ avant.                                        │
+            // │ + suspendre NER pendant l'opération (DebugInProgress).      │
             // └─────────────────────────────────────────────────────────────┘
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var doc = _app.ActiveDocument;
-            if (doc == null) return (absStart, absEnd);
+            Log($"InsertOMathAt: IN  absStart={absStart} absEnd={absEnd} latex=\"{Preview(latex)}\" absorbedHandles=[{(absorbedHandles == null ? "" : string.Join(",", absorbedHandles))}]");
+            if (doc == null) { Log("InsertOMathAt: no active document → bail"); return (absStart, absEnd, null); }
 
             // Clamp + trim whitespaces aux bords.
             int docStart = doc.Content.Start;
             int docEnd = doc.Content.End;
             if (absStart < docStart) absStart = docStart;
             if (absEnd > docEnd) absEnd = docEnd;
-            if (absEnd <= absStart) return (absStart, absEnd);
+            if (absEnd <= absStart) return (absStart, absEnd, null);
+            int beforeTrimStart = absStart, beforeTrimEnd = absEnd;
             while (absStart < absEnd && IsWhitespaceCharAt(doc, absStart)) absStart++;
             while (absEnd > absStart && IsWhitespaceCharAt(doc, absEnd - 1)) absEnd--;
-            if (absEnd <= absStart) return (absStart, absEnd);
+            if (beforeTrimStart != absStart || beforeTrimEnd != absEnd)
+                Log($"InsertOMathAt: TRIM ws [{beforeTrimStart},{beforeTrimEnd}) → [{absStart},{absEnd})");
+            if (absEnd <= absStart) { Log("InsertOMathAt: range empty after trim → bail"); return (absStart, absEnd, null); }
 
             // LaTeX → UnicodeMath (= format natif BuildUp).
             string unicodeMath;
             try { unicodeMath = MathCursor.Core.LatexToUnicodeMath.Convert(latex); }
-            catch (Exception ex) { LogDiag("insert_l2um_error: " + ex.Message); return (absStart, absEnd); }
-            if (string.IsNullOrEmpty(unicodeMath)) return (absStart, absEnd);
+            catch (Exception ex) { Log("insert_l2um_error: " + ex.Message); return (absStart, absEnd, null); }
+            if (string.IsNullOrEmpty(unicodeMath)) { Log("InsertOMathAt: unicodeMath empty → bail"); return (absStart, absEnd, null); }
+            Log($"InsertOMathAt: unicodeMath=\"{Preview(unicodeMath)}\" (len={unicodeMath.Length})");
 
             // Suspend NER pendant l'opération.
             bool prevDebug = DebugInProgress;
@@ -1764,125 +1845,133 @@ namespace MathCursor.Host
             try
             {
                 var sel = _app.Selection;
-                if (sel == null) return (absStart, absEnd);
+                if (sel == null) { Log("InsertOMathAt: sel null → bail"); return (absStart, absEnd, null); }
 
-                // 1. SetRange étend la sélection sur la range source.
-                try { sel.SetRange(absStart, absEnd); }
-                catch (Exception ex) { LogDiag("insert_setrange_error: " + ex.Message); return (absStart, absEnd); }
+                // 1. Normalisation des bornes en positions internes Word.
+                int internalStart, internalEnd;
+                try
+                {
+                    sel.SetRange(absStart, absStart);
+                    internalStart = sel.Start;
+                    sel.SetRange(absEnd, absEnd);
+                    internalEnd = sel.Start;
+                    Log($"InsertOMathAt: NORMALIZE [{absStart},{absEnd}) → [{internalStart},{internalEnd})");
+                }
+                catch (Exception ex) { Log("insert_normalize_error: " + ex.Message); return (absStart, absEnd, null); }
 
-                // 2. TypeText : Word remplace la sélection ET avance le caret
-                //    à la fin du texte tapé (= comportement natif Word).
-                try { sel.TypeText(unicodeMath); }
-                catch (Exception ex) { LogDiag("insert_typetext_error: " + ex.Message); return (absStart, absEnd); }
+                // 2. SetRange sur les vraies bornes internes (pas de snap).
+                try
+                {
+                    sel.SetRange(internalStart, internalEnd);
+                    _commitInternalStart = sel.Start;
+                    _commitInternalEnd = sel.End;
+                    Log($"InsertOMathAt: SetRange [{internalStart},{internalEnd}) ok, sel=[{sel.Start},{sel.End})");
+                }
+                catch (Exception ex) { Log("insert_setrange_error: " + ex.Message); return (absStart, absEnd, null); }
+
+                // 3. Delete explicite — force la suppression incluant les
+                //    OMaths absorbées (avec leurs CCs propres si elles en
+                //    avaient). TypeText seul ne suffit pas.
+                try { sel.Delete(); Log($"InsertOMathAt: Delete done, sel=[{sel.Start},{sel.End})"); }
+                catch (Exception ex) { Log("insert_delete_error: " + ex.Message); return (absStart, absEnd, null); }
+
+                // 4. TypeText sur range vide → caret avance exactement de
+                //    unicodeMath.Length chars.
+                try { sel.TypeText(unicodeMath); Log($"InsertOMathAt: TypeText done, sel=[{sel.Start},{sel.End})"); }
+                catch (Exception ex) { Log("insert_typetext_error: " + ex.Message); return (absStart, absEnd, null); }
 
                 int afterEnd = sel.Start;
                 int srcStart = afterEnd - unicodeMath.Length;
+                Log($"InsertOMathAt: srcStart={srcStart} afterEnd={afterEnd}");
 
-                // 3. OMaths.Add + BuildUp sur la range typée.
-                Word.OMath placedOM = null;
+                // 5. CC wrap AVANT BuildUp (ordre POC-validé 2026-05-18 :
+                //    crée le CC sur du plain text, puis BuildUp à l'intérieur
+                //    — Word ne « catch » pas le caret en zone math au wrap).
+                Word.ContentControl cc = null;
                 try
                 {
-                    var mathRange = doc.Range(srcStart, afterEnd);
-                    mathRange.OMaths.Add(mathRange);
-                    mathRange.OMaths.BuildUp();
-
-                    // 4. Retrouve l'OMath créée et aligne à gauche (silencieux
-                    //    si inline = setter Justification n'est pas applicable).
-                    foreach (Word.OMath o in doc.OMaths)
-                    {
-                        if (o.Range.Start <= srcStart && o.Range.End >= srcStart)
-                        {
-                            placedOM = o;
-                            try { o.Justification = Word.WdOMathJc.wdOMathJcLeft; } catch { }
-                            break;
-                        }
-                    }
+                    var typedRange = doc.Range(srcStart, afterEnd);
+                    cc = typedRange.ContentControls.Add(Word.WdContentControlType.wdContentControlRichText);
+                    cc.Title = MathCursor.Host.CCMeta.MCMetaJson.CcTitle;
+                    try { cc.Appearance = Word.WdContentControlAppearance.wdContentControlHidden; }
+                    catch (Exception exApp) { Log("insert_cc_appearance_error: " + exApp.Message); }
+                    try { cc.LockContentControl = false; } catch { }
+                    try { cc.LockContents = false; } catch { }
+                    Log($"InsertOMathAt: CC wrap cc.Range=[{cc.Range.Start},{cc.Range.End})");
                 }
-                catch (Exception ex) { LogDiag("insert_buildup_error: " + ex.Message); return (srcStart, afterEnd); }
+                catch (Exception exCc) { Log("insert_cc_wrap_error: " + exCc.Message); }
 
-                int newStart = placedOM?.Range.Start ?? srcStart;
-                int newEnd = placedOM?.Range.End ?? afterEnd;
+                // 6. OMaths.Add + BuildUp sur cc.Range (ou fallback typedRange).
+                int newStart = srcStart, newEnd = afterEnd;
+                Word.OMath om = null;
+                try
+                {
+                    var innerRange = cc?.Range ?? doc.Range(srcStart, afterEnd);
+                    var addedRange = innerRange.OMaths.Add(innerRange);
+                    addedRange.OMaths.BuildUp();
 
-                // 5. Cleanup bookmarks des OMaths absorbées (= dans la range
-                //    qu'on vient d'écraser via TypeText).
+                    foreach (Word.OMath o in addedRange.OMaths) { om = o; break; }
+
+                    if (om != null)
+                    {
+                        try { om.Justification = Word.WdOMathJc.wdOMathJcLeft; } catch { }
+                        newStart = om.Range.Start;
+                        newEnd = om.Range.End;
+                        Log($"InsertOMathAt: OMath built, range=[{newStart},{newEnd})");
+                    }
+                    else { Log("InsertOMathAt: addedRange.OMaths empty after BuildUp"); }
+                }
+                catch (Exception ex) { Log("insert_buildup_error: " + ex.Message); return (srcStart, afterEnd, null); }
+
+                // 7. Génère handle + écrit Tag JSON sur le CC (hash POST wrap
+                //    pour que store-hash == read-hash sinon stale=True).
+                string newHandle = null;
+                if (cc != null && om != null)
+                {
+                    try
+                    {
+                        newHandle = NewHandleId();
+                        string hash = MathCursor.Host.CCMeta.Sha1Helper.Compute(om.Range.WordOpenXML ?? "");
+                        var meta = new MathCursor.Host.CCMeta.MCMeta
+                        {
+                            V = 1,
+                            HandleId = newHandle,
+                            Steno = source ?? "",
+                            Latex = latex ?? "",
+                            Version = typeof(SuggestionService).Assembly.GetName().Version?.ToString() ?? "0",
+                            OmmlHash = hash,
+                            ParsedAt = DateTime.UtcNow,
+                        };
+                        cc.Tag = MathCursor.Host.CCMeta.MCMetaJson.Serialize(meta);
+                        Log($"InsertOMathAt: Tag set handle={newHandle} hash={hash.Substring(0, 8)}…");
+                    }
+                    catch (Exception exTag) { Log("insert_tag_error: " + exTag.Message); }
+                }
+
+                // 8. Sort le caret de la sticky-zone du CC (= +1 après cc.End).
+                //    Évite que la prochaine frappe user (Enter pour passer au
+                //    ¶ suivant, ou texte) soit absorbée par auto-grow du CC.
+                if (cc != null) MathCursor.Host.CCMeta.CcSticky.EscapeCaretAfter(_app, cc);
+
+                // 9. Cleanup absorbed handles : juste sidecar in-memory
+                //    (les CCs des OMaths absorbées ont été supprimées par
+                //    sel.Delete avec leur contenu).
                 if (absorbedHandles != null && absorbedHandles.Count > 0)
                 {
                     foreach (var h in absorbedHandles)
                     {
-                        try { _store.RemoveAsync(new MathCursor.HostContract.EquationHandle(h)).GetAwaiter().GetResult(); }
-                        catch (Exception ex) { LogDiag($"insert_remove_absorbed_error handle={h}: {ex.Message}"); }
                         _handleRegistry.Forget(h);
                     }
                 }
 
                 sw.Stop();
-                LogDiag($"PERF InsertOMathAt total={sw.ElapsedMilliseconds}ms (simplified pipeline) → range=[{newStart},{newEnd}]");
-                return (newStart, newEnd);
+                Log($"InsertOMathAt: OUT range=[{newStart},{newEnd}) handle={(newHandle ?? "null")} total={sw.ElapsedMilliseconds}ms");
+                return (newStart, newEnd, newHandle);
             }
             finally
             {
                 DebugInProgress = prevDebug;
             }
-        }
-
-        /// <summary>
-        /// Construit l'<see cref="Inserters.InsertContext"/> : identifie
-        /// firstPara, lastPara, targetCount, isDisplayMath. Retourne
-        /// <c>null</c> si Word interop échoue.
-        /// </summary>
-        private Inserters.InsertContext BuildInsertContext(
-            Word.Document doc, int absStart, int absEnd, string latex,
-            System.Collections.Generic.IReadOnlyList<string> absorbedHandles)
-        {
-            try
-            {
-                bool isDisplayMath = latex.IndexOf("\\begin{align", StringComparison.Ordinal) >= 0
-                                  || latex.IndexOf("\\begin{cases", StringComparison.Ordinal) >= 0;
-
-                int safeProbeStart = Math.Min(absStart + 1, doc.Content.End - 1);
-                int safeProbeEnd = Math.Max(absStart, Math.Min(absEnd - 1, doc.Content.End - 1));
-                if (safeProbeStart > safeProbeEnd) safeProbeStart = safeProbeEnd;
-                var firstPara = doc.Range(safeProbeStart, safeProbeStart).Paragraphs[1];
-                var lastPara = doc.Range(safeProbeEnd, safeProbeEnd).Paragraphs[1];
-                int firstParaStart = firstPara.Range.Start;
-                int lastParaStart = lastPara.Range.Start;
-
-                // targetCount via navigation Next() (évite doc.Paragraphs[i]
-                // qui est O(N) sur gros doc — bug perf 12-05).
-                int targetCount = 1;
-                if (firstParaStart != lastParaStart)
-                {
-                    var cursor = firstPara;
-                    while (cursor != null && cursor.Range.Start < lastParaStart)
-                    {
-                        try { cursor = cursor.Next(); } catch { cursor = null; }
-                        if (cursor == null) break;
-                        targetCount++;
-                        if (cursor.Range.Start >= lastParaStart) break;
-                    }
-                }
-                LogDiag($"PERF target_count count={targetCount}");
-
-                return new Inserters.InsertContext(doc, absStart, absEnd, latex,
-                    isDisplayMath, targetCount, firstPara, absorbedHandles);
-            }
-            catch (Exception ex)
-            {
-                LogDiag("build_insert_context_error: " + ex.Message);
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Enchaîne les stratégies d'insertion dans l'ordre. Yields chaque
-        /// <see cref="Inserters.InsertResult"/> ; la 1re Success court-circuite.
-        /// </summary>
-        private System.Collections.Generic.IEnumerable<Inserters.InsertResult> TryInsertStrategies(
-            Inserters.InsertContext ctx)
-        {
-            yield return _fastPathInserter.TryInsert(ctx);
-            yield return _spliceInserter.TryInsert(ctx);
-            yield return _atomicInserter.TryInsert(ctx);
         }
 
         private static string Preview(string s)

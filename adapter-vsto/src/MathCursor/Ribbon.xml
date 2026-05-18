@@ -134,6 +134,26 @@
                   screentip="Replace la sélection (ou les 6 chars avant le caret) par une OMath f(x)=1 alignée à gauche. Simule la recette minimale post-popup : range.Text = unicodeMath + OMaths.Add + BuildUp + om.Justification, sans toucher au caret."
                   size="normal"
                   onAction="OnDebugReplaceByOMathClicked" />
+          <button id="DebugWrapOMathInCCButton"
+                  label="POC : wrap OMath en CC"
+                  screentip="POC ContentControl-based metadata. Prend l'OMath collée au caret (probe doc.Range(caret-1,caret).OMaths), l'enveloppe dans un CC Hidden avec Title=MathCursor + Tag JSON (steno/latex/hash/version). Test du backlink O(1) via ParentContentControl."
+                  size="normal"
+                  onAction="OnDebugWrapOMathInCCClicked" />
+          <button id="DebugReadCCAtCaretButton"
+                  label="POC : read CC at caret"
+                  screentip="POC lecture. Affiche dans le pane debug ce que renvoie om.Range.ParentContentControl pour l'OMath collée au caret, et le contenu JSON parsé de cc.Tag. Vérifie que le backlink natif fonctionne."
+                  size="normal"
+                  onAction="OnDebugReadCCAtCaretClicked" />
+          <button id="DebugInsertWrappedOMathButton"
+                  label="POC : insert g(x)=2 wrappé"
+                  screentip="POC full flow. Insère g(x)=2 au caret (TypeText + OMaths.Add + BuildUp + Justification.Left) ET enveloppe atomiquement dans un CC MathCursor avec Tag JSON (steno, latex, hash post-wrap). Simule ce que la Phase B/C fera dans InsertOMathAt."
+                  size="normal"
+                  onAction="OnDebugInsertWrappedOMathClicked" />
+          <button id="DebugCleanupOrphanCCsButton"
+                  label="POC : cleanup orphan CCs"
+                  screentip="Scanne doc.ContentControls et liste les CCs MathCursor sans OMath dedans (= orphelins fantômes). Affiche le diag dans le pane + supprime les orphelins trouvés."
+                  size="normal"
+                  onAction="OnDebugCleanupOrphanCCsClicked" />
           <button id="AboutButton"
                   getLabel="OnGetAboutButtonLabel"
                   getScreentip="OnGetAboutButtonScreentip"

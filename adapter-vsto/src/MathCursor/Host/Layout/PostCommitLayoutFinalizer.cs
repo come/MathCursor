@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 using Word = Microsoft.Office.Interop.Word;
 
 namespace MathCursor.Host.Layout
@@ -87,13 +86,6 @@ namespace MathCursor.Host.Layout
             catch (Exception ex) { _log("xparMerge_setcaret_error: " + ex.Message); }
         }
 
-        /// <summary>Aligne l'OMath couvrant <paramref name="pos"/> sur l'alignement du ¶.</summary>
-        public void EnforceOMathParagraphAlignment(Word.Document doc, int pos)
-        {
-            try { SyncOMathJustificationToParagraph(doc, pos); }
-            catch (Exception ex) { _log("xparMerge_enforce_align_error: " + ex.Message); }
-        }
-
         // ── Internals ────────────────────────────────────────────────
 
         private void StripLeadingResidualEmptyParagraph(Word.Document doc, int replaceStart, ref int newStart, ref int newEnd)
@@ -119,82 +111,6 @@ namespace MathCursor.Host.Layout
                 newEnd -= delLen;
             }
             catch (Exception ex) { _log("xparMerge_strip_lead_para_error: " + ex.Message); }
-        }
-
-        private void SyncOMathJustificationToParagraph(Word.Document doc, int pos)
-        {
-            try
-            {
-                int omathJc = MapParagraphAlignToOMathJc(ReadParagraphAlignment(doc, pos));
-
-                // 1) Typed OMath.Justification setter (couvre les inline).
-                foreach (Word.OMath om in doc.OMaths)
-                {
-                    var r = om.Range;
-                    if (r.Start > pos || r.End <= pos) continue;
-                    try { om.Justification = (Word.WdOMathJc)omathJc; } catch { }
-                    break;
-                }
-
-                // 2) Patch OOXML pour OMathPara (seul path qui marche sur cette PIA Office15).
-                PatchOMathParaJustificationViaXml(doc, pos, omathJc);
-            }
-            catch (Exception ex) { _log("align_sync_error: " + ex.Message); }
-        }
-
-        private static int ReadParagraphAlignment(Word.Document doc, int pos)
-        {
-            try
-            {
-                var format = doc.Range(pos, pos).Paragraphs[1].Format;
-                return (int)format.GetType().InvokeMember(
-                    "Alignment", BindingFlags.GetProperty, null, format, null);
-            }
-            catch { return 0; }
-        }
-
-        private static int MapParagraphAlignToOMathJc(int paragraphAlign)
-        {
-            switch (paragraphAlign)
-            {
-                case 1: return 2; // Center
-                case 2: return 4; // Right
-                default: return 3; // Left (couvre Left, Justify, variantes)
-            }
-        }
-
-        private static string OMathJcToOoxmlVal(int jc)
-        {
-            switch (jc)
-            {
-                case 1: return "centerGroup";
-                case 2: return "center";
-                case 3: return "left";
-                case 4: return "right";
-                default: return null;
-            }
-        }
-
-        private void PatchOMathParaJustificationViaXml(Word.Document doc, int pos, int omathJc)
-        {
-            string targetVal = OMathJcToOoxmlVal(omathJc);
-            if (targetVal == null) return;
-            try
-            {
-                var probeRange = doc.Range(pos, pos);
-                var paras = probeRange.Paragraphs;
-                if (paras == null || paras.Count == 0) return;
-                var paraRange = paras[1].Range;
-                string xml = paraRange.WordOpenXML;
-                if (string.IsNullOrEmpty(xml)) return;
-                bool changed;
-                string patched = OMathParaJcPatcher.EnsureDisplayWithJc(xml, targetVal, out changed);
-                if (!changed) return;
-                // Réinsertion forcée : OMath.Justification setter ne déclenche
-                // pas de re-layout. InsertXML re-process et force le repaint.
-                paraRange.InsertXML(patched);
-            }
-            catch (Exception ex) { _log("align_sync_xml_error: " + ex.Message); }
         }
     }
 }

@@ -18,7 +18,8 @@ namespace MathCursor
 {
     public partial class ThisAddIn
     {
-        private VstoEquationStore _store;
+        // VstoEquationStore retiré (Phase B 2026-05-18) — source/latex vivent
+        // maintenant dans cc.Tag MCMeta de chaque OMath wrappée.
         private MathNerDetector _ner;
         private Engine _engine;
         private SuggestionService _suggestions;
@@ -47,9 +48,39 @@ namespace MathCursor
                 // dans <InstallDir>\onnxruntime-x86\ et <InstallDir>\onnxruntime-x64\.
                 ConfigureOnnxRuntimeNativeDir();
 
-                // Store des sources (CustomXMLParts) : utilisé par le mode édition
-                // d'un OMath existant (phase C2 : bookmark → source → popup).
-                _store = new VstoEquationStore(this.Application);
+                // Désactive l'autocorrect math hors zones math.
+                // Sans ça, Word anticipe une nouvelle équation quand on tape
+                // adjacent à une OMath existante via TypeText programmatique :
+                // au 2e POC insert consécutif, Word insère un template
+                // « Tapez une équation ici. » qui se fait wrapper avec notre
+                // CC (CC de 25 chars au lieu de 8). Bug observé 2026-05-18.
+                try
+                {
+                    var omac = this.Application.OMathAutoCorrect;
+                    if (omac != null)
+                    {
+                        var type = omac.GetType();
+                        var propNames = new[] { "UseOutsideOMathRegion", "UseOutsideMathRegion", "ReplaceText" };
+                        foreach (var name in propNames)
+                        {
+                            var prop = type.GetProperty(name);
+                            if (prop != null)
+                            {
+                                try
+                                {
+                                    object beforeVal = prop.GetValue(omac, null);
+                                    prop.SetValue(omac, false, null);
+                                    object afterVal = prop.GetValue(omac, null);
+                                    LogStartup($"OMathAutoCorrect.{name}: before={beforeVal} → after={afterVal}");
+                                }
+                                catch (Exception exSet) { LogStartup($"OMathAutoCorrect.{name} setter throw: {exSet.Message}"); }
+                            }
+                            else LogStartup($"OMathAutoCorrect.{name}: property not found on this Word version");
+                        }
+                    }
+                    else LogStartup("OMathAutoCorrect: returned null on this Word version");
+                }
+                catch (Exception ex) { LogStartup("OMathAutoCorrect setup error: " + ex.Message); }
 
                 // Modèle NER (chemin dev hardcodé pour MVP)
                 var modelDir = FindModelDir();
@@ -63,7 +94,7 @@ namespace MathCursor
                 // suggestions LaTeX via Lex → top-K Dijkstra → Parse → Render.
                 _engine = Engine.LoadEmbedded("fr");
 
-                _suggestions = new SuggestionService(this.Application, _ner, _engine, _store);
+                _suggestions = new SuggestionService(this.Application, _ner, _engine);
                 _suggestions.Install();
 
                 // Hook clavier : Enter valide le candidat sélectionné UNIQUEMENT
@@ -476,5 +507,19 @@ namespace MathCursor
         }
 
         #endregion
+
+        private static void LogStartup(string message)
+        {
+            try
+            {
+                var dir = System.IO.Path.Combine(
+                    System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+                    "MathCursor", "logs");
+                System.IO.Directory.CreateDirectory(dir);
+                System.IO.File.AppendAllText(System.IO.Path.Combine(dir, "mathcursor.log"),
+                    $"{System.DateTime.UtcNow:o} startup {message}{System.Environment.NewLine}");
+            }
+            catch { }
+        }
     }
 }
