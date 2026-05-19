@@ -303,6 +303,7 @@
     <Compile Include="Host\CCMeta\MCMetaJson.cs" />
     <Compile Include="Host\CCMeta\Sha1Helper.cs" />
     <Compile Include="Host\Caret\CaretScreenPositionReader.cs" />
+    <Compile Include="Host\ZoneCleaner.cs" />
     <Compile Include="Host\Detection\NerInputWindow.cs" />
     <Compile Include="Host\Detection\ParagraphPositionTranslator.cs" />
     <Compile Include="Host\Detection\ZoneRefiner.cs" />

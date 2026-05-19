@@ -957,6 +957,164 @@ namespace MathCursor
             }
         }
 
+        /// <summary>POC merger : sonde tous les chemins de détection
+        /// « voisin gauche » au caret. Affiche dans l'inspecteur ce que chaque
+        /// probe retourne, sans rien modifier au doc.</summary>
+        public void OnDebugProbeLeftNeighborClicked(IRibbonControl control)
+        {
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null) return;
+                var doc = app.ActiveDocument;
+                if (doc == null) return;
+                var sel = app.Selection;
+                if (sel == null) return;
+
+                int caret = sel.Range.Start;
+                int docEnd = doc.Content.End;
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("=== POC : probe left neighbor @ caret ===");
+                sb.AppendLine($"caret = {caret}   docEnd = {docEnd}");
+                sb.AppendLine();
+
+                // 1. Paragraphe courant
+                var paraRange = sel.Paragraphs[1].Range;
+                sb.AppendLine($"¶ Range = [{paraRange.Start}, {paraRange.End})   text.Length = {(paraRange.Text ?? "").Length}");
+                sb.AppendLine($"¶ Characters.Count = {paraRange.Characters.Count}");
+                sb.AppendLine();
+
+                // 2. OMaths du ¶
+                sb.AppendLine("OMaths dans le ¶ :");
+                int omIdx = 0;
+                foreach (Microsoft.Office.Interop.Word.OMath om in paraRange.OMaths)
+                {
+                    omIdx++;
+                    int s = -1, e = -1;
+                    string txt = "";
+                    try { s = om.Range.Start; e = om.Range.End; txt = om.Range.Text ?? ""; } catch { }
+                    sb.AppendLine($"  #{omIdx} : OMath.Range = [{s},{e})   text.Length = {txt.Length}");
+                    Microsoft.Office.Interop.Word.ContentControl parentCc = null;
+                    try { parentCc = om.Range.ParentContentControl; } catch { }
+                    if (parentCc != null)
+                        sb.AppendLine($"       ParentCC: Range=[{parentCc.Range.Start},{parentCc.Range.End}) Title=\"{parentCc.Title}\" Tag={Trunc(parentCc.Tag, 50)}");
+                    else
+                        sb.AppendLine("       ParentCC: null");
+                }
+                sb.AppendLine();
+
+                // 3. ContentControls dans le ¶
+                sb.AppendLine("ContentControls dans le ¶ :");
+                int ccIdx = 0;
+                foreach (Microsoft.Office.Interop.Word.ContentControl cc in paraRange.ContentControls)
+                {
+                    ccIdx++;
+                    sb.AppendLine($"  #{ccIdx} : CC.Range = [{cc.Range.Start},{cc.Range.End})   Title=\"{cc.Title}\" Tag={Trunc(cc.Tag, 50)}");
+                }
+                if (ccIdx == 0) sb.AppendLine("  (aucun)");
+                sb.AppendLine();
+
+                // 4. Sondes ParentContentControl autour du caret (simule absStart)
+                sb.AppendLine($"Sondes ParentContentControl autour de absStart = {caret} (= zone start hypothétique) :");
+                for (int off = -3; off <= 1; off++)
+                {
+                    int p = caret + off;
+                    if (p < 0 || p >= docEnd) { sb.AppendLine($"  [{p},{p + 1}) : (hors doc)"); continue; }
+                    try
+                    {
+                        var probe = doc.Range(p, Math.Min(p + 1, docEnd));
+                        var cc = probe.ParentContentControl;
+                        string text = "";
+                        try { text = probe.Text ?? ""; } catch { }
+                        string escapedText = text.Replace("\r", "\\r").Replace("\n", "\\n");
+                        if (escapedText.Length > 8) escapedText = escapedText.Substring(0, 8) + "…";
+                        string ccDesc = (cc == null) ? "null"
+                            : $"[{cc.Range.Start},{cc.Range.End}) title=\"{cc.Title}\"";
+                        sb.AppendLine($"  [{p},{p + 1}) text=\"{escapedText}\" → CC = {ccDesc}");
+                    }
+                    catch (Exception exP) { sb.AppendLine($"  [{p},{p + 1}) ERR : {exP.Message}"); }
+                }
+                sb.AppendLine();
+
+                // 5. doc.Range(p, p+1).OMaths pour chaque p autour
+                sb.AppendLine("Sondes OMaths sur doc.Range(p, p+1) :");
+                for (int off = -3; off <= 1; off++)
+                {
+                    int p = caret + off;
+                    if (p < 0 || p >= docEnd) { sb.AppendLine($"  [{p},{p + 1}) : (hors doc)"); continue; }
+                    try
+                    {
+                        var probe = doc.Range(p, Math.Min(p + 1, docEnd));
+                        int n = 0;
+                        foreach (Microsoft.Office.Interop.Word.OMath o in probe.OMaths)
+                        {
+                            n++;
+                            sb.AppendLine($"  [{p},{p + 1}) → OMath[{n}] = [{o.Range.Start},{o.Range.End})");
+                        }
+                        if (n == 0) sb.AppendLine($"  [{p},{p + 1}) → OMaths.Count = 0");
+                    }
+                    catch (Exception exO) { sb.AppendLine($"  [{p},{p + 1}) ERR : {exO.Message}"); }
+                }
+                sb.AppendLine();
+
+                // 6. Appel direct NeighborFinder + IntraOMathsMerger.TryMergeWithLeft
+                sb.AppendLine("Appel NeighborFinder.FindAdjacent(absStart=caret, absEnd=caret) :");
+                try
+                {
+                    var traceSb = new System.Text.StringBuilder();
+                    var finder = new MathCursor.Host.Merging.NeighborFinder(
+                        () => app.ActiveDocument,
+                        s => traceSb.AppendLine("    [finder] " + s));
+                    var adj = finder.FindAdjacent(caret, caret);
+                    sb.Append(traceSb.ToString());
+                    sb.AppendLine($"  Result: Left={(adj.Left == null ? "null" : $"OMath=[{adj.Left.RangeStart},{adj.Left.RangeEnd}) handle={adj.Left.Handle} source=\"{Trunc(adj.Left.Source, 30)}\"")}");
+                    sb.AppendLine($"          Right={(adj.Right == null ? "null" : $"OMath=[{adj.Right.RangeStart},{adj.Right.RangeEnd}) handle={adj.Right.Handle}")}");
+                }
+                catch (Exception exF) { sb.AppendLine("  ERR : " + exF.Message); }
+                sb.AppendLine();
+
+                // 7. Test TryMergeWithLeft simulé avec source="=1", latex="= 1"
+                sb.AppendLine("Test IntraOMathsMerger.TryMergeWithLeft(\"=1\", \"= 1\") @ caret :");
+                try
+                {
+                    var traceSb = new System.Text.StringBuilder();
+                    var finder = new MathCursor.Host.Merging.NeighborFinder(
+                        () => app.ActiveDocument,
+                        s => traceSb.AppendLine("    [finder] " + s));
+                    var merger = new MathCursor.Host.Merging.IntraOMathsMerger(
+                        finder,
+                        () => MathCursor.Core.Resolution.ResolutionSidecar.Empty,
+                        _ => MathCursor.Core.Resolution.ResolutionSidecar.Empty,
+                        s => traceSb.AppendLine("    [merger] " + s));
+                    var res = merger.TryMergeWithLeft(caret, caret, "=1", "= 1");
+                    sb.Append(traceSb.ToString());
+                    if (res == null) sb.AppendLine("  Result: null (pas de merge)");
+                    else
+                    {
+                        sb.AppendLine($"  Result: AbsStart={res.AbsStart} AbsEnd={res.AbsEnd}");
+                        sb.AppendLine($"          MergedSource=\"{Trunc(res.MergedSource, 50)}\"");
+                        sb.AppendLine($"          MergedLatex=\"{Trunc(res.MergedLatex, 50)}\"");
+                    }
+                }
+                catch (Exception exM) { sb.AppendLine("  ERR : " + exM.Message); }
+
+                LogDebug($"poc_probe_left: caret={caret} (see inspector for full trace)");
+                Globals.ThisAddIn.PushDebugTrace(sb.ToString());
+            }
+            catch (Exception ex)
+            {
+                LogDebug("poc_probe_left_error: " + ex.Message);
+                Globals.ThisAddIn.PushDebugTrace("=== POC probe left ERROR ===\n" + ex.Message);
+            }
+        }
+
+        private static string Trunc(string s, int n)
+        {
+            if (string.IsNullOrEmpty(s)) return "\"\"";
+            string escaped = s.Replace("\r", "\\r").Replace("\n", "\\n");
+            return escaped.Length > n ? "\"" + escaped.Substring(0, n) + "…\"" : "\"" + escaped + "\"";
+        }
+
         /// <summary>Step debug — next. Avance d'une étape dans la séquence
         /// InsertOMathAt et affiche l'état du doc post-étape.</summary>
         public void OnDebugStepNextClicked(IRibbonControl control)

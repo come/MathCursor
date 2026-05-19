@@ -113,8 +113,11 @@
     <Compile Include="..\..\src\MathCursor\Host\Merging\IZoneMerger.cs" Link="adapter-sources\Host\Merging\IZoneMerger.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Merging\MergeResult.cs" Link="adapter-sources\Host\Merging\MergeResult.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Merging\MergerPipeline.cs" Link="adapter-sources\Host\Merging\MergerPipeline.cs" />
-    <!-- IntraOMathsMerger.cs : Word-coupled depuis P2.9, lien retiré du test project (pas testable hors Word). -->
-    <!-- <Compile Include="..\..\src\MathCursor\Host\Merging\IntraOMathsMerger.cs" /> -->
+    <!-- IntraOMathsMerger.cs : Word-coupled depuis P2.9, mais la partie
+         IsMergeMarker (Phase B revival, ADR 2026-05-18) est pure et testable. -->
+    <Compile Include="..\..\src\MathCursor\Host\Merging\IntraOMathsMerger.cs" Link="adapter-sources\Host\Merging\IntraOMathsMerger.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Merging\NeighborFinder.cs" Link="adapter-sources\Host\Merging\NeighborFinder.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Merging\Neighbor.cs" Link="adapter-sources\Host\Merging\Neighbor.cs" />
     <!-- RevertedMultiLineMerger.cs : Word-coupled depuis P2.11, lien retiré du test project. -->
     <!-- <Compile Include="..\..\src\MathCursor\Host\Merging\RevertedMultiLineMerger.cs" /> -->
     <!-- CasesChainCascadeMerger.cs : Word-coupled depuis P2.12, lien retiré du test project. -->

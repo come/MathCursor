@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using MathCursor.Core.Resolution;
+using Word = Microsoft.Office.Interop.Word;
 
 namespace MathCursor.Host.Merging
 {
@@ -29,5 +30,25 @@ namespace MathCursor.Host.Merging
         /// </para>
         /// </summary>
         public ResolutionSidecar MergedSidecar { get; set; } = ResolutionSidecar.Empty;
+
+        /// <summary>
+        /// LaTeX déjà combiné (= <c>leftLatex + currentLatex</c> dans le
+        /// cas intra-¶ voisin gauche). Si non null, l'inserter doit l'utiliser
+        /// tel quel sans re-rendu depuis <see cref="MergedSource"/>.
+        ///
+        /// <para>Pourquoi : préserver le LaTeX validé/édité du voisin tel
+        /// que vu par l'utilisateur, ne pas écraser via un re-rendu qui
+        /// pourrait diverger (renderer évolue, ou édition manuelle Word).
+        /// Cf. ADR 2026-05-18-Feat-intra-omaths-merger-revival.</para>
+        ///
+        /// <para>Null = comportement legacy (re-rendu depuis MergedSource).</para>
+        /// </summary>
+        public string MergedLatex { get; set; }
+
+        /// <summary>
+        /// CC du voisin gauche absorbé, à supprimer post-insert (sinon
+        /// orphelin Word). Null si pas de voisin / merger non LaTeX-preserving.
+        /// </summary>
+        public Word.ContentControl LeftCcToCleanup { get; set; }
     }
 }

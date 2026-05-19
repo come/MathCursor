@@ -19,6 +19,9 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-05-18
+- `[molle]` Feat — [Intra-OMaths merger : revival LaTeX-preserving, voisin gauche uniquement](2026-05-18-Feat-intra-omaths-merger-revival.md) — fix `F(x)` + `=1` → 1 OMath `F(x)=1` (pas 2), `mergedLatex = leftLatex + newLatex` lu depuis `cc.Tag.Latex` (pas de re-rendu), marker guard (`=`/`<=>`/`=>`/`{`), skip si hash drift OMML détecté
+
 ### 2026-05-13
 - `[forte]` Fix — [Garde strip list_mode : ¶ avec OMath ne peut JAMAIS être effacé](2026-05-13-Fix-list-mode-strip-guard-omath.md) — fix bug perte formule après cross-merge + Escape (log user 13:29), nouvelle classe pure `ListModeStripGuard` testée TDD, reset complet list_mode si inject échoue
 - `[molle]` Fix — [Alignment `m:jc=left` uniforme post-insert (tous chemins)](2026-05-13-Fix-omath-alignment-uniform-post-insert.md) — remonte l'appel `EnforceOMathParagraphAlignment` à `InsertOMathAt` (1 call site uniforme), supprime duplication + flag `_wasXmlTransplant`, élimine OMath centré sur fast_path/splice

@@ -1485,11 +1485,54 @@ namespace MathCursor.Host
                 catch (Exception ex) { LogDiag("commit_translate_error: " + ex.Message); }
             }
 
+            // Intra-¶ merger amont (Phase B revival, ADR 2026-05-18) :
+            // si la source commence par marker (=, <=>, =>, {) et qu'il y a
+            // une OMath voisine à gauche, fusionne en préservant son LaTeX
+            // (lu depuis cc.Tag.Latex, pas de re-rendu). La zone d'insertion
+            // est étendue à cc.Range.Start ; mergedLatex est passé tel quel
+            // à CommitContext (Sidecar.Empty + WasMerged=false → ResolverStage
+            // skip → inserter utilise notre LaTeX sans toucher).
+            string sourceForCtx = source;
+            string latexForCtx = latex;
+            if (editingHandle == null)
+            {
+                try
+                {
+                    var finder = new MathCursor.Host.Merging.NeighborFinder(
+                        () => _app.ActiveDocument,
+                        LogDiag);
+                    var merger = new MathCursor.Host.Merging.IntraOMathsMerger(
+                        finder,
+                        () => _popup?.CurrentSidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty,
+                        h => GetSidecarForHandle(h),
+                        LogDiag);
+                    var mergeResult = merger.TryMergeWithLeft(
+                        absStartForCtx, absEndForCtx, source, latex);
+                    if (mergeResult != null && !string.IsNullOrEmpty(mergeResult.MergedLatex))
+                    {
+                        LogDiag(string.Format(
+                            "merge_left applied: zone [{0},{1}) → [{2},{3}), source=\"{4}\", latex=\"{5}\"",
+                            absStartForCtx, absEndForCtx,
+                            mergeResult.AbsStart, mergeResult.AbsEnd,
+                            Preview(mergeResult.MergedSource),
+                            Preview(mergeResult.MergedLatex)));
+                        absStartForCtx = mergeResult.AbsStart;
+                        absEndForCtx = mergeResult.AbsEnd;
+                        sourceForCtx = mergeResult.MergedSource;
+                        latexForCtx = mergeResult.MergedLatex;
+                        // ZoneCleaner (appelé dans InsertOMathAt) supprimera
+                        // la CC voisine en même temps que le contenu plain text
+                        // — pas besoin de pre-delete ici.
+                    }
+                }
+                catch (Exception exMerge) { LogDiag("merge_left_call_error: " + exMerge.Message); }
+            }
+
             var ctx = new MathCursor.Host.Pipeline.CommitContext(
                 absStart: absStartForCtx,
                 absEnd: absEndForCtx,
-                source: source,
-                latex: latex,
+                source: sourceForCtx,
+                latex: latexForCtx,
                 sidecar: initialSidecar,
                 editingHandle: editingHandle);
 
@@ -1912,21 +1955,28 @@ namespace MathCursor.Host
                 }
                 catch (Exception ex) { Log("insert_normalize_error: " + ex.Message); return (absStart, absEnd, null); }
 
-                // 2. SetRange sur les vraies bornes internes (pas de snap).
+                // 2. Cleanup structurel de la plage via ZoneCleaner (CCs +
+                //    OMaths résiduelles + plain text). Indispensable quand
+                //    la plage englobe une CC voisine (cas merger left) :
+                //    sel.Delete seul laisse la CC vide → placeholder Word.
+                int afterCleanupPos;
                 try
                 {
-                    sel.SetRange(internalStart, internalEnd);
+                    afterCleanupPos = MathCursor.Host.ZoneCleaner.ClearZone(
+                        doc, internalStart, internalEnd, Log);
+                    Log($"InsertOMathAt: ZoneCleaner cleared [{internalStart},{internalEnd}) → pos={afterCleanupPos}");
+                }
+                catch (Exception ex) { Log("insert_clearzone_error: " + ex.Message); return (absStart, absEnd, null); }
+
+                // 3. SetRange collapsed sur la position post-cleanup.
+                try
+                {
+                    sel.SetRange(afterCleanupPos, afterCleanupPos);
                     _commitInternalStart = sel.Start;
                     _commitInternalEnd = sel.End;
-                    Log($"InsertOMathAt: SetRange [{internalStart},{internalEnd}) ok, sel=[{sel.Start},{sel.End})");
+                    Log($"InsertOMathAt: SetRange collapsed @ {afterCleanupPos}, sel=[{sel.Start},{sel.End})");
                 }
                 catch (Exception ex) { Log("insert_setrange_error: " + ex.Message); return (absStart, absEnd, null); }
-
-                // 3. Delete explicite — force la suppression incluant les
-                //    OMaths absorbées (avec leurs CCs propres si elles en
-                //    avaient). TypeText seul ne suffit pas.
-                try { sel.Delete(); Log($"InsertOMathAt: Delete done, sel=[{sel.Start},{sel.End})"); }
-                catch (Exception ex) { Log("insert_delete_error: " + ex.Message); return (absStart, absEnd, null); }
 
                 // 4. TypeText sur range vide → caret avance exactement de
                 //    unicodeMath.Length chars.

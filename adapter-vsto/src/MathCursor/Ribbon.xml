@@ -169,6 +169,11 @@
                   screentip="Itère paragraph.Range.Characters du ¶ courant et dump pour chaque char : Range.Start, Range.End, Range.Text (escapé). Sert à valider si Word.Characters[i].Start = position interne du char visible i (= alternative au translator string→internal)."
                   size="normal"
                   onAction="OnDebugDumpCharPositionsClicked" />
+          <button id="DebugProbeLeftNeighborButton"
+                  label="POC : probe left neighbor"
+                  screentip="Sonde tous les chemins de détection « voisin gauche OMath » au caret : ParentContentControl à 5 positions autour, doc.Range(p,p+1).OMaths sur 5 positions, NeighborFinder.FindAdjacent, IntraOMathsMerger.TryMergeWithLeft simulé avec source='=1'. Affiche dans l'inspecteur ce que chaque probe retourne sans rien modifier."
+                  size="normal"
+                  onAction="OnDebugProbeLeftNeighborClicked" />
           <button id="AboutButton"
                   getLabel="OnGetAboutButtonLabel"
                   getScreentip="OnGetAboutButtonScreentip"
