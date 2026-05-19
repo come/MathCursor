@@ -169,6 +169,15 @@ namespace MathCursor.Host.EditMode
                 sel.SetRange(selStart, selEnd);
                 _log($"revert: select [{selStart},{selEnd}) (om.End clamped) post-snap sel=[{sel.Start},{sel.End})");
 
+                // Unlock CC avant Delete/TypeText : la CC est LockContents=true
+                // depuis le commit (anti auto-grow). Le revert doit pouvoir
+                // muter son contenu.
+                if (cc != null)
+                {
+                    try { cc.LockContents = false; } catch { }
+                    try { cc.LockContentControl = false; } catch { }
+                }
+
                 // 4. Remplace : Delete + TypeText avec la sténo brute.
                 sel.Delete();
                 sel.TypeText(revertText);

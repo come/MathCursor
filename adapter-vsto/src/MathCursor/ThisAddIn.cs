@@ -435,8 +435,14 @@ namespace MathCursor
             if (_suggestions?.IsAnyPopupVisible == true)
             {
                 _suggestions.HidePopup();
+                // Après fermeture popup, si le caret est resté piégé dans
+                // une CC MC verrouillée (anti auto-grow), l'éjecter aussi.
+                _suggestions.EjectCaretFromLockedCcIfAny();
                 return true;
             }
+            // Pas de popup : Esc seul peut aussi servir à sortir d'une CC
+            // verrouillée si l'utilisateur s'y est retrouvé piégé.
+            if (_suggestions?.EjectCaretFromLockedCcIfAny() == true) return true;
             return false;
         }
 
@@ -464,16 +470,20 @@ namespace MathCursor
         // dans le texte normalement).
         private bool HandleLeftPressed()
         {
-            if (_suggestions?.IsPopupVisible != true) return false;
-            if (!_suggestions.IsNavMode) return false;
-            return _suggestions.MoveSelectionHorizontal(-1);
+            if (_suggestions?.IsPopupVisible == true && _suggestions.IsNavMode)
+                return _suggestions.MoveSelectionHorizontal(-1);
+            // Si flèche gauche adjacente à une OMath MathCursor → sélectionne
+            // l'OMath (comme Word fait pour les inline shapes). User voit la
+            // formule surlignée, peut Delete pour supprimer, Enter pour éditer,
+            // re-flèche pour collapse et continuer.
+            return _suggestions?.TrySelectOMathOnLeft() == true;
         }
 
         private bool HandleRightPressed()
         {
-            if (_suggestions?.IsPopupVisible != true) return false;
-            if (!_suggestions.IsNavMode) return false;
-            return _suggestions.MoveSelectionHorizontal(+1);
+            if (_suggestions?.IsPopupVisible == true && _suggestions.IsNavMode)
+                return _suggestions.MoveSelectionHorizontal(+1);
+            return _suggestions?.TrySelectOMathOnRight() == true;
         }
 
         // Enter : (1) si popup visible + NavMode → commit du candidat

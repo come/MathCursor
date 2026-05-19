@@ -51,7 +51,25 @@ namespace MathCursor.Host
                 {
                     if (currentEnd <= newStart) break;
                     foreach (Word.ContentControl cc in doc.Range(newStart, currentEnd).ContentControls)
-                    { ccToDelete = cc; break; }
+                    {
+                        // SÉCURITÉ CRITIQUE : ne pas supprimer une CC qui
+                        // commence AVANT la zone de cleanup. Word retourne
+                        // les CCs qui intersectent la range, y compris celles
+                        // étendues sur du contenu hors zone (bug auto-grow
+                        // Word : une CC peut absorber le ¶ suivant si le
+                        // sticky escape échoue). Sans cette garde, on a vu
+                        // ZoneCleaner détruire l'OMath de la ligne au-dessus
+                        // lors du commit d'une OMath sur la ligne en cours.
+                        int ccS_check = -1;
+                        try { ccS_check = cc.Range.Start; } catch { continue; }
+                        if (ccS_check < newStart)
+                        {
+                            log($"ZoneCleaner: skip CC à [{ccS_check},{cc.Range.End}) — commence avant la zone (newStart={newStart}). CC bloated par auto-grow Word ? À investiguer côté CcSticky.");
+                            continue;
+                        }
+                        ccToDelete = cc;
+                        break;
+                    }
                 }
                 catch (Exception ex) { log("ZoneCleaner: cc_enum_error: " + ex.Message); break; }
                 if (ccToDelete == null) break;
@@ -60,6 +78,18 @@ namespace MathCursor.Host
                 try { ccS = ccToDelete.Range.Start; ccE = ccToDelete.Range.End; }
                 catch (Exception exB) { log("ZoneCleaner: cc bounds read error: " + exB.Message); break; }
                 int ccLen = ccE - ccS;
+
+                // SAFETY LOG : capture le contenu textuel + Title + Tag preview
+                // de la CC avant suppression. Sert à diagnostiquer ce qu'on
+                // détruit en cas de bug (catastrophic delete) — visible direct
+                // dans le log même si la CC n'est plus là après.
+                string ccTextPreview = "", ccTitle = "", ccTagPreview = "";
+                int ccOMathsCount = -1;
+                try { ccTextPreview = Preview(ccToDelete.Range.Text ?? "", 60); } catch { }
+                try { ccTitle = ccToDelete.Title ?? ""; } catch { }
+                try { ccTagPreview = Preview(ccToDelete.Tag ?? "", 80); } catch { }
+                try { ccOMathsCount = ccToDelete.Range.OMaths.Count; } catch { }
+                log($"ZoneCleaner: about to cc.Delete CC [{ccS},{ccE}) Title=\"{ccTitle}\" OMaths={ccOMathsCount} Text=\"{ccTextPreview}\" Tag=\"{ccTagPreview}\"");
 
                 // Probe AVANT delete : capture les 5 chars de prose avant cc.
                 // Sert à mesurer combien de chars Word va avaler avant ccStart
@@ -72,6 +102,12 @@ namespace MathCursor.Host
                 int docEndBefore;
                 try { docEndBefore = doc.Content.End; }
                 catch (Exception exDe) { log("ZoneCleaner: docEnd read error: " + exDe.Message); break; }
+
+                // Unlock avant Delete : les CCs MathCursor sont LockContents=true
+                // depuis le commit pour empêcher l'auto-grow. Delete doit pouvoir
+                // muter le contenu pour le supprimer.
+                try { ccToDelete.LockContents = false; } catch { }
+                try { ccToDelete.LockContentControl = false; } catch { }
 
                 try { ccToDelete.Delete(true); }
                 catch (Exception exD)
@@ -140,7 +176,19 @@ namespace MathCursor.Host
                 try
                 {
                     foreach (Word.OMath om in doc.Range(newStart, currentEnd).OMaths)
-                    { omToDelete = om; break; }
+                    {
+                        // Même garde que pour les CCs : skip si l'OMath
+                        // commence avant la zone (intersection sans inclusion).
+                        int omS_check = -1;
+                        try { omS_check = om.Range.Start; } catch { continue; }
+                        if (omS_check < newStart)
+                        {
+                            log($"ZoneCleaner: skip OMath [{omS_check},{om.Range.End}) — commence avant la zone (newStart={newStart})");
+                            continue;
+                        }
+                        omToDelete = om;
+                        break;
+                    }
                 }
                 catch (Exception ex) { log("ZoneCleaner: om_enum_error: " + ex.Message); break; }
                 if (omToDelete == null) break;
@@ -205,6 +253,13 @@ namespace MathCursor.Host
         {
             if (string.IsNullOrEmpty(s)) return "";
             return s.Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t");
+        }
+
+        private static string Preview(string s, int maxLen)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            string esc = Escape(s);
+            return esc.Length > maxLen ? esc.Substring(0, maxLen) + "…" : esc;
         }
     }
 }

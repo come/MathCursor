@@ -477,6 +477,136 @@ namespace MathCursor.Host
             _editController?.HidePopup();
         }
 
+        /// <summary>
+        /// Si le caret est actuellement DANS un CC MathCursor (LockContents=true
+        /// depuis le fix anti-auto-grow), le sortir vers le côté le plus
+        /// proche basé sur <c>_lastCaretPos</c>. Retourne true si éjecté.
+        /// </summary>
+        public bool EjectCaretFromLockedCcIfAny()
+        {
+            try
+            {
+                var sel = _app?.Selection;
+                if (sel == null) return false;
+                if (sel.Start != sel.End) return false; // skip si sélection range
+
+                Word.ContentControl cc = null;
+                try { cc = sel.Range.ParentContentControl; } catch { }
+                if (cc == null) return false;
+                if (cc.Title != MathCursor.Host.CCMeta.MCMetaJson.CcTitle) return false;
+
+                int ccS = cc.Range.Start;
+                int ccE = cc.Range.End;
+                int target = (_lastCaretPos >= ccE) ? Math.Max(0, ccS - 1) : ccE + 1;
+
+                var doc = _app.ActiveDocument;
+                if (doc != null && target >= doc.Content.End) target = doc.Content.End - 1;
+                if (target < 0) target = 0;
+
+                sel.SetRange(target, target);
+                LogDiag($"eject_locked_cc: caret {sel.Start} ← from cc=[{ccS},{ccE}) prev={_lastCaretPos}");
+                return true;
+            }
+            catch (Exception ex) { LogDiag("eject_locked_cc_error: " + ex.Message); return false; }
+        }
+
+        /// <summary>
+        /// Si appuyer Left placerait le caret au bord d'une CC MathCursor,
+        /// sélectionne l'OMath entière à la place (comme Word fait pour
+        /// les images/shapes inline). L'utilisateur voit la formule
+        /// surlignée → peut Delete/Backspace pour supprimer, Enter pour
+        /// éditer, ou re-arrow pour collapse et continuer la navigation.
+        /// Retourne true si on a sélectionné (consomme la touche).
+        /// </summary>
+        public bool TrySelectOMathOnLeft()
+        {
+            try
+            {
+                var sel = _app?.Selection;
+                if (sel == null) return false;
+                if (sel.Start != sel.End) return false; // déjà une sélection → laisse Word collapse normalement
+                int caret = sel.Start;
+                if (caret <= 0) return false;
+
+                var doc = _app.ActiveDocument;
+                if (doc == null) return false;
+                // Probe sur 2 positions à gauche : le hook tire AVANT que Word
+                // bouge le caret. Post-CcSticky le caret est à cc.End+1, donc :
+                //  delta=1 → doc.Range(caret-1, caret) = [cc.End, cc.End+1) → null
+                //  delta=2 → doc.Range(caret-2, caret-1) = [cc.End-1, cc.End) → DANS la CC ✓
+                Word.ContentControl cc = null;
+                for (int delta = 1; delta <= 2 && cc == null; delta++)
+                {
+                    int p = caret - delta;
+                    if (p < 0) break;
+                    try
+                    {
+                        var probe = doc.Range(p, p + 1).ParentContentControl;
+                        if (probe != null && probe.Title == MathCursor.Host.CCMeta.MCMetaJson.CcTitle)
+                            cc = probe;
+                    }
+                    catch { }
+                }
+                if (cc == null) return false;
+
+                // Récupère l'OMath dans la CC → sélectionne sa range exact.
+                Word.OMath om = null;
+                try { foreach (Word.OMath o in cc.Range.OMaths) { om = o; break; } } catch { }
+                if (om == null) return false;
+
+                sel.SetRange(om.Range.Start, om.Range.End);
+                LogDiag($"select_omath_left: caret {caret} → sélectionne om=[{om.Range.Start},{om.Range.End})");
+                return true;
+            }
+            catch (Exception ex) { LogDiag("select_omath_left_error: " + ex.Message); return false; }
+        }
+
+        /// <summary>
+        /// Symétrique pour la touche Right : sélectionne l'OMath quand on est
+        /// adjacent à une CC MC à droite.
+        /// </summary>
+        public bool TrySelectOMathOnRight()
+        {
+            try
+            {
+                var sel = _app?.Selection;
+                if (sel == null) return false;
+                if (sel.Start != sel.End) return false;
+                int caret = sel.Start;
+                var doc = _app.ActiveDocument;
+                if (doc == null) return false;
+                int docEnd = doc.Content.End;
+                if (caret >= docEnd - 1) return false;
+
+                // Probe sur 2 positions à droite (symétrique du Left) :
+                //  delta=0 → doc.Range(caret, caret+1)
+                //  delta=1 → doc.Range(caret+1, caret+2)
+                Word.ContentControl cc = null;
+                for (int delta = 0; delta <= 1 && cc == null; delta++)
+                {
+                    int p = caret + delta;
+                    if (p + 1 > docEnd) break;
+                    try
+                    {
+                        var probe = doc.Range(p, p + 1).ParentContentControl;
+                        if (probe != null && probe.Title == MathCursor.Host.CCMeta.MCMetaJson.CcTitle)
+                            cc = probe;
+                    }
+                    catch { }
+                }
+                if (cc == null) return false;
+
+                Word.OMath om = null;
+                try { foreach (Word.OMath o in cc.Range.OMaths) { om = o; break; } } catch { }
+                if (om == null) return false;
+
+                sel.SetRange(om.Range.Start, om.Range.End);
+                LogDiag($"select_omath_right: caret {caret} → sélectionne om=[{om.Range.Start},{om.Range.End})");
+                return true;
+            }
+            catch (Exception ex) { LogDiag("select_omath_right_error: " + ex.Message); return false; }
+        }
+
         private void OnSelectionChange(Word.Selection sel)
         {
             // Try-catch défensif : Word désactive l'add-in après une exception
@@ -2049,6 +2179,16 @@ namespace MathCursor.Host
                         Log($"InsertOMathAt: Tag set handle={newHandle} hash={hash.Substring(0, 8)}…");
                     }
                     catch (Exception exTag) { Log("insert_tag_error: " + exTag.Message); }
+                }
+
+                // 7b. LOCK contents : empêche Word de mut'er le contenu du CC
+                //     (= bloque l'auto-grow quand l'utilisateur tape à la
+                //     sticky-zone). À unlocker en edit mode (revert / re-edit).
+                //     Cf. ADR 2026-05-19 lock-contents-anti-auto-grow.
+                if (cc != null)
+                {
+                    try { cc.LockContents = true; Log("InsertOMathAt: cc.LockContents = true (anti auto-grow)"); }
+                    catch (Exception exLock) { Log("insert_lock_error: " + exLock.Message); }
                 }
 
                 // 8. Sort le caret de la sticky-zone du CC (= +1 après cc.End).
