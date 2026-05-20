@@ -2,15 +2,35 @@
 
 Source : extraction `templates:` + `examples.output:` de tous les YAML sous `data\yaml_domains`.
 
-**Résumé** :
-- 59 macros distinctes émises
-- 47 supportées par WpfMath 2.1 a priori
-- 11 **manquantes connues** (à patcher / substituer)
-- 1 inconnues (à valider — peut-être supportées)
+> **Mise à jour 2026-05-06** — Audit révisé après probe-tests
+> [`adapter-vsto/tests/MathCursor.Tests/UI/WpfMathRenderProbeTests.cs`](../adapter-vsto/tests/MathCursor.Tests/UI/WpfMathRenderProbeTests.cs)
+> (cf. brief [`docs/dev/briefs/2026-05-06-wpfmath-fallback-renderer.md`](../docs/dev/briefs/2026-05-06-wpfmath-fallback-renderer.md)).
+> Signal `50×50 / 207 bytes` du PNG = WpfMath rend un glyphe placeholder ".".
+> 6 macros marquées "manquantes" rendaient en fait correctement, et la
+> stratégie de substitution Unicode dans `WpfMathAdapter` était buggée pour
+> `\iint` / `\iiint` (substituait en caractères Unicode que WpfMath ne sait
+> pas rendre). Voir tableau "Résolution" ci-dessous.
 
-## Manquantes WpfMath — à traiter (11)
+## Résolution par macro (2026-05-06)
 
-> Ces macros ne sont pas (ou mal) rendues par WpfMath 2.1. Pour chacune, choisir : (A) substituer côté core en LaTeX/Unicode équivalent, (B) ajouter via override XML WpfMath, (C) patcher WpfMath (fork ciblé).
+| Macro | Statut | Résolution |
+|---|---|---|
+| `\mathbb{X}` | ❌ Vraiment cassée | `MixedLatexRenderer` substitue en TextBlock Unicode (ℝ ℕ ℤ ℚ ℂ ℙ) avec Cambria Math. Fallback nesté : `WpfMathAdapter` → `\|X`. |
+| `\mapsto` | ❌ Vraiment cassée | `MixedLatexRenderer` substitue en TextBlock Unicode ↦. Fallback nesté : `WpfMathAdapter` → `\to`. |
+| `\iint`, `\iiint` | ❌ Vraiment cassées | `MixedLatexRenderer` substitue en TextBlock Unicode ∬ / ∭. |
+| `\setminus` | ✅ OK via subst LaTeX | `WpfMathAdapter` → `\backslash` (rendu correct). |
+| `\widehat{X}` | ✅ OK via subst LaTeX | `WpfMathAdapter` → `\hat{X}` (perd le multi-char extension, acceptable). |
+| `\overline{X}` | ✅ OK via subst LaTeX | `WpfMathAdapter` → `\bar{X}` (idem). |
+| `\oint` | ✅ Rendue nativement | Pass-through, pas de subst nécessaire. |
+| `\limsup`, `\liminf` | ✅ OK via décomposition | `WpfMathAdapter` → `\lim\sup` / `\lim\inf`. |
+| `\begin{cases}…\end{cases}` | ✅ OK via décomposition | `WpfMathAdapter` → `\stackrel` imbriqués. |
+| `\begin{pmatrix}…\end{pmatrix}` | ✅ OK via décomposition | `WpfMathAdapter` → `\binom` (2 lignes) / `\genfrac` (3+). |
+| `\begin{bmatrix}/\{vmatrix}` | ✅ OK via décomposition | Idem. |
+| `\mid` | ✅ Confirmé supportée | Vérifié, pas de problème. |
+
+## Manquantes WpfMath (audit historique — partiellement obsolète)
+
+> Liste d'origine. Les macros marquées ✅ ci-dessus ne sont en fait PAS manquantes.
 
 | Macro | Count | Sources (sample) |
 |---|---|---|

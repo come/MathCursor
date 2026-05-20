@@ -81,6 +81,9 @@ $FilesToCopy = @(
     'YamlDotNet.dll',
     'Google.Protobuf.dll',
     'Microsoft.ML.OnnxRuntime.dll',
+    # Microsoft.ML.OnnxRuntime.dll est managé (AnyCPU) — ok à la racine.
+    # Les natifs onnxruntime.dll / onnxruntime_providers_shared.dll sont
+    # copiés en arch-séparée dans 2b-bis ci-dessous.
     'Microsoft.Office.Tools.Common.v4.0.Utilities.dll',
     'System.Buffers.dll',
     'System.Memory.dll',
@@ -113,39 +116,80 @@ if (Test-Path $CertSrc) {
     Write-Warning "Certificat introuvable ($CertSrc) — l'installer ne pourra pas l'importer automatiquement."
 }
 
-# 2c) Visual C++ Redistributable x64 (requis par ONNX Runtime native DLL).
-# Téléchargement depuis aka.ms si pas déjà présent localement. URL stable
-# qui suit la dernière version VS2015-2022 (toutes binary-compat).
-$VcRedistDst = Join-Path $PayloadDir 'vc_redist.x64.exe'
-$VcRedistCache = Join-Path $InstallerDir 'vc_redist.x64.exe' # cache au niveau dossier installer
-if (Test-Path $VcRedistCache) {
-    Copy-Item $VcRedistCache -Destination $VcRedistDst -Force
-    Write-Host "  VC++ Redist depuis cache : $VcRedistCache"
-} elseif (Test-Path $VcRedistDst) {
-    Write-Host "  VC++ Redist déjà présent dans payload/"
-} else {
-    Write-Host "  Téléchargement VC++ Redist x64 depuis aka.ms/vs/17/release/vc_redist.x64.exe..."
-    try {
-        $ProgressPreference = 'SilentlyContinue'
-        Invoke-WebRequest -Uri 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile $VcRedistDst -UseBasicParsing
-        # Cache pour les builds suivants
-        Copy-Item $VcRedistDst -Destination $VcRedistCache -Force
-        Write-Host "  VC++ Redist téléchargé ($([math]::Round((Get-Item $VcRedistDst).Length / 1MB, 1)) Mo)"
-    } catch {
-        Write-Warning "Téléchargement VC++ Redist échoué : $_"
-        Write-Warning "L'installer fonctionnera mais sans bundling VC++ — l'utilisateur devra l'avoir installé."
+# 2b-bis) Native ONNX Runtime DLLs (NON copiées par MSBuild).
+# Le NuGet Microsoft.ML.OnnxRuntime expose ses natives via .props avec
+# une condition `PlatformTarget == x64` (ou AnyCPU+!Prefer32Bit). Le
+# csproj VSTO n'a aucun PlatformTarget défini → la condition est fausse
+# → MSBuild ne copie PAS les natives dans bin/Release. Sans elles, le
+# .cctor de NativeMethods lève une TypeInitializationException au
+# démarrage de l'add-in.
+#
+# IMPORTANT : Word peut être 32 ou 64 bits. Le DLL natif onnxruntime.dll
+# DOIT correspondre à la bitness du process WINWORD.EXE — sinon
+# BadImageFormatException remonte en TypeInitializationException sur
+# NativeMethods..cctor() au premier `new SessionOptions()`. On déploie
+# donc les DEUX runtimes dans des sous-dossiers et ThisAddIn_Startup
+# choisira le bon via SetDllDirectory(<app>\onnxruntime-x86 ou x64) en
+# fonction de IntPtr.Size avant d'instancier MathNerDetector.
+$OrtVersion = '1.16.3'
+$OrtNativeRoot = Join-Path $env:USERPROFILE ".nuget\packages\microsoft.ml.onnxruntime\$OrtVersion\runtimes"
+foreach ($arch in @('x86', 'x64')) {
+    $srcDir = Join-Path $OrtNativeRoot "win-$arch\native"
+    $dstDir = Join-Path $PayloadDir "onnxruntime-$arch"
+    if (Test-Path $srcDir) {
+        New-Item -ItemType Directory -Force -Path $dstDir | Out-Null
+        foreach ($dll in @('onnxruntime.dll', 'onnxruntime_providers_shared.dll')) {
+            $src = Join-Path $srcDir $dll
+            if (Test-Path $src) {
+                Copy-Item $src -Destination $dstDir -Force
+                Write-Host "  ORT native ($arch) : $dll"
+            } else {
+                Write-Warning "ORT native manquante ($arch) dans cache NuGet : $dll"
+            }
+        }
+    } else {
+        Write-Warning "Cache NuGet ORT $arch introuvable : $srcDir"
+        Write-Warning "Lance d'abord 'dotnet restore' ou un build complet pour peupler le cache."
+    }
+}
+
+# 2c) Visual C++ Redistributable x86 + x64 (requis par ONNX Runtime native).
+# Word peut être 32 ou 64 bits → on bundle les deux. Le iss lance les deux
+# au runtime (idempotent, skippe si version >= déjà présente). Cache au
+# niveau dossier installer pour éviter de re-télécharger à chaque build.
+foreach ($arch in @('x86', 'x64')) {
+    $VcRedistDst   = Join-Path $PayloadDir   "vc_redist.$arch.exe"
+    $VcRedistCache = Join-Path $InstallerDir "vc_redist.$arch.exe"
+    if (Test-Path $VcRedistCache) {
+        Copy-Item $VcRedistCache -Destination $VcRedistDst -Force
+        Write-Host "  VC++ Redist $arch depuis cache : $VcRedistCache"
+    } elseif (Test-Path $VcRedistDst) {
+        Write-Host "  VC++ Redist $arch déjà présent dans payload/"
+    } else {
+        $url = "https://aka.ms/vs/17/release/vc_redist.$arch.exe"
+        Write-Host "  Téléchargement VC++ Redist $arch depuis $url..."
+        try {
+            $ProgressPreference = 'SilentlyContinue'
+            Invoke-WebRequest -Uri $url -OutFile $VcRedistDst -UseBasicParsing
+            Copy-Item $VcRedistDst -Destination $VcRedistCache -Force
+            Write-Host "  VC++ Redist $arch téléchargé ($([math]::Round((Get-Item $VcRedistDst).Length / 1MB, 1)) Mo)"
+        } catch {
+            Write-Warning "Téléchargement VC++ Redist $arch échoué : $_"
+            Write-Warning "L'installer fonctionnera mais sans bundling VC++ $arch — l'utilisateur devra l'avoir installé."
+        }
     }
 }
 
 # 3) Modèle NER
-# On déploie UNIQUEMENT distilmult-v4 (le NER actif depuis 2026-04-27).
+# On déploie UNIQUEMENT distilmult-v5 (le NER actif depuis 2026-04-30,
+# bumpé depuis distilmult-v4 du 2026-04-27 — F1 0.95 vs 0.80 sur regression_v1_gold).
 # L'ancien XLM-R laissé à la racine de models/ en dev est ignoré ici —
 # il ferait ~265 Mo de poids mort dans l'installer et ne sert plus
-# (FindModelDir priorise distilmult-v4 et tombe sur celui-ci).
-Write-Host "[3/4] Modèle NER (distilmult-v4)..." -ForegroundColor Yellow
+# (FindModelDir priorise distilmult-v5 et tombe sur celui-ci).
+Write-Host "[3/4] Modèle NER (distilmult-v5)..." -ForegroundColor Yellow
 if (Test-Path $ModelDstDir) { Remove-Item -Recurse -Force $ModelDstDir }
-$DistilSrc = Join-Path $ModelSrcDir 'distilmult-v4'
-$DistilDst = Join-Path $ModelDstDir 'distilmult-v4'
+$DistilSrc = Join-Path $ModelSrcDir 'distilmult-v5'
+$DistilDst = Join-Path $ModelDstDir 'distilmult-v5'
 $modelOk = $false
 if (Test-Path (Join-Path $DistilSrc 'model_quantized.onnx')) {
     Write-Host "  copie depuis $DistilSrc → $DistilDst"
@@ -154,7 +198,7 @@ if (Test-Path (Join-Path $DistilSrc 'model_quantized.onnx')) {
     $modelOk = $true
 }
 else {
-    Write-Warning "Modèle distilmult-v4 introuvable. Copier les fichiers dans :"
+    Write-Warning "Modèle distilmult-v5 introuvable. Copier les fichiers dans :"
     Write-Warning "  $DistilSrc"
     Write-Warning "Fichiers requis : model_quantized.onnx, vocab.txt, tokenizer.json, config.json, special_tokens_map.json, tokenizer_config.json, ort_config.json"
 }

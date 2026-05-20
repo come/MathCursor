@@ -8,6 +8,7 @@ namespace MathCursor.Core.Lattice.Ast
         public string Kind { get; }   // "number" | "ident" | "greek"
         public string Value { get; }
         public Atom(string kind, string value) { Kind = kind; Value = value; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>
@@ -19,6 +20,7 @@ namespace MathCursor.Core.Lattice.Ast
     {
         public int Idx { get; }
         public Hole(int idx) { Idx = idx; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Constante symbolique (\\infty, \\forall, \\exists, \\in).</summary>
@@ -26,6 +28,7 @@ namespace MathCursor.Core.Lattice.Ast
     {
         public string Value { get; }
         public Const(string value) { Value = value; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Opérateur unaire : +x, -x.</summary>
@@ -34,6 +37,7 @@ namespace MathCursor.Core.Lattice.Ast
         public string Op { get; }
         public AstNode Arg { get; }
         public Unary(string op, AstNode arg) { Op = op; Arg = arg; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>
@@ -53,6 +57,7 @@ namespace MathCursor.Core.Lattice.Ast
         {
             Op = op; Tight = tight; Implicit = isImplicit; Lhs = lhs; Rhs = rhs;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Exposant : base^exp.
@@ -71,6 +76,7 @@ namespace MathCursor.Core.Lattice.Ast
         {
             Base = @base; Exp = exp; IsImplicit = isImplicit;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Indice : base_idx.</summary>
@@ -79,6 +85,7 @@ namespace MathCursor.Core.Lattice.Ast
         public AstNode Base { get; }
         public AstNode Idx { get; }
         public Sub(AstNode @base, AstNode idx) { Base = @base; Idx = idx; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Groupe parenthésé. Le renderer décide si les parens
@@ -88,6 +95,7 @@ namespace MathCursor.Core.Lattice.Ast
     {
         public AstNode Expr { get; }
         public Group(AstNode expr) { Expr = expr; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Fraction.</summary>
@@ -96,6 +104,7 @@ namespace MathCursor.Core.Lattice.Ast
         public AstNode Num { get; }
         public AstNode Den { get; }
         public Frac(AstNode num, AstNode den) { Num = num; Den = den; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Racine carrée.</summary>
@@ -103,6 +112,7 @@ namespace MathCursor.Core.Lattice.Ast
     {
         public AstNode Arg { get; }
         public Sqrt(AstNode arg) { Arg = arg; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Vecteur (nom = chaîne d'identifiants concaténés, ex : AB → \\vec{AB}).</summary>
@@ -110,6 +120,26 @@ namespace MathCursor.Core.Lattice.Ast
     {
         public string? Name { get; }
         public Vec(string? name) { Name = name; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
+    }
+
+    /// <summary>
+    /// Angle (notation chapeau française). Nom = chaîne de 1+ lettres :
+    /// 1 lettre → <c>\hat{X}</c>, 2+ lettres → <c>\widehat{XYZ}</c>.
+    /// Sentinelle vide possible <c>HasPlaceholder=true</c> → on émet un
+    /// <c>\square</c> en fin de Name pour signaler une lettre manquante
+    /// (cas user 2026-05-11 : <c>^AB</c> = popup avec carré pending).
+    /// </summary>
+    public sealed class Angle : AstNode
+    {
+        public string Name { get; }
+        public bool HasPlaceholder { get; }
+        public Angle(string name, bool hasPlaceholder = false)
+        {
+            Name = name ?? string.Empty;
+            HasPlaceholder = hasPlaceholder;
+        }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Fonction nommée : sin, cos, ln, exp…</summary>
@@ -118,6 +148,7 @@ namespace MathCursor.Core.Lattice.Ast
         public string Name { get; }
         public AstNode Arg { get; }
         public Func(string name, AstNode arg) { Name = name; Arg = arg; }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Somme/produit. <see cref="Symbol"/> = "sum" ou "prod".</summary>
@@ -132,6 +163,7 @@ namespace MathCursor.Core.Lattice.Ast
         {
             Symbol = symbol; Var = var; Start = start; End = end; Body = body;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Limite : lim_{var → target} body.</summary>
@@ -144,6 +176,7 @@ namespace MathCursor.Core.Lattice.Ast
         {
             Var = var; Target = target; Body = body;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Intégrale : ∫_low^high body.</summary>
@@ -156,6 +189,7 @@ namespace MathCursor.Core.Lattice.Ast
         {
             Low = low; High = high; Body = body;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Définition de fonction : f : x ↦ expr (ou f : (x,y) ↦ expr).
@@ -170,6 +204,7 @@ namespace MathCursor.Core.Lattice.Ast
         {
             Name = name; Vars = vars; Body = body;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 
     /// <summary>Intervalle français : <c>[a,b]</c>, <c>[a,b[</c>, <c>]a,b]</c>, <c>]a,b[</c>.
@@ -187,5 +222,65 @@ namespace MathCursor.Core.Lattice.Ast
         {
             Low = low; High = high; LeftClosed = leftClosed; RightClosed = rightClosed;
         }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
+    }
+
+    /// <summary>
+    /// Vecteur ou point avec coordonnées explicites — pattern lycée FR
+    /// <c>u(1, 2)</c> / <c>u (1 2)</c> / <c>A(1, 2)</c> / <c>AB (3 -1)</c>.
+    /// Cf. brief 2026-04-29-vector-coordinates-shorthand.
+    ///
+    /// <para><see cref="Name"/> = identifiant 1 ou 2 lettres (u, v, w, AB, OM, …).</para>
+    /// <para><see cref="Values"/> = 2 ou 3 cellules de coordonnées (atomes ou
+    /// expressions sans espace top-level).</para>
+    /// <para><see cref="Layout"/> = "column" si séparateur interne = espace
+    /// (rendu pmatrix), "row" si séparateur = virgule (rendu inline parens).</para>
+    /// <para><see cref="IsPoint"/> = true pour 1 majuscule seule (A, B, M, …).
+    /// Dans ce cas le rendu omet <c>\vec{...}</c> autour du nom — convention
+    /// française : majuscule seule = point géométrique, pas vecteur.</para>
+    /// </summary>
+    public sealed class VectorCoordinates : AstNode
+    {
+        public string Name { get; }
+        public IReadOnlyList<AstNode> Values { get; }
+        public string Layout { get; }
+        public bool IsPoint { get; }
+        public VectorCoordinates(string name, IReadOnlyList<AstNode> values, string layout, bool isPoint)
+        {
+            Name = name; Values = values; Layout = layout; IsPoint = isPoint;
+        }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
+    }
+
+    /// <summary>
+    /// Bloc multi-ligne — système d'équations (`\begin{cases}`) ou chaîne
+    /// d'équivalences/égalités (`\begin{align*}` avec alignement sur `=`).
+    /// Cf. brief 2026-04-30-multiline-systems-equivalences.md.
+    ///
+    /// <para><see cref="Mode"/> = `"cases"` ou `"align"`. Détermine
+    /// l'environnement LaTeX de rendu.</para>
+    ///
+    /// <para><see cref="Lines"/> = AST de chaque ligne (équation ou
+    /// expression). Au moins 2 entrées (un seul élément serait juste un
+    /// OMath simple, pas un MultiLineBlock).</para>
+    ///
+    /// <para><see cref="LinePrefix"/> = pour le mode `"align"`, le préfixe
+    /// LaTeX ajouté en début de chaque ligne (typiquement la flèche logique
+    /// `\Leftrightarrow`, `\Rightarrow`, `\Leftarrow`, ou chaîne vide pour
+    /// la 1re ligne et la chaîne d'égalités). Pour `"cases"`, toujours `""`
+    /// (les lignes sont juxtaposées dans l'accolade gauche, pas de préfixe
+    /// par ligne). <c>LinePrefix.Count</c> doit être égal à
+    /// <c>Lines.Count</c>.</para>
+    /// </summary>
+    public sealed class MultiLineBlock : AstNode
+    {
+        public string Mode { get; }
+        public IReadOnlyList<AstNode> Lines { get; }
+        public IReadOnlyList<string> LinePrefix { get; }
+        public MultiLineBlock(string mode, IReadOnlyList<AstNode> lines, IReadOnlyList<string> linePrefix)
+        {
+            Mode = mode; Lines = lines; LinePrefix = linePrefix;
+        }
+        public override TResult Accept<TResult>(IAstVisitor<TResult> visitor) => visitor.Visit(this);
     }
 }

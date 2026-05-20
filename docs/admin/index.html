@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MathCursor — Admin</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <style>
+    body {
+      margin: 0; background: #faf9f6;
+      font-family: 'Inter', system-ui, sans-serif; color: #1a1c1a;
+      padding: 48px 24px;
+    }
+    .container { max-width: 480px; margin: 0 auto; }
+    h1 {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      color: #00236f; margin: 0 0 8px;
+    }
+    .lead { color: #636571; margin: 0 0 24px; font-size: 14px; }
+    .lead .private { color: #bb0027; font-weight: 600; }
+    .grid { display: grid; gap: 12px; }
+    a.tile {
+      display: block; padding: 18px 20px;
+      background: #ffffff; border: 1px solid #e3e2e0; border-radius: 6px;
+      text-decoration: none; color: inherit;
+    }
+    a.tile:hover { background: #f4f3f1; }
+    a.tile h2 {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      color: #00236f; margin: 0 0 4px; font-size: 16px;
+    }
+    a.tile p { margin: 0; font-size: 13px; color: #636571; }
+    a.tile.disabled { opacity: 0.5; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>MathCursor — Admin</h1>
+    <p class="lead"><span class="private">⚠ Privé</span> · ne pas partager.</p>
+
+    <div class="grid">
+      <a class="tile" href="reports.html">
+        <h2>📨 Reports</h2>
+        <p>Rapports « Signaler une erreur ». Liste master/detail, filtre, screenshot inline.</p>
+      </a>
+      <a class="tile" href="stats.html">
+        <h2>📊 Stats</h2>
+        <p>Stats de téléchargement (Analytics Engine) — 30 derniers jours. Versions, pays, jours, referers.</p>
+      </a>
+    </div>
+  </div>
+</body>
+</html>

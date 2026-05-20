@@ -15,21 +15,40 @@ namespace MathCursor.Host.Feedback
         public string UserId { get; set; } = "";
         public string SessionId { get; set; } = "";
 
-        /// <summary>Texte détecté par le NER ou span issue du trigger manuel.</summary>
+        /// <summary>Texte source brut tapé par l'utilisateur (zone détectée
+        /// par le NER ou span d'un trigger manuel). Sérialisé en `source_text`.</summary>
         public string NerText { get; set; } = "";
-        /// <summary>Formule LaTeX sélectionnée dans la popup au moment du signalement.</summary>
+
+        /// <summary>LaTeX top-1 que MathCursor a proposé dans la popup.
+        /// Sérialisé en `proposed_latex`.</summary>
         public string RecognizedFormula { get; set; } = "";
 
-        /// <summary>Message libre de l'utilisateur (ce qu'il voulait faire, ce qui s'est passé).</summary>
+        /// <summary>LaTeX qui a été passé à InsertOMathAt (commit). Vide si
+        /// l'utilisateur n'a pas committé. Sérialisé en `committed_latex`.</summary>
+        public string CommittedLatex { get; set; } = "";
+
+        /// <summary>Texte du paragraphe Word courant (contexte). Sérialisé
+        /// en `paragraph_context`. Tronqué côté snapshot si très long.</summary>
+        public string ParagraphContext { get; set; } = "";
+
+        /// <summary>Message libre de l'utilisateur (ce qu'il voulait faire,
+        /// ce qui s'est passé). Sérialisé en `user_comment`.</summary>
         public string UserMessage { get; set; } = "";
+
         /// <summary>Email facultatif pour recontact.</summary>
         public string UserEmail { get; set; } = "";
 
-        /// <summary>Dernière portion du log local (diagnostic).</summary>
+        /// <summary>Capture d'écran PNG encodée en base64. Vide si l'user a
+        /// décoché. Sérialisé en `screenshot_b64`.</summary>
+        public string ScreenshotPngBase64 { get; set; } = "";
+
+        /// <summary>Dernière portion du log local (diagnostic). Vide si l'user
+        /// a décoché. Sérialisé en `log_tail`.</summary>
         public string LogTail { get; set; } = "";
 
         public string WordVersion { get; set; } = "";
         public string OsVersion { get; set; } = "";
+        public string DotNetVersion { get; set; } = "";
     }
 
     /// <summary>Retour d'un envoi de feedback.</summary>

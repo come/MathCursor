@@ -66,10 +66,16 @@ namespace MathCursor.Core.Tests.Lattice
         }
 
         [Fact]
-        public void Number_consumes_digits_and_decimal()
+        public void Number_consumes_digits_only_dot_is_op()
         {
+            // ADR 30-04 Feat-dot-as-multiplier : `.` n'est plus partie du
+            // nombre, c'est un Op de multiplication. `3.14` → 3 tokens
+            // (Number=3, Op=., Number=14). L'alt décimal `3{,}14` est exposée
+            // via cascade RuleDecimalVsMultiplication.
             var edges = Lexer.Lex("3.14");
-            Assert.Contains(edges, e => e.Type == EdgeType.Number && e.Value == "3.14" && e.Start == 0 && e.End == 4);
+            Assert.Contains(edges, e => e.Type == EdgeType.Number && e.Value == "3" && e.Start == 0 && e.End == 1);
+            Assert.Contains(edges, e => e.Type == EdgeType.Op && e.Value == "." && e.Start == 1 && e.End == 2);
+            Assert.Contains(edges, e => e.Type == EdgeType.Number && e.Value == "14" && e.Start == 2 && e.End == 4);
         }
 
         [Fact]

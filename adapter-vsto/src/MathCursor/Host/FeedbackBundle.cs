@@ -23,7 +23,7 @@ namespace MathCursor.Host
     /// Pas de réseau : le bundle est local, c'est l'utilisateur qui l'envoie
     /// (respect du principe "pas de télémétrie silencieuse").
     /// </summary>
-    internal static class FeedbackBundle
+    public static class FeedbackBundle
     {
         public const string ContactEmail = "come2percin@wanadev.fr";
         public const string WhatsAppGroupUrl = "https://chat.whatsapp.com/DewkjN8rwoAJeDtAd8yAth";
@@ -162,29 +162,8 @@ namespace MathCursor.Host
         {
             try
             {
-                var logPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "MathCursor", "logs", "mathcursor.log");
-                if (!File.Exists(logPath)) return;
-
-                // Tail des N derniers KB : le log peut grossir indéfiniment,
-                // mais seuls les derniers événements sont pertinents pour un bug.
-                byte[] tail;
-                using (var fs = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                {
-                    if (fs.Length <= LogTailMaxBytes)
-                    {
-                        tail = new byte[fs.Length];
-                        fs.Read(tail, 0, tail.Length);
-                    }
-                    else
-                    {
-                        fs.Seek(-LogTailMaxBytes, SeekOrigin.End);
-                        tail = new byte[LogTailMaxBytes];
-                        fs.Read(tail, 0, tail.Length);
-                    }
-                }
-
+                var tail = ReadLogTail();
+                if (tail == null || tail.Length == 0) return;
                 var entry = zip.CreateEntry("mathcursor.log", CompressionLevel.Optimal);
                 using (var es = entry.Open())
                 {
@@ -194,7 +173,59 @@ namespace MathCursor.Host
             catch { }
         }
 
+        /// <summary>
+        /// Lit la queue (LogTailMaxBytes derniers bytes) du log local. Public
+        /// pour que la fenêtre "Signaler une erreur" puisse joindre le log au
+        /// rapport HTTP sans passer par le zip. Renvoie null si pas de log ou
+        /// erreur d'I/O (jamais throw).
+        /// </summary>
+        public static byte[] ReadLogTail()
+        {
+            try
+            {
+                var logPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "MathCursor", "logs", "mathcursor.log");
+                if (!File.Exists(logPath)) return null;
+                using (var fs = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    if (fs.Length <= LogTailMaxBytes)
+                    {
+                        var buf = new byte[fs.Length];
+                        fs.Read(buf, 0, buf.Length);
+                        return buf;
+                    }
+                    fs.Seek(-LogTailMaxBytes, SeekOrigin.End);
+                    var tail = new byte[LogTailMaxBytes];
+                    fs.Read(tail, 0, tail.Length);
+                    return tail;
+                }
+            }
+            catch { return null; }
+        }
+
         private static void TryAddScreenshot(ZipArchive zip)
+        {
+            try
+            {
+                var png = CaptureScreenshotPng();
+                if (png == null) return;
+                var entry = zip.CreateEntry("screenshot.png", CompressionLevel.Optimal);
+                using (var es = entry.Open())
+                {
+                    es.Write(png, 0, png.Length);
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Capture la fenêtre Word courante en PNG (bytes). Public pour que la
+        /// fenêtre "Signaler une erreur" puisse l'inclure base64 dans le
+        /// rapport HTTP sans passer par le zip. Renvoie null si capture
+        /// impossible (jamais throw).
+        /// </summary>
+        public static byte[] CaptureScreenshotPng()
         {
             try
             {
@@ -202,12 +233,12 @@ namespace MathCursor.Host
                 // le process hôte (on tourne DANS Word, MainWindowHandle pointe
                 // sur la fenêtre principale de Word).
                 IntPtr hwnd = Process.GetCurrentProcess().MainWindowHandle;
-                if (hwnd == IntPtr.Zero) return;
+                if (hwnd == IntPtr.Zero) return null;
 
-                if (!GetWindowRect(hwnd, out RECT rc)) return;
+                if (!GetWindowRect(hwnd, out RECT rc)) return null;
                 int w = rc.Right - rc.Left;
                 int h = rc.Bottom - rc.Top;
-                if (w <= 0 || h <= 0) return;
+                if (w <= 0 || h <= 0) return null;
 
                 using (var bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb))
                 {
@@ -215,18 +246,14 @@ namespace MathCursor.Host
                     {
                         g.CopyFromScreen(rc.Left, rc.Top, 0, 0, new Size(w, h), CopyPixelOperation.SourceCopy);
                     }
-
-                    var entry = zip.CreateEntry("screenshot.png", CompressionLevel.Optimal);
-                    using (var es = entry.Open())
                     using (var ms = new MemoryStream())
                     {
                         bmp.Save(ms, ImageFormat.Png);
-                        ms.Position = 0;
-                        ms.CopyTo(es);
+                        return ms.ToArray();
                     }
                 }
             }
-            catch { }
+            catch { return null; }
         }
 
         private static void WriteZipEntry(ZipArchive zip, string name, string content)

@@ -8,19 +8,20 @@ namespace MathCursor.Core
     /// Convertit un LaTeX simple en UnicodeMath — le format que Word interprète
     /// nativement via <c>OMaths.BuildUp()</c>.
     ///
-    /// Couvre les cas produits par notre moteur de patterns :
-    /// - <c>\frac{A}{B}</c> → <c>(A)/(B)</c>
+    /// Couvre les structures émises par notre <c>LatexRenderer</c> :
+    /// - <c>\frac{A}{B}</c> → <c>A/B</c> (single char) ou <c>(A)/(B)</c> (multi)
     /// - <c>\sqrt{X}</c> → <c>√(X)</c>
-    /// - <c>x^{abc}</c> → <c>x^(abc)</c>, <c>x_{abc}</c> → <c>x_(abc)</c>
-    /// - Lettres grecques : <c>\alpha</c> → α, etc.
-    /// - Ensembles : <c>\mathbb{R}</c> → ℝ, <c>\forall</c> → ∀, <c>\in</c> → ∈
-    /// - Opérateurs : <c>\to</c> → →, <c>\leq</c> → ≤, <c>\cdot</c> → ⋅, <c>\circ</c> → ∘
-    /// - Noms de fonctions : <c>\sin</c>, <c>\lim</c>, <c>\ln</c>… → déballés (Word
-    ///   reconnaît "lim", "sin", etc. et les passe en droit automatiquement).
-    /// - <c>\mathrm{txt}</c>, <c>\operatorname{txt}</c> → <c>txt</c> (wrapper supprimé).
+    /// - <c>x^{2}</c> → <c>x^2</c>, <c>x^{abc}</c> → <c>x^(abc)</c>
+    /// - <c>x_{n}</c> → <c>x_n</c>, <c>x_{ij}</c> → <c>x_(ij)</c>
+    /// - Lettres grecques, ensembles, opérateurs : remplacements littéraux
+    /// - Accents : <c>\vec{u}</c> → <c>u⃗</c> (combining unicode)
+    /// - Environnements : <c>\begin{pmatrix}</c>, <c>\begin{cases}</c>
     ///
-    /// Pas un convertisseur LaTeX complet — juste suffisant pour le vocabulaire
-    /// que notre moteur produit. Les macros non reconnues sont laissées telles quelles.
+    /// Stratégie (cf. ADR 2026-04-30-Fix-latex-to-unicodemath-refactor) :
+    /// approche en passe unique récursive avec contexte voisin droit. Émet
+    /// les arguments en mode <see cref="EmitArg"/> qui décide single-char
+    /// shortcut (pas de parens) vs multi-char (parens). Après une fraction
+    /// multi-char, insère un espace si un token tight suit (anti-absorption).
     /// </summary>
     public static class LatexToUnicodeMath
     {
@@ -28,31 +29,17 @@ namespace MathCursor.Core
         {
             if (string.IsNullOrEmpty(latex)) return latex ?? "";
 
-            // 0) Environnements LaTeX \begin{...}...\end{...} → syntaxe UnicodeMath.
-            //    Fait en pré-étape (regex) car \begin{cases} n'est pas une macro
-            //    à arg entre accolades simples : c'est un couple begin/end avec
-            //    séparateur \\ à remplacer par @.
+            // 0) Environnements LaTeX \begin{...}...\end{...}.
+            //    Pré-passe regex (matrices, cases) avant le scan structurel.
             var s = ConvertEnvironments(latex);
-
-            // 1) Remplacements de commandes structurelles à argument entre accolades.
-            //    On scanne manuellement pour respecter la profondeur des accolades.
-            s = ConvertStructural(s);
-
-            // 2) Remplacements littéraux : lettres grecques, symboles, relations.
-            foreach (var kv in LiteralReplacements)
-                s = s.Replace(kv.Key, kv.Value);
-
-            // 3) Auto-wrap pour x^2 / x_n : UnicodeMath ne wrap pas tout seul,
-            //    mais Word gère ^ et _ sur un seul caractère — on ne touche donc
-            //    pas aux formes simples. Les formes "x^{abc}" sont déjà traitées
-            //    par ConvertStructural qui transforme {abc} en (abc).
-
-            return s;
+            // 1) Scan récursif des commandes structurelles + remplacements
+            //    littéraux appliqués à la sortie de chaque appel.
+            return ConvertSequence(s);
         }
 
-        // ------------------------------------------------------------
+        // ============================================================
         // Étape 0 : environnements LaTeX \begin{...}…\end{...}
-        // ------------------------------------------------------------
+        // ============================================================
 
         // \begin{cases} A \\ B \end{cases} → "{█(A@B)┤"
         // █ (U+2588) démarre une pile d'équations, @ sépare les lignes,
@@ -62,24 +49,112 @@ namespace MathCursor.Core
             @"\\begin\{cases\}(?<body>.*?)\\end\{cases\}",
             RegexOptions.Singleline | RegexOptions.Compiled);
 
-        private static string ConvertEnvironments(string src)
+        // Matrices : Word's UnicodeMath utilise ■ (U+25A0 BLACK SQUARE) comme
+        // marqueur de matrice. `&` sépare les colonnes (déjà même char en LaTeX),
+        // `\\` (LaTeX) sépare les lignes → `@`. Les délimiteurs sont posés autour :
+        //   pmatrix → `(■(…))` (parens)
+        //   bmatrix → `[■(…)]` (crochets)
+        //   vmatrix → `|■(…)|` (déterminant)
+        //   matrix  → `■(…)` (sans délimiteur)
+        // BuildUp parse ça nativement et produit l'OMath structure matricielle.
+        private static readonly Regex PmatrixEnvironmentRegex = new Regex(
+            @"\\begin\{pmatrix\}(?<body>.*?)\\end\{pmatrix\}",
+            RegexOptions.Singleline | RegexOptions.Compiled);
+        private static readonly Regex BmatrixEnvironmentRegex = new Regex(
+            @"\\begin\{bmatrix\}(?<body>.*?)\\end\{bmatrix\}",
+            RegexOptions.Singleline | RegexOptions.Compiled);
+        private static readonly Regex VmatrixEnvironmentRegex = new Regex(
+            @"\\begin\{vmatrix\}(?<body>.*?)\\end\{vmatrix\}",
+            RegexOptions.Singleline | RegexOptions.Compiled);
+        private static readonly Regex MatrixEnvironmentRegex = new Regex(
+            @"\\begin\{matrix\}(?<body>.*?)\\end\{matrix\}",
+            RegexOptions.Singleline | RegexOptions.Compiled);
+
+        // align* (chaînes d'équivalences/égalités, brief 30-04 multiline-systems).
+        // Word UnicodeMath : `█(...)` (U+2588 BLACK SQUARE) est le shorthand
+        // matrix Word qui marche en BuildUp. `\eqarray(...)` testé le 02-05
+        // → rendu littéralement comme texte (non reconnu par BuildUp dans
+        // certaines versions Word). On reste donc sur `█(...)`.
+        // `&` = column separator, `@` = row separator.
+        private static readonly Regex AlignStarEnvironmentRegex = new Regex(
+            @"\\begin\{align\*\}(?<body>.*?)\\end\{align\*\}",
+            RegexOptions.Singleline | RegexOptions.Compiled);
+
+        private static string NormalizeMatrixBody(string body)
         {
-            return CasesEnvironmentRegex.Replace(src, m =>
-            {
-                string body = m.Groups["body"].Value.Trim();
-                // \\ LaTeX = fin de ligne → @ UnicodeMath
-                body = Regex.Replace(body, @"\\\\", "@");
-                // Nettoyage espaces autour des @
-                body = Regex.Replace(body, @"\s*@\s*", "@");
-                return "{█(" + body + ")┤";
-            });
+            body = body.Trim();
+            body = Regex.Replace(body, @"\\\\", "@");
+            body = Regex.Replace(body, @"\s*@\s*", "@");
+            body = Regex.Replace(body, @"\s*&\s*", "&");
+            return body;
         }
 
-        // ------------------------------------------------------------
-        // Étape 1 : commandes à argument(s) entre accolades
-        // ------------------------------------------------------------
+        private static string ConvertEnvironments(string src)
+        {
+            src = CasesEnvironmentRegex.Replace(src, m =>
+            {
+                // Espace après `{` pour séparation visuelle entre l'accolade
+                // et les lignes (cf. user feedback 05-05 « plus un petit espace
+                // entre l'accolade et les lignes »).
+                // NormalizeMatrixBody collapse les espaces autour de `&` et `@`
+                // pour le rendu Word OMath, supportant ainsi l'alignement
+                // intra-cases via `&` (Phase 2 ADR 05-05 cases-multiline).
+                return "{ █(" + NormalizeMatrixBody(m.Groups["body"].Value) + ")┤";
+            });
+            src = PmatrixEnvironmentRegex.Replace(src, m =>
+                "(■(" + NormalizeMatrixBody(m.Groups["body"].Value) + "))");
+            src = BmatrixEnvironmentRegex.Replace(src, m =>
+                "[■(" + NormalizeMatrixBody(m.Groups["body"].Value) + ")]");
+            src = VmatrixEnvironmentRegex.Replace(src, m =>
+                "|■(" + NormalizeMatrixBody(m.Groups["body"].Value) + ")|");
+            src = MatrixEnvironmentRegex.Replace(src, m =>
+                "■(" + NormalizeMatrixBody(m.Groups["body"].Value) + ")");
+            src = AlignStarEnvironmentRegex.Replace(src, m =>
+                "█(" + NormalizeMatrixBody(m.Groups["body"].Value) + ")");
+            return src;
+        }
 
-        private static string ConvertStructural(string src)
+        // ============================================================
+        // Étape 1 : scan structurel + littéraux
+        // ============================================================
+
+        /// <summary>
+        /// Convertit un fragment complet (sequence de tokens et structures).
+        /// Applique les remplacements littéraux APRÈS le scan structurel sur
+        /// la chaîne reconstruite. Récursif via les arguments <c>{...}</c>
+        /// des commandes (<c>ConvertArg</c> applique aussi les littéraux).
+        /// </summary>
+        private static string ConvertSequence(string src)
+        {
+            var s = ScanStructural(src);
+            return ApplyLiteralReplacements(s);
+        }
+
+        /// <summary>
+        /// Convertit un argument <c>{...}</c> (contenu déjà extrait).
+        /// Applique structurel + littéraux pour que le résultat soit dans
+        /// son état final — utile pour <see cref="EmitArg"/> qui décide
+        /// single-char vs multi-char d'après la longueur post-conversion.
+        /// </summary>
+        private static string ConvertArg(string arg) => ConvertSequence(arg);
+
+        /// <summary>
+        /// Scan principal : reconnaît les commandes structurelles
+        /// (<c>\frac</c>, <c>\sqrt</c>, <c>\binom</c>, <c>\mathbb</c>,
+        /// accents) et les exposant/indice avec accolades. Le reste est
+        /// recopié tel quel (les littéraux seront résolus en post-pass).
+        ///
+        /// Stratégie d'émission :
+        /// - <c>\frac{a}{b}</c> : émet <c>EmitArg(a)/EmitArg(b)</c> avec
+        ///   single-char shortcut. Si un token tight suit dans la source
+        ///   (lettre/chiffre/paren ouvrante), insère un espace
+        ///   d'anti-absorption pour empêcher Word d'absorber au dénom.
+        /// - <c>x^{...}</c> / <c>x_{...}</c> : émet <c>^EmitArg(...)</c>
+        ///   ou <c>_EmitArg(...)</c>. Single-char shortcut s'applique.
+        /// - <c>\sqrt{x}</c> : toujours <c>√(x)</c>, Word ne reconnaît pas
+        ///   <c>√x</c> sans parens comme racine englobante.
+        /// </summary>
+        private static string ScanStructural(string src)
         {
             var sb = new StringBuilder(src.Length);
             int i = 0;
@@ -87,22 +162,26 @@ namespace MathCursor.Core
             {
                 if (src[i] == '\\')
                 {
-                    // Lit le nom de la commande
                     int nameStart = i + 1;
                     int nameEnd = nameStart;
                     while (nameEnd < src.Length && char.IsLetter(src[nameEnd])) nameEnd++;
                     string cmd = src.Substring(nameStart, nameEnd - nameStart);
                     int after = nameEnd;
 
-                    // Dispatch par nom
                     if (cmd == "frac" || cmd == "dfrac" || cmd == "tfrac")
                     {
                         if (TryReadBracedArg(src, after, out string a, out int afterA)
                             && TryReadBracedArg(src, afterA, out string b, out int afterB))
                         {
-                            string ca = ConvertStructural(a);
-                            string cb = ConvertStructural(b);
-                            sb.Append("(").Append(ca).Append(")/(").Append(cb).Append(")");
+                            string ca = ConvertArg(a);
+                            string cb = ConvertArg(b);
+                            sb.Append(EmitArg(ca)).Append('/').Append(EmitArg(cb));
+                            // Anti-absorption : si le caractère suivant est un
+                            // token tight (lettre/chiffre/paren ouvrante), Word
+                            // l'avale au dénom. On insère un espace pour borner
+                            // visuellement la fraction. Cf. ADR 30-04 + bug image.
+                            if (afterB < src.Length && IsTightSuccessor(src[afterB]))
+                                sb.Append(' ');
                             i = afterB;
                             continue;
                         }
@@ -123,9 +202,12 @@ namespace MathCursor.Core
                         }
                         if (TryReadBracedArg(src, j, out string arg, out int afterArg))
                         {
-                            string carg = ConvertStructural(arg);
+                            string carg = ConvertArg(arg);
+                            // sqrt garde TOUJOURS les parens : Word UnicodeMath
+                            // n'englobe que ce qui est explicitement délimité
+                            // sous le radical. `√x` rendrait juste √ + x à côté.
                             if (nArg != null)
-                                sb.Append("√(").Append(ConvertStructural(nArg)).Append("&").Append(carg).Append(")");
+                                sb.Append("√(").Append(ConvertArg(nArg)).Append("&").Append(carg).Append(")");
                             else
                                 sb.Append("√(").Append(carg).Append(")");
                             i = afterArg;
@@ -139,9 +221,9 @@ namespace MathCursor.Core
                         {
                             // UnicodeMath pour coefficient binomial : (a¦b) avec ¦ = U+00A6
                             sb.Append("(")
-                              .Append(ConvertStructural(a))
+                              .Append(ConvertArg(a))
                               .Append("¦")
-                              .Append(ConvertStructural(b))
+                              .Append(ConvertArg(b))
                               .Append(")");
                             i = afterB;
                             continue;
@@ -153,18 +235,13 @@ namespace MathCursor.Core
                     {
                         if (TryReadBracedArg(src, after, out string arg, out int afterArg))
                         {
-                            // mathbb est géré plus bas via LiteralReplacements (R→ℝ).
-                            // Pour les autres, on déballe simplement : le LaTeX des
-                            // opérateurs nommés ("Vect", "Ker", "tr"…) devient du texte
-                            // droit dans Word (qui reconnaît les séquences alpha comme
-                            // des opérateurs automatiquement).
                             if (cmd == "mathbb" && arg.Length == 1 && SetLetterMap.TryGetValue(arg, out var setChar))
                             {
                                 sb.Append(setChar);
                             }
                             else
                             {
-                                sb.Append(ConvertStructural(arg));
+                                sb.Append(ConvertArg(arg));
                             }
                             i = afterArg;
                             continue;
@@ -174,14 +251,11 @@ namespace MathCursor.Core
                     {
                         if (TryReadBracedArg(src, after, out string arg, out int afterArg))
                         {
-                            // ACCENTS : on utilise le caractère Unicode combinant
-                            // que Word reconnaît nativement dans BuildUp (menu
-                            // accent "Rightwards Arrow Above" pour \vec = U+20D7).
-                            // Le combinant se met après le groupe entre parens ;
-                            // Word rend l'accent au-dessus du contenu.
-                            //   \vec{AB}    → (AB)⃗
-                            //   \hat{x}     → x̂  (un seul char : pas besoin de parens)
-                            string inner = ConvertStructural(arg);
+                            // ACCENTS : caractère Unicode combinant que Word
+                            // reconnaît dans BuildUp (menu accent du ribbon).
+                            //   \vec{AB}  → (AB)⃗
+                            //   \hat{x}   → x̂
+                            string inner = ConvertArg(arg);
                             if (inner.Length == 1)
                                 sb.Append(inner).Append(combiningChar);
                             else
@@ -190,28 +264,25 @@ namespace MathCursor.Core
                             continue;
                         }
                     }
-                    // Si on n'a pas dispatché : on recopie la commande telle quelle,
-                    // les remplacements littéraux se chargeront des lettres grecques etc.
+                    // Commande non dispatchée : on recopie telle quelle, les
+                    // remplacements littéraux feront le travail (lettres
+                    // grecques, ensembles, relations, fonctions trig…).
                     sb.Append('\\').Append(cmd);
                     i = after;
                     continue;
                 }
 
-                // Exposant / indice avec accolades : x^{abc} → x^(abc), x_{ij} → x_(ij)
-                // Word UnicodeMath consomme les `()` autour des exposants comme
-                // délimiteurs de groupe transparents (ne sont PAS affichés après
-                // BuildUp). On garde toujours les parens, même pour les single
-                // chars : sinon `cos^2(x)` est parsé en `cos^{2(x)}` (le `(x)`
-                // est absorbé dans l'exposant). Tentatives écartées :
-                //   - 〖〗 (invisible group brackets) : non reconnus par BuildUp
-                //     dans Word desktop, rendus comme glyphes ou ignorés
-                //   - single-char sans parens : produit l'absorption ci-dessus
+                // Exposant / indice avec accolades : x^{abc} → x^(abc) ou x^a
+                // (single-char shortcut). Cf. ADR 30-04 : l'argument 1 char
+                // ASCII alphanum (ou lettre unicode après convert) est émis
+                // nu pour éviter les `(2)` visibles dans Word BuildUp.
                 if ((src[i] == '^' || src[i] == '_') && i + 1 < src.Length && src[i + 1] == '{')
                 {
-                    sb.Append(src[i]);
                     if (TryReadBracedArg(src, i + 1, out string arg, out int afterArg))
                     {
-                        sb.Append('(').Append(ConvertStructural(arg)).Append(')');
+                        sb.Append(src[i]);
+                        string carg = ConvertArg(arg);
+                        sb.Append(EmitArg(carg));
                         i = afterArg;
                         continue;
                     }
@@ -221,6 +292,44 @@ namespace MathCursor.Core
                 i++;
             }
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Décide si <paramref name="converted"/> peut être émis nu (single-
+        /// char shortcut) ou doit être enrobé de parenthèses. Une lettre
+        /// alphanum ou greek (post-conversion) seule est nue ; tout le reste
+        /// est entre parens.
+        ///
+        /// Cas frontière : un signe seul (`+`, `-`) en exposant (limite
+        /// `0^+`) doit aussi passer en single-char (Word reconnaît `^+`).
+        /// </summary>
+        private static string EmitArg(string converted)
+        {
+            if (IsSingleAtomicChar(converted)) return converted;
+            return "(" + converted + ")";
+        }
+
+        private static bool IsSingleAtomicChar(string s)
+        {
+            if (s.Length != 1) return false;
+            char c = s[0];
+            // Letter or digit (ASCII + greek/maths après LiteralReplacements)
+            // OU signe arithmétique simple (cas limite 0^+ / 0^-).
+            return char.IsLetterOrDigit(c) || c == '+' || c == '-';
+        }
+
+        /// <summary>
+        /// True si <paramref name="c"/> est un caractère qui, accolé à une
+        /// fraction émise <c>(num)/(denom)</c> ou <c>num/denom</c>, serait
+        /// absorbé par Word BuildUp dans le dénominateur. On insère alors
+        /// un espace de séparation. Cas typiques : lettre, chiffre, paren
+        /// ouvrante. Pas d'absorption pour les opérateurs arithmétiques
+        /// (Word coupe la fraction sur `+`, `-`, `*`, `=`, etc.) ni pour
+        /// l'espace.
+        /// </summary>
+        private static bool IsTightSuccessor(char c)
+        {
+            return char.IsLetterOrDigit(c) || c == '(' || c == '[';
         }
 
         /// <summary>Lit <c>{ ... }</c> à la position donnée, gère la profondeur.</summary>
@@ -245,9 +354,16 @@ namespace MathCursor.Core
             return true;
         }
 
-        // ------------------------------------------------------------
+        // ============================================================
         // Étape 2 : remplacements littéraux (commande → caractère unicode)
-        // ------------------------------------------------------------
+        // ============================================================
+
+        private static string ApplyLiteralReplacements(string s)
+        {
+            foreach (var kv in LiteralReplacements)
+                s = s.Replace(kv.Key, kv.Value);
+            return s;
+        }
 
         // Lettres grecques, relations, ensembles. Tout passe par Replace — donc
         // l'ordre compte : versions longues d'abord pour éviter que "\in" matche
@@ -284,7 +400,19 @@ namespace MathCursor.Core
                 new KeyValuePair<string, string>("\\emptyset", "∅"),
                 new KeyValuePair<string, string>("\\partial", "∂"),
                 new KeyValuePair<string, string>("\\nabla", "∇"),
+                // Multiplications : on consomme tous les espaces parasites
+                // autour (séparateur LaTeX trailing et leading). Sinon
+                // `2\cdot 4` → `2⋅ 4` (bug 2026-05-09 trailing) ou
+                // `\vec{a} \cdot \vec{b}` → `a⃗ ⋅b⃗` (leading) avec
+                // espaces visibles dans Word OMath. Ordre : variantes les
+                // plus spécifiques d'abord.
+                new KeyValuePair<string, string>(" \\times ", "×"),
+                new KeyValuePair<string, string>("\\times ", "×"),
+                new KeyValuePair<string, string>(" \\times", "×"),
                 new KeyValuePair<string, string>("\\times", "×"),
+                new KeyValuePair<string, string>(" \\cdot ", "⋅"),
+                new KeyValuePair<string, string>("\\cdot ", "⋅"),
+                new KeyValuePair<string, string>(" \\cdot", "⋅"),
                 new KeyValuePair<string, string>("\\cdot", "⋅"),
                 new KeyValuePair<string, string>("\\circ", "∘"),
                 new KeyValuePair<string, string>("\\otimes", "⊗"),

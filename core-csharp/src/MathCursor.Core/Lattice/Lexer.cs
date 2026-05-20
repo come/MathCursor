@@ -37,6 +37,23 @@ namespace MathCursor.Core.Lattice
                 // car Word AutoCorrect insère une espace insécable avant les
                 // ponctuations doubles françaises (`:`, `;`, `?`, `!`). Sans
                 // ce traitement, le DAG du Lexer est cassé sur ces chars
+                // Saut de ligne explicite : separe les lignes d'un MultiLineBlock
+                // (cf. brief 30-04 multiline-systems-equivalences). Le Parser detecte
+                // le pattern `expr LF marker expr` et construit un MultiLineBlock.
+                // Hors de ce contexte, le LineBreak est filtre comme un Space par
+                // le constructor Parser.
+                if (c == '\n' || c == '\r')
+                {
+                    if (c == '\r' && i + 1 < n && input[i + 1] == '\n')
+                    {
+                        edges.Add(new LatticeEdge(i, i + 2, EdgeType.LineBreak, "\n", 0));
+                        i++;
+                        continue;
+                    }
+                    edges.Add(new LatticeEdge(i, i + 1, EdgeType.LineBreak, "\n", 0));
+                    continue;
+                }
+
                 // → ConvertWithAmbiguity retourne empty.
                 if (c == ' ' || c == '\t' || c == ' ')
                 {
@@ -69,11 +86,14 @@ namespace MathCursor.Core.Lattice
                     edges.Add(new LatticeEdge(i, i + 1, EdgeType.Op, c.ToString(), 0, tight));
                 }
 
-                // Nombre (digits + point décimal éventuel)
+                // Nombre : DIGITS uniquement (pas le `.` qui devient un Op
+                // de multiplication, cf. ADR 30-04 Feat-dot-as-multiplier).
+                // Pour le décimal anglo `3.4`, l'AlternativeGenerator propose
+                // l'alt `3{,}4` via RuleDecimalVsMultiplication.
                 if (c >= '0' && c <= '9')
                 {
                     int j = i;
-                    while (j < n && (input[j] >= '0' && input[j] <= '9' || input[j] == '.'))
+                    while (j < n && input[j] >= '0' && input[j] <= '9')
                         j++;
                     edges.Add(new LatticeEdge(i, j, EdgeType.Number, input.Substring(i, j - i), 0));
                 }

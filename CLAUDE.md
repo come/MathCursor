@@ -8,6 +8,33 @@ de façon fluide au clavier. Objectif : comportement prévisible et sans frictio
 **Phase 1** : Word Desktop Windows via **VSTO** uniquement.
 **Phase 2** (après validation produit) : portage Office.js pour Word Web / Mac / iPad.
 
+## Où trouver l'état d'avancement (lire en premier)
+
+- **[`docs/dev/architecture/ROADMAP.md`](docs/dev/architecture/ROADMAP.md)** — état des chantiers en cours (refacto archi axes 1-8, harnais phases 0-9, source-mutation S0-S3), case à case. À jour à chaque sous-livraison.
+- **[`docs/dev/architecture/cartography.md`](docs/dev/architecture/cartography.md)** — image archi par fichier + dette identifiée.
+- **[`docs/dev/decisions/README.md`](docs/dev/decisions/README.md)** — index chrono de tous les ADRs.
+
+Quand tu reprends une session : ROADMAP.md → première case `[ ]` non cochée du chantier en cours. Si plusieurs chantiers ouverts, demander la priorité utilisateur.
+
+## ⚠️ Avant de toucher à l'ergo VSTO Word (OBLIGATOIRE)
+
+Si la modif touche : insertion/suppression d'OMath, ContentControls, positions
+Word internes, sticky-zone, auto-grow, revert, edit mode, ou tout ce qui
+interagit avec `sel.SetRange/Delete/TypeText`, `om.Range`, `cc.Range`,
+`ContentControls.Add`, `OMaths.Add/BuildUp`, etc. →
+
+**LIRE D'ABORD** :
+1. **[`docs/dev/architecture/word-api-helpers.md`](docs/dev/architecture/word-api-helpers.md)** — inventaire des helpers à utiliser (ParagraphPositionTranslator, CcMetaResolver, ZoneCleaner, etc.) + l'ordre d'opérations validé (= ZWSP plain → math → BuildUp → CC last).
+2. **[`docs/dev/decisions/2026-05-19-Feat-anchor-cc-pattern.md`](docs/dev/decisions/2026-05-19-Feat-anchor-cc-pattern.md)** — pattern anchor CC (= la CC vit À CÔTÉ de l'OMath, pas autour).
+
+Et appliquer les règles dures de la mémoire `feedback_word_api_workflow` :
+- Si 2-3 patches s'empilent sans converger → STOP, remonter.
+- POC ribbon button minimal AVANT la prod (= sans CC, sans Tag, sans pipeline).
+- Normalize positions via `sel.SetRange(p,p) + readback sel.Start` systématiquement.
+- L'ordre `TypeText / BuildUp / CC.Add` change ce que Word absorbe → tester chaque permutation via POC.
+- Si l'utilisateur dit « ça marchait avant » → `git log` + diff IMMÉDIATEMENT, ne pas re-inventer.
+- Ne JAMAIS ajouter `cc.LockContentControl = true` à l'insert sans tester `cc.Delete` au revert.
+
 ## Validation produit (critère de succès phase 1)
 
 Produit utilisable au quotidien par :

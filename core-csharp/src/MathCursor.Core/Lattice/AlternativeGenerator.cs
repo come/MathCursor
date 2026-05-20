@@ -86,12 +86,46 @@ namespace MathCursor.Core.Lattice
         public AmbiguitySpot Spot { get; }
         public int Start { get; }
         public int End { get; }
+
+        /// <summary>
+        /// Identifiant léger et stable du match (cf. brief
+        /// <c>2026-05-07-rule-pin-span-override-refactor</c>).
+        /// </summary>
+        public MathCursor.Core.Resolution.MatchSignature? Signature { get; }
+
+        /// <summary>
+        /// AltIdx que <c>ZoneResolver.ResolveBestAlt</c> a appliqué pour ce
+        /// match (= alt active visible dans le TopLatex post-splice). <c>-1</c>
+        /// = aucune alt appliquée (= default rule reste). Utilisé par la
+        /// popup pour filtrer l'alt active de la liste affichée et garantir
+        /// l'invariant « la finale n'apparaît jamais dans les alts »
+        /// (demande user 2026-05-07).
+        /// </summary>
+        public int AppliedAltIdx { get; }
+
         public AmbiguityMatch(AmbiguitySpot spot, int start, int end)
+            : this(spot, start, end, null, -1) { }
+
+        public AmbiguityMatch(AmbiguitySpot spot, int start, int end,
+            MathCursor.Core.Resolution.MatchSignature? signature)
+            : this(spot, start, end, signature, -1) { }
+
+        public AmbiguityMatch(AmbiguitySpot spot, int start, int end,
+            MathCursor.Core.Resolution.MatchSignature? signature, int appliedAltIdx)
         {
             Spot = spot;
             Start = start;
             End = end;
+            Signature = signature;
+            AppliedAltIdx = appliedAltIdx;
         }
+
+        public AmbiguityMatch WithSignature(MathCursor.Core.Resolution.MatchSignature signature)
+            => new AmbiguityMatch(Spot, Start, End, signature, AppliedAltIdx);
+
+        /// <summary>Marque l'altIdx appliqué par le ZoneResolver pour ce match.</summary>
+        public AmbiguityMatch WithAppliedAlt(int appliedAltIdx)
+            => new AmbiguityMatch(Spot, Start, End, Signature, appliedAltIdx);
     }
 
     /// <summary>
@@ -197,42 +231,20 @@ namespace MathCursor.Core.Lattice
         /// </summary>
         private static IReadOnlyList<AmbiguityMatch> CollectAllMatches(AstNode topAst, string topLatex, string source)
         {
-            var matches = new List<AmbiguityMatch>();
-            var consumed = new bool[topLatex.Length];
-            // 1) Patterns AST-based (Sup d'une lettre par un nombre, etc.)
-            CollectAllMatchesRec(topAst, topLatex, matches, consumed);
-            // 2) Patterns STRING-based sur le LaTeX rendu : séquences de
-            //    majuscules adjacentes. On scanne en passant par-dessus l'AST
-            //    parce que l'arbre gauche-associatif ne regroupe pas toujours
-            //    C et D ensemble (ex: AB*CD donne ((A*B)*C)*D, donc CD n'est
-            //    jamais un sous-Bin direct). Le scan string capture toutes
-            //    les séquences majuscules quelle que soit leur structure AST.
-            ScanUppercaseSequences(topLatex, matches, consumed);
-            // 3) Patterns SOURCE-mutation : règles qui ré-écrivent la source et
-            //    relancent le pipeline (V→forall, à venir : intervalles, U, etc.).
-            //    Scannent la source brute (pas le LaTeX rendu) pour avoir les
-            //    positions exactes à muter.
-            ScanVAsForallEAsExists(source, topLatex, matches, consumed);
-            // 4) Lettres canoniques R/N/Z/Q/C isolées : popup ensemble vs lettre.
-            ScanCanonicalSetLetters(source, topLatex, matches, consumed);
-            // Tri : priorité aux règles structurantes (V→∀, E→∃ qui changent
-            // la sémantique globale) puis aux règles locales (canonical-set,
-            // AB→vec, x²→x_2). En cas d'égalité de priorité, rightmost first
-            // (= la plus proche du caret).
-            matches.Sort((a, b) =>
-            {
-                int prioA = GetRulePriority(a.Spot.RuleId);
-                int prioB = GetRulePriority(b.Spot.RuleId);
-                if (prioA != prioB) return prioA.CompareTo(prioB);
-                return b.Start.CompareTo(a.Start);
-            });
-            return matches;
+            // Délégation à AmbiguityScannerPipeline.Default (Strategy + Pipeline,
+            // cf. ADR 2026-05-13-Refactor-ambiguity-scanners-strategy). Les 10
+            // Scan* qui vivent encore dans ce fichier sont appelées par les
+            // wrappers dans Lattice/Ambiguity/Scanners/. Vrai déplacement du
+            // code en S0.7 cleanup.
+            var ctx = new MathCursor.Core.Lattice.Ambiguity.ScanContext(topAst, topLatex, source);
+            return MathCursor.Core.Lattice.Ambiguity.AmbiguityScannerPipeline.Default.Run(ctx);
         }
 
         // Priorité des règles d'ambig (1 = haute, traité en premier).
         // Rules structurantes (changent la sémantique globale, ex V→∀ vs V
         // variable) sortent avant les locales (modifient juste un atome).
-        private static int GetRulePriority(string ruleId) => ruleId switch
+        // Visibilité internal pour exposition à AmbiguityScannerPipeline.
+        internal static int GetRulePriority(string ruleId) => ruleId switch
         {
             RuleVAsForall => 1,
             RuleEAsExists => 1,
@@ -240,6 +252,36 @@ namespace MathCursor.Core.Lattice
             RuleTwoUppercase => 3,
             RuleThreeUppercase => 3,
             RuleLetterSupNumber => 3,
+            // u*v ambig : priorité 3 comme les autres règles d'ambig de
+            // multiplication d'idents — pas plus structurant qu'AB→vec.
+            RuleVecDotProduct => 3,
+            // f(1, 2) ambig : priorité haute parce que sémantiquement
+            // structurante (function call vs vecteur de coords) — l'élève
+            // doit trancher avant qu'on touche aux locales.
+            RuleVectorCoordsVsCall => 2,
+            // Col↔ligne : priorité 2 (HAUTE) — quand un span `AB(1,2)` est
+            // détecté comme VectorCoordinates, le user veut choisir le
+            // layout (column/row) plutôt que la nature lexicale (vec/paren/
+            // crochet). Le flip tourne EN PREMIER, consume tout le span du
+            // top, et TwoUppercase scan ensuite voit consumed → skip.
+            // Conséquence pratique :
+            //   `AB` seul          → flip pas applicable, TwoUppercase propose vec/paren/crochet
+            //   `AB(1,2)` (avec coords) → flip propose row/column en alts, TwoUppercase skip
+            //   `u(1,2)` (1 lettre)     → flip propose row/column (pas de TwoUppercase)
+            // Bug Etienne 30-04 : sans cette priorité, AB(1,2) montrait
+            // vec/paren/crochet mais pas le column en alt cliquable.
+            RuleVectorLayoutFlip => 2,
+            // Tight chain extension : priorité basse (juste un regroupement
+            // alternatif, pas un changement sémantique). Les ambig structurelles
+            // (AB, V/E) gardent la main.
+            RuleTightChainExtension => 4,
+            // Décimal vs mult : priorité 3 (sémantique change, pas un layout).
+            // Plus haut que tight-chain-extension (4) parce que la confusion
+            // décimal/mult a un impact plus fort sur le rendu visuel.
+            RuleDecimalVsMultiplication => 3,
+            // Angle 2-lettres : priorité 3 (sémantique = nb de lettres dans le
+            // chapeau). Plus haut que tight-chain-extension.
+            RuleAngleTwoLetterPlaceholder => 3,
             _ => 99,
         };
 
@@ -262,7 +304,7 @@ namespace MathCursor.Core.Lattice
         /// (`+`, `-`, `*`, `/`, `^`, `_`) NE sont pas considérés isolants
         /// car ils suggèrent un contexte arithmétique (variable).
         /// </summary>
-        private static void ScanCanonicalSetLetters(string source, string topLatex,
+        internal static void ScanCanonicalSetLetters(string source, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
             for (int i = 0; i < source.Length; i++)
@@ -310,61 +352,609 @@ namespace MathCursor.Core.Lattice
                || c == ')' || c == ']' || c == '}';
 
         /// <summary>
-        /// Parcourt <paramref name="topLatex"/> et émet un match pour chaque
-        /// séquence de 2 ou 3 majuscules consécutives entourées de non-lettres
-        /// (word boundary). Évite les positions déjà consommées par d'autres
-        /// matches AST-based.
+        /// Scan SOURCE : `f(<arg>, <arg>[, <arg>])` où <c>f</c> est un ident
+        /// 1 lettre typique fonction (f, g, h, F, G, H), suivi d'une paren
+        /// avec 2 ou 3 arguments séparés par virgule. Default = function call
+        /// (top-1, déjà rendu), alt = vec coords ligne `\vec{f}(...)`.
+        /// Cf. brief 2026-04-29-vector-coordinates-shorthand §3.1.
+        ///
+        /// Détection légère sur source brute (heuristique) :
+        /// 1) Lettre f/g/h/F/G/H isolée (word boundary à gauche)
+        /// 2) Suivie d'une `(` (avec ou sans espace optionnel)
+        /// 3) Contenu jusqu'à `)` matchant : 2 ou 3 segments virgule top-level
+        /// 4) AUCUN espace top-level entre les segments (sinon c'est déjà
+        ///    layout colonne → parser a tranché coords sans ambig)
+        ///
+        /// Mutation source : `f` → identifiant vec-typique (`u`) à la position
+        /// de la lettre. Force le parser à reconnaître le pattern coords sur
+        /// le re-parse, et on substitue ensuite le nom vec rendu (`\vec{u}`)
+        /// par `\vec{f}` pour l'aperçu fidèle.
         /// </summary>
-        private static void ScanUppercaseSequences(string topLatex,
+        /// <summary>
+        /// Si l'AST top est une <see cref="VectorCoordinates"/> seule (toute
+        /// la formule = un vecteur+coords, sans autre opération autour), propose
+        /// le layout opposé en alternative :
+        /// <list type="bullet">
+        /// <item>Saisie <c>u (1 2)</c> → default colonne, alt ligne `\vec{u}(1, 2)`</item>
+        /// <item>Saisie <c>u(1, 2)</c> → default ligne, alt colonne `\vec{u}\begin{pmatrix}1 \\ 2\end{pmatrix}`</item>
+        /// </list>
+        /// V1 limité au top-level pour éviter les conflits de positions avec
+        /// les autres ambig (AB, V/E…). Si l'utilisateur tape `vec u + u (1 2)`,
+        /// l'AST top n'est PAS une VectorCoordinates (c'est un Bin) et on ne
+        /// propose pas le flip — V2 si besoin.
+        /// </summary>
+        internal static void ScanVectorLayoutFlipTopLevel(AstNode topAst, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            if (!(topAst is VectorCoordinates vc)) return;
+            // Note (bug Etienne 30-04) : on NE check PLUS `consumed[i]` ici.
+            // Le flip layout est une désambig orthogonale aux désambigs
+            // lexicales (AB→vec/paren via RuleTwoUppercase consume `AB` du
+            // top). Les 2 alts coexistent légitimement dans la popup —
+            // l'une décide le layout column/row, l'autre décide vec/paren.
+            // Avant ce fix, RuleTwoUppercase bloquait le flip pour AB(1,2).
+
+            string flippedLayout = vc.Layout == "column" ? "row" : "column";
+            var altVc = new VectorCoordinates(vc.Name, vc.Values, flippedLayout, vc.IsPoint);
+            string altLatex = LatexRenderer.Render(altVc);
+            if (altLatex == topLatex) return; // identique → pas d'ambig
+
+            // alt[0] = current (default = ce qu'on voit déjà dans top), alt[1]
+            // = layout flipped. Le bridge filtre alt[0] (== top) et n'expose
+            // que alt[1] dans la popup.
+            var alts = new List<AmbiguityAlternative>
+            {
+                new AmbiguityAlternative(topLatex, mutation: null),
+                new AmbiguityAlternative(altLatex, mutation: null),
+            };
+            var spot = new AmbiguitySpot(RuleVectorLayoutFlip, topLatex, alts);
+            for (int i = 0; i < topLatex.Length; i++) consumed[i] = true;
+            output.Add(new AmbiguityMatch(spot, 0, topLatex.Length));
+        }
+
+        /// <summary>
+        /// Scan SOURCE re-parsé avec divers flags du <see cref="Parser"/> qui
+        /// modifient le groupement (tight chain extension, asterisk associativity
+        /// flip). Toute alt qui diffère du default est exposée en cascade.
+        /// Cf. ADR 30-04 <c>Feat-tight-implicit-mult-grouping</c> et
+        /// <c>Feat-asterisk-tightness-associativity</c>.
+        ///
+        /// Cas typiques :
+        /// <list type="bullet">
+        /// <item><c>1/x+1</c> : default <c>\frac{1}{x}+1</c>, alt <c>\frac{1}{x+1}</c>
+        ///   (tight extension)</item>
+        /// <item><c>x^a+b</c> : default <c>x^{a}+b</c>, alt <c>x^{a+b}</c></item>
+        /// <item><c>u_n+1</c> : default <c>u_{n}+1</c>, alt <c>u_{n+1}</c></item>
+        /// <item><c>1/2*3/4</c> : default <c>\frac{(1/2)\cdot 3}{4}</c>, alt
+        ///   <c>\frac{1}{2}\cdot \frac{3}{4}</c> (asterisk flip)</item>
+        /// <item><c>1/2 * 3/4</c> : default <c>\frac{1}{2}\cdot \frac{3}{4}</c>,
+        ///   alt <c>\frac{(1/2)\cdot 3}{4}</c> (asterisk flip inverse)</item>
+        /// </list>
+        ///
+        /// Exposé en TOP-LEVEL uniquement (= toute la formule comme spot) pour
+        /// rester simple. V2 ciblera la sous-expression précise si plusieurs
+        /// élargissements coexistent dans la formule.
+        /// </summary>
+        internal static void ScanTightChainExtension(string source, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(topLatex)) return;
+            // Si le top-latex est déjà entièrement consommé par un autre match
+            // (V→∀, vec coords, etc.), on ne propose pas l'alt (priorité aux
+            // ambig structurelles).
+            for (int i = 0; i < topLatex.Length; i++)
+                if (consumed[i]) return;
+
+            // Tester chaque combinaison non-default de flags. Collecter les
+            // alts distinctes (déduplication via HashSet, ordre préservé via
+            // List). Combinaisons : extension seule, flip seul, les deux.
+            var seen = new HashSet<string> { topLatex };
+            var altList = new List<string>();
+            (bool extend, bool flip)[] combos = { (true, false), (false, true), (true, true) };
+            foreach (var (extend, flip) in combos)
+            {
+                string? altLatex = TryReparse(source, extend, flip);
+                if (altLatex == null) continue;
+                if (seen.Add(altLatex)) altList.Add(altLatex);
+            }
+            if (altList.Count == 0) return;
+
+            var alts = new List<AmbiguityAlternative>
+            {
+                new AmbiguityAlternative(topLatex, mutation: null),  // default
+            };
+            foreach (var alt in altList)
+                alts.Add(new AmbiguityAlternative(alt, mutation: null));
+
+            var spot = new AmbiguitySpot(RuleTightChainExtension, topLatex, alts);
+            for (int i = 0; i < topLatex.Length; i++) consumed[i] = true;
+            output.Add(new AmbiguityMatch(spot, 0, topLatex.Length));
+        }
+
+        /// <summary>
+        /// Scan SOURCE pour le pattern `\d+\.\d+` (= deux nombres séparés
+        /// par un point). Default = mult (rendu actuel `n \cdot m`), alt =
+        /// décimal `n{,}m` (substitution typographique FR). Cf. ADR 30-04
+        /// Feat-dot-as-multiplier §3.
+        ///
+        /// Critère strict : les deux côtés du `.` sont **purement
+        /// numériques**. `a.b`, `2.x`, `x.2` ne déclenchent pas cette règle
+        /// (ils sont rendus en mult sans alt décimal possible).
+        ///
+        /// Le scan se fait sur la SOURCE (pas le topLatex rendu) parce que
+        /// le pattern est trivial à matcher via regex sur le texte saisi.
+        /// La position dans topLatex est récupérée par recherche du
+        /// substring `n\\cdot m` (ou `n\\times m` selon setting).
+        /// </summary>
+        internal static void ScanDecimalVsMultiplication(string source, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            if (string.IsNullOrEmpty(source)) return;
+            int i = 0;
+            while (i < source.Length)
+            {
+                if (!IsDigit(source[i])) { i++; continue; }
+                int numStart = i;
+                while (i < source.Length && IsDigit(source[i])) i++;
+                int numEnd = i;
+                // Doit être suivi de `.` puis d'au moins un chiffre.
+                if (i >= source.Length || source[i] != '.') continue;
+                int dotPos = i;
+                if (i + 1 >= source.Length || !IsDigit(source[i + 1])) continue;
+                i++;
+                int frac1Start = i;
+                while (i < source.Length && IsDigit(source[i])) i++;
+                int frac1End = i;
+                // On a un pattern `\d+\.\d+` complet : [numStart..frac1End).
+                string num = source.Substring(numStart, numEnd - numStart);
+                string frac = source.Substring(frac1Start, frac1End - frac1Start);
+                // Default rendu = `num \cdot frac` (le `.` rend toujours \cdot).
+                string defaultLatex = $"{num}\\cdot {frac}";
+                string altDecimalLatex = $"{num}{{,}}{frac}";
+                // Localiser dans topLatex
+                int pos = topLatex.IndexOf(defaultLatex, System.StringComparison.Ordinal);
+                if (pos < 0) continue;
+                bool free = true;
+                for (int k = pos; k < pos + defaultLatex.Length; k++)
+                    if (consumed[k]) { free = false; break; }
+                if (!free) continue;
+
+                var alts = new List<AmbiguityAlternative>
+                {
+                    new AmbiguityAlternative(defaultLatex, mutation: null),
+                    new AmbiguityAlternative(altDecimalLatex, mutation: null),
+                };
+                var spot = new AmbiguitySpot(RuleDecimalVsMultiplication, defaultLatex, alts);
+                for (int k = pos; k < pos + defaultLatex.Length; k++) consumed[k] = true;
+                output.Add(new AmbiguityMatch(spot, pos, pos + defaultLatex.Length));
+            }
+        }
+
+        private static bool IsDigit(char c) => c >= '0' && c <= '9';
+
+        /// <summary>
+        /// Walk l'AST top-1, détecte les nodes <see cref="Angle"/> avec
+        /// <c>HasPlaceholder=true</c> (= 2-lettres défaulté avec invite à
+        /// compléter), et propose en alt le rendu sans placeholder (= angle
+        /// littéral 2 lettres).
+        /// </summary>
+        internal static void ScanAngleTwoLetterPlaceholder(AstNode topAst, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            if (topAst == null || string.IsNullOrEmpty(topLatex)) return;
+            // V1 : on ne gère que l'angle top-level (pas nested), suffisant
+            // pour `^AB` ou `angle(AB)` en zone unique. Le pattern user
+            // typique est l'angle isolé, pas en expression composée.
+            if (topAst is not Angle a) return;
+            if (!a.HasPlaceholder) return;
+            // Position : tout le topLatex est l'angle.
+            for (int i = 0; i < topLatex.Length; i++)
+                if (consumed[i]) return;
+            string defaultLatex = topLatex; // `\widehat{AB\square}` rendu par LatexRenderer
+            string literalLatex = $"\\widehat{{{a.Name}}}";
+            if (defaultLatex == literalLatex) return; // pas d'ambig à proposer
+            var spot = new AmbiguitySpot(
+                RuleAngleTwoLetterPlaceholder,
+                defaultLatex,
+                new[]
+                {
+                    new AmbiguityAlternative(defaultLatex, mutation: null),  // default avec carré
+                    new AmbiguityAlternative(literalLatex, mutation: null),  // alt sans
+                });
+            for (int i = 0; i < topLatex.Length; i++) consumed[i] = true;
+            output.Add(new AmbiguityMatch(spot, 0, topLatex.Length));
+        }
+
+        /// <summary>Re-parse avec les flags spécifiés. Retourne le LaTeX, ou null si erreur.</summary>
+        private static string? TryReparse(string source, bool tightExtendsToOps, bool flipAsterisk)
+        {
+            try
+            {
+                var edges = Lexer.Lex(source);
+                var paths = LatticePathFinder.TopK(edges, source.Length, 1);
+                if (paths.Count == 0) return null;
+                var parser = new Parser(paths[0].Edges)
+                {
+                    TightExtendsToOps = tightExtendsToOps,
+                    FlipAsteriskAssociativity = flipAsterisk,
+                };
+                var ast = parser.Parse();
+                return LatexRenderer.Render(ast);
+            }
+            catch { return null; }
+        }
+
+        internal static void ScanFunctionTypicalWithCommaCoords(string source, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            for (int i = 0; i < source.Length; i++)
+            {
+                char c = source[i];
+                if (c != 'f' && c != 'g' && c != 'h'
+                    && c != 'F' && c != 'G' && c != 'H') continue;
+                // Word boundary à gauche
+                if (i > 0 && char.IsLetter(source[i - 1])) continue;
+                // Suivi (peut-être après un espace) par `(`
+                int j = i + 1;
+                while (j < source.Length && source[j] == ' ') j++;
+                if (j >= source.Length || source[j] != '(') continue;
+                int openParen = j;
+                // Trouver `)` matching (gestion parens imbriquées + brackets)
+                int depth = 1;
+                int k = openParen + 1;
+                while (k < source.Length && depth > 0)
+                {
+                    char ck = source[k];
+                    if (ck == '(' || ck == '[') depth++;
+                    else if (ck == ')' || ck == ']') depth--;
+                    if (depth == 0) break;
+                    k++;
+                }
+                if (k >= source.Length) continue; // pas de `)` trouvée
+                int closeParen = k;
+                // Découpe top-level par virgule (les espaces sont juste de la
+                // mise en forme à l'intérieur des cellules, pas des séparateurs).
+                var segments = SplitTopLevelByComma(source, openParen + 1, closeParen);
+                if (segments.Count < 2 || segments.Count > 3) continue;
+
+                // Position dans topLatex de la lettre `f`. Heuristique : LaTeX
+                // rendu garde généralement la lettre telle quelle (f → f).
+                int topPos = i < topLatex.Length && topLatex[i] == c
+                    ? i
+                    : topLatex.IndexOf(c, 0);
+                if (topPos < 0 || topPos >= topLatex.Length) continue;
+                if (consumed[topPos]) continue;
+
+                // Le default LaTeX correspond au function call rendu : `f\left(...\right)`.
+                // On le retrouve en partant de `f` jusqu'à la `\right)` qui
+                // correspond. Pour rester simple : on prend le span Latex
+                // entre topPos et la fin du \left(...\right) qu'on identifie
+                // par comptage. Si pas trouvable proprement, on saute.
+                int defaultEnd = FindFuncCallEndInLatex(topLatex, topPos);
+                if (defaultEnd < 0) continue;
+                // Vérifier que toutes les positions [topPos, defaultEnd) sont
+                // libres dans consumed (sinon collision avec un autre match).
+                bool free = true;
+                for (int p = topPos; p < defaultEnd; p++)
+                    if (consumed[p]) { free = false; break; }
+                if (!free) continue;
+
+                var defaultLatex = topLatex.Substring(topPos, defaultEnd - topPos);
+
+                // Construit l'aperçu de l'alt : muter `f` → ident vec-typique
+                // (`u`) puis re-rendre, puis substituer `\vec{u}` → `\vec{f}`
+                // (préservation du nom original).
+                string vecTypicalLetter = "u";
+                var alt1Source = MutateSource(source, i, 1, vecTypicalLetter);
+                var alt1Rendered = RenderRaw(alt1Source);
+                var alt1Latex = alt1Rendered.Replace($"\\vec{{{vecTypicalLetter}}}", $"\\vec{{{c}}}");
+
+                // Pas de mutation au sens "appliquer l'alt" : la mutation logique
+                // serait `f` → `vec f` (préfixer) mais le pipeline ne reconnaît
+                // pas ça nativement comme coords ligne. Plus pragmatique : on
+                // pose le LaTeX rendu directement comme alt, sans SourceMutation.
+                // (Si l'utilisateur sélectionne, l'adapter substitue le LaTeX.)
+                var alts = new List<AmbiguityAlternative>
+                {
+                    // Alt 0 : function call (default, identity — pas de mutation)
+                    new AmbiguityAlternative(defaultLatex, mutation: null),
+                    // Alt 1 : vec coords ligne `\vec{f}(...)`
+                    new AmbiguityAlternative(alt1Latex, mutation: null),
+                };
+                var spot = new AmbiguitySpot(RuleVectorCoordsVsCall, defaultLatex, alts);
+                for (int p = topPos; p < defaultEnd; p++) consumed[p] = true;
+                output.Add(new AmbiguityMatch(spot, topPos, defaultEnd));
+            }
+        }
+
+        /// <summary>
+        /// Découpe [start, end) (string source) par virgules au depth 0
+        /// (parens/brackets ignorées). Retourne les segments comme paires
+        /// (start, end). Au moins 1 segment si la zone est non-vide.
+        /// </summary>
+        private static List<(int start, int end)> SplitTopLevelByComma(string source, int start, int end)
+        {
+            var result = new List<(int, int)>();
+            int depth = 0;
+            int prev = start;
+            for (int i = start; i < end; i++)
+            {
+                char c = source[i];
+                if (c == '(' || c == '[') depth++;
+                else if (c == ')' || c == ']') depth--;
+                else if (c == ',' && depth == 0)
+                {
+                    result.Add((prev, i));
+                    prev = i + 1;
+                }
+            }
+            result.Add((prev, end));
+            return result;
+        }
+
+        /// <summary>
+        /// Trouve la fin d'un function call rendu en LaTeX : `<name>\left(<args>\right)`.
+        /// Retourne l'index juste après la `\right)`. Si pas de pattern reconnu
+        /// (ex: rendu intégré sans \left/\right), -1.
+        /// </summary>
+        private static int FindFuncCallEndInLatex(string topLatex, int nameStart)
+        {
+            // Avancer après les lettres du nom (1 char ASCII pour notre cas
+            // f/g/h/F/G/H — par sécurité, on consomme toutes les lettres ASCII).
+            int p = nameStart;
+            while (p < topLatex.Length && char.IsLetter(topLatex[p])) p++;
+            // Doit être suivi de `\left(`
+            const string LeftParen = "\\left(";
+            if (p + LeftParen.Length > topLatex.Length) return -1;
+            if (topLatex.Substring(p, LeftParen.Length) != LeftParen) return -1;
+            p += LeftParen.Length;
+            // Chercher la `\right)` qui matche, en gérant l'imbrication
+            int depth = 1;
+            while (p < topLatex.Length)
+            {
+                if (p + LeftParen.Length <= topLatex.Length
+                    && topLatex.Substring(p, LeftParen.Length) == LeftParen)
+                { depth++; p += LeftParen.Length; continue; }
+                const string RightParen = "\\right)";
+                if (p + RightParen.Length <= topLatex.Length
+                    && topLatex.Substring(p, RightParen.Length) == RightParen)
+                {
+                    depth--;
+                    p += RightParen.Length;
+                    if (depth == 0) return p;
+                    continue;
+                }
+                p++;
+            }
+            return -1;
+        }
+
+        // Helpers source → LaTeX
+        private static string MutateSource(string source, int offset, int length, string replacement)
+            => source.Substring(0, offset) + replacement + source.Substring(offset + length);
+
+        private static string RenderRaw(string source)
+        {
+            var edges = Lexer.Lex(source);
+            var paths = LatticePathFinder.TopK(edges, source.Length, 1);
+            if (paths.Count == 0) return source;
+            var ast = new Parser(paths[0].Edges).Parse();
+            return LatexRenderer.Render(ast);
+        }
+
+        /// <summary>
+        /// Scanne l'AST pour les Atom 2/3-majuscules DÉJÀ DÉCORÉS par le parser
+        /// (= l'utilisateur a explicitement tapé la décoration dans la source) :
+        /// <list type="bullet">
+        /// <item><c>Group(Atom("AB"))</c> ← source <c>(AB)</c> → décoration
+        ///   <c>\left(AB\right)</c>.</item>
+        /// <item><c>Vec(Name="AB")</c> ← source <c>vec AB</c> → décoration
+        ///   <c>\vec{AB}</c>.</item>
+        /// <item><c>Angle(Name="ABC")</c> ← source <c>angle ABC</c>, <c>^ABC</c>
+        ///   → décoration <c>\widehat{ABC}</c> (filtré aux 2/3 majuscules ici,
+        ///   1-char serait <c>\hat{X}</c> sans alts dans la règle).</item>
+        /// </list>
+        ///
+        /// <para>Émet un <see cref="AmbiguityMatch"/> dont les bornes couvrent
+        /// la décoration ENTIÈRE dans <paramref name="topLatex"/>, pas seulement
+        /// les lettres. Conséquence : un splice ultérieur (par RulePin / sidecar
+        /// / hint) remplace tout le bloc décoré au lieu d'insérer DANS le bloc.
+        /// Le splice avec l'alt = décoration courante devient identité (= no-op),
+        /// éliminant le bug double-wrap (`(AB)` + pin paren →
+        /// <c>\left(\left(AB\right)\right)</c>, `angle ABC` + pin widehat →
+        /// <c>\widehat{\widehat{ABC}}</c>, etc.).</para>
+        ///
+        /// <para>Doit tourner avant <see cref="ScanUppercaseSequences"/> : on
+        /// marque la plage entière de la décoration dans <paramref name="consumed"/>,
+        /// le scan string-based skip ensuite ces positions et ne re-émet pas de
+        /// match partiel sur les lettres internes.</para>
+        ///
+        /// <para>Cas non touché : <c>f(AB)</c> = <c>Func("f", Atom("AB"))</c> —
+        /// l'Atom AB n'est PAS enfant d'un Group/Vec/Angle, donc rien n'est
+        /// émis ici, et <see cref="ScanUppercaseSequences"/> émet un match
+        /// normal sur les lettres (comportement préservé).</para>
+        /// </summary>
+        internal static void ScanDecoratedTwoThreeUpper(
+            AstNode? topAst, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            if (topAst == null) return;
+            ScanDecoratedWalk(topAst, topLatex, output, consumed);
+        }
+
+        internal static void ScanDecoratedWalk(
+            AstNode node, string topLatex,
+            List<AmbiguityMatch> output, bool[] consumed)
+        {
+            AmbiguitySpot? spot = null;
+            string? decoration = null;
+
+            switch (node)
+            {
+                case Group g:
+                    // Le parser parse `AB` (juxtaposition) en
+                    // `Bin(*, Atom("A"), Atom("B"))` — pas un Atom direct.
+                    // On passe par le rendu du contenu pour récupérer la pair
+                    // (le Bin implicite rend lhs+rhs sans opérateur visible).
+                    {
+                        var inner = LatexRenderer.Render(g.Expr);
+                        if (IsAllUpperPair(inner))
+                        {
+                            decoration = $"\\left({inner}\\right)";
+                            spot = MakeUpperSpot(inner);
+                        }
+                    }
+                    break;
+                case Vec v when v.Name != null && IsAllUpperPair(v.Name):
+                    decoration = $"\\vec{{{v.Name}}}";
+                    spot = MakeUpperSpot(v.Name);
+                    break;
+                case Angle ang when !ang.HasPlaceholder
+                                    && IsAllUpperPair(ang.Name):
+                    decoration = $"\\widehat{{{ang.Name}}}";
+                    spot = MakeUpperSpot(ang.Name);
+                    break;
+            }
+
+            if (spot != null && decoration != null)
+            {
+                int idx = LastIndexOfWordBoundary(topLatex, decoration, consumed);
+                if (idx >= 0)
+                {
+                    int end = idx + decoration.Length;
+                    for (int k = idx; k < end; k++) consumed[k] = true;
+                    output.Add(new AmbiguityMatch(spot, idx, end));
+                    return; // décoration capturée, pas de descente plus profonde
+                }
+            }
+
+            foreach (var child in GetChildrenRightFirst(node))
+                ScanDecoratedWalk(child, topLatex, output, consumed);
+        }
+
+        private static bool IsAllUpperPair(string? s)
+        {
+            if (s == null) return false;
+            if (s.Length != 2 && s.Length != 3) return false;
+            foreach (var c in s) if (!char.IsUpper(c)) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Crée le Spot pour une pair/triplet de majuscules.
+        ///
+        /// <para>Si <paramref name="sourceOffset"/> est fourni (= scan
+        /// source-based depuis <see cref="ScanUppercaseSequences"/>), les
+        /// alts <c>vec</c> et <c>(...)</c> du length==2 reçoivent une
+        /// <see cref="SourceMutation"/>. L'adapter peut alors résoudre ces
+        /// alts par re-mutation de la source au lieu d'un splice du LaTeX
+        /// rendu (cf. ADR <c>2026-05-13-Refactor-source-mutation-pins-sidecar</c>).</para>
+        ///
+        /// <para>Bracket (<c>[AB]</c>) reste sans Mutation : <c>[AB]</c>
+        /// est parsé en intervalle FR par le parser, donc pas de forme
+        /// source naturelle équivalente. Fallback splice latex préservé.</para>
+        ///
+        /// <para>Length==3 : pas de Mutation pour S1 (RuleThreeUppercase
+        /// reste sur splice latex). Activation à S2 quand keywords
+        /// <c>triangle</c>/<c>widehat-pour-3-lettres</c> seront branchés
+        /// dans le pipeline.</para>
+        /// </summary>
+        private static AmbiguitySpot MakeUpperSpot(string pair, int? sourceOffset = null)
+        {
+            if (pair.Length == 2)
+            {
+                SourceMutation? vecMut = sourceOffset.HasValue
+                    ? new SourceMutation(sourceOffset.Value, 2, "vec " + pair)
+                    : null;
+                SourceMutation? parenMut = sourceOffset.HasValue
+                    ? new SourceMutation(sourceOffset.Value, 2, "(" + pair + ")")
+                    : null;
+                return new AmbiguitySpot(
+                    ruleId: RuleTwoUppercase,
+                    defaultLatex: pair,
+                    alternatives: new[]
+                    {
+                        new AmbiguityAlternative($"\\vec{{{pair}}}", vecMut),
+                        new AmbiguityAlternative($"\\left({pair}\\right)", parenMut),
+                        new AmbiguityAlternative($"\\left[{pair}\\right]"),
+                    });
+            }
+            // length == 3 — S1 garde le splice latex pour widehat/triangle.
+            return new AmbiguitySpot(
+                ruleId: RuleThreeUppercase,
+                defaultLatex: pair,
+                alternatives: new[]
+                {
+                    new AmbiguityAlternative($"\\widehat{{{pair}}}"),
+                    new AmbiguityAlternative($"\\triangle {pair}"),
+                });
+        }
+
+        /// <summary>
+        /// Scan SOURCE (pas LaTeX rendu) : émet un match pour chaque
+        /// séquence de 2 ou 3 majuscules consécutives entourées de
+        /// non-lettres (word boundary). Le boundary est calculé sur la
+        /// source — la vérité user — avant toute mutation/rendu.
+        ///
+        /// <para>S1 du refacto source-mutation
+        /// (ADR <c>2026-05-13-Refactor-source-mutation-pins-sidecar</c>) :
+        /// le scan opère sur la source pour permettre aux alts vec/paren
+        /// (length==2) de porter une <see cref="SourceMutation"/> stable,
+        /// au lieu de splicer le LaTeX déjà rendu.</para>
+        ///
+        /// <para>Mapping source→topLatex pour le <c>Start</c>/<c>End</c>
+        /// du match : si la pair est intacte à la même position dans le
+        /// topLatex (cas majoritaire, aucune mutation upstream qui décale),
+        /// on prend cette position. Sinon fallback
+        /// <see cref="LastIndexOfWordBoundary"/> sur le topLatex (cas où
+        /// une mutation type V→∀ a ajouté des chars en amont).</para>
+        ///
+        /// <para>Évite les positions topLatex déjà consommées par d'autres
+        /// matches (AST-based, decorated, etc.).</para>
+        /// </summary>
+        internal static void ScanUppercaseSequences(string source, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
             int i = 0;
-            while (i < topLatex.Length)
+            while (i < source.Length)
             {
-                if (!char.IsUpper(topLatex[i]) || consumed[i]) { i++; continue; }
-                // Word boundary left
-                if (i > 0 && char.IsLetter(topLatex[i - 1])) { i++; continue; }
+                if (!char.IsUpper(source[i])) { i++; continue; }
+                // Word boundary left (source)
+                if (i > 0 && char.IsLetter(source[i - 1])) { i++; continue; }
                 int j = i;
-                while (j < topLatex.Length && char.IsUpper(topLatex[j]) && !consumed[j]) j++;
+                while (j < source.Length && char.IsUpper(source[j])) j++;
                 int len = j - i;
-                // Word boundary right (if more letters follow, c'est un mot plus
-                // long, on n'émet aucun match — ex: ABCD ne propose ni AB ni ABC)
-                if (j < topLatex.Length && char.IsLetter(topLatex[j])) { i = j; continue; }
+                // Word boundary right (source). Si plus de lettres suivent,
+                // c'est un mot plus long → aucun match (ABCD ne propose ni
+                // AB ni ABC).
+                if (j < source.Length && char.IsLetter(source[j])) { i = j; continue; }
+                if (len != 2 && len != 3) { i = j; continue; }
 
-                AmbiguitySpot? spot = null;
-                if (len == 2)
+                var pair = source.Substring(i, len);
+
+                // Map source pos → topLatex pos.
+                int topPos;
+                bool trivialMap = i + len <= topLatex.Length
+                                  && string.CompareOrdinal(topLatex, i, pair, 0, len) == 0;
+                if (trivialMap)
                 {
-                    var pair = topLatex.Substring(i, 2);
-                    spot = new AmbiguitySpot(
-                        ruleId: RuleTwoUppercase,
-                        defaultLatex: pair,
-                        alternatives: new[]
-                        {
-                            new AmbiguityAlternative($"\\vec{{{pair}}}"),
-                            new AmbiguityAlternative($"\\left({pair}\\right)"),
-                            new AmbiguityAlternative($"\\left[{pair}\\right]"),
-                        });
+                    topPos = i;
                 }
-                else if (len == 3)
+                else
                 {
-                    var triplet = topLatex.Substring(i, 3);
-                    spot = new AmbiguitySpot(
-                        ruleId: RuleThreeUppercase,
-                        defaultLatex: triplet,
-                        alternatives: new[]
-                        {
-                            new AmbiguityAlternative($"\\widehat{{{triplet}}}"),
-                            new AmbiguityAlternative($"\\triangle {triplet}"),
-                        });
+                    topPos = LastIndexOfWordBoundary(topLatex, pair, consumed);
+                    if (topPos < 0) { i = j; continue; }
                 }
-                // 4+ majuscules : on n'émet rien (pas de pattern géométrique
-                // standard pour 4 lettres, et l'utilisateur n'a probablement
-                // pas tapé ça sciemment).
-                if (spot != null)
-                {
-                    for (int k = i; k < j; k++) consumed[k] = true;
-                    output.Add(new AmbiguityMatch(spot, i, j));
-                }
+
+                // Vérifie que la plage topLatex est libre.
+                bool free = topPos + len <= consumed.Length;
+                for (int k = topPos; free && k < topPos + len; k++)
+                    if (consumed[k]) free = false;
+                if (!free) { i = j; continue; }
+
+                var spot = MakeUpperSpot(pair, sourceOffset: i);
+                for (int k = topPos; k < topPos + len; k++) consumed[k] = true;
+                output.Add(new AmbiguityMatch(spot, topPos, topPos + len));
                 i = j;
             }
         }
@@ -391,7 +981,7 @@ namespace MathCursor.Core.Lattice
         /// (V*x, V+x, Vx, V), V_x) ne déclenchent PAS l'ambig (V garde sa
         /// sémantique de variable / multiplicateur).
         /// </summary>
-        private static void ScanVAsForallEAsExists(string source, string topLatex,
+        internal static void ScanVAsForallEAsExists(string source, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
             for (int i = 0; i < source.Length; i++)
@@ -444,7 +1034,7 @@ namespace MathCursor.Core.Lattice
             }
         }
 
-        private static void CollectAllMatchesRec(AstNode node, string topLatex,
+        internal static void CollectAllMatchesRec(AstNode node, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
         {
             var spot = MatchAmbiguity(node);
@@ -568,8 +1158,51 @@ namespace MathCursor.Core.Lattice
                     });
             }
 
+            // Règle 3 : multiplication EXPLICITE entre deux lettres simples
+            // (`a*b`, `u*v`, `A*B`, `x*y`…) → propose le produit scalaire de
+            // vecteurs en alt :
+            //   default `a\cdot b`   alt `\vec{a} \cdot \vec{b}`
+            // Restriction au `*` explicite (pas la juxtaposition `ab`/`AB`)
+            // pour ne pas voler le terrain aux autres cascades :
+            //   `AB` juxtaposition → RuleTwoUppercase (vec/paren/crochet)
+            //   `V x` juxtaposition → RuleVAsForall (∀)
+            //   `xy` juxtaposition → variables liées, pas de promotion vec
+            // La présence du `*` est un signal explicite que l'utilisateur
+            // distingue les opérandes — d'où la pertinence de la cascade.
+            if (node is Bin b && (b.Op == "*" || b.Op == ".") && !b.Implicit
+                && b.Lhs is Atom la && la.Kind == "ident" && IsSingleLetterIdent(la.Value)
+                && b.Rhs is Atom ra && ra.Kind == "ident" && IsSingleLetterIdent(ra.Value))
+            {
+                // DefaultLatex doit matcher le rendu actuel pour que le scan
+                // localise correctement le spot dans topLatex.
+                // - Bin("*") rend selon GlobalOptions.MultSymbol (cf. ADR
+                //   Feat-explicit-mult-times-vs-cdot).
+                // - Bin(".") rend toujours `\cdot` (lecture littérale du point,
+                //   cf. ADR Feat-dot-as-multiplier).
+                // L'alt vec dot product reste en `\cdot` indépendamment du
+                // setting (convention math du produit scalaire vectoriel).
+                string symbol = b.Op == "."
+                    ? "\\cdot "
+                    : LatexRenderer.GlobalOptions.MultSymbol;
+                string defaultLatex = $"{la.Value}{symbol}{ra.Value}";
+                string altLatex = $"\\vec{{{la.Value}}} \\cdot \\vec{{{ra.Value}}}";
+                return new AmbiguitySpot(
+                    ruleId: RuleVecDotProduct,
+                    defaultLatex: defaultLatex,
+                    alternatives: new[]
+                    {
+                        new AmbiguityAlternative(altLatex),
+                    });
+            }
+
             return null;
         }
+
+        // Identifiant 1-lettre alphabétique (lower ou upper). Permet de
+        // proposer une interprétation vecteur sur `a*b`, `x*y`, `A*B`, etc.
+        // — l'utilisateur trie via la cascade.
+        private static bool IsSingleLetterIdent(string ident)
+            => ident.Length == 1 && char.IsLetter(ident[0]);
 
         // Identifiants des règles d'ambiguïté — utilisés par la popup pour
         // mémoriser les préférences utilisateur par TYPE de pattern (et non
@@ -580,6 +1213,28 @@ namespace MathCursor.Core.Lattice
         public const string RuleVAsForall = "v-as-forall";
         public const string RuleEAsExists = "e-as-exists";
         public const string RuleCanonicalSet = "canonical-set";
+        // Ambig f(1, 2) : function call (default) vs vec coords \vec{f}(1, 2).
+        // Cf. brief 2026-04-29-vector-coordinates-shorthand §3.1. Le pattern
+        // n'est déclenché QUE pour les idents typique fonction (f, g, h, F,
+        // G, H) suivis d'une paren contenant 2 ou 3 valeurs séparées par
+        // virgule (= layout row only — pour layout column le parser a déjà
+        // tranché en faveur des coords sans ambig).
+        public const string RuleVectorCoordsVsCall = "vector-coords-vs-call";
+        public const string RuleVectorLayoutFlip = "vector-layout-flip";
+        public const string RuleVecDotProduct = "vec-dot-product";
+        // Élargissement tight chain : default `1/x+1` → \frac{1}{x}+1 (PEMDAS) ;
+        // alt `\frac{1}{x+1}` (chaîne tight aux ops). Cf. ADR 2026-04-30
+        // Feat-tight-implicit-mult-grouping. Pareil pour `^a+b`, `_n+1`.
+        public const string RuleTightChainExtension = "tight-chain-extension";
+        // Décimal vs multiplication : `3.4` rendu `3 \cdot 4` par défaut
+        // (notation FR pure, ADR Feat-dot-as-multiplier), alt = décimal `3{,}4`.
+        // Concerne UNIQUEMENT le pattern `\d+\.\d+` (deux nombres séparés
+        // par `.`). Lettres ou expressions ne déclenchent pas cette règle.
+        public const string RuleDecimalVsMultiplication = "decimal-vs-multiplication";
+        // Angle 2-lettres avec placeholder. Default `\widehat{AB\square}` (= invite
+        // à compléter), alt `\widehat{AB}` (= angle littéral 2 lettres). Cf. ADR
+        // 2026-05-11-Feat-angle-notation-caret-and-keyword.
+        public const string RuleAngleTwoLetterPlaceholder = "angle-two-letter-placeholder";
 
         /// <summary>
         /// Simule l'application d'une <see cref="SourceMutation"/> sur la

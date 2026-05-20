@@ -1,0 +1,76 @@
+{"text": "limit of f(x) as x goes to infinity", "spans": [{"start": 0, "end": 35, "label": "MATH"}], "lang": "en"}
+{"text": "derivative of sin(x)", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "f(x)=1/x ; g(x)=2x", "spans": [{"start": 0, "end": 8, "label": "MATH"}, {"start": 11, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose a=1, b=2, c=3", "spans": [{"start": 8, "end": 11, "label": "MATH"}, {"start": 13, "end": 16, "label": "MATH"}, {"start": 18, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère f(x)=sin(x) et g(x)=cos(x)", "spans": [{"start": 13, "end": 24, "label": "MATH"}, {"start": 28, "end": 39, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie que pour tout n in N, n+1 > n", "spans": [{"start": 15, "end": 40, "label": "MATH"}], "lang": "fr"}
+{"text": "integral of x^2 from 0 to 1", "spans": [{"start": 0, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "On a u_0=1, alors u_1=2", "spans": [{"start": 5, "end": 10, "label": "MATH"}, {"start": 18, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Il existe n dans N tel que u_n > M", "spans": [{"start": 0, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout n in N*, 1/n > 0", "spans": [{"start": 0, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout x in R, |x| >= 0", "spans": [{"start": 0, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit f(x)=2x+1, alors f(0)=1", "spans": [{"start": 5, "end": 14, "label": "MATH"}, {"start": 22, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons f(x)=x et g(x)=x^2", "spans": [{"start": 7, "end": 13, "label": "MATH"}, {"start": 17, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "La limite de 1/n est 0", "spans": [{"start": 13, "end": 16, "label": "MATH"}, {"start": 21, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "the derivative of sin(x)", "spans": [{"start": 4, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "∀ n ∈ N, n+1 > n", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "Let u=1, v=2, w=3", "spans": [{"start": 4, "end": 7, "label": "MATH"}, {"start": 9, "end": 12, "label": "MATH"}, {"start": 14, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "forall n in N, n+1 > n", "spans": [{"start": 0, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout x dans R, x^2 >= 0", "spans": [{"start": 0, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "If x > 0 then x^2 > 0", "spans": [{"start": 3, "end": 8, "label": "MATH"}, {"start": 14, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "Pour tout (x,y) in R^2, x^2 + y^2 >= 0", "spans": [{"start": 0, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "We have f(x)=x and g(x)=2x", "spans": [{"start": 8, "end": 14, "label": "MATH"}, {"start": 19, "end": 26, "label": "MATH"}], "lang": "en"}
+{"text": "On pose a=1 et b=2", "spans": [{"start": 8, "end": 11, "label": "MATH"}, {"start": 15, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "There exists x in R such that f(x) = 0", "spans": [{"start": 0, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "∀ x ∈ R, x^2 ≥ 0", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "On a x=0 et y=1", "spans": [{"start": 5, "end": 8, "label": "MATH"}, {"start": 12, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "La dérivée de sin(x) vaut cos(x)", "spans": [{"start": 14, "end": 20, "label": "MATH"}, {"start": 26, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "the integral of f(x) from a to b", "spans": [{"start": 4, "end": 32, "label": "MATH"}], "lang": "en"}
+{"text": "the sum of 1/k^2 from k=1 to infinity", "spans": [{"start": 4, "end": 37, "label": "MATH"}], "lang": "en"}
+{"text": "Compute the derivative of x^2", "spans": [{"start": 12, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "Soit f : x -> x+1 et g : x -> 2x", "spans": [{"start": 5, "end": 17, "label": "MATH"}, {"start": 21, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "∃ x ∈ R, f(x) = 0", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer f(0) puis f(1)", "spans": [{"start": 9, "end": 13, "label": "MATH"}, {"start": 19, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour x=0, on a f(x)=1", "spans": [{"start": 5, "end": 8, "label": "MATH"}, {"start": 15, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "For all n in N, n+1 > n", "spans": [{"start": 0, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "If a + b = c then a = c - b", "spans": [{"start": 3, "end": 12, "label": "MATH"}, {"start": 18, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "On a u_0=1, u_1=2 et u_2=3", "spans": [{"start": 5, "end": 10, "label": "MATH"}, {"start": 12, "end": 17, "label": "MATH"}, {"start": 21, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "On note x^2+y^2 et y^2+z^2", "spans": [{"start": 8, "end": 15, "label": "MATH"}, {"start": 19, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit x=0, y=1 et z=2", "spans": [{"start": 5, "end": 8, "label": "MATH"}, {"start": 10, "end": 13, "label": "MATH"}, {"start": 17, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x)=1/x et g(x)=2x", "spans": [{"start": 0, "end": 8, "label": "MATH"}, {"start": 12, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que pour tout x in R, f(x) > 0", "spans": [{"start": 14, "end": 40, "label": "MATH"}], "lang": "fr"}
+{"text": "On définit f(x)=x^2 puis g(x)=2x", "spans": [{"start": 11, "end": 19, "label": "MATH"}, {"start": 25, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit f(x)=1/x et g(x)=2x+1", "spans": [{"start": 5, "end": 13, "label": "MATH"}, {"start": 17, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "La dérivée de x^2 vaut 2x", "spans": [{"start": 14, "end": 17, "label": "MATH"}, {"start": 23, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout x in R, exp(x) > 0", "spans": [{"start": 0, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "If x = 0 then f(x) = 1", "spans": [{"start": 3, "end": 8, "label": "MATH"}, {"start": 14, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "Évaluer sin(x) puis cos(x)", "spans": [{"start": 8, "end": 14, "label": "MATH"}, {"start": 20, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "L'intégrale de f(x) est F(x)", "spans": [{"start": 15, "end": 19, "label": "MATH"}, {"start": 24, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "forall x in R, x^2 >= 0", "spans": [{"start": 0, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "soit f(x) = 2x+1 et g(x) = 3x-1, alors f(g(x)) = 6x+1", "spans": [{"start": 5, "end": 16, "label": "MATH"}, {"start": 20, "end": 31, "label": "MATH"}, {"start": 39, "end": 53, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit f(x)=1/x, on a g(x)=2x", "spans": [{"start": 5, "end": 13, "label": "MATH"}, {"start": 20, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout epsilon > 0, exists delta > 0, |f(x)-L| < epsilon", "spans": [{"start": 0, "end": 59, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que pour tout n dans N, u_n >= 0", "spans": [{"start": 12, "end": 40, "label": "MATH"}], "lang": "fr"}
+{"text": "the limit of 1/n as n goes to infinity", "spans": [{"start": 4, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "The derivative of x^2 is 2x", "spans": [{"start": 18, "end": 21, "label": "MATH"}, {"start": 25, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "Compute the integral of x^2 from 0 to 1", "spans": [{"start": 12, "end": 39, "label": "MATH"}], "lang": "en"}
+{"text": "If a=b then b=a", "spans": [{"start": 3, "end": 6, "label": "MATH"}, {"start": 12, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "On définit u_n=1 et v_n=2", "spans": [{"start": 11, "end": 16, "label": "MATH"}, {"start": 20, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "On a f(x)=x^2 et g(x)=2x", "spans": [{"start": 5, "end": 13, "label": "MATH"}, {"start": 17, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout y dans Z, y+1 dans Z", "spans": [{"start": 0, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "the integral of x^2 from 0 to 1", "spans": [{"start": 4, "end": 31, "label": "MATH"}], "lang": "en"}
+{"text": "Calculer f(x) puis g(x)", "spans": [{"start": 9, "end": 13, "label": "MATH"}, {"start": 19, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "For all x in R, f(x) = 0", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "Il existe x dans R tel que f(x) = 0", "spans": [{"start": 0, "end": 35, "label": "MATH"}], "lang": "fr"}
+{"text": "On a, pour tout x dans R, x^2 >= 0", "spans": [{"start": 6, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout x in R, exists y in R, x + y = 0", "spans": [{"start": 0, "end": 42, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout x dans R, f(x) >= 0", "spans": [{"start": 0, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout n dans N, n+1 > n", "spans": [{"start": 0, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout x dans [0,1], 0 <= x <= 1", "spans": [{"start": 0, "end": 35, "label": "MATH"}], "lang": "fr"}
+{"text": "For all x in [0,1], 0 <= x <= 1", "spans": [{"start": 0, "end": 31, "label": "MATH"}], "lang": "en"}
+{"text": "The derivative of sin(x) is cos(x)", "spans": [{"start": 18, "end": 24, "label": "MATH"}, {"start": 28, "end": 34, "label": "MATH"}], "lang": "en"}
+{"text": "On a x=0, alors f(x)=1", "spans": [{"start": 5, "end": 8, "label": "MATH"}, {"start": 16, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que pour tout n >= 1, 2^n > n", "spans": [{"start": 12, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "For all x in R, x^2 >= 0", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "exists x in R, f(x) = 0", "spans": [{"start": 0, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout x in R+, sqrt(x) >= 0", "spans": [{"start": 0, "end": 31, "label": "MATH"}], "lang": "fr"}

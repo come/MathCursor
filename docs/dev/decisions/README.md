@@ -7,7 +7,7 @@ Format et conventions : voir
 [2026-04-24-Meta-adr-format.md](2026-04-24-Meta-adr-format.md).
 
 ## Kinds
-`Feat-` · `Fix-` · `UX-` · `Release-` · `Meta-`
+`Feat-` · `Fix-` · `UX-` · `Release-` · `Meta-` · `Test-` · `Limit-`
 
 ## Températures
 - **[forte]** — structurelle, coûte cher à changer. On n'y revient qu'avec un très bon argument.
@@ -19,14 +19,81 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-05-19
+- `[forte]` Feat — [Anchor CC pattern : CC adjacent à l'OMath au lieu de wrap](2026-05-19-Feat-anchor-cc-pattern.md) — fix display math propre sans `<w:br/>` + élimine sticky auto-grow + caret naturel post-commit, CC tiny sur ZWSP hidden avant l'OMath, lookup backward probe O(1) (1-3 positions)
+
+### 2026-05-18
+- `[molle]` Feat — [Intra-OMaths merger : revival LaTeX-preserving, voisin gauche uniquement](2026-05-18-Feat-intra-omaths-merger-revival.md) — fix `F(x)` + `=1` → 1 OMath `F(x)=1` (pas 2), `mergedLatex = leftLatex + newLatex` lu depuis `cc.Tag.Latex` (pas de re-rendu), marker guard (`=`/`<=>`/`=>`/`{`), skip si hash drift OMML détecté
+
+### 2026-05-13
+- `[forte]` Fix — [Garde strip list_mode : ¶ avec OMath ne peut JAMAIS être effacé](2026-05-13-Fix-list-mode-strip-guard-omath.md) — fix bug perte formule après cross-merge + Escape (log user 13:29), nouvelle classe pure `ListModeStripGuard` testée TDD, reset complet list_mode si inject échoue
+- `[molle]` Fix — [Alignment `m:jc=left` uniforme post-insert (tous chemins)](2026-05-13-Fix-omath-alignment-uniform-post-insert.md) — remonte l'appel `EnforceOMathParagraphAlignment` à `InsertOMathAt` (1 call site uniforme), supprime duplication + flag `_wasXmlTransplant`, élimine OMath centré sur fast_path/splice
+- `[forte]` Refactor — [S1 : `ScanUppercaseSequences` source-based + Mutations vec/paren](2026-05-13-Refactor-s1-twoupper-source-mutations.md) — fixe immédiatement le bug 06-05 single-line (pref vec sur AB rend `\vec{AB}`), +4 tests verts, 1 cross-merge multi-ligne reporté en S2
+- `[molle]` Fix — [WarmUp ghost doc déclenché par le 1ᵉʳ `WindowActivate`, plus inline dans `Install()`](2026-05-13-Fix-warmup-event-driven.md) — élimine la COMException `Selection.get returned null` au boot, handler one-shot auto-désabonnant (pas de timer ni de field flag), respect doctrine events natifs
+- `[forte]` Refactor — [Scanners d'ambiguïté en Strategy + Pipeline (`IAmbiguityScanner`)](2026-05-13-Refactor-ambiguity-scanners-strategy.md) — S0 du refacto source-mut, 10 scanners statiques extraits en classes indépendantes, alignement doctrine `IZoneMerger`/`ICommitStage`/`IContextSignal`
+- `[forte]` Refactor — [Source-mutation pure pour les pins sidecar (élimine MC0006 du Core de prod)](2026-05-13-Refactor-source-mutation-pins-sidecar.md) — unifie les 2 chemins d'application des pins sur le modèle ApplyPreferences (source-mut), splice latex devient fallback résiduel (bracket uniquement)
+- `[molle]` Meta — [Règles MC0006 (splice LaTeX) + MC0009 (SuppressMessage sans ADR)](2026-05-13-Meta-mc0006-mc0009.md) — Phase 2.5 du harnais, MC0006 capture l'anti-pattern du bug double-wrap (4 hits réels), MC0009 verrou anti-suppression (0 hit), 16 nouveaux tests verts
+- `[molle]` Fix — [Ghost doc invisible dès création (`Documents.Add(Visible:false)`) + pre-warming au boot](2026-05-13-Fix-ghost-doc-invisible.md) — élimine le flash visuel au 1ᵉʳ commit math, ~50ms plus rapide en bonus
+- `[forte]` Refactor — [Visitor sur AST (`IAstVisitor<TResult>` + 18 Accept overrides + `LatexRenderingVisitor`)](2026-05-13-Refactor-ast-visitor.md) — étape 4, élimine le switch exhaustif de `LatexRenderer`, API publique inchangée, 0 régression
+- `[molle]` Meta — [Harnais Phase 0+1 : projet analyzer + règle MC0001](2026-05-13-Meta-harness-phase-0-1-mc0001.md) — Roslyn analyzer + MC0001 (Regex sur XML), branché sur Core, severity warning non bloquante, 11/11 tests verts
+- `[molle]` Meta — [Projet `MathCursor.Core.Abstractions` (5 axes d'extensibilité)](2026-05-13-Meta-extensibility-axes-abstractions.md) — étape 2 du plan refacto, ajout pur, 0 régression test
+
+### 2026-05-12
+- `[forte]` Refactor — [Merger pur + insert atomique (élimine legacy path et pré-suppression)](2026-05-12-Refactor-pure-merger-atomic-insert.md)
+- `[forte]` Perf — [Stack 3 couches sur le commit pipeline (gros doc, ~290ms → ~30-90ms)](2026-05-12-Perf-commit-pipeline-three-stage-stack.md)
+
+### 2026-05-11
+- `[molle]` Feat — [Notation d'angle au clavier : `^A`/`^ABC` et `angle(...)`](2026-05-11-Feat-angle-notation-caret-and-keyword.md)
+- `[molle]` Feat — [Duo Convertir/Colonnes dans TabHome + onglet "MathCursor" dédié pour le reste](2026-05-11-Feat-ribbon-home-duo-plus-dedicated-tab.md)
+- `[forte]` Fix — [Commit groupé dans un seul `UndoRecord` Word](2026-05-11-Fix-commit-grouped-in-single-undo-record.md)
+- `[forte]` Refactor — [Lecture du paragraphe courant via `Range.WordOpenXML` (pas `Range.Text`)](2026-05-11-Refactor-paragraph-reader-via-xml.md)
+- `[forte]` Fix — [Splice XML navigué par parent/siblings et matching par contenu (durcit pour tableaux + tout conteneur)](2026-05-11-Fix-omath-splice-content-based-navigation.md)
+
+### 2026-05-07
+- `[forte]` Fix — [Insertion d'OMath par splice XML du `<w:p>` existant (pas reconstruction depuis Range.Text)](2026-05-07-Fix-insert-via-paragraph-xml-splice.md)
+
+### 2026-05-06
+- `[forte]` Meta — [Décomposition L4 : Pipeline déclaratif + Session avec cycle de vie](2026-05-06-Meta-l4-pipeline-and-session.md)
+- `[forte]` Meta — [Pipeline de mergers L4 via interface `IZoneMerger` (no if-pile)](2026-05-06-Meta-zone-merger-pipeline.md)
+- `[forte]` Feat — [Sidecar de résolutions + doctrine d'architecture en couches](2026-05-06-Feat-resolution-sidecar-and-layers.md)
+- `[molle]` Feat — [Ruban revient dans TabHome + pane pivote vers galerie d'exemples concrets multi-syntaxes](2026-05-06-Feat-ribbon-pane-examples-pivot.md) (Supersedes ribbon-refactor-cheatsheet)
+
+### 2026-05-05
+- `[molle]` Feat — [Refonte du ruban : ajout d'un panneau Cheatsheet](2026-05-05-Feat-ribbon-refactor-cheatsheet.md) `retracté`
+- `[forte]` Limit — [OMath display recentre après fusion ¶ via Backspace (limite Word)](2026-05-05-Limit-omath-jc-stripped-on-fusion.md)
+- `[molle]` Feat — [Mode liste cases `{` Phase 2 (multi-ligne + list-mode visible)](2026-05-05-Feat-cases-multiline-phase2.md)
+- `[molle]` Feat — [Mode liste multi-ligne visible (auto-injection du marker en texte)](2026-05-05-Feat-multiline-list-mode-visible.md) (Supersedes multiline-list-mode du même jour)
+- `[molle]` Feat — [Mode liste invisible pour multi-ligne (préfixage auto du marker)](2026-05-05-Feat-multiline-list-mode.md) `retracté`
+
+### 2026-05-04
+- `[molle]` Meta — [Refactor insertion OMath via build isolé + transplant XML (anti-absorption BuildUp)](2026-05-04-Refactor-omath-via-xml-transplant.md)
+- `[molle]` Feat — [Édition multi-ligne via cascade cross-merge (2 modes)](2026-05-04-Feat-multiline-edit-cascade-merge.md)
+- `[molle]` Meta — [Refactor du pipeline cross-merge (4 phases séquentielles)](2026-05-04-Meta-cross-merge-pipeline-refactor.md)
+
+### 2026-05-01
+- `[molle]` Feat — [Backoffice admin (reports + stats) en ligne sur Cloudflare avec Basic Auth](2026-05-01-Feat-admin-backoffice-cloudflare.md)
+
+### 2026-04-30
+- `[molle]` Fix — [Fonction trigo + Number tight + Group avale la suite (`cos2(x)+1`)](2026-04-30-Fix-trig-func-power-tight-arg.md)
+- `[molle]` Feat — [Le point `.` comme opérateur de multiplication (rendu `\cdot`)](2026-04-30-Feat-dot-as-multiplier.md)
+- `[molle]` Feat — [Multiplication explicite `*` rendue selon culture (`×` ou `·`)](2026-04-30-Feat-explicit-mult-times-vs-cdot.md)
+- `[molle]` Feat — [Formulaire "Signaler une erreur" pré-rempli + backend Cloudflare](2026-04-30-Feat-feedback-form-cloudflare-backend.md) (Supersedes partiellement feedback-bundle-whatsapp du 23-04)
+- `[molle]` Feat — [Associativité de `*` pilotée par sa tightness](2026-04-30-Feat-asterisk-tightness-associativity.md)
+- `[molle]` Feat — [Juxtaposition tight = groupement, ops explicites = PEMDAS (avec alt désambig)](2026-04-30-Feat-tight-implicit-mult-grouping.md) (Supersedes revert-tight-as-grouping)
+- `[molle]` Feat — [Séparateur `;` pour coordonnées en notation française](2026-04-30-Feat-french-semicolon-coordinates.md)
+- `[molle]` Fix — [Refactor `LatexToUnicodeMath` en parser → AST → émetteur (anti-absorption Word OMath)](2026-04-30-Fix-latex-to-unicodemath-refactor.md)
+- `[molle]` Feat — [Précédence math standard pour `/` collé (revert tight-as-grouping)](2026-04-30-Feat-revert-tight-as-grouping.md) (Supersedes tight-as-grouping du 29-04) `retracté`
+
 ### 2026-04-29
+- `[molle]` Test — [Audit follow-up : combler les angles morts de tests (cleanup + désambig + corpus patho + adapter tests + NER inference)](2026-04-29-Test-audit-followup.md)
+- `[molle]` Feat — [Vecteur/point + coordonnées au clavier (`u(1, 2)` / `u (1 2)` / `A(1, 2)`)](2026-04-29-Feat-vector-coordinates-shorthand.md)
 - `[molle]` Feat — [Fusionner OMath adjacents lors d'une conversion](2026-04-29-Feat-merge-adjacent-omaths.md)
 - `[molle]` Feat — [Détection `=>` / `<=>` / `<==` et conversion en flèches math](2026-04-29-Feat-implication-equivalence-arrows.md)
 - `[molle]` Feat — [Extension itérative de la zone via Ctrl+Espace répété](2026-04-29-Feat-iterative-zone-expansion-ctrl-space.md)
 - `[molle]` Feat — [Décomposition modulaire de `forall`/`exists` (∀ + var + ∈ + set)](2026-04-29-Feat-forall-modular-decomposition.md) (Supersedes scope forall du 28-04)
 - `[molle]` Feat — [Définition de fonction au clavier `f:x->expr` → `f : x ↦ expr`](2026-04-29-Feat-function-definition.md)
 - `[molle]` Feat — [Ensembles canoniques R/N/Z/Q/C avec modificateurs `*`/`+`/`-`](2026-04-29-Feat-canonical-sets.md)
-- `[molle]` Feat — [Juxtaposition tight = groupement implicite pour `/`, `^`, `_`](2026-04-29-Feat-tight-as-grouping.md)
+- `[molle]` Feat — [Juxtaposition tight = groupement implicite pour `/`, `^`, `_`](2026-04-29-Feat-tight-as-grouping.md) `retracté`
 - `[molle]` Feat — [Composition d'intervalles : union (`U`/`union`) et intersection (`inter`)](2026-04-29-Feat-interval-union-intersection.md)
 
 ### 2026-04-28

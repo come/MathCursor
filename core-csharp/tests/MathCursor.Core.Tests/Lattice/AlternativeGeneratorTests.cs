@@ -6,8 +6,25 @@ using Xunit;
 
 namespace MathCursor.Core.Tests.Lattice
 {
-    public sealed class AlternativeGeneratorTests
+    [Collection(GlobalOptionsTestCollection.Name)]
+    public sealed class AlternativeGeneratorTests : System.IDisposable
     {
+        private readonly string _savedMultSymbol;
+
+        public AlternativeGeneratorTests()
+        {
+            // Force le symbole de mult à `\times` (FR default) pour
+            // déterminisme cross-culture. Cf. LatexRendererTests pour le
+            // même pattern.
+            _savedMultSymbol = LatexRenderer.GlobalOptions.MultSymbol;
+            LatexRenderer.GlobalOptions.MultSymbol = "\\times ";
+        }
+
+        public void Dispose()
+        {
+            LatexRenderer.GlobalOptions.MultSymbol = _savedMultSymbol;
+        }
+
         // Helper : projette les alternatives en liste de Latex pour simplifier
         // les Assert.Contains. Le refactor en `AmbiguityAlternative` ajoute
         // une indirection sur .Latex, ce helper la masque dans les tests.
@@ -341,7 +358,7 @@ namespace MathCursor.Core.Tests.Lattice
         {
             // Décomposition modulaire (ADR 29-04) : forall n'est plus un scope.
             // L'aperçu de l'alt ∀ pour `V x y` est juste `\forall xy` (juxtaposition
-            // simple, pas de \in automatique). L'utilisateur ajoute `dans`/`(-`
+            // simple, pas de \in automatique). L'utilisateur ajoute `dans`/`in`
             // explicitement après s'il veut le \in.
             var r = _engine.ConvertWithAmbiguity("V x y");
             Assert.NotNull(r.Spot);
@@ -363,11 +380,15 @@ namespace MathCursor.Core.Tests.Lattice
         }
 
         [Fact]
-        public void V_times_x_no_ambig()
+        public void V_times_x_no_forall_ambig()
         {
-            // V*x = produit V·x, pas un quantificateur (pas d'espace après V)
+            // V*x = produit V·x, pas un quantificateur (pas d'espace après V).
+            // Depuis la cascade vec-dot-product (avril 2026), V*x propose
+            // \vec{V} \cdot \vec{x} en alt — c'est volontaire. L'important
+            // ici est que V→forall ne fire PAS sur ce pattern.
             var r = _engine.ConvertWithAmbiguity("V*x");
-            Assert.Null(r.Spot);
+            Assert.NotEqual(AlternativeGenerator.RuleVAsForall, r.Spot?.RuleId);
+            Assert.NotEqual(AlternativeGenerator.RuleEAsExists, r.Spot?.RuleId);
         }
 
         [Fact]
@@ -501,6 +522,459 @@ namespace MathCursor.Core.Tests.Lattice
             // bbR* → \mathbb{R}^*
             var r = _engine.ConvertWithAmbiguity("bbR*");
             Assert.Equal("\\mathbb{R}^*", r.TopLatex);
+        }
+
+        // ---- vec-dot-product : u*v → u·v (default) ou \vec{u}·\vec{v} (alt) ----
+        // Cf. AlternativeGenerator.MatchAmbiguity, RuleVecDotProduct (mult
+        // explicite entre deux idents 1-lettre).
+
+        [Fact]
+        public void U_times_V_yields_vec_dot_product_alternative()
+        {
+            var r = _engine.ConvertWithAmbiguity("u*v");
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleVecDotProduct, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            Assert.Contains("\\vec{u} \\cdot \\vec{v}", alts);
+        }
+
+        [Fact]
+        public void Single_letter_uppercase_times_yields_vec_dot_product()
+        {
+            // A*B (lettres simples séparées par * explicite) → cascade vec dot.
+            // Le pattern AB juxtaposé (sans `*`) tomberait sur RuleTwoUppercase.
+            var r = _engine.ConvertWithAmbiguity("A*B");
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleVecDotProduct, r.Spot!.RuleId);
+        }
+
+        [Fact]
+        public void Multichar_ident_times_no_vec_dot_product()
+        {
+            // ab*cd : pas de cascade vec — la règle ne fire que sur idents
+            // 1-lettre (sinon ambig sur 'somme*delta', 'phi*psi'... = bruit).
+            var r = _engine.ConvertWithAmbiguity("ab*cd");
+            Assert.NotEqual(AlternativeGenerator.RuleVecDotProduct, r.Spot?.RuleId);
+        }
+
+        // ---- vector-layout-flip : col↔row (cf. brief vector-coordinates-shorthand) ----
+        // Quand le top AST est un VectorCoordinates seul, propose le layout
+        // opposé en alt. Espace entre valeurs = colonne ; virgule = ligne.
+
+        [Fact]
+        public void Vector_column_yields_row_flip_alternative()
+        {
+            // u (1 2) → colonne par défaut, ligne en alt
+            var r = _engine.ConvertWithAmbiguity("u (1 2)");
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleVectorLayoutFlip, r.Spot!.RuleId);
+            Assert.Equal(2, r.Spot.Alternatives.Count);
+            // Les deux alts doivent rendre des LaTeX différents (sinon pas
+            // d'ambig à proposer).
+            Assert.NotEqual(r.Spot.Alternatives[0].Latex, r.Spot.Alternatives[1].Latex);
+        }
+
+        [Fact]
+        public void Vector_row_yields_column_flip_alternative()
+        {
+            // u(1, 2) → ligne par défaut (virgule), colonne en alt
+            var r = _engine.ConvertWithAmbiguity("u(1, 2)");
+            Assert.NotNull(r.Spot);
+            // Note : sur ce pattern f/g/h/F/G/H le rule prioritaire est
+            // RuleVectorCoordsVsCall (function-call vs vec). Pour `u` ce
+            // n'est PAS une lettre fonction-typique → RuleVectorLayoutFlip
+            // est attendu.
+            Assert.Equal(AlternativeGenerator.RuleVectorLayoutFlip, r.Spot!.RuleId);
+        }
+
+        // ---- vector-coords-vs-call : f(1, 2) → call (default) ou \vec{f}(1, 2) ----
+        // Cf. AlternativeGenerator.ScanFunctionTypicalWithCommaCoords.
+        // Déclenché uniquement sur f/g/h/F/G/H + paren contenant 2-3 segments
+        // séparés par virgule au top-level.
+
+        [Fact]
+        public void Function_typical_2_args_yields_call_vs_vec_alternative()
+        {
+            var r = _engine.ConvertWithAmbiguity("f(1, 2)");
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleVectorCoordsVsCall, r.Spot!.RuleId);
+            Assert.Equal(2, r.Spot.Alternatives.Count);
+            // Alt 1 doit contenir \vec{f} (le nom original préservé)
+            Assert.Contains("\\vec{f}", r.Spot.Alternatives[1].Latex);
+        }
+
+        [Fact]
+        public void Function_typical_3_args_yields_call_vs_vec_alternative()
+        {
+            var r = _engine.ConvertWithAmbiguity("g(a, b, c)");
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleVectorCoordsVsCall, r.Spot!.RuleId);
+        }
+
+        [Fact]
+        public void Function_typical_uppercase_yields_call_vs_vec_alternative()
+        {
+            // F/G/H sont aussi dans l'ensemble fonction-typique.
+            var r = _engine.ConvertWithAmbiguity("F(1, 2)");
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleVectorCoordsVsCall, r.Spot!.RuleId);
+        }
+
+        [Fact]
+        public void Function_typical_single_arg_no_call_vs_vec_ambig()
+        {
+            // f(x+1) : 1 segment seulement → règle ne fire pas (besoin 2-3 args)
+            var r = _engine.ConvertWithAmbiguity("f(x+1)");
+            Assert.NotEqual(AlternativeGenerator.RuleVectorCoordsVsCall, r.Spot?.RuleId);
+        }
+
+        [Fact]
+        public void Non_typical_letter_with_comma_args_no_call_vs_vec_ambig()
+        {
+            // p(1, 2) : `p` n'est pas dans l'ensemble fonction-typique
+            // (f/g/h/F/G/H), donc pas d'ambig call-vs-vec sur ce pattern.
+            // Selon le parser, p(1, 2) peut être interprété en VectorCoordinates,
+            // donc on n'asserte que sur l'absence du RuleVectorCoordsVsCall.
+            var r = _engine.ConvertWithAmbiguity("p(1, 2)");
+            Assert.NotEqual(AlternativeGenerator.RuleVectorCoordsVsCall, r.Spot?.RuleId);
+        }
+
+        // ===================================================================
+        // ADR 30-04 Feat-tight-implicit-mult-grouping — élargissement chaîne tight
+        // ===================================================================
+        // Default = chaîne implicite uniquement (PEMDAS pour les ops `+ - *`).
+        // Alt désambig = chaîne tight élargie aux ops (comportement V1 historique
+        // mais maintenant accessible volontairement, pas par défaut).
+
+        [Fact]
+        public void Tight_chain_extension_slash_plus_proposes_extended_denom()
+        {
+            // 1/x+1 : default = \frac{1}{x}+1 (PEMDAS) ; alt = \frac{1}{x+1}.
+            var r = _engine.ConvertWithAmbiguity("1/x+1");
+            Assert.Equal("\\frac{1}{x}+1", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleTightChainExtension, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            Assert.Contains("\\frac{1}{x}+1", alts);  // default
+            Assert.Contains("\\frac{1}{x+1}", alts);  // élargi
+        }
+
+        [Fact]
+        public void Tight_chain_extension_sup_plus_proposes_extended_exponent()
+        {
+            // x^a+b : default = x^{a}+b ; alt = x^{a+b}.
+            var r = _engine.ConvertWithAmbiguity("x^a+b");
+            Assert.Equal("x^{a}+b", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleTightChainExtension, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            Assert.Contains("x^{a}+b", alts);
+            Assert.Contains("x^{a+b}", alts);
+        }
+
+        [Fact]
+        public void Tight_chain_extension_sub_plus_proposes_extended_subscript()
+        {
+            // u_n+1 : default = u_{n}+1 ; alt = u_{n+1}.
+            var r = _engine.ConvertWithAmbiguity("u_n+1");
+            Assert.Equal("u_{n}+1", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleTightChainExtension, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            Assert.Contains("u_{n}+1", alts);
+            Assert.Contains("u_{n+1}", alts);
+        }
+
+        [Fact]
+        public void Tight_chain_extension_x_caret_x_plus_1_proposes_extended_exponent()
+        {
+            // x^x+1 : variante user 2026-05-11. Default = x^{x}+1 (PEMDAS) ;
+            // alt sténo = x^{x+1}.
+            var r = _engine.ConvertWithAmbiguity("x^x+1");
+            Assert.Equal("x^{x}+1", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleTightChainExtension, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            Assert.Contains("x^{x}+1", alts);
+            Assert.Contains("x^{x+1}", alts);
+        }
+
+        [Fact]
+        public void Tight_chain_extension_x_under_x_plus_1_proposes_extended_subscript()
+        {
+            // x_x+1 : variante user 2026-05-11. Default = x_{x}+1 ;
+            // alt sténo = x_{x+1}.
+            var r = _engine.ConvertWithAmbiguity("x_x+1");
+            Assert.Equal("x_{x}+1", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleTightChainExtension, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            Assert.Contains("x_{x}+1", alts);
+            Assert.Contains("x_{x+1}", alts);
+        }
+
+        // ---- Notation d'angle (ADR 2026-05-11-Feat-angle-notation-caret-and-keyword) ----
+
+        [Fact]
+        public void Angle_caret_single_letter_renders_hat()
+        {
+            // `^A` → \hat{A} (1 lettre, pas de popup ambig)
+            var r = _engine.ConvertWithAmbiguity("^A");
+            Assert.Equal("\\hat{A}", r.TopLatex);
+        }
+
+        [Fact]
+        public void Angle_caret_single_lowercase_letter_renders_hat()
+        {
+            // `^a` → \hat{a} (la casse n'importe pas, user a confirmé)
+            var r = _engine.ConvertWithAmbiguity("^a");
+            Assert.Equal("\\hat{a}", r.TopLatex);
+        }
+
+        [Fact]
+        public void Angle_caret_two_letters_default_has_placeholder()
+        {
+            // `^AB` (2 lettres) : default avec \square invitant à compléter
+            // le 3ème point, alt = \widehat{AB} littéral.
+            var r = _engine.ConvertWithAmbiguity("^AB");
+            Assert.Equal("\\widehat{AB\\square }", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleAngleTwoLetterPlaceholder, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            Assert.Contains("\\widehat{AB\\square }", alts);
+            Assert.Contains("\\widehat{AB}", alts);
+        }
+
+        [Fact]
+        public void Angle_keyword_two_letters_default_has_placeholder()
+        {
+            // `angle(AB)` (2 lettres) : même ambig que `^AB`.
+            var r = _engine.ConvertWithAmbiguity("angle(AB)");
+            Assert.Equal("\\widehat{AB\\square }", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleAngleTwoLetterPlaceholder, r.Spot!.RuleId);
+        }
+
+        [Fact]
+        public void Angle_caret_three_letters_renders_widehat()
+        {
+            // `^ABC` → \widehat{ABC} (notation angle complète, 3 points)
+            var r = _engine.ConvertWithAmbiguity("^ABC");
+            Assert.Equal("\\widehat{ABC}", r.TopLatex);
+        }
+
+        [Fact]
+        public void Angle_caret_four_letters_renders_widehat()
+        {
+            // `^ABCD` → \widehat{ABCD} (4+ lettres, rare mais valide)
+            var r = _engine.ConvertWithAmbiguity("^ABCD");
+            Assert.Equal("\\widehat{ABCD}", r.TopLatex);
+        }
+
+        [Fact]
+        public void Angle_keyword_paren_renders_widehat()
+        {
+            // `angle(ABC)` → \widehat{ABC} (syntaxe explicite)
+            var r = _engine.ConvertWithAmbiguity("angle(ABC)");
+            Assert.Equal("\\widehat{ABC}", r.TopLatex);
+        }
+
+        [Fact]
+        public void Angle_keyword_paren_single_letter_renders_hat()
+        {
+            // `angle(A)` → \hat{A}
+            var r = _engine.ConvertWithAmbiguity("angle(A)");
+            Assert.Equal("\\hat{A}", r.TopLatex);
+        }
+
+        [Fact]
+        public void Caret_after_atom_stays_superscript_unchanged()
+        {
+            // `x^2` reste l'exposant (= comportement actuel). Le `^` n'est
+            // PAS en position fresh (`x` à gauche), donc pas d'angle.
+            var r = _engine.ConvertWithAmbiguity("x^2");
+            Assert.Equal("x^{2}", r.TopLatex);
+        }
+
+        [Fact]
+        public void Caret_after_space_then_letter_is_angle()
+        {
+            // `x ^A` (avec espace) → x \hat{A} : le `^` est fresh après
+            // l'espace, donc angle. Le `x` reste à part.
+            var r = _engine.ConvertWithAmbiguity("x ^A");
+            // L'output exact dépend du parsing du `x` + concat avec
+            // l'angle. Au minimum on doit voir `\hat{A}` quelque part
+            // et pas un `x^{A}`.
+            Assert.Contains("\\hat{A}", r.TopLatex);
+            Assert.DoesNotContain("x^{A}", r.TopLatex);
+        }
+
+        [Fact]
+        public void Tight_chain_extension_3star4_over_5star6_proposes_extended_denom()
+        {
+            // 3*4/5*6 : variante user 2026-05-11. Default = PEMDAS gauche-assoc.
+            // alt sténo = 3*4/(5*6) = \frac{3·4}{5·6}. Le mult symbole dépend
+            // de la culture courante (\times en FR, \cdot ailleurs).
+            var r = _engine.ConvertWithAmbiguity("3*4/5*6");
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleTightChainExtension, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            // L'alt sténo doit grouper le dénominateur (5 et 6 ensemble dans
+            // le dénominateur de la fraction). On match indépendamment du
+            // symbole de mult.
+            Assert.Contains(alts, a =>
+                a.Contains("\\frac") &&
+                (a.Contains("{5\\cdot 6}") || a.Contains("{5\\times 6}")));
+        }
+
+        [Fact]
+        public void Tight_chain_extension_AB_BC_no_alt_already_grouped()
+        {
+            // AB/BC : default groupé en \frac{AB}{BC} (chaîne implicite).
+            // Élargissement aux ops ne change rien (pas d'op explicite tight ici)
+            // → pas d'ambig RuleTightChainExtension.
+            // Mais peut y avoir d'autres ambigs (AB et BC majuscules).
+            var r = _engine.ConvertWithAmbiguity("AB/BC");
+            Assert.Equal("\\frac{AB}{BC}", r.TopLatex);
+            // Spot peut être null OU une autre règle, mais PAS RuleTightChainExtension
+            if (r.Spot != null)
+                Assert.NotEqual(AlternativeGenerator.RuleTightChainExtension, r.Spot.RuleId);
+        }
+
+        [Fact]
+        public void Tight_chain_extension_with_space_no_alt()
+        {
+            // 1/x +1 (espace) : `+` loose, pas d'élargissement tight possible.
+            // Default et alt sont identiques → pas de RuleTightChainExtension.
+            var r = _engine.ConvertWithAmbiguity("1/x +1");
+            Assert.Equal("\\frac{1}{x}+1", r.TopLatex);
+            if (r.Spot != null)
+                Assert.NotEqual(AlternativeGenerator.RuleTightChainExtension, r.Spot.RuleId);
+        }
+
+        [Fact]
+        public void Tight_chain_extension_simple_no_alt()
+        {
+            // 1/x simple : pas d'élargissement applicable → pas d'ambig.
+            var r = _engine.ConvertWithAmbiguity("1/x");
+            if (r.Spot != null)
+                Assert.NotEqual(AlternativeGenerator.RuleTightChainExtension, r.Spot.RuleId);
+        }
+
+        // ===================================================================
+        // ADR 30-04 Feat-asterisk-tightness-associativity — flip d'associativité
+        // ===================================================================
+        // Tight `*` = gauche-assoc PEMDAS ; loose `*` = droite-récursive.
+        // L'inverse est exposé via la même cascade (RuleTightChainExtension).
+
+        [Fact]
+        public void Asterisk_tight_two_fractions_proposes_flip_alt()
+        {
+            // 1/2*3/4 (tight) : default \frac{(1/2)\times 3}{4} ;
+            // alt flip = \frac{1}{2}\times \frac{3}{4}.
+            var r = _engine.ConvertWithAmbiguity("1/2*3/4");
+            Assert.Equal("\\frac{\\frac{1}{2}\\times 3}{4}", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleTightChainExtension, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            Assert.Contains("\\frac{1}{2}\\times \\frac{3}{4}", alts);
+        }
+
+        [Fact]
+        public void Asterisk_loose_two_fractions_proposes_flip_alt()
+        {
+            // 1/2 * 3/4 (loose) : default \frac{1}{2}\times \frac{3}{4} ;
+            // alt flip = \frac{(1/2)\times 3}{4}.
+            var r = _engine.ConvertWithAmbiguity("1/2 * 3/4");
+            Assert.Equal("\\frac{1}{2}\\times \\frac{3}{4}", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleTightChainExtension, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            Assert.Contains("\\frac{\\frac{1}{2}\\times 3}{4}", alts);
+        }
+
+        [Fact]
+        public void Asterisk_tight_2_b_over_3_proposes_flip()
+        {
+            // 2*b/3 (tight) : default \frac{2\times b}{3} ; alt = 2\times \frac{b}{3}.
+            // On évite a*b qui déclencherait RuleVecDotProduct (lettre*lettre)
+            // de plus haute priorité ; le test cible spécifiquement la cascade flip.
+            var r = _engine.ConvertWithAmbiguity("2*b/3");
+            Assert.Equal("\\frac{2\\times b}{3}", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleTightChainExtension, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            Assert.Contains("2\\times \\frac{b}{3}", alts);
+        }
+
+        [Fact]
+        public void Asterisk_loose_a_b_over_3_proposes_flip()
+        {
+            // a *b/3 (loose `*`) : default a\times \frac{b}{3} ; alt = \frac{a\times b}{3}.
+            var r = _engine.ConvertWithAmbiguity("a *b/3");
+            Assert.Equal("a\\times \\frac{b}{3}", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleTightChainExtension, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            Assert.Contains("\\frac{a\\times b}{3}", alts);
+        }
+
+        // ===================================================================
+        // ADR 30-04 Feat-dot-as-multiplier — décimal vs mult + cascade vec
+        // ===================================================================
+
+        [Fact]
+        public void Dot_number_pair_proposes_decimal_alt()
+        {
+            // `3.4` : default `3\cdot 4` ; alt décimal `3{,}4`.
+            var r = _engine.ConvertWithAmbiguity("3.4");
+            Assert.Equal("3\\cdot 4", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleDecimalVsMultiplication, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            Assert.Contains("3\\cdot 4", alts);
+            Assert.Contains("3{,}4", alts);
+        }
+
+        [Fact]
+        public void Dot_number_pair_long_decimal_proposes_alt()
+        {
+            // `3.14` : default `3\cdot 14`, alt `3{,}14`.
+            var r = _engine.ConvertWithAmbiguity("3.14");
+            Assert.Equal("3\\cdot 14", r.TopLatex);
+            var alts = Lat(r.Spot?.Alternatives ?? new System.Collections.Generic.List<AmbiguityAlternative>());
+            Assert.Contains("3{,}14", alts);
+        }
+
+        [Fact]
+        public void Dot_letter_pair_no_decimal_alt()
+        {
+            // `a.b` : pas d'ambig décimal possible (les côtés sont des lettres).
+            var r = _engine.ConvertWithAmbiguity("a.b");
+            if (r.Spot != null)
+                Assert.NotEqual(AlternativeGenerator.RuleDecimalVsMultiplication, r.Spot.RuleId);
+        }
+
+        [Fact]
+        public void Dot_mixed_no_decimal_alt()
+        {
+            // `2.x` : un côté lettre, pas d'ambig décimal.
+            var r = _engine.ConvertWithAmbiguity("2.x");
+            if (r.Spot != null)
+                Assert.NotEqual(AlternativeGenerator.RuleDecimalVsMultiplication, r.Spot.RuleId);
+        }
+
+        [Fact]
+        public void Dot_letter_letter_proposes_vec_dot_product_alt()
+        {
+            // `u.v` : la cascade RuleVecDotProduct étendue à `.` propose
+            // `\vec{u} \cdot \vec{v}` en alt.
+            var r = _engine.ConvertWithAmbiguity("u.v");
+            Assert.Equal("u\\cdot v", r.TopLatex);
+            Assert.NotNull(r.Spot);
+            Assert.Equal(AlternativeGenerator.RuleVecDotProduct, r.Spot!.RuleId);
+            var alts = Lat(r.Spot.Alternatives);
+            Assert.Contains("\\vec{u} \\cdot \\vec{v}", alts);
         }
     }
 }

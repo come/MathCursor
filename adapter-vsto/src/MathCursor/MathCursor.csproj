@@ -108,6 +108,7 @@
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Net.Http" />
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Core" />
@@ -139,6 +140,8 @@
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+    <!-- ElementHost pour embed WPF UserControl dans CustomTaskPane WinForms (pane Cheatsheet) -->
+    <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\host-contract-csharp\src\MathCursor.HostContract\MathCursor.HostContract.csproj">
@@ -244,6 +247,7 @@
     <Compile Include="ThisAddIn.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="ThisAddIn.ContextInspector.cs" />
     <None Include="ThisAddIn.Designer.xml">
       <DependentUpon>ThisAddIn.cs</DependentUpon>
     </None>
@@ -251,11 +255,74 @@
       <DependentUpon>ThisAddIn.Designer.xml</DependentUpon>
     </Compile>
     <Compile Include="Strings.cs" />
-    <Compile Include="Host\VstoEquationStore.cs" />
+    <Compile Include="Cheatsheet\CheatsheetData.cs" />
+    <Compile Include="Cheatsheet\CheatsheetViewModel.cs" />
+    <Compile Include="Cheatsheet\CheatsheetPane.cs" />
+    <Compile Include="Cheatsheet\CheatsheetPaneHost.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Cheatsheet\CheatsheetPersistence.cs" />
+    <EmbeddedResource Include="Cheatsheet\Resources\cheatsheet.json" />
     <Compile Include="Host\KeyboardInterceptor.cs" />
+    <Compile Include="Host\AutocorrectNormalizer.cs" />
+    <Compile Include="Host\CasesCascadeMerger.cs" />
+    <Compile Include="Host\IntraMergeSidecarBuilder.cs" />
+    <Compile Include="Host\Merging\IZoneMerger.cs" />
+    <Compile Include="Host\Merging\MergeResult.cs" />
+    <Compile Include="Host\Merging\MergerPipeline.cs" />
+    <Compile Include="Host\Merging\IntraOMathsMerger.cs" />
+    <Compile Include="Host\Merging\Neighbor.cs" />
+    <Compile Include="Host\Merging\NeighborFinder.cs" />
+    <Compile Include="Host\Merging\ParagraphCascadeProbe.cs" />
+    <Compile Include="Host\Merging\RevertedMultiLineMerger.cs" />
+    <Compile Include="Host\Merging\CasesChainCascadeMerger.cs" />
+    <Compile Include="Host\Merging\MarkerChainCascadeMerger.cs" />
+    <Compile Include="Host\Pipeline\CommitContext.cs" />
+    <Compile Include="Host\Pipeline\CommitPipeline.cs" />
+    <Compile Include="Host\Pipeline\ICommitStage.cs" />
+    <Compile Include="Host\Pipeline\Stages\MergerStage.cs" />
+    <Compile Include="Host\Pipeline\Stages\ResolverStage.cs" />
+    <Compile Include="Host\Pipeline\Stages\RendererStage.cs" />
+    <Compile Include="Host\Pipeline\Stages\InserterStage.cs" />
+    <Compile Include="Host\Pipeline\Stages\StoreStage.cs" />
+    <Compile Include="Host\Pipeline\Stages\LayoutStage.cs" />
+    <Compile Include="Host\Pipeline\Stages\CaretStage.cs" />
+    <Compile Include="Host\Pipeline\Stages\SnapshotStage.cs" />
+    <Compile Include="Host\Session\EquationSession.cs" />
+    <Compile Include="Host\Session\IterativeExpansion.cs" />
+    <Compile Include="Host\Session\ListModeAnchor.cs" />
+    <Compile Include="Host\Session\RevertedMultiLineZone.cs" />
+    <Compile Include="Host\Session\SessionState.cs" />
+    <Compile Include="Host\ListModeMarkerInjector.cs" />
+    <Compile Include="Host\ListModeStateMachine.cs" />
+    <Compile Include="Host\ListModeStripGuard.cs" />
+    <Compile Include="Host\CCMeta\CcMetaResolver.cs" />
+    <Compile Include="Host\CCMeta\CcSticky.cs" />
+    <Compile Include="Host\CCMeta\MCMeta.cs" />
+    <Compile Include="Host\CCMeta\PocStepRunner.cs" />
+    <Compile Include="Host\CCMeta\MCMetaJson.cs" />
+    <Compile Include="Host\CCMeta\Sha1Helper.cs" />
+    <Compile Include="Host\Caret\CaretScreenPositionReader.cs" />
+    <Compile Include="Host\ZoneCleaner.cs" />
+    <Compile Include="Host\Debug\OMathInsertVariants.cs" />
+    <Compile Include="Host\Debug\WordScenarioRunner.cs" />
+    <Compile Include="Host\Detection\NerInputWindow.cs" />
+    <Compile Include="Host\Detection\ParagraphPositionTranslator.cs" />
+    <Compile Include="Host\Detection\ZoneRefiner.cs" />
+    <Compile Include="Host\EditMode\EditModeController.cs" />
+    <Compile Include="Host\Layout\PostCommitLayoutFinalizer.cs" />
+    <Compile Include="Host\ManualTrigger\ManualTriggerController.cs" />
+    <Compile Include="Host\ParagraphTextExtractor.cs" />
+    <Compile Include="Host\UndoRecordScope.cs" />
+    <Compile Include="Host\ColumnLayoutInserter.cs" />
+    <Compile Include="Host\RevertedZoneMerger.cs" />
     <Compile Include="Host\SuggestionService.cs" />
     <Compile Include="Host\WordContextReader.cs" />
     <Compile Include="Host\FeedbackBundle.cs" />
+    <Compile Include="Host\LastActionSnapshot.cs" />
+    <Compile Include="Host\LastActionTracker.cs" />
+    <Compile Include="Host\EquationHandleRegistry.cs" />
+    <Compile Include="Host\ListModeController.cs" />
     <Compile Include="Host\Feedback\FeedbackReport.cs" />
     <Compile Include="Host\Feedback\IFeedbackSender.cs" />
     <Compile Include="Host\Feedback\FeedbackJson.cs" />
@@ -263,7 +330,15 @@
     <Compile Include="Host\Feedback\ClipboardFeedbackSender.cs" />
     <Compile Include="Host\Feedback\HttpFeedbackSender.cs" />
     <Compile Include="Host\Feedback\FeedbackSenderFactory.cs" />
+    <Compile Include="Host\ContextResolveEventArgs.cs" />
     <Compile Include="UI\WpfMathAdapter.cs" />
+    <Compile Include="UI\MixedLatexRenderer.cs" />
+    <Compile Include="UI\Debug\CaretStateInfo.cs" />
+    <Compile Include="UI\Debug\CaretStateSnapper.cs" />
+    <Compile Include="UI\Debug\ContextInspectorPane.cs" />
+    <Compile Include="UI\Debug\ContextInspectorPaneHost.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="UI\SuggestionPopupWindow.cs" />
     <Compile Include="UI\EditModePopupWindow.cs" />
     <Compile Include="UI\FeedbackDialog.cs" />
@@ -272,6 +347,35 @@
     <Compile Include="Detection\WordPiece\WordPieceTokenizer.cs" />
     <Compile Include="RibbonCallback.cs" />
     <EmbeddedResource Include="Ribbon.xml" />
+    <!-- Icônes ruban PNG (cf. ADR 2026-05-11-Feat-ribbon-home-duo + tools/icons/rasterize-ribbon-icons.ps1).
+         32×32 utilisé pour les boutons size="large", 16×16 pour size="normal".
+         48×48 réservé hi-DPI (non utilisé pour l'instant). -->
+    <EmbeddedResource Include="Resources\ribbon-about-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-about-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-cheatsheet-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-cheatsheet-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-columns-1-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-columns-1-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-columns-2-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-columns-2-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-columns-3-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-columns-3-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-columns-4-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-columns-4-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-curve-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-curve-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-figure-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-figure-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-inspector-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-inspector-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-report-bug-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-report-bug-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-settings-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-settings-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-sign-table-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-sign-table-32.png" />
+    <EmbeddedResource Include="Resources\ribbon-variation-table-16.png" />
+    <EmbeddedResource Include="Resources\ribbon-variation-table-32.png" />
     <AppDesigner Include="Properties\" />
   </ItemGroup>
   <PropertyGroup>

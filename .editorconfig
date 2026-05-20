@@ -1,0 +1,33 @@
+# EditorConfig — https://editorconfig.org
+# Configuration partagée racine : style + sévérités des analyzers MathCursor.
+
+root = true
+
+[*]
+indent_style = space
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.cs]
+indent_size = 4
+
+[*.{xml,csproj,props,targets}]
+indent_size = 2
+
+[*.{json,yaml,yml}]
+indent_size = 2
+
+# ============================================================================
+# Sévérités des règles MC (MathCursor architecture analyzers)
+# ============================================================================
+#
+# Stratégie : démarrage en `warning` pour visibilité maximale sans casser
+# le build. Promotion vers `error` au fil du nettoyage / des ADR.
+# Cf. docs/dev/decisions/2026-05-13-Meta-harness-phase-0-1-mc0001.md
+#
+[*.cs]
+dotnet_diagnostic.MC0001.severity = warning   # Regex sur contenu structuré
+dotnet_diagnostic.MC0006.severity = warning   # Splice LaTeX sur texte rendu (anti-pattern)
+dotnet_diagnostic.MC0009.severity = warning   # SuppressMessage sans ADR référencé

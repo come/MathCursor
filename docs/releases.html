@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MathCursor — Téléchargements</title>
-  <meta name="description" content="Installateurs MathCursor pour Word Desktop — version courante et historique." />
+  <meta name="description" content="Installateur MathCursor pour Word Desktop — version courante et historique." />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -30,12 +30,9 @@
     <div class="container">
       <a href="index.html" class="brand">MathCursor</a>
       <nav class="nav">
-        <a href="index.html#pour-qui" data-i18n="nav_for">Pour qui</a>
-        <a href="index.html#fonctionnement" data-i18n="nav_how">Fonctionnement</a>
-        <a href="index.html#exemples" data-i18n="nav_examples">Exemples</a>
-        <a href="index.html#installation" data-i18n="nav_install">Installation</a>
+        <a href="demo/" data-i18n="nav_demo">Démo</a>
         <a href="releases.html" class="active" data-i18n="nav_downloads">Téléchargements</a>
-        <a href="index.html#inscription" data-i18n="nav_signup">Inscription</a>
+        <a href="index.html#installation" data-i18n="nav_install">Installation</a>
         <div class="lang-toggle" role="group" aria-label="Language">
           <button type="button" data-lang="fr" class="active">FR</button>
           <button type="button" data-lang="en">EN</button>
@@ -51,9 +48,13 @@
         <h1 data-i18n="dl_h1">Téléchargements</h1>
         <p class="lead" data-i18n="dl_lead">Installateur MathCursor pour Windows + Word Desktop. Le lien <code>latest.exe</code> pointe toujours sur la dernière version stable.</p>
 
+        <div class="beta-banner" style="background: #fff7e6; border-left: 4px solid #ff9500; padding: 14px 18px; margin: 20px 0 24px; border-radius: 4px;" data-i18n="dl_beta_banner">
+          <strong>Beta en cours :</strong> tu trouves un bug ou un cas qui ne marche pas ? Clique sur <strong>« Signaler une erreur »</strong> dans la popup MathCursor — un clic suffit, ton retour part automatiquement et nous aide à corriger vite.
+        </div>
+
         <div class="cta-row" style="margin: 24px 0 40px;">
           <a href="/download/latest.exe" class="button button--primary" download data-i18n="dl_cta_latest">
-            Télécharger la dernière version (0.3.2)
+            Télécharger la dernière version (0.5.8)
           </a>
           <a href="index.html#installation" class="button button--secondary" data-i18n="dl_cta_guide">
             Guide d'installation
@@ -63,52 +64,145 @@
         <h2 data-i18n="dl_history_h">Historique des versions</h2>
 
         <article class="card" style="margin-bottom: 20px;">
-          <h3>0.3.2 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_032_date">— 24 avril 2026</span></h3>
+          <h3>0.5.8 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_058_date">— 7 mai 2026</span></h3>
+          <p data-i18n="dl_058_intro">Hotfix pour le crash au démarrage sur Word 32 bits, log de diagnostic, et fix de duplication du marker (<code>{</code>, <code>=</code>, <code>&lt;=&gt;</code>) en cas d'édition/redo.</p>
           <ul>
-            <li data-i18n="dl_032_1"><strong>Install vraiment silencieux</strong> : plus de popup Windows pendant l'installation. Le certificat est importé uniquement dans le store <em>TrustedPublisher</em> (suffisant pour VSTO), pas dans <em>Root</em> qui déclenchait un dialog de confirmation forcé par Windows.</li>
+            <li data-i18n="dl_058_1"><strong>Fix crash au démarrage Word 32 bits</strong> : résolution robuste du chemin natif ONNX (multi-candidats + copie de secours dans le dossier de l'add-in) pour les configurations où le sous-dossier <code>onnxruntime-x86</code> n'était pas trouvé.</li>
+            <li data-i18n="dl_058_2"><strong>Log de diagnostic ONNX</strong> : à chaque chargement, MathCursor écrit dans <code>%TEMP%\mathcursor-onnx-init.log</code> les chemins testés, le chemin retenu, et l'éventuelle erreur — utile pour diagnostiquer un environnement Windows particulier.</li>
+            <li data-i18n="dl_058_3"><strong>Visual C++ Redist redéployés systématiquement</strong> : l'installer relance les redists x86 + x64 à chaque mise à jour (silencieux, no-op si déjà à jour).</li>
+            <li data-i18n="dl_058_4"><strong>Fix duplication du marker en édit/redo</strong> : éditer puis revalider une chaîne <code>=</code> / <code>&lt;=&gt;</code> ou un système <code>{</code> ne duplique plus le caractère marker en début de ligne.</li>
           </ul>
-          <a href="/download/MathCursor-Setup-0.3.2.exe" class="button button--secondary" download data-i18n="dl_032_btn">Télécharger 0.3.2</a>
+          <a href="/download/MathCursor-Setup-0.5.8.exe" class="button button--secondary" download data-i18n="dl_058_btn">Télécharger 0.5.8</a>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
-          <h3>0.3.1 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_031_date">— 24 avril 2026</span></h3>
+          <h3>0.5.7 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_057_date">— 6 mai 2026</span></h3>
+          <p data-i18n="dl_057_intro">Cette version corrige plusieurs bugs autour des vecteurs en saisie multi-ligne et améliore la robustesse de la désambiguïsation. Compatible Word 32 bits et 64 bits.</p>
           <ul>
-            <li data-i18n="dl_031_1"><strong>Installation en un click</strong> (première tentative) : l'installateur importe lui-même le certificat. Plus besoin d'ouvrir PowerShell avant.</li>
+            <li data-i18n="dl_057_1"><strong>Word 32 bits supporté</strong> : l'installer embarque maintenant les runtimes ONNX et VC++ Redistributable pour les deux architectures (x86 + x64). Plus de crash au démarrage sur Word 32 bits.</li>
+            <li data-i18n="dl_057_2"><strong>Vecteur colonne sur séparateur virgule/point-virgule</strong> : <code>AB(1,2)</code> et <code>AB(1;2)</code> proposent maintenant le vecteur colonne en alternative dans la popup (avant : seulement <code>AB(1 2)</code> avec espace).</li>
+            <li data-i18n="dl_057_3"><strong>Vecteurs préservés en saisie multi-ligne</strong> : systèmes <code>{ … </code> et chaînes <code>=</code> / <code>&lt;=&gt;</code> conservent les choix vec/forall/etc. quand on enchaîne plusieurs lignes.</li>
+            <li data-i18n="dl_057_4"><strong>Vecteurs préservés au revert</strong> : « Revenir à la saisie » sur un OMath multi-ligne avec vecteurs, puis re-validation, ne fait plus disparaître les vec.</li>
+            <li data-i18n="dl_057_5"><strong>Fix flèches multiples empilées</strong> : plus de <code>\vec{\vec{AB}}</code> visible dans certaines combinaisons d'OMaths similaires fusionnés.</li>
+            <li data-i18n="dl_057_6"><strong>Reconnaissance de coordonnées dès la frappe</strong> : <code>AB(1,2)</code> est désormais reconnu comme coordonnées de vecteur dès le premier rendu (avant : function call par défaut, alt vec en cascade).</li>
+            <li data-i18n="dl_057_7"><strong>Sous le capot</strong> : refactor de l'architecture interne (pipeline de commit explicite, état session encapsulé) pour faciliter les futurs ajouts.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.3.2 qui inclut ces changements.</div>
+          <a href="/download/MathCursor-Setup-0.5.7.exe" class="button button--secondary" download data-i18n="dl_057_btn">Télécharger 0.5.7</a>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
-          <h3>0.3.0 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_030_date">— 24 avril 2026</span></h3>
+          <h3>0.5.6 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_056_date">— 5 mai 2026</span></h3>
+          <p data-i18n="dl_056_intro"><strong>Édition multi-ligne au clavier</strong> pour les systèmes d'équations et chaînes d'équivalences/égalités, plus correctifs sur le positionnement du curseur après conversion.</p>
           <ul>
-            <li data-i18n="dl_030_1"><strong>Feedback in-popup</strong> : lien « Signaler une erreur » au pied de chaque suggestion, dialog modal avec pré-remplissage du contexte, envoi via presse-papier ou HTTP (selon config).</li>
-            <li data-i18n="dl_030_2"><strong>Matching préfixe</strong> : propositions partielles avec <code>…</code> en rouge quand aucun pattern complet ne matche.</li>
-            <li data-i18n="dl_030_3"><strong>Sum / product / integral sans mot-clé</strong> : <code>Sum k 1 n f(x)</code> marche comme <code>lim x 0 f(x)</code>.</li>
-            <li data-i18n="dl_030_4"><strong>Angle <code>ABC</code></strong> (3 lettres majuscules) proposé avec la notation <code>∠ABC</code>.</li>
-            <li data-i18n="dl_030_5"><strong>Fix</strong> : Ctrl+Espace ne coupe plus la span sur un <code>;</code> ou <code>,</code> à l'intérieur d'un intervalle <code>[0;+∞[</code>.</li>
+            <li data-i18n="dl_056_1"><strong>Mode liste invisible</strong> : après une chaîne ou un système, le marker (<code>&lt;=&gt;</code>, <code>=</code>, <code>{</code>) est auto-injecté sur la ligne suivante pour continuer sans le retaper. Backspace pour sortir.</li>
+            <li data-i18n="dl_056_2"><strong>Systèmes d'équations multi-ligne</strong> : <code>{ x+1=2 ⏎ { 2x=4</code> Ctrl+Espace produit un <code>\begin{cases}</code> aligné à gauche avec accolade et <code>=</code> alignés.</li>
+            <li data-i18n="dl_056_3"><strong>Chaînes d'équivalences/égalités cross-paragraphe</strong> : <code>2x+1=5 ⏎ &lt;=&gt; 2x=4 ⏎ &lt;=&gt; x=2</code> rendu en <code>\begin{align*}</code> avec colonnes alignées sur le <code>=</code>.</li>
+            <li data-i18n="dl_056_4"><strong>Fix curseur fin de paragraphe</strong> : après conversion d'une formule en bout de ligne (ex. « soit f »), le curseur ne saute plus à la ligne suivante.</li>
+            <li data-i18n="dl_056_5"><strong>Fix curseur monte avec contenu existant</strong> : quand un OMath existait au-dessus, l'identification post-insertion pouvait pointer sur le mauvais OMath et faire monter le curseur.</li>
+            <li data-i18n="dl_056_6"><strong>Fix alignement à gauche</strong> : les formules autonomes (sans texte autour) ne s'auto-centrent plus, elles restent alignées à gauche par défaut.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.3.2 qui inclut ces changements.</div>
+          <a href="/download/MathCursor-Setup-0.5.6.exe" class="button button--secondary" download data-i18n="dl_056_btn">Télécharger 0.5.6</a>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
-          <h3>0.2.0 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_020_date">— 23 avril 2026</span></h3>
+          <h3>0.5.5 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_055_date">— 30 avril 2026</span></h3>
+          <p data-i18n="dl_055_intro"><strong>Refonte du système de remontée de bugs</strong> : envoi automatique vers le backend Cloudflare en un clic, plus de zip à attacher manuellement.</p>
           <ul>
-            <li data-i18n="dl_020_1"><strong>Ctrl+Espace</strong> force la popup sur ce qui vient d'être tapé (issue de secours quand la détection automatique rate).</li>
-            <li data-i18n="dl_020_2"><strong>Bouton « Signaler un souci »</strong> dans le ruban : zip log + contexte prêt à envoyer.</li>
-            <li data-i18n="dl_020_3"><strong>Bouton « Aide »</strong> avec un readme des raccourcis.</li>
-            <li data-i18n="dl_020_4"><strong>Alignement</strong> : l'équation suit l'alignement du paragraphe (plus de centrage forcé).</li>
-            <li data-i18n="dl_020_5"><strong>Fix</strong> : position popup fiable même quand le doc contient déjà des équations.</li>
-            <li data-i18n="dl_020_6"><strong>Fix</strong> : plus de « . » dégénéré quand un rendu LaTeX partiel échoue (fallback propre).</li>
+            <li data-i18n="dl_055_1"><strong>Signaler une erreur en un clic</strong> : envoi HTTP direct vers le backend (<code>feedback.mathcursor.app</code>), plus besoin de fichier à attacher au mail. Un clic, ton retour part en arrière-plan.</li>
+            <li data-i18n="dl_055_2"><strong>Plus de WhatsApp / email manuel</strong> : le bundle (logs + source brute + LaTeX rendu) est packagé et envoyé automatiquement. Toujours opt-in : on n'envoie rien sans ton clic explicite sur le bouton.</li>
+            <li data-i18n="dl_055_3"><strong>Confidentialité préservée</strong> : aucun contenu du document n'est envoyé — uniquement la zone math en cours et les logs techniques nécessaires au diagnostic.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.3.2 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.8 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
-          <h3>0.1.0 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_010_date">— 22 avril 2026</span></h3>
+          <h3>0.5.4 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_054_date">— 30 avril 2026</span></h3>
+          <p data-i18n="dl_054_intro"><strong>Refonte des règles de groupement</strong> (<code>/</code>, <code>*</code>, <code>.</code>, <code>^</code>, <code>_</code>), fix critique du rendu OMath dans Word 2019, et conventions de saisie françaises.</p>
           <ul>
-            <li data-i18n="dl_010_1">Première bêta interne. Détection NER des zones math, popup de suggestions, insertion en OMath Word.</li>
+            <li data-i18n="dl_054_1"><strong>Signaler une erreur en un clic</strong> : pendant la beta, utilise le bouton « Signaler » dans la popup pour nous remonter les bugs — les corrections sont quotidiennes.</li>
+            <li data-i18n="dl_054_2"><strong>Fix critique Word 2019</strong> : <code>x^2</code> rend <code>x²</code> sans parenthèses visibles, <code>1/2 x</code> ne place plus <code>x</code> au dénominateur, <code>int 0 1 f(x) dx</code> rend <code>∫₀¹ f(x) dx</code> avec bornes attachées.</li>
+            <li data-i18n="dl_054_3"><strong>Multiplication par <code>.</code></strong> : tape <code>a.b</code> ou <code>3.4</code> pour obtenir <code>a · b</code> ou <code>3 · 4</code> (alias de <code>*</code>, rendu en <code>·</code>).</li>
+            <li data-i18n="dl_054_4"><strong>Symbole multiplication culturel</strong> : <code>a*b</code> rend <code>a × b</code> par défaut en français (<code>·</code> pour les autres cultures).</li>
+            <li data-i18n="dl_054_5"><strong>Groupement par juxtaposition</strong> : <code>AB/BC</code> collé groupe en $\frac{AB}{BC}$ (la mult implicite reste un bloc), <code>1/x+1</code> reste $\frac{1}{x}+1$ conforme à la précédence math standard. Le groupement alternatif est proposé en désambig.</li>
+            <li data-i18n="dl_054_6"><strong>Coordonnées notation FR</strong> : <code>u(1, 2)</code> rend $\vec{u}(1 ; 2)$ avec point-virgule, <code>A(1, 2)</code> rend <code>A(1 ; 2)</code> (la virgule est réservée au décimal).</li>
+            <li data-i18n="dl_054_7"><strong>Fix NER post-équation</strong> : quand une équation est déjà placée avant, les conjonctions (<code>et</code>, <code>donc</code>…) ne sont plus aspirées dans la zone math suivante.</li>
+            <li data-i18n="dl_054_8"><strong>Fix fonction trigo + exposant</strong> : <code>cos2(x)+1</code> rend <code>$\cos(x)^2+1$</code> sans aspirer la suite.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.3.2 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.8 qui inclut ces changements.</div>
+        </article>
+
+        <article class="card" style="margin-bottom: 20px;">
+          <h3>0.5.3 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_053_date">— 29 avril 2026</span></h3>
+          <p data-i18n="dl_053_intro"><strong>Vecteurs et coordonnées au clavier</strong>, plus un fix d'installation important.</p>
+          <ul>
+            <li data-i18n="dl_053_1"><strong>Vecteur + coordonnées</strong> : tape <code>u (1 2)</code> → vecteur colonne $\vec{u} \binom{1}{2}$. Tape <code>u(1, 2)</code> → coordonnées en ligne $\vec{u}(1, 2)$. La règle : espace entre les chiffres = colonne, virgule = ligne.</li>
+            <li data-i18n="dl_053_2"><strong>Identifiants 1 ou 2 lettres</strong> reconnus : <code>u</code>, <code>v</code>, <code>w</code>, <code>AB</code>, <code>OM</code>, <code>MN</code>… Avec décoration automatique <code>\vec{}</code>.</li>
+            <li data-i18n="dl_053_3"><strong>Points</strong> : une seule majuscule (<code>A(1, 2)</code>, <code>M(x, y, z)</code>) reste un point, pas de flèche.</li>
+            <li data-i18n="dl_053_4"><strong>Coordonnées symboliques ou en expression</strong> : <code>OM (x y z)</code>, <code>u (a+1 b-2)</code>, <code>v(2x+1, 3y-2)</code>.</li>
+            <li data-i18n="dl_053_5"><strong>Désambiguïsation popup</strong> : <code>f(1, 2)</code> propose function call (défaut) ou vecteur en alt ; <code>u*v</code> propose <code>u·v</code> (défaut) ou <code>$\vec{u} \cdot \vec{v}$</code> (produit scalaire) en alt.</li>
+            <li data-i18n="dl_053_6"><strong>Fix critique installer</strong> : déploiement de la DLL native <code>onnxruntime.dll</code> qui manquait sur certaines machines (l'add-in plantait au démarrage avec une <code>TypeInitializationException</code>).</li>
+          </ul>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.8 qui inclut ces changements.</div>
+        </article>
+
+        <article class="card" style="margin-bottom: 20px;">
+          <h3>0.5.1 — 0.5.2 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_05x_date">— 29 avril 2026</span></h3>
+          <ul>
+            <li data-i18n="dl_05x_1"><strong>0.5.2</strong> : fix critique <code>\int</code> rendu <code>∈t</code> au lieu de <code>∫</code>. Ordre des règles dans <code>LatexToUnicodeMath</code> qui appliquait <code>\in → ∈</code> avant <code>\int → ∫</code>.</li>
+            <li data-i18n="dl_05x_2"><strong>0.5.1</strong> : numéro de version dynamique dans le ruban Word, icône « Signaler » distincte, ruban en français/anglais selon la locale Word.</li>
+          </ul>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.8 qui inclut ces changements.</div>
+        </article>
+
+        <article class="card" style="margin-bottom: 20px;">
+          <h3>0.5.0 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_050_date">— 28 avril 2026</span></h3>
+          <p data-i18n="dl_050_intro"><strong>Refonte du moteur</strong> de conversion (« lattice engine ») et grosse vague de patterns nouveaux.</p>
+          <ul>
+            <li data-i18n="dl_050_1"><strong>Extension itérative au clavier</strong> : Ctrl+Espace une fois ouvre la popup ; un nouvel appui élargit la zone d'un mot vers la gauche, et ainsi de suite.</li>
+            <li data-i18n="dl_050_2"><strong>Flèches d'implication</strong> : <code>=&gt;</code> devient ⇒, <code>&lt;=&gt;</code> devient ⇔.</li>
+            <li data-i18n="dl_050_3"><strong>Fusion de formules adjacentes</strong> : si tu convertis une formule à côté d'une autre, MathCursor les regroupe en une seule.</li>
+            <li data-i18n="dl_050_4"><strong>Définitions de fonctions</strong> : <code>f : x -&gt; 2x + 1</code> rendu naturellement.</li>
+            <li data-i18n="dl_050_5"><strong>Ensembles canoniques</strong> : <code>R</code>, <code>N</code>, <code>Z</code>, <code>Q</code>, <code>C</code> proposent ℝ, ℕ, ℤ, ℚ, ℂ en désambiguïsation.</li>
+            <li data-i18n="dl_050_6"><strong>Quantificateurs</strong> : <code>forall x R</code> et <code>exists y N</code> reconnus avec leur scope (variable + ensemble + condition).</li>
+            <li data-i18n="dl_050_7"><strong>Intervalles</strong> : <code>[0,1]</code>, <code>[0;1[</code>, <code>]0,1[</code>, <code>[0,+inf[</code>, plus union <code>U</code> et intersection <code>inter</code>.</li>
+            <li data-i18n="dl_050_8"><strong>Lettres-quantificateurs</strong> : <code>V</code> propose ∀ ou √, <code>E</code> propose ∃.</li>
+            <li data-i18n="dl_050_9"><strong>Désambiguïsation cascade</strong> : si tu choisis vec pour AB dans une formule, tous les autres CD/EF de la même formule héritent du choix.</li>
+            <li data-i18n="dl_050_10"><strong>ABC → angle / triangle</strong> en désambig.</li>
+            <li data-i18n="dl_050_11"><strong>Fix NBSP</strong> : les espaces insécables collés par Word ne cassent plus la conversion.</li>
+          </ul>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.8 qui inclut ces changements.</div>
+        </article>
+
+        <article class="card" style="margin-bottom: 20px;">
+          <h3>0.4.0 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_040_date">— 28 avril 2026</span></h3>
+          <p data-i18n="dl_040_intro"><strong>Installer divisé par deux</strong> (102 Mo, contre 206 Mo avant) et compatible avec les laptops anciens (Bay Trail / sans AVX). Mode édition, détection plus précise.</p>
+          <ul>
+            <li data-i18n="dl_040_1"><strong>Mode édition</strong> : place le curseur sur une formule déjà convertie, un popup propose de revenir à la saisie initiale pour modifier sans tout retaper.</li>
+            <li data-i18n="dl_040_2"><strong>Multi-suggestions</strong> : popup à deux sections quand plusieurs interprétations sont possibles.</li>
+            <li data-i18n="dl_040_3"><strong>Détection plus précise</strong> : nouveau modèle NER (DistilBERT-multilingual) entraîné sur corpus enrichi.</li>
+            <li data-i18n="dl_040_4"><strong>Compat matérielle élargie</strong> : Bay Trail 2014+, VC++ Redist embarqué.</li>
+          </ul>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.8 qui inclut ces changements.</div>
+        </article>
+
+        <article class="card" style="margin-bottom: 20px;">
+          <h3>0.3.x <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_03x_date">— 23-24 avril 2026</span></h3>
+          <ul>
+            <li data-i18n="dl_03x_1">Install vraiment silencieux (cert TrustedPublisher uniquement).</li>
+            <li data-i18n="dl_03x_2">Feedback in-popup « Signaler une erreur ».</li>
+            <li data-i18n="dl_03x_3">Matching préfixe avec placeholders rouges <code>…</code>.</li>
+            <li data-i18n="dl_03x_4">Sum / product / integral sans mot-clé : <code>Sum k 1 n f(x)</code>.</li>
+            <li data-i18n="dl_03x_5">Angle <code>ABC</code> en notation <code>∠ABC</code>.</li>
+          </ul>
+          <div class="retired-note" data-i18n="dl_retired">Versions archivées — utilise la 0.5.7 qui inclut ces changements.</div>
+        </article>
+
+        <article class="card" style="margin-bottom: 20px;">
+          <h3>0.1.0 — 0.2.0 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_01x_date">— 22-23 avril 2026</span></h3>
+          <ul>
+            <li data-i18n="dl_01x_1">Premières bêta internes : détection NER, popup, insertion OMath, Ctrl+Espace, signaler un souci, alignement, fixes rendu.</li>
+          </ul>
+          <div class="retired-note" data-i18n="dl_retired">Versions archivées — utilise la 0.5.7 qui inclut ces changements.</div>
         </article>
 
         <p class="install-note" style="margin-top: 40px;" data-i18n="dl_note">
@@ -124,54 +218,120 @@
 
   <footer class="site-footer">
     <div class="container">
-      <p data-i18n="dl_foot">© 2026 MathCursor · Bêta privée · <a href="mailto:come2percin@gmail.com">Contact</a></p>
+      <p data-i18n="dl_foot">© 2026 MathCursor · <a href="mailto:come2percin@gmail.com">Contact</a></p>
     </div>
   </footer>
 
   <script>
     const I18N = {
       en: {
-        nav_for: "Who it's for",
-        nav_how: "How it works",
-        nav_examples: "Examples",
+        nav_demo: "Demo",
         nav_install: "Install",
         nav_downloads: "Downloads",
-        nav_signup: "Sign up",
 
         dl_h1: "Downloads",
         dl_lead: "MathCursor installer for Windows + Word Desktop. The <code>latest.exe</code> link always points to the current stable release.",
-        dl_cta_latest: "Download the latest version (0.3.2)",
+        dl_beta_banner: "<strong>Beta in progress:</strong> hit a bug or a case that doesn't work? Click <strong>\"Report an issue\"</strong> in the MathCursor popup — one click is enough, your feedback is sent automatically and helps us fix things fast.",
+        dl_cta_latest: "Download the latest version (0.5.8)",
+
+        dl_058_date: "— May 7, 2026",
+        dl_058_intro: "Hotfix for the Word 32-bit startup crash, with a diagnostic log, plus a fix for the marker character (<code>{</code>, <code>=</code>, <code>&lt;=&gt;</code>) being duplicated on edit/redo.",
+        dl_058_1: "<strong>Word 32-bit startup crash fix</strong>: robust resolution of the ONNX native path (multi-candidate paths + copy fallback into the add-in folder) for setups where the <code>onnxruntime-x86</code> subdirectory wasn't found.",
+        dl_058_2: "<strong>ONNX diagnostic log</strong>: on every load, MathCursor writes to <code>%TEMP%\\mathcursor-onnx-init.log</code> the candidate paths tried, the path retained, and any error — useful to diagnose specific Windows setups.",
+        dl_058_3: "<strong>Visual C++ Redist redeployed every time</strong>: the installer reruns the x86 + x64 redists on every update (silent, no-op if already up to date).",
+        dl_058_4: "<strong>Marker duplication fix on edit/redo</strong>: editing then re-validating an <code>=</code> / <code>&lt;=&gt;</code> chain or a <code>{</code> system no longer duplicates the marker character at the start of the line.",
+        dl_058_btn: "Download 0.5.8",
+
+        dl_057_date: "— May 6, 2026",
+        dl_057_intro: "This release fixes several bugs around vectors in multi-line input and improves disambiguation robustness. Compatible with both Word 32-bit and 64-bit.",
+        dl_057_1: "<strong>Word 32-bit supported</strong>: the installer now bundles ONNX runtimes and VC++ Redistributable for both architectures (x86 + x64). No more startup crash on Word 32-bit.",
+        dl_057_2: "<strong>Column vector on comma/semicolon separator</strong>: <code>AB(1,2)</code> and <code>AB(1;2)</code> now propose the column vector as an alternative in the popup (before: only <code>AB(1 2)</code> with space).",
+        dl_057_3: "<strong>Vectors preserved in multi-line input</strong>: <code>{ … </code> systems and <code>=</code> / <code>&lt;=&gt;</code> chains keep vec/forall/etc. choices when chaining multiple lines.",
+        dl_057_4: "<strong>Vectors preserved on revert</strong>: « Revert to original input » on a multi-line OMath with vectors, then re-validate, no longer makes the vec disappear.",
+        dl_057_5: "<strong>Stacked arrows fix</strong>: no more <code>\\vec{\\vec{AB}}</code> visible in some combinations of similar OMaths merged together.",
+        dl_057_6: "<strong>Coordinate recognition from first character</strong>: <code>AB(1,2)</code> is now recognized as vector coordinates from the first render (before: function call by default, vec in cascade alt).",
+        dl_057_7: "<strong>Under the hood</strong>: refactor of internal architecture (explicit commit pipeline, encapsulated session state) to ease future additions.",
+        dl_057_btn: "Download 0.5.7",
+
+        dl_056_date: "— May 5, 2026",
+        dl_056_intro: "<strong>Multi-line keyboard editing</strong> for systems of equations and chains of equivalences/equalities, plus fixes on caret positioning after conversion.",
+        dl_056_1: "<strong>Invisible list mode</strong>: after a chain or system, the marker (<code>&lt;=&gt;</code>, <code>=</code>, <code>{</code>) is auto-injected on the next line so you can continue without retyping it. Backspace to exit.",
+        dl_056_2: "<strong>Multi-line systems of equations</strong>: <code>{ x+1=2 ⏎ { 2x=4</code> Ctrl+Space produces a <code>\\begin{cases}</code> aligned left with the brace and <code>=</code> aligned.",
+        dl_056_3: "<strong>Cross-paragraph chains of equivalences/equalities</strong>: <code>2x+1=5 ⏎ &lt;=&gt; 2x=4 ⏎ &lt;=&gt; x=2</code> renders as <code>\\begin{align*}</code> with columns aligned on <code>=</code>.",
+        dl_056_4: "<strong>End-of-paragraph caret fix</strong>: after converting a formula at line end (e.g. « soit f »), the caret no longer jumps to the next line.",
+        dl_056_5: "<strong>Caret-jumps-up fix with prior content</strong>: when an OMath existed above, post-insertion identification could point at the wrong OMath and move the caret up.",
+        dl_056_6: "<strong>Left alignment fix</strong>: standalone formulas (no surrounding text) no longer auto-center, they stay left-aligned by default.",
+        dl_056_btn: "Download 0.5.6",
+
+        dl_055_date: "— April 30, 2026",
+        dl_055_intro: "<strong>Bug reporting overhaul</strong>: automatic submission to the Cloudflare backend in one click, no more zip to attach manually.",
+        dl_055_1: "<strong>One-click bug report</strong>: direct HTTP send to the backend (<code>feedback.mathcursor.app</code>), no email attachment needed. One click and your feedback ships in the background.",
+        dl_055_2: "<strong>No more manual WhatsApp / email</strong>: the bundle (logs + raw source + rendered LaTeX) is packaged and sent automatically. Always opt-in: nothing is sent without your explicit click on the button.",
+        dl_055_3: "<strong>Privacy preserved</strong>: no document content is sent — only the current math zone and the technical logs needed for diagnosis.",
+
         dl_cta_guide: "Install guide",
         dl_history_h: "Version history",
 
-        dl_032_date: "— April 24, 2026",
-        dl_032_1: "<strong>Truly silent install</strong>: no more Windows popup during install. The certificate is imported only into the <em>TrustedPublisher</em> store (enough for VSTO), not into <em>Root</em> which triggered a forced Windows confirmation dialog.",
-        dl_032_btn: "Download 0.3.2",
+        dl_054_date: "— April 30, 2026",
+        dl_054_intro: "<strong>Grouping rules overhaul</strong> (<code>/</code>, <code>*</code>, <code>.</code>, <code>^</code>, <code>_</code>), critical OMath rendering fix for Word 2019, and French input conventions.",
+        dl_054_1: "<strong>One-click bug reporting</strong>: during beta, use the \"Report\" button in the popup to send us bugs — fixes ship daily.",
+        dl_054_2: "<strong>Critical Word 2019 fix</strong>: <code>x^2</code> renders as <code>x²</code> without visible parens, <code>1/2 x</code> no longer puts <code>x</code> in the denominator, <code>int 0 1 f(x) dx</code> renders <code>∫₀¹ f(x) dx</code> with bounds attached.",
+        dl_054_3: "<strong>Multiplication via <code>.</code></strong>: type <code>a.b</code> or <code>3.4</code> to get <code>a · b</code> or <code>3 · 4</code> (alias of <code>*</code>, rendered as <code>·</code>).",
+        dl_054_4: "<strong>Culture-aware multiplication symbol</strong>: <code>a*b</code> renders as <code>a × b</code> by default in French (<code>·</code> for other cultures).",
+        dl_054_5: "<strong>Juxtaposition grouping</strong>: <code>AB/BC</code> tight groups as $\\frac{AB}{BC}$ (implicit mult stays a unit), <code>1/x+1</code> stays $\\frac{1}{x}+1$ following standard math precedence. The alternative grouping is offered in disambiguation.",
+        dl_054_6: "<strong>French coordinate notation</strong>: <code>u(1, 2)</code> renders $\\vec{u}(1 ; 2)$ with semicolon, <code>A(1, 2)</code> renders <code>A(1 ; 2)</code> (comma is reserved for decimal).",
+        dl_054_7: "<strong>Post-equation NER fix</strong>: when an equation is already placed before, conjunctions (<code>et</code>, <code>donc</code>…) are no longer absorbed into the next math zone.",
+        dl_054_8: "<strong>Trig function + exponent fix</strong>: <code>cos2(x)+1</code> renders <code>$\\cos(x)^2+1$</code> without absorbing what follows.",
+        dl_054_btn: "Download 0.5.4",
 
-        dl_031_date: "— April 24, 2026",
-        dl_031_1: "<strong>One-click install</strong> (first attempt): the installer imports the certificate itself. No more PowerShell prompt to run.",
+        dl_053_date: "— April 29, 2026",
+        dl_053_intro: "<strong>Vectors and coordinates from the keyboard</strong>, plus a critical install fix.",
+        dl_053_1: "<strong>Vector + coordinates</strong>: type <code>u (1 2)</code> → column vector $\\vec{u} \\binom{1}{2}$. Type <code>u(1, 2)</code> → inline coordinates $\\vec{u}(1, 2)$. Rule: space between values = column, comma = row.",
+        dl_053_2: "<strong>1- or 2-letter identifiers</strong> recognised: <code>u</code>, <code>v</code>, <code>w</code>, <code>AB</code>, <code>OM</code>, <code>MN</code>… with automatic <code>\\vec{}</code> decoration.",
+        dl_053_3: "<strong>Points</strong>: a single uppercase letter (<code>A(1, 2)</code>, <code>M(x, y, z)</code>) stays as a point, no arrow.",
+        dl_053_4: "<strong>Symbolic or expression coordinates</strong>: <code>OM (x y z)</code>, <code>u (a+1 b-2)</code>, <code>v(2x+1, 3y-2)</code>.",
+        dl_053_5: "<strong>Popup disambiguation</strong>: <code>f(1, 2)</code> proposes function call (default) or vector as alt; <code>u*v</code> proposes <code>u·v</code> (default) or <code>$\\vec{u} \\cdot \\vec{v}$</code> (dot product) as alt.",
+        dl_053_6: "<strong>Critical installer fix</strong>: native <code>onnxruntime.dll</code> deployment that was missing on some machines (the add-in crashed at startup with a <code>TypeInitializationException</code>).",
+        dl_053_btn: "Download 0.5.3",
 
-        dl_030_date: "— April 24, 2026",
-        dl_030_1: "<strong>In-popup feedback</strong>: \"Report an issue\" link at the foot of each suggestion, modal dialog with context pre-filled, send via clipboard or HTTP (configurable).",
-        dl_030_2: "<strong>Prefix matching</strong>: partial suggestions with red <code>…</code> placeholders when no complete pattern matches.",
-        dl_030_3: "<strong>Sum / product / integral without keywords</strong>: <code>Sum k 1 n f(x)</code> works like <code>lim x 0 f(x)</code>.",
-        dl_030_4: "<strong>Angle <code>ABC</code></strong> (3 uppercase letters) offered with <code>∠ABC</code> notation.",
-        dl_030_5: "<strong>Fix</strong>: Ctrl+Space no longer truncates the span on a <code>;</code> or <code>,</code> inside an interval <code>[0;+∞[</code>.",
+        dl_05x_date: "— April 29, 2026",
+        dl_05x_1: "<strong>0.5.2</strong>: critical fix — <code>\\int</code> was rendering as <code>∈t</code> instead of <code>∫</code>. Rule order in <code>LatexToUnicodeMath</code> applied <code>\\in → ∈</code> before <code>\\int → ∫</code>.",
+        dl_05x_2: "<strong>0.5.1</strong>: dynamic version number in the Word ribbon, distinct \"Report\" icon, ribbon in French/English based on Word's locale.",
 
-        dl_020_date: "— April 23, 2026",
-        dl_020_1: "<strong>Ctrl+Space</strong> forces the popup on what you just typed (fallback when auto-detection fails).",
-        dl_020_2: "<strong>\"Report an issue\" button</strong> in the ribbon: ready-to-send log + context zip.",
-        dl_020_3: "<strong>\"Help\" button</strong> with a readme of shortcuts.",
-        dl_020_4: "<strong>Alignment</strong>: equations follow the paragraph alignment (no more forced centering).",
-        dl_020_5: "<strong>Fix</strong>: reliable popup positioning even when the doc already contains equations.",
-        dl_020_6: "<strong>Fix</strong>: no more degenerate \".\" when a partial LaTeX render fails (clean fallback).",
+        dl_050_date: "— April 28, 2026",
+        dl_050_intro: "<strong>Engine rewrite</strong> (lattice engine) plus a large wave of new patterns.",
+        dl_050_1: "<strong>Iterative keyboard expansion</strong>: pressing Ctrl+Space again while the popup is open extends the math zone one word to the left.",
+        dl_050_2: "<strong>Implication arrows</strong>: <code>=&gt;</code> renders as ⇒, <code>&lt;=&gt;</code> as ⇔.",
+        dl_050_3: "<strong>Adjacent formula merge</strong>: converting next to an existing formula merges them into one.",
+        dl_050_4: "<strong>Function definitions</strong>: <code>f : x -&gt; 2x + 1</code> renders naturally.",
+        dl_050_5: "<strong>Canonical sets</strong>: <code>R</code>, <code>N</code>, <code>Z</code>, <code>Q</code>, <code>C</code> propose ℝ, ℕ, ℤ, ℚ, ℂ as alternatives.",
+        dl_050_6: "<strong>Quantifiers</strong>: <code>forall x R</code> and <code>exists y N</code> recognized with their scope (variable + set + condition).",
+        dl_050_7: "<strong>Intervals</strong>: <code>[0,1]</code>, <code>[0;1[</code>, <code>]0,1[</code>, <code>[0,+inf[</code>, plus union <code>U</code> and intersection <code>inter</code>.",
+        dl_050_8: "<strong>Quantifier letters</strong>: <code>V</code> proposes ∀ or √, <code>E</code> proposes ∃.",
+        dl_050_9: "<strong>Cascading disambiguation</strong>: if you pick vec for AB in a formula, all other CD/EF in the same formula inherit the choice.",
+        dl_050_10: "<strong>ABC → angle / triangle</strong> in disambiguation.",
+        dl_050_11: "<strong>NBSP fix</strong>: non-breaking spaces inserted by Word no longer break conversion.",
 
-        dl_010_date: "— April 22, 2026",
-        dl_010_1: "First internal beta. NER math zone detection, suggestion popup, OMath Word insertion.",
+        dl_040_date: "— April 28, 2026",
+        dl_040_intro: "<strong>Installer halved in size</strong> (102 MB, down from 206 MB) and now runs on older laptops (Bay Trail / no AVX). Edit mode, more accurate detection.",
+        dl_040_1: "<strong>Edit mode</strong>: place the cursor on an already-converted formula and a popup offers to revert to the original input — edit without retyping everything.",
+        dl_040_2: "<strong>Multi-suggestions</strong>: popup with two sections when several interpretations are possible.",
+        dl_040_3: "<strong>More accurate detection</strong>: new NER model (DistilBERT-multilingual) retrained on an enriched corpus.",
+        dl_040_4: "<strong>Wider hardware compatibility</strong>: Bay Trail 2014+, VC++ Redist bundled.",
 
-        dl_retired: "Archived version — use 0.3.2 which includes these changes.",
+        dl_03x_date: "— April 23-24, 2026",
+        dl_03x_1: "Truly silent install (cert in TrustedPublisher only).",
+        dl_03x_2: "In-popup feedback \"Report an issue\".",
+        dl_03x_3: "Prefix matching with red <code>…</code> placeholders.",
+        dl_03x_4: "Sum / product / integral without keyword: <code>Sum k 1 n f(x)</code>.",
+        dl_03x_5: "Angle <code>ABC</code> rendered as <code>∠ABC</code>.",
+
+        dl_01x_date: "— April 22-23, 2026",
+        dl_01x_1: "First internal betas: NER zone detection, popup, OMath insertion, Ctrl+Space, report-an-issue, alignment, render fixes.",
+
+        dl_retired: "Archived version — use 0.5.8 which includes these changes.",
         dl_note: "One-click install: no account, no cloud, no document is sent anywhere. See the <a href=\"index.html#installation\">install guide</a> for details.",
-        dl_foot: "© 2026 MathCursor · Private beta · <a href=\"mailto:come2percin@gmail.com\">Contact</a>"
+        dl_foot: "© 2026 MathCursor · <a href=\"mailto:come2percin@gmail.com\">Contact</a>"
       }
     };
 

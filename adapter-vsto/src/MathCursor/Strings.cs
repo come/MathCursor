@@ -56,10 +56,158 @@ namespace MathCursor
 
         // ---------- Ribbon ----------
 
-        public static string GroupLabel(string version) => Lang switch
+        /// <summary>Label du group MathCursor dans l'onglet Accueil de Word
+        /// (cf. ADR 2026-05-06-Feat-ribbon-pane-examples-pivot).</summary>
+        public static string ToolsGroupLabel(string version) => Lang switch
+        {
+            "fr" => $"MathCursor — v{version}",
+            _    => $"MathCursor — v{version}",
+        };
+
+        // ---------- Onglet dédié + duo TabHome (ADR 2026-05-11) ----------
+
+        public static string HomeGroupLabel(string version) => Lang switch
         {
             "fr" => $"MathCursor v{version}",
             _    => $"MathCursor v{version}",
+        };
+
+        public static string MathCursorTabLabel => Lang switch
+        {
+            "fr" => "MathCursor",
+            _    => "MathCursor",
+        };
+
+        public static string InputGroupLabel => Lang switch
+        {
+            "fr" => "Saisie",
+            _    => "Input",
+        };
+
+        public static string LayoutGroupLabel => Lang switch
+        {
+            "fr" => "Mise en page",
+            _    => "Layout",
+        };
+
+        public static string ConstructionsGroupLabel => Lang switch
+        {
+            "fr" => "Constructions",
+            _    => "Constructions",
+        };
+
+        public static string ToolsTabGroupLabel => Lang switch
+        {
+            "fr" => "Outils",
+            _    => "Tools",
+        };
+
+        public static string ColumnsMenuLabel => Lang switch
+        {
+            "fr" => "Colonnes",
+            _    => "Columns",
+        };
+
+        public static string ColumnsMenuScreentip => Lang switch
+        {
+            "fr" => "Insère un tableau N colonnes (barres séparatrices visibles, pas de bordures externes).",
+            _    => "Insert an N-column table (visible separator bars, no outer borders).",
+        };
+
+        public static string Columns1Label => Lang switch
+        {
+            "fr" => "1 colonne",
+            _    => "1 column",
+        };
+
+        public static string Columns2Label => Lang switch
+        {
+            "fr" => "2 colonnes",
+            _    => "2 columns",
+        };
+
+        public static string Columns3Label => Lang switch
+        {
+            "fr" => "3 colonnes",
+            _    => "3 columns",
+        };
+
+        public static string Columns4Label => Lang switch
+        {
+            "fr" => "4 colonnes",
+            _    => "4 columns",
+        };
+
+        public static string CheatsheetButtonLabel => Lang switch
+        {
+            "fr" => "Exemples",
+            _    => "Examples",
+        };
+
+        public static string CheatsheetButtonScreentip => Lang switch
+        {
+            "fr" => "Galerie d'exemples concrets multi-syntaxes (à venir).",
+            _    => "Concrete multi-syntax examples gallery (coming).",
+        };
+
+        public static string ConstructionSignTableLabel => Lang switch
+        {
+            "fr" => "Tableau de signe",
+            _    => "Sign table",
+        };
+
+        public static string ConstructionVariationTableLabel => Lang switch
+        {
+            "fr" => "Tableau de variation",
+            _    => "Variation table",
+        };
+
+        public static string ConstructionCurveLabel => Lang switch
+        {
+            "fr" => "Courbe",
+            _    => "Curve",
+        };
+
+        public static string ConstructionFigureLabel => Lang switch
+        {
+            "fr" => "Figure",
+            _    => "Figure",
+        };
+
+        public static string ConstructionComingSoonScreentip => Lang switch
+        {
+            "fr" => "À venir — roadmap v0.6+",
+            _    => "Coming soon — roadmap v0.6+",
+        };
+
+        public static string SettingsButtonLabel => Lang switch
+        {
+            "fr" => "Paramètres",
+            _    => "Settings",
+        };
+
+        public static string SettingsButtonScreentip => Lang switch
+        {
+            "fr" => "Préférences MathCursor (langue, symbole de multiplication, popup auto, logs).",
+            _    => "MathCursor preferences (language, multiplication symbol, auto popup, logs).",
+        };
+
+        public static string SettingsComingSoonBody => Lang switch
+        {
+            "fr" => "Les paramètres arriveront dans la v0.6.\nPour l'instant, la langue suit Word et les autres préférences sont par défaut.",
+            _    => "Settings will arrive in v0.6.\nFor now, language follows Word and other preferences are at default.",
+        };
+
+        public static string AboutButtonLabel => Lang switch
+        {
+            "fr" => "À propos",
+            _    => "About",
+        };
+
+        public static string AboutButtonScreentip => Lang switch
+        {
+            "fr" => "Version, raccourcis, aide.",
+            _    => "Version, shortcuts, help.",
         };
 
         public static string ReportButtonLabel => Lang switch
@@ -68,25 +216,64 @@ namespace MathCursor
             _    => "Report an issue",
         };
 
+        // Bouton + pane debug Context Inspector (cf. brief 2026-05-07-global-context-multi-zoom-ranking).
+        public static string ContextInspectorButtonLabel => Lang switch
+        {
+            "fr" => "Inspecteur",
+            _    => "Inspector",
+        };
+
+        public static string ContextInspectorButtonScreentip => Lang switch
+        {
+            "fr" => "Ouvre/ferme le panneau debug du contexte de résolution (raw source, sidecar, scoring hints, trace)",
+            _    => "Open/close the resolution context debug panel (raw source, sidecar, scoring hints, trace)",
+        };
+
+        public static string ContextInspectorPaneTitle => Lang switch
+        {
+            "fr" => "MathCursor — Inspecteur (debug)",
+            _    => "MathCursor — Inspector (debug)",
+        };
+
         public static string ReportButtonScreentip => Lang switch
         {
             "fr" => "Prépare un rapport (log + screenshot + contexte) prêt à envoyer",
             _    => "Builds a report (log + screenshot + context) ready to send",
         };
 
-        public static string AboutButtonLabel => Lang switch
+        // ---------- Examples pane (cf. ADR 06-05 ribbon-pane-examples-pivot) ----------
+
+        public static string ExamplesPaneTitle => Lang switch
         {
-            "fr" => "Aide",
-            _    => "Help",
+            "fr" => "MathCursor — Exemples",
+            _    => "MathCursor — Examples",
         };
 
-        public static string AboutButtonScreentip => Lang switch
+        public static string ExamplesMissingButton => Lang switch
         {
-            "fr" => "Guide rapide MathCursor",
-            _    => "MathCursor quick guide",
+            "fr" => "Cliquez sur le bouton Exemples du ruban pour ouvrir le panneau.",
+            _    => "Click the Examples button on the ribbon to open the panel.",
         };
 
-        // ---------- Dialog Aide ----------
+        public static string ExamplesNoMatch => Lang switch
+        {
+            "fr" => "Aucun exemple ne correspond à votre recherche.",
+            _    => "No example matches your search.",
+        };
+
+        public static string ExamplesEntryTypeLabel => Lang switch
+        {
+            "fr" => "Tapez :",
+            _    => "Type:",
+        };
+
+        public static string ExamplesEntryRenderLabel => Lang switch
+        {
+            "fr" => "Vous obtenez :",
+            _    => "You get:",
+        };
+
+        // ---------- Dialog Aide (legacy, à dégager quand le pane Cheatsheet aura absorbé le contenu) ----------
 
         public static string HelpDialogTitle => Lang switch
         {
@@ -184,6 +371,181 @@ namespace MathCursor
                 "Add a quick note: what you wanted to do, what the add-in did instead.\n\n" +
                 $"File path: {zipPath}\n\n" +
                 "Open the WhatsApp group in the browser?",
+        };
+
+        // ---------- Feedback dialog (FeedbackDialog.cs) ----------
+
+        public static string FeedbackTitle => Lang switch
+        {
+            "fr" => "MathCursor — Signaler une erreur",
+            _    => "MathCursor — Report an issue",
+        };
+
+        public static string FeedbackHeader => Lang switch
+        {
+            "fr" => "Tu as rencontré un souci ?",
+            _    => "Ran into an issue?",
+        };
+
+        public static string FeedbackIntro => Lang switch
+        {
+            "fr" => "Vérifie les infos ci-dessous et explique ce qui ne va pas. On lit tout, ça nous aide.",
+            _    => "Check the info below and tell us what's wrong. We read everything, it helps a lot.",
+        };
+
+        public static string FeedbackSectionLastAction => Lang switch
+        {
+            "fr" => "Dernière action",
+            _    => "Latest action",
+        };
+
+        public static string FeedbackSectionDescribe => Lang switch
+        {
+            "fr" => "Décris le souci",
+            _    => "Describe the issue",
+        };
+
+        public static string FeedbackLabelWhatTyped => Lang switch
+        {
+            "fr" => "Ce que tu as tapé",
+            _    => "What you typed",
+        };
+
+        public static string FeedbackLabelWhatProposed => Lang switch
+        {
+            "fr" => "Ce que MathCursor a proposé",
+            _    => "What MathCursor proposed",
+        };
+
+        public static string FeedbackLabelWhatInserted => Lang switch
+        {
+            "fr" => "Ce qui (serait) inséré dans Word",
+            _    => "What (would be) inserted in Word",
+        };
+
+        public static string FeedbackToggleScreenshot => Lang switch
+        {
+            "fr" => "Joindre une capture d'écran (recommandé)",
+            _    => "Include a screenshot (recommended)",
+        };
+
+        public static string FeedbackToggleLog => Lang switch
+        {
+            "fr" => "Joindre les 64 derniers Ko de log technique",
+            _    => "Include the last 64 KB of technical log",
+        };
+
+        public static string FeedbackDisclaimerPart1 => Lang switch
+        {
+            "fr" => "Ces données partent vers notre serveur (Cloudflare). Pas de doc entier, pas d'identifiant. ",
+            _    => "This data is sent to our server (Cloudflare). No full doc, no identifier. ",
+        };
+
+        public static string FeedbackDisclaimerLink => Lang switch
+        {
+            "fr" => "Détails",
+            _    => "Details",
+        };
+
+        public static string FeedbackButtonCancel => Lang switch
+        {
+            "fr" => "Annuler",
+            _    => "Cancel",
+        };
+
+        public static string FeedbackButtonSend => Lang switch
+        {
+            "fr" => "Envoyer",
+            _    => "Send",
+        };
+
+        public static string FeedbackAltActionPrefix => Lang switch
+        {
+            "fr" => "Pas de réseau ? ",
+            _    => "No network? ",
+        };
+
+        public static string FeedbackAltActionLink => Lang switch
+        {
+            "fr" => "Copier dans un mail à la place",
+            _    => "Copy to an email instead",
+        };
+
+        public static string FeedbackValidationEmpty => Lang switch
+        {
+            "fr" => "Décris au moins ce qui ne va pas dans le champ commentaire.",
+            _    => "Describe at least what's wrong in the comment field.",
+        };
+
+        public static string FeedbackStatusSending => Lang switch
+        {
+            "fr" => "Envoi en cours...",
+            _    => "Sending...",
+        };
+
+        public static string FeedbackStatusSent => Lang switch
+        {
+            "fr" => "Merci ! Ton retour a été envoyé.",
+            _    => "Thanks! Your feedback was sent.",
+        };
+
+        public static string FeedbackStatusSendFailed(string detail) => Lang switch
+        {
+            "fr" => $"Envoi impossible : {detail}\nBascule sur l'envoi par mail...",
+            _    => $"Send failed: {detail}\nFalling back to email send...",
+        };
+
+        public static string FeedbackStatusMailCopied => Lang switch
+        {
+            "fr" => "Texte copié, colle-le (Ctrl+V) dans le mail qui vient de s'ouvrir.",
+            _    => "Text copied, paste it (Ctrl+V) in the mail that just opened.",
+        };
+
+        public static string FeedbackStatusMailFailed(string detail) => Lang switch
+        {
+            "fr" => $"Impossible d'ouvrir le client mail. Le rapport est dans le presse-papier (Ctrl+V). {detail}",
+            _    => $"Could not open mail client. The report is in the clipboard (Ctrl+V). {detail}",
+        };
+
+        public static string FeedbackMailtoSubject(string version) => Lang switch
+        {
+            "fr" => $"MathCursor — rapport ({version})",
+            _    => $"MathCursor — report ({version})",
+        };
+
+        /// <summary>Corps texte mis dans le presse-papier, à coller dans
+        /// le mail. Markdown léger pour rester lisible côté client mail.</summary>
+        public static string FeedbackMailBody(
+            string version, DateTimeOffset ts, string wordVersion, string osVersion,
+            string sourceText, string proposedLatex, string committedLatex,
+            string userComment, string paragraphContext) => Lang switch
+        {
+            "fr" =>
+                "=== MathCursor — Rapport de souci ===\n\n" +
+                $"Version : {version}\n" +
+                $"Date    : {ts:yyyy-MM-dd HH:mm:ss zzz}\n" +
+                $"Word    : {wordVersion}\n" +
+                $"OS      : {osVersion}\n\n" +
+                "--- Ce que j'ai tapé ---\n" + sourceText + "\n\n" +
+                "--- Ce que MathCursor a proposé ---\n" + proposedLatex + "\n\n" +
+                "--- Ce qui (serait) inséré dans Word ---\n" +
+                (string.IsNullOrEmpty(committedLatex) ? "(rien — pas de commit)" : committedLatex) + "\n\n" +
+                "--- Mon explication ---\n" + userComment +
+                (string.IsNullOrEmpty(paragraphContext) ? "" :
+                    "\n\n--- Paragraphe Word ---\n" + paragraphContext),
+            _ =>
+                "=== MathCursor — Issue report ===\n\n" +
+                $"Version : {version}\n" +
+                $"Date    : {ts:yyyy-MM-dd HH:mm:ss zzz}\n" +
+                $"Word    : {wordVersion}\n" +
+                $"OS      : {osVersion}\n\n" +
+                "--- What I typed ---\n" + sourceText + "\n\n" +
+                "--- What MathCursor proposed ---\n" + proposedLatex + "\n\n" +
+                "--- What (would be) inserted in Word ---\n" +
+                (string.IsNullOrEmpty(committedLatex) ? "(nothing — no commit)" : committedLatex) + "\n\n" +
+                "--- My explanation ---\n" + userComment +
+                (string.IsNullOrEmpty(paragraphContext) ? "" :
+                    "\n\n--- Word paragraph ---\n" + paragraphContext),
         };
 
         // ---------- Helper version ----------

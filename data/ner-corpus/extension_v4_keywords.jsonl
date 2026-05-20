@@ -1,0 +1,308 @@
+{"text": "En classe on a vu exists n in N.", "spans": [{"start": 18, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "Le racisme est inacceptable dans toute société.", "spans": [], "lang": "fr"}
+{"text": "This product is on sale this week.", "spans": [], "lang": "en"}
+{"text": "Sa racine étymologique vient du latin.", "spans": [], "lang": "fr"}
+{"text": "On note vec OM.", "spans": [{"start": 8, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose int 0 pi sin x dx.", "spans": [{"start": 8, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, lim x +inf.", "spans": [{"start": 16, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "We have vec OA + vec OB.", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "Évaluer lim x -> +inf f(x) = 0.", "spans": [{"start": 8, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère inf {x : x in R, x > 0}.", "spans": [{"start": 13, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, int a b f(x) dx.", "spans": [{"start": 16, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "L'inférieur droit du document est mal aligné.", "spans": [], "lang": "fr"}
+{"text": "somme k 1 n k", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Évaluer sum k=0 n+1 cos 2x.", "spans": [{"start": 8, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "La limite d'âge pour ce concours est fixée à 25 ans.", "spans": [], "lang": "fr"}
+{"text": "Le moustique est un vecteur de maladies.", "spans": [], "lang": "fr"}
+{"text": "Tree roots can damage pavements.", "spans": [], "lang": "en"}
+{"text": "L'expression lim x 0 sin x / x se simplifie.", "spans": [{"start": 13, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "On a alors somme i 0 N x_i.", "spans": [{"start": 11, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Une fraction de la population s'est exprimée.", "spans": [], "lang": "fr"}
+{"text": "We note prod i 1 n a_i.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "L'expression forall x > 0 se simplifie.", "spans": [{"start": 13, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "prod i 1 n a_i", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que sum k 1 n est défini.", "spans": [{"start": 12, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On note F = frac x+1 x-1.", "spans": [{"start": 12, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "If racine x+1, the result follows.", "spans": [{"start": 3, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "Calculer somme k 1 n 1/k.", "spans": [{"start": 9, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "lim x +inf 1/x", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "vec AB", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose lim x 0 f(x).", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "By definition, sqrt x+1.", "spans": [{"start": 15, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "Évaluer lim n -> +inf (1+1/n)^n.", "spans": [{"start": 8, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que prod k=1 n k.", "spans": [{"start": 17, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "Note that int -1 1 x dx.", "spans": [{"start": 10, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "If somme k 1 n k^2, the result follows.", "spans": [{"start": 3, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "Consider somme i 1 n a_i.", "spans": [{"start": 9, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "On vérifie que inf A inter B.", "spans": [{"start": 15, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculons sum n 0 inf x^n.", "spans": [{"start": 10, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "int 0 1", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "frac 2x+1 x-3", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "By definition, forall epsilon > 0.", "spans": [{"start": 15, "end": 33, "label": "MATH"}], "lang": "en"}
+{"text": "Par définition, rac 2.", "spans": [{"start": 16, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons prod k=1 n (1+1/k).", "spans": [{"start": 12, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "The root of the problem lies elsewhere.", "spans": [], "lang": "en"}
+{"text": "Ma limite ce soir, c'est dix heures.", "spans": [], "lang": "fr"}
+{"text": "Le produit est en promotion cette semaine.", "spans": [], "lang": "fr"}
+{"text": "Compute prod k 1 n.", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "Par définition, racine x^2+1.", "spans": [{"start": 16, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "We have int 0 1 (2x+1) dx.", "spans": [{"start": 8, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "On en déduit lim x -> 0.", "spans": [{"start": 13, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "By definition, forall x > 0.", "spans": [{"start": 15, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "We deduce int 0 1.", "spans": [{"start": 10, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "We note forall x in R.", "spans": [{"start": 8, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "rac x^2 + 1", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Si racine x^2 - 1, alors le résultat suit.", "spans": [{"start": 3, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Evaluate limite n -> +inf u_n.", "spans": [{"start": 9, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "On note vecteur u.", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère exists ! x.", "spans": [{"start": 13, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "It is clear that inf {x : x in R, x > 0}.", "spans": [{"start": 17, "end": 40, "label": "MATH"}], "lang": "en"}
+{"text": "Il est clair que integrale 0 1 x dx.", "spans": [{"start": 17, "end": 35, "label": "MATH"}], "lang": "fr"}
+{"text": "If racine a^2+b^2, the result follows.", "spans": [{"start": 3, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "En classe on a vu produit k 1 n.", "spans": [{"start": 18, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que sqrt x.", "spans": [{"start": 17, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "sum k=0 n+1 cos 2x", "spans": [{"start": 0, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, frac x x+1.", "spans": [{"start": 16, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit somme k=1 n k^2.", "spans": [{"start": 13, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Note that x -> -inf.", "spans": [{"start": 10, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "We set F = frac 2x+1 x-3.", "spans": [{"start": 11, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "int -1 1 x dx", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit vec u = (1, 2) strictement positif.", "spans": [{"start": 5, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que somme k=0 n+1 cos 2x est défini.", "spans": [{"start": 12, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "Only a fraction of the audience stayed.", "spans": [], "lang": "en"}
+{"text": "Une formation intégrale prend deux ans.", "spans": [], "lang": "fr"}
+{"text": "Soit frac sin x x.", "spans": [{"start": 5, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "We then have produit k=1 n (2k+1).", "spans": [{"start": 13, "end": 33, "label": "MATH"}], "lang": "en"}
+{"text": "On pose prod k 1 n.", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "We then have sum k 1 N (2k+1).", "spans": [{"start": 13, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "Les racines de cet arbre sont profondes.", "spans": [], "lang": "fr"}
+{"text": "Let n -> +inf.", "spans": [{"start": 4, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "Compute intégrale 0 1 x dx.", "spans": [{"start": 8, "end": 26, "label": "MATH"}], "lang": "en"}
+{"text": "frac 1 2", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie que lim x +inf 1/x.", "spans": [{"start": 15, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, forall x in [0,1].", "spans": [{"start": 16, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "We set F = vec AB = (3, -1).", "spans": [{"start": 11, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "prod k 1 n", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie que somme k=0 n cos k.", "spans": [{"start": 15, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "La racine du mot est commune aux deux langues.", "spans": [], "lang": "fr"}
+{"text": "Montrer que frac 1 (2n) est défini.", "spans": [{"start": 12, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "n -> +inf", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Sa somme d'argent était insuffisante.", "spans": [], "lang": "fr"}
+{"text": "Évaluer racine x+1 + racine x.", "spans": [{"start": 8, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "Fractures of the wrist heal in six weeks.", "spans": [], "lang": "en"}
+{"text": "intégrale a b f(x) dx", "spans": [{"start": 0, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "sum i 1 n a_i", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit somme i 1 n a_i strictement positif.", "spans": [{"start": 5, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, frac a b.", "spans": [{"start": 16, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Si int 0 1 x dx, alors le résultat suit.", "spans": [{"start": 3, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "forall x in R", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "On note lim n +inf u_n.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose x -> -inf.", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "On suppose intégrale a b f(x) dx.", "spans": [{"start": 11, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that somme i 0 N x_i > 0.", "spans": [{"start": 10, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "Pour tout n, int 0 1 (2x+1) dx.", "spans": [{"start": 13, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "lim n +inf u_n", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "We note racine n+1.", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "From the lecture, frac x+1 x-1.", "spans": [{"start": 18, "end": 30, "label": "MATH"}], "lang": "en"}
+{"text": "En classe on a vu int_a^b f(x) dx.", "spans": [{"start": 18, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit somme k 1 n.", "spans": [{"start": 5, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "Compute somme k 1 n 1/k.", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "prod k 1 n k", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère exists x > 0.", "spans": [{"start": 13, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Si vec AB, alors le résultat suit.", "spans": [{"start": 3, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "racine x+1 + racine x", "spans": [{"start": 0, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On note intégrale 0 1 x dx.", "spans": [{"start": 8, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "On a sqrt(x+1).", "spans": [{"start": 5, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "On a alors rac x+1.", "spans": [{"start": 11, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "We have frac d f d x.", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "On suppose limite n -> +inf u_n.", "spans": [{"start": 11, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "La racine du problème est ailleurs.", "spans": [], "lang": "fr"}
+{"text": "On note F = vec u.", "spans": [{"start": 12, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "On suppose sum k 1 N (2k+1).", "spans": [{"start": 11, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Mosquitoes are a vector for several diseases.", "spans": [], "lang": "en"}
+{"text": "limite x -> 0", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "La somme totale dépasse mes prévisions.", "spans": [], "lang": "fr"}
+{"text": "Évaluer integrale 0 1 x^2 dx.", "spans": [{"start": 8, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "The total sum was higher than expected.", "spans": [], "lang": "en"}
+{"text": "On en déduit inf E.", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que limite x 0 > 0.", "spans": [{"start": 14, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "En classe on a vu lim x -> +inf.", "spans": [{"start": 18, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "u_n -> +inf", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "On note somme k 1 n k.", "spans": [{"start": 8, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On note n -> +inf.", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit somme k=0 n+1 k strictement positif.", "spans": [{"start": 5, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "sum k=1 n k", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "On a prod i 1 n a_i.", "spans": [{"start": 5, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit produit k 1 n k.", "spans": [{"start": 13, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère sqrt(x^2 - 4).", "spans": [{"start": 13, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout n, int -1 1 x dx.", "spans": [{"start": 13, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit frac 1 n.", "spans": [{"start": 13, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Evaluate somme n=0 +inf x^n / n!.", "spans": [{"start": 9, "end": 32, "label": "MATH"}], "lang": "en"}
+{"text": "On pose lim h -> 0 (f(x+h)-f(x))/h.", "spans": [{"start": 8, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie que frac sin x cos x.", "spans": [{"start": 15, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that limite x -> 0 > 0.", "spans": [{"start": 10, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "frac 1 (2n)", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout n, +inf.", "spans": [{"start": 13, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Il a fait une intégrale de Bach.", "spans": [], "lang": "fr"}
+{"text": "Pour tout n, intégrale 0 +inf e^-x dx.", "spans": [{"start": 13, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout n, sum k 1 n k^2.", "spans": [{"start": 13, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "We have int 0 1 x^2 dx.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "She set aside a large sum of money last year.", "spans": [], "lang": "en"}
+{"text": "x -> +inf", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que vecteur AB.", "spans": [{"start": 17, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit rac x^2 + 1.", "spans": [{"start": 13, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "L'expression vec u . vec v se simplifie.", "spans": [{"start": 13, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout n, forall n in N.", "spans": [{"start": 13, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Prove that somme k=1 n k^2 is well-defined.", "spans": [{"start": 11, "end": 26, "label": "MATH"}], "lang": "en"}
+{"text": "L'expression racine x+1 se simplifie.", "spans": [{"start": 13, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "If somme k 1 n, the result follows.", "spans": [{"start": 3, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "On vérifie que forall x in R, f(x) >= 0.", "spans": [{"start": 15, "end": 39, "label": "MATH"}], "lang": "fr"}
+{"text": "Si frac (a+b) (a-b), alors le résultat suit.", "spans": [{"start": 3, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "It is clear that somme k 1 +inf 1/k^2.", "spans": [{"start": 17, "end": 37, "label": "MATH"}], "lang": "en"}
+{"text": "L'enseignant a écrit frac 1 2 au tableau.", "spans": [{"start": 21, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "We have racine 2.", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "La pyramide a un sommet visible depuis le sol.", "spans": [], "lang": "fr"}
+{"text": "Si frac dx dt, alors le résultat suit.", "spans": [{"start": 3, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "En classe on a vu prod k 1 n k.", "spans": [{"start": 18, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "À la limite, je veux bien essayer demain.", "spans": [], "lang": "fr"}
+{"text": "On note lim x -> +inf 1/x.", "spans": [{"start": 8, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère sqrt 2.", "spans": [{"start": 13, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons frac 2x+1 x-3.", "spans": [{"start": 12, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "By definition, sum k=0 n+1 cos 2x.", "spans": [{"start": 15, "end": 33, "label": "MATH"}], "lang": "en"}
+{"text": "From the lecture, somme i=1 n a_i.", "spans": [{"start": 18, "end": 33, "label": "MATH"}], "lang": "en"}
+{"text": "On pose frac n+1 n.", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "From the lecture, forall x in R, f(x) >= 0.", "spans": [{"start": 18, "end": 42, "label": "MATH"}], "lang": "en"}
+{"text": "Considérons vec n unitaire.", "spans": [{"start": 12, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "On note somme k 1 n 1/k^2.", "spans": [{"start": 8, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "En classe on a vu racine a^2+b^2.", "spans": [{"start": 18, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "lim x 0 f(x)", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "lim x -> 0", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Evaluate exists n in N.", "spans": [{"start": 9, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "Soit lim x 0 frac sin x x strictement positif.", "spans": [{"start": 5, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "integrale a b f(x) dx", "spans": [{"start": 0, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit int 0 +inf e^-x dx strictement positif.", "spans": [{"start": 5, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que racine 2 est strictement positif.", "spans": [{"start": 12, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Ce n'est qu'une fraction du problème.", "spans": [], "lang": "fr"}
+{"text": "The pyramid has a visible summit.", "spans": [], "lang": "en"}
+{"text": "On en déduit lim h 0 (f(x+h)-f(x))/h.", "spans": [{"start": 13, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "The integral text is available online.", "spans": [], "lang": "en"}
+{"text": "x -> -inf", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "An integral approach is required here.", "spans": [], "lang": "en"}
+{"text": "Le texte intégral est disponible en ligne.", "spans": [], "lang": "fr"}
+{"text": "We then have vec u = (1, 2).", "spans": [{"start": 13, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "Soit limite x +inf 1/x strictement positif.", "spans": [{"start": 5, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "L'enseignant a écrit forall x in R au tableau.", "spans": [{"start": 21, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "We have produit i=0 n a_i.", "spans": [{"start": 8, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "Evaluate somme k=0 n+1 cos 2x.", "spans": [{"start": 9, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "On en déduit limite x -> 0.", "spans": [{"start": 13, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Ce produit ménager est efficace.", "spans": [], "lang": "fr"}
+{"text": "Il a juste eu une fracture du poignet.", "spans": [], "lang": "fr"}
+{"text": "Montrer que frac d f d x est défini.", "spans": [{"start": 12, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit exists n in N tel que u_n > M strictement positif.", "spans": [{"start": 5, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, lim n -> +inf u_n.", "spans": [{"start": 16, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "vec AB + vec BC", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "L'expression vec u + vec v se simplifie.", "spans": [{"start": 13, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose frac e^x e^x+1.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons somme k 1 +inf 1/k^2.", "spans": [{"start": 12, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "int a b f(x) dx", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that somme k=0 n cos k > 0.", "spans": [{"start": 10, "end": 27, "label": "MATH"}], "lang": "en"}
+{"text": "Le sommet de la pyramide est visible de loin.", "spans": [], "lang": "fr"}
+{"text": "On a fait la somme des ingrédients.", "spans": [], "lang": "fr"}
+{"text": "On note u_n -> +inf.", "spans": [{"start": 8, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "It is clear that vec n unitaire.", "spans": [{"start": 17, "end": 31, "label": "MATH"}], "lang": "en"}
+{"text": "Pour tout n, frac a^2+b^2 a^2-b^2.", "spans": [{"start": 13, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "Racism is unacceptable in any society.", "spans": [], "lang": "en"}
+{"text": "Soit vec AB + vec BC strictement positif.", "spans": [{"start": 5, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer somme i=1 n a_i.", "spans": [{"start": 9, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that sqrt(x^2 - 4) > 0.", "spans": [{"start": 10, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "If sum k 1 n, the result follows.", "spans": [{"start": 3, "end": 12, "label": "MATH"}], "lang": "en"}
+{"text": "Calculer vec OA + vec OB.", "spans": [{"start": 9, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "From the lecture, somme k=1 n k.", "spans": [{"start": 18, "end": 31, "label": "MATH"}], "lang": "en"}
+{"text": "La limite de vitesse en ville est de 50.", "spans": [], "lang": "fr"}
+{"text": "produit k 1 n", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "intégrale 0 +inf e^-x dx", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "frac x+1 x-1", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider lim n -> +inf (1+1/n)^n.", "spans": [{"start": 9, "end": 32, "label": "MATH"}], "lang": "en"}
+{"text": "Considérons somme n=0 +inf x^n / n!.", "spans": [{"start": 12, "end": 35, "label": "MATH"}], "lang": "fr"}
+{"text": "It is clear that lim n +inf u_n.", "spans": [{"start": 17, "end": 31, "label": "MATH"}], "lang": "en"}
+{"text": "En classe on a vu racine 3.", "spans": [{"start": 18, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit int_0^1 x dx strictement positif.", "spans": [{"start": 5, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout n, produit i=0 n a_i.", "spans": [{"start": 13, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "Évaluer sqrt x+1.", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "Évaluer vecteur AB + vecteur BC.", "spans": [{"start": 8, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "Compute frac e^x e^x+1.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "Pour tout n, -inf.", "spans": [{"start": 13, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Compute prod k 1 n k.", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "frac a^2+b^2 a^2-b^2", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "We have somme k=0 n+1 k.", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "Il s'est cassé en mille fractures.", "spans": [], "lang": "fr"}
+{"text": "Consider vec OM.", "spans": [{"start": 9, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "On suppose integrale a b f(x) dx.", "spans": [{"start": 11, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "La somme demandée est trop élevée.", "spans": [], "lang": "fr"}
+{"text": "We then have produit k 1 n k.", "spans": [{"start": 13, "end": 28, "label": "MATH"}], "lang": "en"}
+{"text": "Soit racine x strictement positif.", "spans": [{"start": 5, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons x -> +inf.", "spans": [{"start": 12, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "It is clear that lim x 0 f(x).", "spans": [{"start": 17, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "Let frac 1 2.", "spans": [{"start": 4, "end": 12, "label": "MATH"}], "lang": "en"}
+{"text": "L'enseignant a écrit rac x au tableau.", "spans": [{"start": 21, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "We then have limite x +inf 1/x.", "spans": [{"start": 13, "end": 30, "label": "MATH"}], "lang": "en"}
+{"text": "Calculons Sum k=1 n k(k+1).", "spans": [{"start": 10, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "He paid a hefty sum for that car.", "spans": [], "lang": "en"}
+{"text": "somme k 1 n", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Il a payé une grosse somme pour cette voiture.", "spans": [], "lang": "fr"}
+{"text": "Pour tout n, sum i 1 n a_i.", "spans": [{"start": 13, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "On a sqrt x^2 + 1.", "spans": [{"start": 5, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Let frac (a+b)^2 (a-b)^2.", "spans": [{"start": 4, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "frac dx dt", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "On note F = somme k 1 n k^2.", "spans": [{"start": 12, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "On a lim x -> 0 sin x / x.", "spans": [{"start": 5, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "int 0 pi sin x dx", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Sa patience avait atteint sa limite.", "spans": [], "lang": "fr"}
+{"text": "int 0 1 x dx", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, somme k 0 n (-1)^k.", "spans": [{"start": 16, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "If x -> +inf, the result follows.", "spans": [{"start": 3, "end": 12, "label": "MATH"}], "lang": "en"}
+{"text": "Combattre le racisme est l'affaire de tous.", "spans": [], "lang": "fr"}
+{"text": "Il est clair que limite x -> 0 sin x / x.", "spans": [{"start": 17, "end": 40, "label": "MATH"}], "lang": "fr"}
+{"text": "We have forall x in [0,1].", "spans": [{"start": 8, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "Les fractales ont une structure auto-similaire.", "spans": [], "lang": "fr"}
+{"text": "somme i 0 N x_i", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Evaluate prod k=1 n k.", "spans": [{"start": 9, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "On note F = forall epsilon > 0.", "spans": [{"start": 12, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "L'enseignant a écrit int 0 1 au tableau.", "spans": [{"start": 21, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "There is a limit to my patience.", "spans": [], "lang": "en"}
+{"text": "On a alors lim x 0.", "spans": [{"start": 11, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "L'expression vec AB = (3, -1) se simplifie.", "spans": [{"start": 13, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "lim x -> +inf f(x) = 0", "spans": [{"start": 0, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculons racine n+1.", "spans": [{"start": 10, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, somme k=1 n k.", "spans": [{"start": 18, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "L'enseignant a écrit int 0 1 x^2 dx au tableau.", "spans": [{"start": 21, "end": 35, "label": "MATH"}], "lang": "fr"}
+{"text": "racine x+1", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Note that somme k 1 n k.", "spans": [{"start": 10, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "The fractal patterns of nature are fascinating.", "spans": [], "lang": "en"}
+{"text": "Pour tout n, produit k=1 n (2k+1).", "spans": [{"start": 13, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout n, lim x -> 0 f(x).", "spans": [{"start": 13, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Le rendu intégral du film dure trois heures.", "spans": [], "lang": "fr"}
+{"text": "Évaluer vec AB . vec AC.", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Let vec u . vec v.", "spans": [{"start": 4, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "Je connais la somme par cœur.", "spans": [], "lang": "fr"}
+{"text": "vec u + vec v", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Cette idée est un puissant vecteur de changement.", "spans": [], "lang": "fr"}
+{"text": "The age limit for the competition is twenty-five.", "spans": [], "lang": "en"}
+{"text": "Le rayon produits frais est au fond du magasin.", "spans": [], "lang": "fr"}
+{"text": "rac x", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "-inf", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "inf {x : x in R, x > 0}", "spans": [{"start": 0, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Il faut s'attaquer à la racine du mal.", "spans": [], "lang": "fr"}
+{"text": "By definition, lim x -> 0 sin x / x.", "spans": [{"start": 15, "end": 35, "label": "MATH"}], "lang": "en"}
+{"text": "On pose sum k=1 n k.", "spans": [{"start": 8, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that vec AB + vec BC > 0.", "spans": [{"start": 10, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "Consider frac a b.", "spans": [{"start": 9, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "Il y a une limite à ne pas dépasser.", "spans": [], "lang": "fr"}
+{"text": "We've reached the speed limit on this road.", "spans": [], "lang": "en"}
+{"text": "vec u = (1, 2)", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "We deduce sqrt(x+1).", "spans": [{"start": 10, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "frac (a+b)^2 (a-b)^2", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Prove that lim x 0 sin x / x is well-defined.", "spans": [{"start": 11, "end": 28, "label": "MATH"}], "lang": "en"}
+{"text": "On pose frac (a+b)^2 (a-b)^2.", "spans": [{"start": 8, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "J'ai mis ma somme de côté ce mois-ci.", "spans": [], "lang": "fr"}
+{"text": "Évaluer exists x in R.", "spans": [{"start": 8, "end": 21, "label": "MATH"}], "lang": "fr"}

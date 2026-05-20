@@ -2,19 +2,193 @@
 <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="OnRibbonLoad">
   <ribbon>
     <tabs>
+      <!--
+        Onglet Accueil (TabHome) : duo immédiat utile (cf. ADR
+        2026-05-11-Feat-ribbon-home-duo-plus-dedicated-tab). Convertir +
+        Colonnes seulement, le reste va dans l'onglet dédié MathCursor.
+        Icônes PNG embarquées via getImage="OnGetButtonImage" (sources
+        SVG dans tools/icons/ribbon/, rasterisation par
+        tools/icons/rasterize-ribbon-icons.ps1).
+      -->
       <tab idMso="TabHome">
-        <group id="MathCursorGroup" getLabel="OnGetGroupLabel">
-          <button id="ReportIssueButton"
+        <group id="MathCursorHomeGroup" getLabel="OnGetHomeGroupLabel">
+          <menu id="ColumnsHomeMenu"
+                getLabel="OnGetColumnsMenuLabel"
+                getScreentip="OnGetColumnsMenuScreentip"
+                size="large"
+                getImage="OnGetButtonImage">
+            <button id="InsertColumns1Button"
+                    getLabel="OnGetColumns1Label"
+                    getImage="OnGetButtonImage"
+                    onAction="OnInsertColumnsClicked" />
+            <button id="InsertColumns2Button"
+                    getLabel="OnGetColumns2Label"
+                    getImage="OnGetButtonImage"
+                    onAction="OnInsertColumnsClicked" />
+            <button id="InsertColumns3Button"
+                    getLabel="OnGetColumns3Label"
+                    getImage="OnGetButtonImage"
+                    onAction="OnInsertColumnsClicked" />
+            <button id="InsertColumns4Button"
+                    getLabel="OnGetColumns4Label"
+                    getImage="OnGetButtonImage"
+                    onAction="OnInsertColumnsClicked" />
+          </menu>
+        </group>
+      </tab>
+
+      <!-- Onglet dédié MathCursor : galerie complète (cf. ADR 2026-05-11). -->
+      <tab id="MathCursorTab" getLabel="OnGetMathCursorTabLabel">
+        <!-- Groupe Saisie -->
+        <group id="MathCursorInputGroup" getLabel="OnGetInputGroupLabel">
+          <button id="CheatsheetButton"
+                  getLabel="OnGetCheatsheetButtonLabel"
+                  getScreentip="OnGetCheatsheetButtonScreentip"
+                  getEnabled="OnGetCheatsheetEnabled"
+                  size="large"
+                  getImage="OnGetButtonImage"
+                  onAction="OnCheatsheetClicked" />
+        </group>
+
+        <!-- Groupe Mise en page -->
+        <group id="MathCursorLayoutGroup" getLabel="OnGetLayoutGroupLabel">
+          <menu id="ColumnsTabMenu"
+                getLabel="OnGetColumnsMenuLabel"
+                getScreentip="OnGetColumnsMenuScreentip"
+                size="large"
+                getImage="OnGetButtonImage">
+            <button id="InsertColumns1TabButton"
+                    getLabel="OnGetColumns1Label"
+                    getImage="OnGetButtonImage"
+                    onAction="OnInsertColumnsClicked" />
+            <button id="InsertColumns2TabButton"
+                    getLabel="OnGetColumns2Label"
+                    getImage="OnGetButtonImage"
+                    onAction="OnInsertColumnsClicked" />
+            <button id="InsertColumns3TabButton"
+                    getLabel="OnGetColumns3Label"
+                    getImage="OnGetButtonImage"
+                    onAction="OnInsertColumnsClicked" />
+            <button id="InsertColumns4TabButton"
+                    getLabel="OnGetColumns4Label"
+                    getImage="OnGetButtonImage"
+                    onAction="OnInsertColumnsClicked" />
+          </menu>
+        </group>
+
+        <!-- Groupe Constructions (roadmap, boutons grisés) -->
+        <group id="MathCursorConstructionsGroup" getLabel="OnGetConstructionsGroupLabel">
+          <button id="ConstructionSignTableButton"
+                  getLabel="OnGetConstructionSignTableLabel"
+                  getScreentip="OnGetConstructionComingSoonScreentip"
+                  getEnabled="OnGetConstructionEnabled"
+                  size="normal"
+                  getImage="OnGetButtonImage" />
+          <button id="ConstructionVariationTableButton"
+                  getLabel="OnGetConstructionVariationTableLabel"
+                  getScreentip="OnGetConstructionComingSoonScreentip"
+                  getEnabled="OnGetConstructionEnabled"
+                  size="normal"
+                  getImage="OnGetButtonImage" />
+          <button id="ConstructionCurveButton"
+                  getLabel="OnGetConstructionCurveLabel"
+                  getScreentip="OnGetConstructionComingSoonScreentip"
+                  getEnabled="OnGetConstructionEnabled"
+                  size="normal"
+                  getImage="OnGetButtonImage" />
+          <button id="ConstructionFigureButton"
+                  getLabel="OnGetConstructionFigureLabel"
+                  getScreentip="OnGetConstructionComingSoonScreentip"
+                  getEnabled="OnGetConstructionEnabled"
+                  size="normal"
+                  getImage="OnGetButtonImage" />
+        </group>
+
+        <!-- Groupe Outils -->
+        <group id="MathCursorToolsTabGroup" getLabel="OnGetToolsTabGroupLabel">
+          <button id="SettingsButton"
+                  getLabel="OnGetSettingsButtonLabel"
+                  getScreentip="OnGetSettingsButtonScreentip"
+                  size="normal"
+                  getImage="OnGetButtonImage"
+                  onAction="OnSettingsClicked" />
+          <button id="ReportIssueTabButton"
                   getLabel="OnGetReportButtonLabel"
                   getScreentip="OnGetReportButtonScreentip"
-                  size="large"
-                  imageMso="WarningOriginal"
+                  size="normal"
+                  getImage="OnGetButtonImage"
                   onAction="OnReportIssueClicked" />
+          <button id="ContextInspectorTabButton"
+                  getLabel="OnGetContextInspectorButtonLabel"
+                  getScreentip="OnGetContextInspectorButtonScreentip"
+                  size="normal"
+                  getImage="OnGetButtonImage"
+                  onAction="OnContextInspectorClicked" />
+          <!-- ── Anciens boutons debug (commentés 2026-05-19, à réactiver ponctuellement) ──
+          <button id="DebugInsertOMathButton" label="Debug : f(x)=1" size="normal" onAction="OnDebugInsertOMathClicked" />
+          <button id="DebugReplaceByOMathButton" label="Debug : replace → f(x)=1" size="normal" onAction="OnDebugReplaceByOMathClicked" />
+          <button id="DebugWrapOMathInCCButton" label="POC : wrap OMath en CC" size="normal" onAction="OnDebugWrapOMathInCCClicked" />
+          <button id="DebugReadCCAtCaretButton" label="POC : read CC at caret" size="normal" onAction="OnDebugReadCCAtCaretClicked" />
+          <button id="DebugInsertWrappedOMathButton" label="POC : insert g(x)=2 wrappé" size="normal" onAction="OnDebugInsertWrappedOMathClicked" />
+          <button id="DebugCleanupOrphanCCsButton" label="POC : cleanup orphan CCs" size="normal" onAction="OnDebugCleanupOrphanCCsClicked" />
+          <button id="DebugStepStartButton" label="POC Step : start [=1]" size="normal" onAction="OnDebugStepStartClicked" />
+          <button id="DebugStepNextButton" label="POC Step : next" size="normal" onAction="OnDebugStepNextClicked" />
+          <button id="DebugDumpCharPositionsButton" label="POC : dump char positions" size="normal" onAction="OnDebugDumpCharPositionsClicked" />
+          <button id="DebugProbeLeftNeighborButton" label="POC : probe left neighbor" size="normal" onAction="OnDebugProbeLeftNeighborClicked" />
+          <button id="DebugInsertDisplayRawButton" label="POC : display raw g(x)=1/x" size="normal" onAction="OnDebugInsertDisplayRawClicked" />
+          ──────────────────────────────────────────────────────────────────────── -->
+          <!-- Nouveaux boutons debug Display + CC reorder (2026-05-19) -->
+          <button id="DebugInspectCcAtCaretButton"
+                  label="POC : inspect CC + OMath @ caret"
+                  screentip="Dump dans l'inspecteur : OMath et CC au caret, leurs ranges, le ParentContentControl chain."
+                  size="normal"
+                  onAction="OnDebugInspectCcAtCaretClicked" />
+          <!-- Recette validée G + variantes CC à explorer pour ajouter le backlink. -->
+          <button id="DebugVariantEButton"
+                  label="Variant E : BuildUp → NO Type set → CC full para"
+                  screentip="E: TypeText → OMaths.Add+BuildUp → AUCUN Type set (trust Word auto-promo) → CC RichText sur paragraph COMPLET (block-level)."
+                  size="normal"
+                  onAction="OnDebugVariantEClicked" />
+          <button id="DebugVariantGButton"
+                  label="Variant G : recette propre SANS CC"
+                  screentip="G: TypeText → OMaths.Add+BuildUp → Type=Display, sans CC. Référence : display propre, pas de &lt;w:br/&gt;."
+                  size="normal"
+                  onAction="OnDebugVariantGClicked" />
+          <button id="DebugVariantG1Button"
+                  label="Variant G1 : G + anchor CC ZWSP avant l'OMath"
+                  screentip="G1: G + CC RichText hidden autour d'un ZWSP (​) hidden inséré juste AVANT l'OMath. Le CC ne wrappe pas l'OMath, juste un ancrage adjacent. Lookup OMath via cc.Range.Next."
+                  size="normal"
+                  onAction="OnDebugVariantG1Clicked" />
+          <button id="DebugVariantG2Button"
+                  label="Variant G2 : G + wrap CC via OOXML"
+                  screentip="G2: G + lit l'OOXML du ¶, wrap &lt;w:p&gt; dans &lt;w:sdt&gt; via XDocument, re-injecte via Range.InsertXML. Bypass l'API ContentControls.Add."
+                  size="normal"
+                  onAction="OnDebugVariantG2Clicked" />
+          <button id="DebugVariantG3Button"
+                  label="Variant G3 : G + CC RichText sur om.Range (tardif)"
+                  screentip="G3: G + CC RichText sur om.Range APRÈS Type+Justification. Test : Word a-t-il finalisé l'OMathPara au moment du CC ?"
+                  size="normal"
+                  onAction="OnDebugVariantG3Clicked" />
+          <button id="DebugVariantG4Button"
+                  label="Variant G4 : G3 + caret après l'OMath"
+                  screentip="G4: G3 + SetRange explicite caret @ cc.Range.End post-wrap, pour continuer à taper directement après l'équation (in-line, pas saut de ¶)."
+                  size="normal"
+                  onAction="OnDebugVariantG4Clicked" />
+          <button id="DebugPocDeleteButton"
+                  label="POC DELETE : OMath + anchor CC au caret"
+                  screentip="Place le caret DANS une OMath puis clique : tente de supprimer l'OMath + son anchor CC sans typetext. Logs ultra détaillés sur chaque étape (find OMath, find anchor, unlock, cc.Delete, om.Delete, état final). Diagnostic pur du problème de suppression."
+                  size="normal"
+                  onAction="OnDebugPocDeleteClicked" />
+          <button id="DebugRunScenariosButton"
+                  label="Run Word scenarios"
+                  screentip="Lance une suite de scenarios end-to-end qui exercent les fixes Word interop : prose+OMath inline, OMath seule display, liste numérotée, cellule de tableau. Ouvre un doc Word temporaire (fermé sans save) et affiche les résultats."
+                  size="normal"
+                  onAction="OnDebugRunScenariosClicked" />
           <button id="AboutButton"
                   getLabel="OnGetAboutButtonLabel"
                   getScreentip="OnGetAboutButtonScreentip"
-                  size="large"
-                  imageMso="Help"
+                  size="normal"
+                  getImage="OnGetButtonImage"
                   onAction="OnAboutClicked" />
         </group>
       </tab>

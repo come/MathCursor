@@ -1,0 +1,764 @@
+{"text": "D'après le cours, f : N -> N, n -> n^2.", "spans": [{"start": 18, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit f : x -> sqrt(x).", "spans": [{"start": 13, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "Le vecteur de la croissance, c'est l'innovation.", "spans": [], "lang": "fr"}
+{"text": "f : x -> x^3", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "P => Q", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : f: x -> x+1.", "spans": [{"start": 14, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "f continue => f bornée", "spans": [{"start": 0, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "L'ensemble des étudiants est convoqué.", "spans": [], "lang": "fr"}
+{"text": "On définit la fonction u(x,y).", "spans": [{"start": 23, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "forall x in R*", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "On définit f'(x) = 2x + 1.", "spans": [{"start": 11, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : R-*.", "spans": [{"start": 8, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Note F au contrôle de physique.", "spans": [], "lang": "fr"}
+{"text": "Lemme : (u_n, v_n).", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "À ce point précis du débat.", "spans": [], "lang": "fr"}
+{"text": "f : x -> sqrt(x)", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "Étudier f(x,y) = xy.", "spans": [{"start": 8, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Theorem: f : R \\ {0} -> R, x -> 1/x.", "spans": [{"start": 9, "end": 35, "label": "MATH"}], "lang": "en"}
+{"text": "Calculer exists x in R, x^2 = 1 ⇒ x = 1 ou x = -1.", "spans": [{"start": 9, "end": 49, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer v(1,2,3).", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "x ≥ 0 ⇔ |x| = x", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer f(x) = cos(x).", "spans": [{"start": 8, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On a P(1,1).", "spans": [{"start": 5, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "g : x -> 1/x^2", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "On note h : t ↦ cos(t).", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : forall n in N, n+1 > n => n in N.", "spans": [{"start": 14, "end": 46, "label": "MATH"}], "lang": "fr"}
+{"text": "f : R -> R, x -> 2x+1", "spans": [{"start": 0, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "n°5 sur la liste des élèves.", "spans": [], "lang": "fr"}
+{"text": "u_1 = 2", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "L'enseignant a expliqué la leçon avec beaucoup de patience.", "spans": [], "lang": "fr"}
+{"text": "Il est clair que couple (x,y).", "spans": [{"start": 17, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "cos(45°)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : point M(x,y).", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "(x,y) ∈ R^2", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x -> 2x+1", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, x in N => x in Z.", "spans": [{"start": 16, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "45°", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "C'est mon 4° anniversaire ce week-end.", "spans": [], "lang": "fr"}
+{"text": "Montrer que u_0 = 1.", "spans": [{"start": 12, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "ln(xy) = ln(x) + ln(y)", "spans": [{"start": 0, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = cos(x)", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that f:x->x+1.", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "f : x ↦ x+1", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, g : ]0,1[ -> R, x -> 1/x.", "spans": [{"start": 16, "end": 40, "label": "MATH"}], "lang": "fr"}
+{"text": "somme k 1 n f(k) = 1/x^2 + sin(x)^2", "spans": [{"start": 0, "end": 35, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : phi : x -> x^2.", "spans": [{"start": 13, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "vecteur AB(1,2)", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, g:t->sin(t).", "spans": [{"start": 18, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : f : x -> x-1.", "spans": [{"start": 13, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons psi : R+ -> R+, t -> e^(-t).", "spans": [{"start": 12, "end": 39, "label": "MATH"}], "lang": "fr"}
+{"text": "sqrt(a^2 + b^2)", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "f(k) = 1/x^2 + tan^2(x)", "spans": [{"start": 0, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "n + 2", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "(x_1, x_2, x_3)", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "psi : t -> e^(-t)", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "A ⟺ B", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose A <=> B.", "spans": [{"start": 8, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "R \\ {0}", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "M(x,y,z) = (1,2,3)", "spans": [{"start": 0, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "(a_1, a_2, ..., a_n)", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "On note h(n) = u_n + v_n.", "spans": [{"start": 8, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "A(0,0,0)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "g(x) = x*ln(x)", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons g : x -> x^2.", "spans": [{"start": 12, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "(x+1)^2 = x^2 + 2x + 1", "spans": [{"start": 0, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : f : x -> 2x+1.", "spans": [{"start": 13, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose \\vec{u} = (1,2,3).", "spans": [{"start": 8, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "We have f : R -> R, x -> sin(x).", "spans": [{"start": 8, "end": 31, "label": "MATH"}], "lang": "en"}
+{"text": "(a,b) in Z^2", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "sin(30°)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : h : n -> 2^n.", "spans": [{"start": 14, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : R*+.", "spans": [{"start": 8, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "(x,y) in R^2", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit point A(1,2).", "spans": [{"start": 13, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que x ≥ 0 et x ≤ 0 <=> x = 0.", "spans": [{"start": 17, "end": 41, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit V(a,b,c).", "spans": [{"start": 5, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, R*+.", "spans": [{"start": 16, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit la fonction g(x) + 1 = 2.", "spans": [{"start": 17, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "Somme k 1 n f(k) = 1/x^2 + tan^2(x) / sqrt(4+1)", "spans": [{"start": 0, "end": 47, "label": "MATH"}], "lang": "fr"}
+{"text": "psi : R+ -> R+, t -> e^(-t)", "spans": [{"start": 0, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "1/x^2 + tan^2(x) / sqrt(4", "spans": [{"start": 0, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer (a_1, a_2).", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "f dérivable => f continue", "spans": [{"start": 0, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "g : x -> 2x-3", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "f : N -> R, n -> 1/(n+1)", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "f : Z -> Z, n -> n+1", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Union libre et mariage civil.", "spans": [], "lang": "fr"}
+{"text": "On en déduit \\vec{u} = (1,2).", "spans": [{"start": 13, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "* Acheter du pain", "spans": [], "lang": "fr"}
+{"text": "Soit la fonction V(0,0,0).", "spans": [{"start": 17, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons u(n) = 2^n.", "spans": [{"start": 7, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que (4+1.", "spans": [{"start": 17, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit f(x) = sqrt(x).", "spans": [{"start": 5, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que x = 1.", "spans": [{"start": 14, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit n in N \\ {0,1}.", "spans": [{"start": 5, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "On a f : x -> x+1.", "spans": [{"start": 5, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "phi : [0,2pi] -> R, t -> sin(t)", "spans": [{"start": 0, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "lim_(n->inf) (1+1/n)^n = e", "spans": [{"start": 0, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Réf : n°2026-04-29.", "spans": [], "lang": "fr"}
+{"text": "Show that x ≤ y et y ≤ x <=> x = y.", "spans": [{"start": 10, "end": 34, "label": "MATH"}], "lang": "en"}
+{"text": "On en déduit n impair <=> n = 2k+1.", "spans": [{"start": 13, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "On se retrouve à la cantine pour déjeuner ensemble.", "spans": [], "lang": "fr"}
+{"text": "1 - cos(2x) = 2 sin^2(x)", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer u : n -> u_n.", "spans": [{"start": 10, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "On note h : n -> 1/n.", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Somme k=1 n f(k) = 1/x^2 + tan^2(x) / sqrt(4+1)", "spans": [{"start": 0, "end": 47, "label": "MATH"}], "lang": "fr"}
+{"text": "Cette fonction sociale est essentielle.", "spans": [], "lang": "fr"}
+{"text": "We have f : R -> R, x -> 2x+1.", "spans": [{"start": 8, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "g(x) - 1 = 0", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Define the function g(x) = x*ln(x).", "spans": [{"start": 20, "end": 34, "label": "MATH"}], "lang": "en"}
+{"text": "- b) En déduire", "spans": [], "lang": "fr"}
+{"text": "The function of a manager is demanding.", "spans": [], "lang": "en"}
+{"text": "On vérifie n pair <=> n = 2k.", "spans": [{"start": 11, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : f : x -> x*ln(x).", "spans": [{"start": 14, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, V(1,2).", "spans": [{"start": 18, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "On définit la fonction n + 2.", "spans": [{"start": 23, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "V(1,1,1)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, R+.", "spans": [{"start": 18, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "On a n pair ⇔ n = 2k.", "spans": [{"start": 5, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider h : R -> [0,1], x -> 1/(1+x^2).", "spans": [{"start": 9, "end": 39, "label": "MATH"}], "lang": "en"}
+{"text": "Le H muet en français.", "spans": [], "lang": "fr"}
+{"text": "h : t ↦ cos(t)", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Étudier (a,b) in Z^2.", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "On note (x,y) = (1,2).", "spans": [{"start": 8, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "A <=> B", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "On définit h(x,y,z,t).", "spans": [{"start": 11, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "La fonction de directeur est exigeante.", "spans": [], "lang": "fr"}
+{"text": "Posons f : R+ -> R, x -> sqrt(x).", "spans": [{"start": 7, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "On définit f(x) = 1/x.", "spans": [{"start": 11, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer g(x) = x^3 - 3x.", "spans": [{"start": 10, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose g(a,b,c) = abc.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère sqrt(x^2 + 1).", "spans": [{"start": 13, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : sin^2(x) + cos^2(x) = 1.", "spans": [{"start": 14, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "We assume h(n) = 1/n.", "spans": [{"start": 10, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "Compute triplet (x,y,z).", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "On suppose (a_1, a_2, ..., a_n).", "spans": [{"start": 11, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "Function of the heart is to pump blood.", "spans": [], "lang": "en"}
+{"text": "Il est clair que x > 0 ⇒ x^2 > 0.", "spans": [{"start": 17, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition: x > 0 et y > 0 => xy > 0.", "spans": [{"start": 13, "end": 37, "label": "MATH"}], "lang": "en"}
+{"text": "f(x_1, x_2, x_3) = x_1 + x_2 + x_3", "spans": [{"start": 0, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "n pair ⇔ n = 2k", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "x in R+", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = (x-1)/(x+1)", "spans": [{"start": 0, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "g(a,b)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "* Item 2", "spans": [], "lang": "fr"}
+{"text": "vecteur AB", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "A et B ⇒ C", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "On a h : k -> k!.", "spans": [{"start": 5, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère point M(1,2,3).", "spans": [{"start": 13, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Un ensemble cohérent de mesures.", "spans": [], "lang": "fr"}
+{"text": "Étudier n ∈ Z*.", "spans": [{"start": 8, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : f(x_1, x_2, x_3) = x_1 + x_2 + x_3.", "spans": [{"start": 14, "end": 48, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition: f(x,y,z).", "spans": [{"start": 13, "end": 21, "label": "MATH"}], "lang": "en"}
+{"text": "On note h : R -> R+, x -> x^2.", "spans": [{"start": 8, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "f : R \\ {0} -> R, x -> 1/x", "spans": [{"start": 0, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "f(2) = 4", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "L'intersection des deux rues est dangereuse.", "spans": [], "lang": "fr"}
+{"text": "Implication of his absence is unclear.", "spans": [], "lang": "en"}
+{"text": "On en déduit f : R*+ -> R, x -> ln(x).", "spans": [{"start": 13, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "On définit psi : t -> e^(-t).", "spans": [{"start": 11, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons R-.", "spans": [{"start": 7, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "u_n = (-1)^n / (n+1)", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "We have A ⟺ B.", "spans": [{"start": 8, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "y = 2", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Rappelons que N+.", "spans": [{"start": 14, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "- Faire les exos", "spans": [], "lang": "fr"}
+{"text": "On pose f:x->x^2.", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit la fonction y in N*.", "spans": [{"start": 17, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Le directeur convoque tous les délégués demain matin.", "spans": [], "lang": "fr"}
+{"text": "Il est clair que vecteur v.", "spans": [{"start": 17, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit le triangle a un angle de 30°.", "spans": [{"start": 13, "end": 42, "label": "MATH"}], "lang": "fr"}
+{"text": "(a+b)", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer h(x,y,z) = x+y+z.", "spans": [{"start": 10, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x,y) = xy", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Union jack flag is iconic.", "spans": [], "lang": "en"}
+{"text": "R*-", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "Une intersection est interdite la nuit.", "spans": [], "lang": "fr"}
+{"text": "Vector of disease transmission.", "spans": [], "lang": "en"}
+{"text": "Étudier N*.", "spans": [{"start": 8, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "forall x in R, (x > 0 <=> -x < 0)", "spans": [{"start": 0, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : R^*+.", "spans": [{"start": 14, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "sin^2(x) + cos^2(x) = 1", "spans": [{"start": 0, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "* Question 2", "spans": [], "lang": "fr"}
+{"text": "\\vec{u} = (1,2)", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "R*+", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "Recall that u : n -> u_n.", "spans": [{"start": 12, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "ab = 0 <=> a = 0 ou b = 0", "spans": [{"start": 0, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "f : R^2 -> R, (x,y) -> x^2+y^2", "spans": [{"start": 0, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "On a ab = 0 <=> a = 0 ou b = 0.", "spans": [{"start": 5, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer que sin(30°).", "spans": [{"start": 14, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "u = (1,2,3)", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "On suppose g(a,b,c).", "spans": [{"start": 11, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons u(a,b).", "spans": [{"start": 12, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Somme k 1 n f(k) = 1/x^2 + tan^2(x) / sqrt(4+1", "spans": [{"start": 0, "end": 46, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que rotation de 90°.", "spans": [{"start": 12, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "int 0 +inf e^(-x) dx = 1", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons (x,y,z) ∈ R^3.", "spans": [{"start": 7, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that f : Z -> Z, n -> n+1.", "spans": [{"start": 10, "end": 30, "label": "MATH"}], "lang": "en"}
+{"text": "Posons \\vec{AB} = (1,2).", "spans": [{"start": 7, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Prove that g : x -> 1/x^2.", "spans": [{"start": 11, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "Montrer f(x) = 0 et g(x) = 0 ⇒ (fg)(x) = 0.", "spans": [{"start": 8, "end": 42, "label": "MATH"}], "lang": "fr"}
+{"text": "v(1,2)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "x > 0 => x^2 > 0", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer x in R+*.", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "A ⟹ B", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : (x+1)^2 = x^2 + 2x + 1.", "spans": [{"start": 8, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "Compute g : x -> x^2.", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "R\\{0}", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Étudier x ∈ R*.", "spans": [{"start": 8, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie f : x -> |x|.", "spans": [{"start": 11, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "u = (1,2)", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "A ==> B", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, f(x,y) = xy.", "spans": [{"start": 16, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie f : R^2 -> R, (x,y) -> x^2+y^2.", "spans": [{"start": 11, "end": 41, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que V(a,b).", "spans": [{"start": 12, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "n° 12 dans le classement.", "spans": [], "lang": "fr"}
+{"text": "g : x ↦ ln(x)", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Visiter l'ensemble du musée.", "spans": [], "lang": "fr"}
+{"text": "Démontrer (a+b)^2.", "spans": [{"start": 10, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x -> -x", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons g : x -> 1/x^2.", "spans": [{"start": 7, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Z*", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "forall x in R, x^2 ≥ 0 => |x| ≥ 0", "spans": [{"start": 0, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "V(x,y,z)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "On suppose f(x) = ax^2 + bx + c.", "spans": [{"start": 11, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "x in N => x in Z", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "f : R -> R, x -> x^2", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x -> |x|", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "On suppose f(x) = 1.", "spans": [{"start": 11, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = x^2+1", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "u_n -> L et v_n -> L' ⇒ u_n + v_n -> L + L'", "spans": [{"start": 0, "end": 43, "label": "MATH"}], "lang": "fr"}
+{"text": "Une réunion de parents est prévue jeudi à 18 heures.", "spans": [], "lang": "fr"}
+{"text": "(x-1)(x+1) = x^2 - 1", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère f : x -> tan(x).", "spans": [{"start": 13, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : u(a,b).", "spans": [{"start": 13, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Vecteur de transmission de la maladie.", "spans": [], "lang": "fr"}
+{"text": "D'après le cours, f : x -> ax+b.", "spans": [{"start": 18, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "point B(0,1)", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that f : R+ -> R, x -> sqrt(x).", "spans": [{"start": 10, "end": 35, "label": "MATH"}], "lang": "en"}
+{"text": "Montrer psi(s,t).", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "x^2 + 2x +", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "x in [0,1] => 0 ≤ x ≤ 1", "spans": [{"start": 0, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Bureau n°7 au premier étage.", "spans": [], "lang": "fr"}
+{"text": "R-", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "30°", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "x = 0 => x^2 = 0", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "forall x in R+, sqrt(x)^2 = x", "spans": [{"start": 0, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons la fonction f : x -> sin(x).", "spans": [{"start": 24, "end": 39, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons u(x,y).", "spans": [{"start": 7, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x -> cos(x)", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "h : n -> n^2", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "y ∈ N*", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Théorème : g : [a,b] -> R, x -> f(x).", "spans": [{"start": 11, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : f : x -> 1/x.", "spans": [{"start": 13, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, vecteur u.", "spans": [{"start": 16, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "L'équivalence entre les deux licences est admise.", "spans": [], "lang": "fr"}
+{"text": "On a (a,b,c) ∈ R^3.", "spans": [{"start": 5, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "* Préparer le contrôle", "spans": [], "lang": "fr"}
+{"text": "somme k 0 inf 1/k^2", "spans": [{"start": 0, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Une fonction de cadre supérieur.", "spans": [], "lang": "fr"}
+{"text": "On suppose x ≥ 0 ⇔ |x| = x.", "spans": [{"start": 11, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "x in [0,1] et x in [1,2] <=> x = 1", "spans": [{"start": 0, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x -> (x-1)/(x+1)", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "(A et B) => C", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "n impair <=> n = 2k+1", "spans": [{"start": 0, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que f : R* -> R, x -> 1/x.", "spans": [{"start": 12, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : f(x) = sin(x).", "spans": [{"start": 14, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Rappelons que sin(45°) = sqrt(2)/2.", "spans": [{"start": 14, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "somme k 1 n k^2", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "- Réserver le restaurant", "spans": [], "lang": "fr"}
+{"text": "f : x -> sin(x)", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "u_n = u_(n-1) + 1", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "exp(x+y) = exp(x) * exp(y)", "spans": [{"start": 0, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons la fonction x in R+*.", "spans": [{"start": 24, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "La fonction publique recrute des enseignants.", "spans": [], "lang": "fr"}
+{"text": "rotation de 45°", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x ↦ x^2", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que somme k 1 n f(k) = 1/x^2 + sin(x)^2.", "spans": [{"start": 12, "end": 47, "label": "MATH"}], "lang": "fr"}
+{"text": "u(1,2,3)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "x^2 +", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "On définit forall x in R+*.", "spans": [{"start": 11, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = ln(x)", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer 60°.", "spans": [{"start": 8, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer V(0,0).", "spans": [{"start": 9, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons forall x in R \\ {0}.", "spans": [{"start": 12, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "sin(45°) = sqrt(2)/2", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "le triangle a un angle de 30°", "spans": [{"start": 0, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "Show that x = 0 ⇔ x^2 = 0.", "spans": [{"start": 10, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "f(x) = x+1", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Let P => Q.", "spans": [{"start": 4, "end": 10, "label": "MATH"}], "lang": "en"}
+{"text": "- Call the doctor", "spans": [], "lang": "en"}
+{"text": "N*", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "h : R -> [0,1], x -> 1/(1+x^2)", "spans": [{"start": 0, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "On note u = (1,2).", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "R*", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère V(x,y).", "spans": [{"start": 13, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "sqrt(x^2 + 1)", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que P(0) et (P(n) => P(n+1)).", "spans": [{"start": 17, "end": 41, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = x^2 - 3x + 2", "spans": [{"start": 0, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit f : Z -> Z, n -> n+1.", "spans": [{"start": 13, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = sin(x)", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Rappelons que f(x,y,z).", "spans": [{"start": 14, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, Z \\ {0}.", "spans": [{"start": 16, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "V(2,3)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Plan F en cas d'urgence.", "spans": [], "lang": "fr"}
+{"text": "M(x,y,z)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "1/x^2 + tan^2(x) / sqrt(4+1)", "spans": [{"start": 0, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "f : R^3 -> R, (x,y,z) -> x+y+z", "spans": [{"start": 0, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons la fonction f : x -> exp(x).", "spans": [{"start": 24, "end": 39, "label": "MATH"}], "lang": "fr"}
+{"text": "(4+1)", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "On suppose f : x -> e^x.", "spans": [{"start": 11, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x -> x^2", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "R \\ {0, 1}", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, AB = (1,2,3).", "spans": [{"start": 18, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "h : n -> 2^n", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "h(u,v)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie A ⇔ B.", "spans": [{"start": 11, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "N \\ {0}", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "A ⇔ B", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer (x,y) in R^2.", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Rappelons que forall x in R, (x > 0 <=> -x < 0).", "spans": [{"start": 14, "end": 47, "label": "MATH"}], "lang": "fr"}
+{"text": "Rappelons que R*-.", "spans": [{"start": 14, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons la fonction forall x in R*.", "spans": [{"start": 24, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons f(x) = sqrt(x).", "spans": [{"start": 12, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "By definition, (x,y) ∈ R^2.", "spans": [{"start": 15, "end": 26, "label": "MATH"}], "lang": "en"}
+{"text": "V(-1,2)", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "On définit la fonction f(x) = exp(x).", "spans": [{"start": 23, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons la fonction x in R \\ {0}.", "spans": [{"start": 24, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "Mettre les points sur les i.", "spans": [], "lang": "fr"}
+{"text": "Rappelons que f : x ↦ x+1.", "spans": [{"start": 14, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "(x,y,z) = (0,0,0)", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Rappelons que g : t -> cos(t) + sin(t).", "spans": [{"start": 14, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "* Lire le chapitre 4", "spans": [], "lang": "fr"}
+{"text": "On définit x = 0 => x^2 = 0.", "spans": [{"start": 11, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "On définit la fonction V(1,-2,3).", "spans": [{"start": 23, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : R^* \\ {1}.", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit f : x -> -x.", "spans": [{"start": 13, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "g(a,b,c,d)", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : u = (1,2,3).", "spans": [{"start": 14, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que u : n -> u_n.", "spans": [{"start": 12, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "g : [0,1] -> R, x -> x*(1-x)", "spans": [{"start": 0, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Suppose A <=> B.", "spans": [{"start": 8, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "Montrer que x^2 + 2x + 1.", "spans": [{"start": 12, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "On a f : x -> x^2+1.", "spans": [{"start": 5, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = (x+1)(x-1) = x^2 - 1", "spans": [{"start": 0, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Q*", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = ax^2 + bx + c", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "P <=> Q", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x -> e^x", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose R \\ {0}.", "spans": [{"start": 8, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "M(x,y)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que R-*.", "spans": [{"start": 12, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "x ≥ 0 et x ≤ 0 <=> x = 0", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "g : [0;1] -> R, x -> x^2", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère h : n -> 2^n.", "spans": [{"start": 13, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons la fonction f(x,y).", "spans": [{"start": 24, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x -> tan(x)", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit h : t ↦ cos(t).", "spans": [{"start": 5, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons P(1,1).", "spans": [{"start": 12, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, ln(xy) = ln(x) + ln(y).", "spans": [{"start": 16, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "f : R \\to R, x \\mapsto x^2", "spans": [{"start": 0, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x -> x*ln(x)", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "Let n pair ⇔ n = 2k.", "spans": [{"start": 4, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "Lemme : f(2) = 4.", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons Z*.", "spans": [{"start": 7, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que f : R^3 -> R, (x,y,z) -> x+y+z.", "spans": [{"start": 12, "end": 42, "label": "MATH"}], "lang": "fr"}
+{"text": "triplet (x,y,z)", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Étudier A et B ⇒ C.", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer x ∈ R \\ {0}.", "spans": [{"start": 8, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons V(x,y,z).", "spans": [{"start": 7, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit f : x -> x^2.", "spans": [{"start": 5, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère f : x ↦ x^2.", "spans": [{"start": 13, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, 1/x^2 + tan^2(x) / sqrt(4+1).", "spans": [{"start": 18, "end": 46, "label": "MATH"}], "lang": "fr"}
+{"text": "R^* \\ {1}", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "u_n = 0", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "h(n) = u_n + v_n", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons g(a,b) = a+b.", "spans": [{"start": 12, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "AB = (1,2,3)", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "vecteur v", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "1/x^2 + tan^2(x) /", "spans": [{"start": 0, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = x^2", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer forall x in R, x^2 ≥ 0 => |x| ≥ 0.", "spans": [{"start": 9, "end": 42, "label": "MATH"}], "lang": "fr"}
+{"text": "intégrale de 0 à 1 x^2 dx = 1/3", "spans": [{"start": 0, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "f'(x) = 3x^2 - 2", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "x in R => x^2 in R+", "spans": [{"start": 0, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer f : x -> x^3.", "spans": [{"start": 9, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "phi(x,y)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "g : t -> cos(t) + sin(t)", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "point M(1,2,3)", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "forall x in R \\ {0}", "spans": [{"start": 0, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Une union sacrée pour la paix.", "spans": [], "lang": "fr"}
+{"text": "Un ensemble de pavillons modernes.", "spans": [], "lang": "fr"}
+{"text": "On a racine carrée de x^2 + 1.", "spans": [{"start": 5, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "x > 0 ⇒ x^2 > 0", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "\\vec{u} = (1,2,3)", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "h(x,y,z,t)", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x -> x-1", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que R+*.", "spans": [{"start": 17, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "On a forall x in R+*.", "spans": [{"start": 5, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "P(1,1)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "x = 0", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "N\\{0}", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Étudier x in R^* x R^*.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit la fonction f : x -> x*ln(x).", "spans": [{"start": 17, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = 1", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "On note x in A => x in A U B.", "spans": [{"start": 8, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Théorème : vecteur AB.", "spans": [{"start": 11, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer f:x->x^2.", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit Z*.", "spans": [{"start": 13, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "V(1,-2,3)", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : f(x) = x^2 + 2x + 1.", "spans": [{"start": 8, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "g : x -> x^2", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons la fonction cos(45°).", "spans": [{"start": 24, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = sqrt(x)", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "- Item 1", "spans": [], "lang": "fr"}
+{"text": "V(0,0,0)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons V(1,2,3).", "spans": [{"start": 12, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Define the function ab = 0 <=> a = 0 ou b = 0.", "spans": [{"start": 20, "end": 45, "label": "MATH"}], "lang": "en"}
+{"text": "Soit angle de 60°.", "spans": [{"start": 5, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère x in [0,1] => 0 ≤ x ≤ 1.", "spans": [{"start": 13, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit g(a,b).", "spans": [{"start": 13, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Le 3° trimestre est difficile.", "spans": [], "lang": "fr"}
+{"text": "On en déduit f : x -> sqrt(x).", "spans": [{"start": 13, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "cos(30°) = sqrt(3)/2", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "V(0,0)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit P(0,0).", "spans": [{"start": 13, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : A <==> B.", "spans": [{"start": 14, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x,y) = sqrt(x^2+y^2)", "spans": [{"start": 0, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : v(1,2,3).", "spans": [{"start": 13, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On note x in R => x^2 in R+.", "spans": [{"start": 8, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x -> 1/(x+1)", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "A <==> B", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "g(x) = x^3 - 3x", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "- Téléphoner au médecin", "spans": [], "lang": "fr"}
+{"text": "Calculer g : x ↦ ln(x).", "spans": [{"start": 9, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "V(1,2)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "x in R^* x R^*", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "un angle droit de 90°", "spans": [{"start": 0, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "f : N* -> R, n -> 1/n", "spans": [{"start": 0, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "x in A inter B => x in A", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "On définit f(x) = 2x+3.", "spans": [{"start": 11, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Equivalence of degrees is required.", "spans": [], "lang": "en"}
+{"text": "On définit la fonction f : x -> (x-1)/(x+1).", "spans": [{"start": 23, "end": 43, "label": "MATH"}], "lang": "fr"}
+{"text": "On note P => Q.", "spans": [{"start": 8, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "x ∈ R*", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Point of view of the author is clear.", "spans": [], "lang": "en"}
+{"text": "Soit la fonction u = (1,2,3).", "spans": [{"start": 17, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "x in R \\ {0}", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "On note M(x,y).", "spans": [{"start": 8, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "u(x,y)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit x = 0 ⇔ x^2 = 0.", "spans": [{"start": 5, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "On définit la fonction g : x ↦ ln(x).", "spans": [{"start": 23, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que f : R \\ {0} -> R, x -> 1/x.", "spans": [{"start": 12, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère R^+*.", "spans": [{"start": 13, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider g(a,b,c) = abc.", "spans": [{"start": 9, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "f(x,y)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "f(1) = 0", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : triplet (x,y,z).", "spans": [{"start": 14, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "Son implication dans le projet est totale.", "spans": [], "lang": "fr"}
+{"text": "f:x->x^2", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Il est clair que M(x,y,z) = (1,2,3).", "spans": [{"start": 17, "end": 35, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que A(0,0,0).", "spans": [{"start": 12, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : f:x->x+1.", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "tan(60°)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère A(1,2,3).", "spans": [{"start": 13, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Étudier A ⟺ B.", "spans": [{"start": 8, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, f : N -> R, n -> 1/(n+1).", "spans": [{"start": 16, "end": 40, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons g(a,b,c,d).", "spans": [{"start": 7, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "On a N\\{0}.", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "u_0 = 1", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "* Faire les courses", "spans": [], "lang": "fr"}
+{"text": "exists x in R+*", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "On définit la fonction un angle droit de 90°.", "spans": [{"start": 23, "end": 44, "label": "MATH"}], "lang": "fr"}
+{"text": "x in R*", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider f continue => f bornée.", "spans": [{"start": 9, "end": 31, "label": "MATH"}], "lang": "en"}
+{"text": "g(n) = sum k 1 n k = n(n+1)/2", "spans": [{"start": 0, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "p <=> q", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer A => B.", "spans": [{"start": 9, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "* Devoir maison", "spans": [], "lang": "fr"}
+{"text": "x > 0 et y > 0 => xy > 0", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "P(0,0)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "\\vec{AB} = (1,2)", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "x^2 + 2x + 1", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Étudier f : x -> ln(x).", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Fonction f en mathématiques.", "spans": [], "lang": "fr"}
+{"text": "D'après le cours, N+.", "spans": [{"start": 18, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit la fonction f : x -> |x|.", "spans": [{"start": 17, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "V(1,2,3)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer x ≥ 0 => sqrt(x) ≥ 0.", "spans": [{"start": 9, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "Recall that f : R -> R, x -> x^2.", "spans": [{"start": 12, "end": 32, "label": "MATH"}], "lang": "en"}
+{"text": "1/x^2 + tan^2(x) / sqrt", "spans": [{"start": 0, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer u(1,2,3).", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Somme k 1 n f(k) = 1/x^2 + tan^2(x) / sqrt(4)", "spans": [{"start": 0, "end": 45, "label": "MATH"}], "lang": "fr"}
+{"text": "exists x in R, x^2 = 1 ⇒ x = 1 ou x = -1", "spans": [{"start": 0, "end": 40, "label": "MATH"}], "lang": "fr"}
+{"text": "Théorème : f(x) = 0 <=> x = 0.", "spans": [{"start": 11, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "v(1,2,3)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "couple (x,y)", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "180°", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "* Premier exercice", "spans": [], "lang": "fr"}
+{"text": "N+", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "(x,y) = (1,2)", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "rotation de 90°", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "h : k -> k!", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "forall x in R+*", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "R^*+", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "On définit la fonction x in R*.", "spans": [{"start": 23, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "Article n° 42 de la Constitution.", "spans": [], "lang": "fr"}
+{"text": "L'union européenne est née en 1992.", "spans": [], "lang": "fr"}
+{"text": "f'(x) = 2x + 1", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Cette implication entraîne plusieurs conséquences.", "spans": [], "lang": "fr"}
+{"text": "90°", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit la fonction f : x -> -x.", "spans": [{"start": 17, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "x ≥ 0 => sqrt(x) ≥ 0", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "y in N*", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer f : x -> 1/(x+1).", "spans": [{"start": 9, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer point B(0,1).", "spans": [{"start": 9, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que (A et B) => C.", "spans": [{"start": 12, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère f(x) = 1/x.", "spans": [{"start": 13, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "f : R* -> R, x -> 1/x", "spans": [{"start": 0, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "R+*", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "• À traiter en cours", "spans": [], "lang": "fr"}
+{"text": "forall n in N, n+1 > n => n in N", "spans": [{"start": 0, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, cos(30°) = sqrt(3)/2.", "spans": [{"start": 18, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que f : x -> sin(x).", "spans": [{"start": 12, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Rappelons que f(x,y) = x^2 + y^2.", "spans": [{"start": 14, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "f:x->x+1", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons la fonction u(n) = 2^n.", "spans": [{"start": 24, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "Une équivalence des diplômes est demandée.", "spans": [], "lang": "fr"}
+{"text": "* Item 1", "spans": [], "lang": "fr"}
+{"text": "Lemme : n^2 pair => n pair.", "spans": [{"start": 8, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit la fonction phi : x -> x^2.", "spans": [{"start": 17, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "Étudier p <=> q.", "spans": [{"start": 8, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "* Read chapter 4", "spans": [], "lang": "en"}
+{"text": "f : R -> R, x -> sin(x)", "spans": [{"start": 0, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "A(1,2,3)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "f : N -> N, n -> n^2", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "u_n = u_(n-1) + 2", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "(4+1", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x -> ln(x)", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "x in A => x in A U B", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons f(x) = (x-1)/(x+1).", "spans": [{"start": 7, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "On définit la fonction vecteur v.", "spans": [{"start": 23, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, f(x) = x^2.", "spans": [{"start": 16, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "1/x^2 + tan^2(x) / sqrt(4+1", "spans": [{"start": 0, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "On a f : R \\to R, x \\mapsto x^2.", "spans": [{"start": 5, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : f : x -> x^2+1.", "spans": [{"start": 13, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose g(x) = x^3 - 3x.", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit forall x in R+, sqrt(x)^2 = x.", "spans": [{"start": 13, "end": 42, "label": "MATH"}], "lang": "fr"}
+{"text": "n in N \\ {0,1}", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : x in R*.", "spans": [{"start": 8, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : rotation de 45°.", "spans": [{"start": 14, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "psi(s,t)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "L'implication politique du président est forte.", "spans": [], "lang": "fr"}
+{"text": "Le vecteur principal du projet est l'équipe.", "spans": [], "lang": "fr"}
+{"text": "Théorème : vecteur u(1,2,3).", "spans": [{"start": 11, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, \\vec{u} = (1,2).", "spans": [{"start": 16, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "Let f : x -> ax+b.", "spans": [{"start": 4, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "- Devoir maison", "spans": [], "lang": "fr"}
+{"text": "Rappelons que f(x) = x^2+1.", "spans": [{"start": 14, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons la fonction point A(1,2).", "spans": [{"start": 24, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "- Réviser", "spans": [], "lang": "fr"}
+{"text": "On suppose u(1,2).", "spans": [{"start": 11, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "h : n -> 1/n", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "(x,y,z) in R^3", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "* Question 1", "spans": [], "lang": "fr"}
+{"text": "* À acheter au magasin", "spans": [], "lang": "fr"}
+{"text": "P(0) et (P(n) => P(n+1))", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "f : R+ -> R, x -> sqrt(x)", "spans": [{"start": 0, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "g : [a,b] -> R, x -> f(x)", "spans": [{"start": 0, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x -> 1/x", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit R+*.", "spans": [{"start": 5, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer f : x -> cos(x).", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "x ∈ R+*", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "sum_(k=0)^inf 1/k! = e", "spans": [{"start": 0, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "non A => non B", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "n^2 pair => n pair", "spans": [{"start": 0, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "g(x) + 1 = 2", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit f : R -> R, x -> x^2.", "spans": [{"start": 13, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "g : t -> sin(t)", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "A => B", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = exp(x)", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "f : R*+ -> R, x -> ln(x)", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Étudier x = y <=> y = x.", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, R\\{0}.", "spans": [{"start": 16, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons la fonction non A => non B.", "spans": [{"start": 24, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer A ⟹ B.", "spans": [{"start": 9, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "- Premier point", "spans": [], "lang": "fr"}
+{"text": "Le point de vue de l'auteur est clair.", "spans": [], "lang": "fr"}
+{"text": "R-*", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons f : N* -> R, n -> 1/n.", "spans": [{"start": 12, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "g:t->sin(t)", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : sum_(k=1)^n k = n(n+1)/2.", "spans": [{"start": 13, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer u(1,2,3).", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit exists x in R+*.", "spans": [{"start": 5, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons f : x -> x-1.", "spans": [{"start": 12, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "À l'intersection on tourne à droite.", "spans": [], "lang": "fr"}
+{"text": "f(x) = 0 <=> x = 0", "spans": [{"start": 0, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose M(x,y,z).", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "On note V(2,3).", "spans": [{"start": 8, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "On a x > 0 => x^2 > 0.", "spans": [{"start": 5, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On note point B(0,1).", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemma: g : ]0,1[ -> R, x -> 1/x.", "spans": [{"start": 7, "end": 31, "label": "MATH"}], "lang": "en"}
+{"text": "On définit V(1,1,1).", "spans": [{"start": 11, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer u_1 = 2.", "spans": [{"start": 9, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x -> x^2+1", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Les élèves devront rendre le devoir lundi prochain matin.", "spans": [], "lang": "fr"}
+{"text": "On suppose (x,y) ∈ R^2.", "spans": [{"start": 11, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "• Préparer la valise", "spans": [], "lang": "fr"}
+{"text": "Lemme : R*.", "spans": [{"start": 8, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = 0", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer Somme k 1 n f(k) = 1/x^2 + tan^2(x) / sqrt(4.", "spans": [{"start": 10, "end": 54, "label": "MATH"}], "lang": "fr"}
+{"text": "Compute f : x -> x^3.", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "On suppose h(u,v).", "spans": [{"start": 11, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Le point M est important pour la suite.", "spans": [], "lang": "fr"}
+{"text": "We note g(a,b) = a+b.", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "On en déduit vecteur AB(1,2).", "spans": [{"start": 13, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "angle de 60°", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "n - 1", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "p => q", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x -> x+1", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "u(1,2)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "f'(x) = cos(x) - sin(x)", "spans": [{"start": 0, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit f dérivable => f continue.", "spans": [{"start": 5, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "Démontrer R \\ {0, 1}.", "spans": [{"start": 10, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Plan G secret défense.", "spans": [], "lang": "fr"}
+{"text": "Considérons phi : [0,2pi] -> R, t -> sin(t).", "spans": [{"start": 12, "end": 43, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons A ==> B.", "spans": [{"start": 12, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit V(-1,2).", "spans": [{"start": 5, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons u_n = (-1)^n / (n+1).", "spans": [{"start": 7, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider A ==> B.", "spans": [{"start": 9, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "(x,y,z) ∈ R^3", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Z \\ {0}", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer f : R -> R, x -> sin(x).", "spans": [{"start": 8, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "1° cas, 2° cas et 3° cas dans le cours.", "spans": [], "lang": "fr"}
+{"text": "V(x,y)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "g(a,b,c)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "u : n -> u_n", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition: f : R^3 -> R, (x,y,z) -> x+y+z.", "spans": [{"start": 13, "end": 43, "label": "MATH"}], "lang": "en"}
+{"text": "(a+b)^2", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "vecteur u(1,2,3)", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "f(0) = 1", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "x ≤ y et y ≤ x <=> x = y", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer h : n -> n^2.", "spans": [{"start": 9, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "We have f : N -> R, n -> 1/(n+1).", "spans": [{"start": 8, "end": 32, "label": "MATH"}], "lang": "en"}
+{"text": "On considère f : x -> 2x+1.", "spans": [{"start": 13, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer g : [0;1] -> R, x -> x^2.", "spans": [{"start": 9, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x,y,z)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "On note g(x) = x*ln(x).", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : g : t -> cos(t) + sin(t).", "spans": [{"start": 14, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit v(1,2).", "spans": [{"start": 5, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit phi(x,y).", "spans": [{"start": 13, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère (forall x, P(x)) => (exists x, P(x)).", "spans": [{"start": 13, "end": 49, "label": "MATH"}], "lang": "fr"}
+{"text": "Un vecteur idéologique majeur.", "spans": [], "lang": "fr"}
+{"text": "(a_1, a_2)", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "phi : x -> x^2", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = 1/x", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Reference number n°123.", "spans": [], "lang": "en"}
+{"text": "1 + 2 + 3 + ... + n = n(n+1)/2", "spans": [{"start": 0, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie x = 0.", "spans": [{"start": 11, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "u(n) = 2^n", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Théorème : p => q.", "spans": [{"start": 11, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "x = y <=> y = x", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "R^+*", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit la fonction g : [0,1] -> R, x -> x*(1-x).", "spans": [{"start": 17, "end": 45, "label": "MATH"}], "lang": "fr"}
+{"text": "Étudier 45°.", "spans": [{"start": 8, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "n pair <=> n = 2k", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose x > 0 et y > 0 => xy > 0.", "spans": [{"start": 8, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit N \\ {0,1}.", "spans": [{"start": 13, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Le cours de mathématiques de la semaine prochaine est annulé.", "spans": [], "lang": "fr"}
+{"text": "f : x -> exp(x)", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "1/x^2 + tan^2(x) / sqrt(4+", "spans": [{"start": 0, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x,y) = x^2 + y^2", "spans": [{"start": 0, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = x^2 + 2x + 1", "spans": [{"start": 0, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "point A(1,2)", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Item n°5 on the list.", "spans": [], "lang": "en"}
+{"text": "Considérons la fonction x in A inter B => x in A.", "spans": [{"start": 24, "end": 48, "label": "MATH"}], "lang": "fr"}
+{"text": "* Buy bread", "spans": [], "lang": "en"}
+{"text": "Lemme : x ≤ y et y ≤ x <=> x = y.", "spans": [{"start": 8, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "* a) calculer la dérivée", "spans": [], "lang": "fr"}
+{"text": "g(a,b) = a+b", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "lim_(x->0) sin(x)/x = 1", "spans": [{"start": 0, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Proposition : (x,y,z) = (0,0,0).", "spans": [{"start": 14, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "h : R -> R+, x -> x^2", "spans": [{"start": 0, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "n ∈ Z*", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "R+", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "Théorème : x in R \\ {0}.", "spans": [{"start": 11, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "A ⇒ B", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "u(a,b)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, P <=> Q.", "spans": [{"start": 18, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "x in R+*", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "int 0 1 x^2 dx = 1/3", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Set of measures must be implemented.", "spans": [], "lang": "en"}
+{"text": "racine carrée de x^2 + 1", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "On définit la fonction f:x->x+1.", "spans": [{"start": 23, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "(forall x, P(x)) => (exists x, P(x))", "spans": [{"start": 0, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie x in [0,1] et x in [1,2] <=> x = 1.", "spans": [{"start": 11, "end": 45, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : N \\ {0}.", "spans": [{"start": 8, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Posons x ∈ R+*.", "spans": [{"start": 7, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "f''(x) = 6x - 2", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons R+.", "spans": [{"start": 12, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : (x,y,z) in R^3.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons la fonction f(x,y) = sqrt(x^2+y^2).", "spans": [{"start": 24, "end": 46, "label": "MATH"}], "lang": "fr"}
+{"text": "x = 0 ⇔ x^2 = 0", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "h(x,y,z) = x+y+z", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer int 0 +inf e^(-x) dx = 1.", "spans": [{"start": 9, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "g(a,b,c) = abc", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "f : x -> ax+b", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "(a,b,c) ∈ R^3", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit f: x -> x+1.", "spans": [{"start": 5, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "x = 1", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "vecteur u", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie P(0,0).", "spans": [{"start": 11, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "V(a,b,c)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Étudier f(x) = cos(x).", "spans": [{"start": 8, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "* b) étudier le signe", "spans": [], "lang": "fr"}
+{"text": "Il est clair que x ∈ R*.", "spans": [{"start": 17, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "- a) Démontrer", "spans": [], "lang": "fr"}
+{"text": "Théorème : f(x) = x+1.", "spans": [{"start": 11, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Somme k 1 n f(k) = 1/x^2 + tan^2(x) / sqrt(4", "spans": [{"start": 0, "end": 44, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = 2x+3", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "* Réviser le chapitre 3", "spans": [], "lang": "fr"}
+{"text": "On a f continue => f bornée.", "spans": [{"start": 5, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit x in R+.", "spans": [{"start": 5, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "point M(x,y)", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "f: x -> x+1", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "n + 1", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Bullet point one is the most important.", "spans": [], "lang": "en"}
+{"text": "Corollaire : 30°.", "spans": [{"start": 13, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère f(x) = (x-1)/(x+1).", "spans": [{"start": 13, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "x^2 + 2x", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose g : t -> sin(t).", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Note that A <==> B.", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "On note f'(x) = cos(x) - sin(x).", "spans": [{"start": 8, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "Considérons la fonction (x_1, x_2, x_3).", "spans": [{"start": 24, "end": 39, "label": "MATH"}], "lang": "fr"}
+{"text": "On a h : R -> [0,1], x -> 1/(1+x^2).", "spans": [{"start": 5, "end": 35, "label": "MATH"}], "lang": "fr"}
+{"text": "Intersection of two streets is dangerous.", "spans": [], "lang": "en"}
+{"text": "Considérons la fonction R^+*.", "spans": [{"start": 24, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Lemme : somme k 1 n k^2.", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "(u_n, v_n)", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer 90°.", "spans": [{"start": 8, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "N \\ {0,1}", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Rappelons que u_n = 0.", "spans": [{"start": 14, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "* Liste des courses", "spans": [], "lang": "fr"}
+{"text": "Théorème : 180°.", "spans": [{"start": 11, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose u_n -> L et v_n -> L' ⇒ u_n + v_n -> L + L'.", "spans": [{"start": 8, "end": 51, "label": "MATH"}], "lang": "fr"}
+{"text": "• Premier exercice", "spans": [], "lang": "fr"}
+{"text": "h(n) = 1/n", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit f : x -> x^3.", "spans": [{"start": 5, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "On a A ⇒ B.", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) = 0 et g(x) = 0 ⇒ (fg)(x) = 0", "spans": [{"start": 0, "end": 34, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : y ∈ N*.", "spans": [{"start": 13, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "60°", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "x ∈ R \\ {0}", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "* Deuxième partie", "spans": [], "lang": "fr"}
+{"text": "sum_(k=1)^n k = n(n+1)/2", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Un point d'honneur à respecter.", "spans": [], "lang": "fr"}
+{"text": "On définit h(n) = 1/n.", "spans": [{"start": 11, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "g : ]0,1[ -> R, x -> 1/x", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit la fonction g : x -> 2x-3.", "spans": [{"start": 17, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "Corollaire : Q*.", "spans": [{"start": 13, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que tan(60°).", "spans": [{"start": 12, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "Montrer que f : R -> R, x -> 2x+1.", "spans": [{"start": 12, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer f(x) = ln(x).", "spans": [{"start": 9, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "V(a,b)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}

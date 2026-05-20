@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MathCursor — Démo</title>
+  <meta name="description" content="Tape une formule au clavier, vois la conversion en math classique. Le moteur tourne dans ton navigateur." />
+  <base href="./" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" />
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="stylesheet" href="demo.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="../index.html" class="brand">MathCursor</a>
+      <nav class="nav">
+        <a href="./" class="active" data-i18n="nav_demo">Démo</a>
+        <a href="../releases.html" data-i18n="nav_downloads">Téléchargements</a>
+        <a href="../index.html#installation" data-i18n="nav_install">Installation</a>
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button type="button" data-lang="fr" class="active">FR</button>
+          <button type="button" data-lang="en">EN</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="container">
+        <h1 data-i18n="demo_h1">Démo en ligne</h1>
+        <p class="lead" data-i18n="demo_lead">
+          Tape une formule, vois la conversion temps réel. Le même moteur que la version Word —
+          compilé en WebAssembly et exécuté dans ton navigateur. Aucun document n'est envoyé nulle part.
+        </p>
+
+        <div class="demo-grid">
+          <div class="demo-input">
+            <label for="ta" data-i18n="demo_label_input">Saisie</label>
+            <textarea id="ta" rows="6" data-i18n-placeholder="demo_ta_placeholder" placeholder="Tape une formule, ex : f(x) = 2x + 1" autofocus></textarea>
+            <div class="examples">
+              <span class="ex-label" data-i18n="demo_ex_try">Essaie :</span>
+              <button data-ex="f(x) = 2x + 1">f(x) = 2x + 1</button>
+              <button data-ex="lim x 0 sin x / x">lim x 0 sin x / x</button>
+              <button data-ex="somme k 1 n k^2">somme k 1 n k²</button>
+              <button data-ex="int 0 1 x^2 dx">int 0 1 x² dx</button>
+              <button data-ex="racine x+1">racine x+1</button>
+              <button data-ex="(a+b)^2 = a^2 + 2ab + b^2">(a+b)²</button>
+              <button data-ex="frac a b">frac a b</button>
+              <button data-ex="sin2(x) + cos2(x) = 1">sin²(x) + cos²(x) = 1</button>
+              <button data-ex="forall x in R, x^2 >= 0">∀ x ∈ ℝ</button>
+              <button data-ex="U_n+1 = U_n-1 + 3q^2">Uₙ₊₁ = Uₙ₋₁ + 3q²</button>
+              <button data-ex="AB" title="Ambiguïté : vec, parenthèses, crochets…">AB ▼</button>
+              <button data-ex="ABC" title="Ambiguïté : angle, triangle…">ABC ▼</button>
+              <button data-ex="x2" title="Ambiguïté : exposant ou indice">x2 ▼</button>
+              <button data-ex="V" title="Ambiguïté : ∀, √">V ▼</button>
+            </div>
+          </div>
+          <div class="demo-output">
+            <label data-i18n="demo_label_output">Aperçu</label>
+            <div id="preview" class="preview-box">
+              <span class="empty" data-i18n="demo_empty">Le rendu apparaîtra ici…</span>
+            </div>
+            <div id="alternatives" class="alternatives"></div>
+            <details class="latex-source">
+              <summary data-i18n="demo_show_latex">Voir le LaTeX généré</summary>
+              <pre id="latex"></pre>
+            </details>
+          </div>
+        </div>
+
+        <p class="hint" data-i18n="demo_hint">
+          ⓘ Démo simplifiée : pas de détection automatique de zone math, tout le contenu du textarea
+          est traité comme une formule. Dans Word, MathCursor détecte aussi la zone à convertir
+          automatiquement.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p data-i18n="demo_foot">© 2026 MathCursor · <a href="mailto:come2percin@gmail.com">Contact</a></p>
+    </div>
+  </footer>
+
+  <div id="loading" class="loading">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" data-i18n="demo_loading">Chargement du moteur…</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+  <script src="_framework/blazor.webassembly.js" autostart="false"></script>
+  <script src="demo.js"></script>
+
+  <!-- i18n FR/EN — même pattern que index.html / releases.html -->
+  <script>
+    const I18N = {
+      en: {
+        nav_demo: "Demo",
+        nav_install: "Install",
+        nav_downloads: "Downloads",
+
+        demo_h1: "Online demo",
+        demo_lead: "Type a formula, watch the live conversion. Same engine as the Word version — compiled to WebAssembly and running in your browser. No document is sent anywhere.",
+        demo_label_input: "Input",
+        demo_label_output: "Preview",
+        demo_ta_placeholder: "Type a formula, e.g. f(x) = 2x + 1",
+        demo_ex_try: "Try:",
+        demo_empty: "The rendered formula will appear here…",
+        demo_show_latex: "Show generated LaTeX",
+        demo_hint: "ⓘ Simplified demo: no automatic math-zone detection, the entire textarea is treated as a formula. In Word, MathCursor also detects the zone to convert automatically.",
+        demo_loading: "Loading engine…",
+        demo_foot: "© 2026 MathCursor · <a href=\"mailto:come2percin@gmail.com\">Contact</a>",
+
+        // Strings dynamiques utilisées par demo.js (lues via window.I18N_RUNTIME)
+        runtime_alts: "alternative",
+        runtime_alts_plural: "alternatives",
+        runtime_engine_error: "Engine error — see console",
+        runtime_no_conversion: "(no conversion proposed)",
+        runtime_load_failed: "Engine failed to load. Reload the page?"
+      },
+      fr: {
+        // strings dynamiques uniquement (le reste est en français dans le markup)
+        runtime_alts: "alternative",
+        runtime_alts_plural: "alternatives",
+        runtime_engine_error: "Erreur moteur — voir console",
+        runtime_no_conversion: "(aucune conversion proposée)",
+        runtime_load_failed: "Échec chargement moteur. Recharge la page ?"
+      }
+    };
+
+    function setLang(lang) {
+      const dict = I18N[lang];
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        if (dict && dict[key]) el.innerHTML = dict[key];
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.dataset.i18nPlaceholder;
+        if (dict && dict[key]) el.setAttribute('placeholder', dict[key]);
+      });
+      document.querySelectorAll('.lang-toggle button').forEach(b => {
+        b.classList.toggle('active', b.dataset.lang === lang);
+      });
+      // Expose les strings runtime à demo.js
+      window.I18N_RUNTIME = dict;
+      // Re-render preview pour appliquer les nouvelles strings runtime
+      if (typeof window.demoRerender === 'function') window.demoRerender();
+      try { localStorage.setItem('mc_lang', lang); } catch (e) {}
+    }
+
+    // Snapshot FR par défaut depuis le markup (textes en FR à l'origine)
+    const FR_SNAPSHOT = {};
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      FR_SNAPSHOT[el.dataset.i18n] = el.innerHTML;
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      FR_SNAPSHOT[el.dataset.i18nPlaceholder] = el.getAttribute('placeholder') || '';
+    });
+    Object.assign(I18N.fr, FR_SNAPSHOT);
+    window.I18N_RUNTIME = I18N.fr;
+
+    document.querySelectorAll('.lang-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => setLang(btn.dataset.lang));
+    });
+
+    let saved = null;
+    try { saved = localStorage.getItem('mc_lang'); } catch (e) {}
+    if (!saved) {
+      saved = (navigator.language || 'fr').toLowerCase().startsWith('en') ? 'en' : 'fr';
+    }
+    if (saved === 'en') setLang('en');
+  </script>
+</body>
+</html>

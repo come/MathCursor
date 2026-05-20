@@ -1,0 +1,167 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>MathCursor.Tests</RootNamespace>
+    <AssemblyName>MathCursor.Tests</AssemblyName>
+    <Nullable>disable</Nullable>
+    <!-- WPF activé pour les probe tests WpfMath (FormulaControl rendu hors
+         Word, cf. brief 2026-05-06-wpfmath-fallback-renderer.md). Nécessite
+         un thread STA — voir UI/StaRunner.cs. -->
+    <UseWPF>true</UseWPF>
+    <!-- Forcer x64 pour ONNX Runtime : la DLL native onnxruntime.dll n'est
+         que x64 dans notre version pinned (1.16.3, cf. ADR Bay Trail compat). -->
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- Génère App.config + binding redirects auto pour résoudre les
+         conflits de versions des assemblies System.* entre .NET Framework
+         (4.0.4.1) et NuGet packages (6.0.0.0). Sans ça, OnnxRuntime échoue
+         au TypeInitializer en chargeant System.Runtime.CompilerServices.Unsafe. -->
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+  </PropertyGroup>
+
+  <!-- Copie post-build : sur net48 + SDK csproj, les natives runtimes/win-x64/
+       du NuGet OnnxRuntime ne sont pas déployées automatiquement à côté de
+       l'assembly. Sans onnxruntime.dll dans le bin, le P/Invoke côté
+       OnnxRuntime échoue avec TypeInitializationException. On copie
+       explicitement depuis le package restored. -->
+  <Target Name="CopyOnnxRuntimeNatives" AfterTargets="Build">
+    <ItemGroup>
+      <_OnnxNativeFiles Include="$(NuGetPackageRoot)microsoft.ml.onnxruntime\1.16.3\runtimes\win-x64\native\*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_OnnxNativeFiles)"
+          DestinationFolder="$(OutDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <!-- Pour les tests NER : mêmes versions que l'adapter VSTO (cf. ADR
+         2026-04-28-Fix-ort-version-bay-trail-compat). -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.16.3" />
+    <!-- Force la version 6.0.0 de System.Runtime.CompilerServices.Unsafe :
+         OnnxRuntime 1.16.3 utilise des types qui ne sont dispos que dans
+         cette version. Sur net48 par défaut, MSBuild résout 4.0.4.1 et le
+         loader plante avec FileLoadException → TypeInitializationException
+         côté OnnxRuntime. -->
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
+    <!-- WpfMath pour les probe tests : on teste directement FormulaControl
+         pour décider Branche A (substitution Unicode + Cambria Math suffit)
+         vs Branche B (archi fallback 3 classes), cf. brief 2026-05-06. -->
+    <PackageReference Include="WpfMath" Version="2.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- IntraMergeSidecarBuilder dépend de MathCursor.Core.Resolution
+         (ResolutionSidecar, SidecarMerger). ProjectReference vers le core
+         pour réutiliser ces types sans duplication. -->
+    <ProjectReference Include="..\..\..\core-csharp\src\MathCursor.Core\MathCursor.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Word interop pour les tests d'intégration `WordIntegration` :
+       lance une vraie instance Word `Visible=false` et pilote via COM.
+       Référence PIA directe (Office 15) — alignée avec le csproj VSTO
+       d'origine. `COMReference` ne fonctionne pas avec `dotnet build`
+       (MSBuild Core ne supporte pas ResolveComReference).
+       Skip si Word non installé via le filter `Category!=WordIntegration`. -->
+  <ItemGroup>
+    <Reference Include="Microsoft.Office.Interop.Word">
+      <HintPath>C:\Windows\assembly\GAC_MSIL\Microsoft.Office.Interop.Word\15.0.0.0__71e9bce111e9429c\Microsoft.Office.Interop.Word.dll</HintPath>
+      <Private>False</Private>
+      <EmbedInteropTypes>true</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Office">
+      <HintPath>C:\Windows\assembly\GAC_MSIL\office\15.0.0.0__71e9bce111e9429c\office.dll</HintPath>
+      <Private>False</Private>
+      <EmbedInteropTypes>true</EmbedInteropTypes>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- xunit.runner.json copié à côté de l'assembly pour désactiver le
+         shadow-copy. Sinon les natives DLLs (onnxruntime.dll) ne sont pas
+         résolues car le test runner shadow-copie l'assembly ailleurs et
+         perd le bin/ original. -->
+    <None Include="xunit.runner.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Sources adapter testées : compilation directe via Compile Include.
+         Le csproj VSTO d'origine requiert MSBuild Office Tools pour build,
+         ce qu'on ne veut pas comme prérequis du test runner. Les fichiers
+         testés sont pure compute (pas de dépendance Word/VSTO) → on les
+         recompile dans l'assembly de test. -->
+    <Compile Include="..\..\src\MathCursor\UI\WpfMathAdapter.cs" Link="adapter-sources\UI\WpfMathAdapter.cs" />
+    <Compile Include="..\..\src\MathCursor\UI\MixedLatexRenderer.cs" Link="adapter-sources\UI\MixedLatexRenderer.cs" />
+    <Compile Include="..\..\src\MathCursor\Detection\DetectedZone.cs" Link="adapter-sources\Detection\DetectedZone.cs" />
+    <Compile Include="..\..\src\MathCursor\Detection\WordPiece\WordPieceTokenizer.cs" Link="adapter-sources\Detection\WordPiece\WordPieceTokenizer.cs" />
+    <Compile Include="..\..\src\MathCursor\Detection\MathNerDetector.cs" Link="adapter-sources\Detection\MathNerDetector.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\RevertedZoneMerger.cs" Link="adapter-sources\Host\RevertedZoneMerger.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\ListModeStateMachine.cs" Link="adapter-sources\Host\ListModeStateMachine.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\ListModeMarkerInjector.cs" Link="adapter-sources\Host\ListModeMarkerInjector.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\CasesCascadeMerger.cs" Link="adapter-sources\Host\CasesCascadeMerger.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\IntraMergeSidecarBuilder.cs" Link="adapter-sources\Host\IntraMergeSidecarBuilder.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Merging\IZoneMerger.cs" Link="adapter-sources\Host\Merging\IZoneMerger.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Merging\MergeResult.cs" Link="adapter-sources\Host\Merging\MergeResult.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Merging\MergerPipeline.cs" Link="adapter-sources\Host\Merging\MergerPipeline.cs" />
+    <!-- IntraOMathsMerger.cs : Word-coupled depuis P2.9, mais la partie
+         IsMergeMarker (Phase B revival, ADR 2026-05-18) est pure et testable. -->
+    <Compile Include="..\..\src\MathCursor\Host\Merging\IntraOMathsMerger.cs" Link="adapter-sources\Host\Merging\IntraOMathsMerger.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Merging\NeighborFinder.cs" Link="adapter-sources\Host\Merging\NeighborFinder.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Merging\Neighbor.cs" Link="adapter-sources\Host\Merging\Neighbor.cs" />
+    <!-- RevertedMultiLineMerger.cs : Word-coupled depuis P2.11, lien retiré du test project. -->
+    <!-- <Compile Include="..\..\src\MathCursor\Host\Merging\RevertedMultiLineMerger.cs" /> -->
+    <!-- CasesChainCascadeMerger.cs : Word-coupled depuis P2.12, lien retiré du test project. -->
+    <!-- <Compile Include="..\..\src\MathCursor\Host\Merging\CasesChainCascadeMerger.cs" /> -->
+    <!-- MarkerChainCascadeMerger.cs : Word-coupled depuis P2.12, lien retiré du test project. -->
+    <!-- <Compile Include="..\..\src\MathCursor\Host\Merging\MarkerChainCascadeMerger.cs" /> -->
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\CommitContext.cs" Link="adapter-sources\Host\Pipeline\CommitContext.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\CommitPipeline.cs" Link="adapter-sources\Host\Pipeline\CommitPipeline.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\ICommitStage.cs" Link="adapter-sources\Host\Pipeline\ICommitStage.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\Stages\MergerStage.cs" Link="adapter-sources\Host\Pipeline\Stages\MergerStage.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\Stages\ResolverStage.cs" Link="adapter-sources\Host\Pipeline\Stages\ResolverStage.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\Stages\RendererStage.cs" Link="adapter-sources\Host\Pipeline\Stages\RendererStage.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\Stages\InserterStage.cs" Link="adapter-sources\Host\Pipeline\Stages\InserterStage.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\Stages\StoreStage.cs" Link="adapter-sources\Host\Pipeline\Stages\StoreStage.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\Stages\LayoutStage.cs" Link="adapter-sources\Host\Pipeline\Stages\LayoutStage.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\Stages\CaretStage.cs" Link="adapter-sources\Host\Pipeline\Stages\CaretStage.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Pipeline\Stages\SnapshotStage.cs" Link="adapter-sources\Host\Pipeline\Stages\SnapshotStage.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Session\EquationSession.cs" Link="adapter-sources\Host\Session\EquationSession.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Session\IterativeExpansion.cs" Link="adapter-sources\Host\Session\IterativeExpansion.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Session\ListModeAnchor.cs" Link="adapter-sources\Host\Session\ListModeAnchor.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Session\RevertedMultiLineZone.cs" Link="adapter-sources\Host\Session\RevertedMultiLineZone.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Session\SessionState.cs" Link="adapter-sources\Host\Session\SessionState.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\AutocorrectNormalizer.cs" Link="adapter-sources\Host\AutocorrectNormalizer.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Detection\NerInputWindow.cs" Link="adapter-sources\Host\Detection\NerInputWindow.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Detection\ZoneRefiner.cs" Link="adapter-sources\Host\Detection\ZoneRefiner.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\ParagraphTextExtractor.cs" Link="adapter-sources\Host\ParagraphTextExtractor.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\LastActionSnapshot.cs" Link="adapter-sources\Host\LastActionSnapshot.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\LastActionTracker.cs" Link="adapter-sources\Host\LastActionTracker.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\EquationHandleRegistry.cs" Link="adapter-sources\Host\EquationHandleRegistry.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\CCMeta\MCMeta.cs" Link="adapter-sources\Host\CCMeta\MCMeta.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\CCMeta\MCMetaJson.cs" Link="adapter-sources\Host\CCMeta\MCMetaJson.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\CCMeta\Sha1Helper.cs" Link="adapter-sources\Host\CCMeta\Sha1Helper.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\CCMeta\CcMetaResolver.cs" Link="adapter-sources\Host\CCMeta\CcMetaResolver.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\ListModeController.cs" Link="adapter-sources\Host\ListModeController.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\ListModeStripGuard.cs" Link="adapter-sources\Host\ListModeStripGuard.cs" />
+    <Compile Include="..\..\src\MathCursor\Cheatsheet\CheatsheetData.cs" Link="adapter-sources\Cheatsheet\CheatsheetData.cs" />
+    <Compile Include="..\..\src\MathCursor\Cheatsheet\CheatsheetViewModel.cs" Link="adapter-sources\Cheatsheet\CheatsheetViewModel.cs" />
+    <Compile Include="..\..\src\MathCursor\Cheatsheet\CheatsheetPersistence.cs" Link="adapter-sources\Cheatsheet\CheatsheetPersistence.cs" />
+    <!-- Embed la cheatsheet JSON sous le MÊME nom logique que dans
+         MathCursor.dll, pour que CheatsheetData.LoadEmbedded() trouve la
+         ressource quel que soit l'assembly courant (test ou prod). -->
+    <EmbeddedResource Include="..\..\src\MathCursor\Cheatsheet\Resources\cheatsheet.json">
+      <LogicalName>MathCursor.Cheatsheet.Resources.cheatsheet.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

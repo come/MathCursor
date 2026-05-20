@@ -8,6 +8,19 @@ pages_build_output_dir = "."
 binding = "RELEASES"
 bucket_name = "mathcursor-releases"
 
+# Bucket R2 pour les rapports "Signaler une erreur" (1 JSON + 1 PNG par bug).
+# Cf. /api/v1/report et brief 2026-04-30-feedback-form-with-cloudflare-backend.md.
+[[r2_buckets]]
+binding = "REPORTS_BUCKET"
+bucket_name = "mathcursor-reports"
+
+# KV pour rate-limit /api/v1/report (à activer quand le token aura le scope
+# Workers KV Storage:Edit). Désactivé pour MVP : la function tolère son
+# absence et accepte sans rate limit.
+# [[kv_namespaces]]
+# binding = "RATE_LIMIT_KV"
+# id = "<id-à-renseigner>"
+
 # Analytics Engine : stats par download (fichier, date, pays, user-agent...).
 # Dataset créé manuellement dans le dashboard Cloudflare (une fois le compte
 # AE activé). La Function log fire-and-forget via env.DOWNLOADS.

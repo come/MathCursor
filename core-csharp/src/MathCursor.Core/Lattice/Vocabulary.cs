@@ -30,6 +30,15 @@ namespace MathCursor.Core.Lattice
             { "frac",      "frac" },
             { "vec",       "vec" },
             { "vecteur",   "vec" },
+            // Angle (notation chapeau française). Cf. ADR
+            // 2026-05-11-Feat-angle-notation-caret-and-keyword.
+            // `angle(...)` est la syntaxe explicite ; le marqueur `^` en
+            // position fresh est géré au niveau ScanAngleNotation
+            // (substitution `^X` → `angle X` avant lex).
+            { "angle",     "angle" },
+            { "hat",       "angle" },
+            { "widehat",   "angle" },
+            { "chapeau",   "angle" },
             { "inf",       "infinity" },
             { "infini",    "infinity" },
             { "forall",    "forall" },
@@ -104,9 +113,10 @@ namespace MathCursor.Core.Lattice
             { "⟺", "Leftrightarrow" }, // U+27FA flèche longue
             { "⟹", "Rightarrow" },     // U+27F9 flèche longue à droite
             { "⟸", "Leftarrow" },      // U+27F8 flèche longue à gauche
-            // Notation clavier `(-` pour `\in` (alias de `dans`/`in`/`appartient`).
-            // Visuellement le `(` ouvert + `-` rappelle ∈.
-            { "(-", "in_op" },
+            // (Anciennement : `(-` → `\in` alias clavier. Retiré 2026-05-11
+            // car faux positif sur `x(-2x+3)` qui est une mult implicite,
+            // pas un appartenance. L'utilisateur peut taper `in` ou
+            // `appartient` à la place.)
             // // = parallèle (∥) entre deux droites/vecteurs. Évite que la
             // saisie clavier fluide "AB//CD" soit interprétée comme une
             // fraction imbriquée AB/(CD) ou similaire.
@@ -116,10 +126,17 @@ namespace MathCursor.Core.Lattice
         /// <summary>Opérateurs mono-caractère reconnus. Inclut les relations
         /// `=`, `&lt;`, `&gt;` qui sont consommées par <c>parseRelation</c> au
         /// top-level (sinon des inputs comme "a &lt; b" produisent un résultat
-        /// vide car `&lt;` n'est pas tokenisé).</summary>
-        public const string SingleOps = "+-*/^_=<>()[]{},|;:";
+        /// vide car `&lt;` n'est pas tokenisé).
+        ///
+        /// `.` est inclus comme opérateur de multiplication (alias de `*` rendu
+        /// en `\cdot`, cf. ADR 30-04 Feat-dot-as-multiplier). Le lexer doit
+        /// arrêter la tokenisation du Number sur `.` pour que `3.4` produise
+        /// trois tokens (`3` Number, `.` Op, `4` Number) au lieu d'un seul.</summary>
+        public const string SingleOps = "+-*/^_=<>()[]{},|;:.";
 
-        /// <summary>Opérateurs binaires pour lesquels on calcule le drapeau Tight.</summary>
-        public const string TightOpChars = "+-*/^";
+        /// <summary>Opérateurs binaires pour lesquels on calcule le drapeau Tight.
+        /// `.` y figure pour bénéficier de la même règle d'associativité tightness-
+        /// based que `*` (cf. ADR Feat-asterisk-tightness-associativity).</summary>
+        public const string TightOpChars = "+-*/^.";
     }
 }

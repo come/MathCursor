@@ -19,6 +19,10 @@ namespace MathCursor.Core.Lattice
         Op,
         /// <summary>Espace ou tabulation (séparateur).</summary>
         Space,
+        /// <summary>Saut de ligne (\n source). Sépare les lignes d'un
+        /// MultiLineBlock (système ou chaîne d'équivalences/égalités).
+        /// Cf. brief 2026-04-30-multiline-systems-equivalences.md.</summary>
+        LineBreak,
     }
 
     /// <summary>

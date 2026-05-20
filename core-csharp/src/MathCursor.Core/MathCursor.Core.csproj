@@ -7,12 +7,23 @@
     <LangVersion>10.0</LangVersion>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Règles MC en warning visible mais non bloquante tant que les hits
+         existants ne sont pas nettoyés (refacto ou ADR de suppression).
+         - MC0001 : Regex sur XML/OMath dans LatexToUnicodeMath.cs.
+         - MC0006 : Splice LaTeX dans ZoneResolver.cs:205 (anti-pattern racine
+           du bug 11-05). Refacto vers source-mutation prévu (cf. extensibilité
+           axe A étape 3+).
+         Cf. ADRs 2026-05-13-Meta-harness-phase-0-1-mc0001 et
+         2026-05-13-Meta-mc0006-mc0009. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);MC0001;MC0006</WarningsNotAsErrors>
     <Version>0.1.0</Version>
     <Description>Pipeline de conversion texte → équation math. Aucune dépendance plateforme.</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\host-contract-csharp\src\MathCursor.HostContract\MathCursor.HostContract.csproj" />
+    <!-- Analyzers MathCursor branchés via Directory.Build.props racine (Phase 2).
+         Avant Phase 2 : ref locale ici. Cf. ADR 2026-05-13-Meta-harness-phase-0-1-mc0001. -->
   </ItemGroup>
 
   <ItemGroup>
@@ -24,10 +35,6 @@
     <!-- Données multilingues partagées, embarquées dans l'assembly -->
     <EmbeddedResource Include="..\..\..\data\*.json">
       <Link>Data\%(Filename)%(Extension)</Link>
-    </EmbeddedResource>
-    <!-- YAML domains : patterns de conversion texte → LaTeX -->
-    <EmbeddedResource Include="..\..\..\data\yaml_domains\**\*.yaml">
-      <Link>Data\yaml_domains\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </EmbeddedResource>
   </ItemGroup>
 

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using MathCursor.Core.Lattice;
 
 namespace MathCursor.Core
@@ -48,9 +49,17 @@ namespace MathCursor.Core
         /// </summary>
         public bool IsIncomplete { get; }
 
+        /// <summary>Top-1 LaTeX <b>avant</b> splice contextuel (RulePin /
+        /// SpanOverride / SidecarSignal). Identique à <see cref="TopLatex"/>
+        /// quand aucun splice contextuel n'est appliqué. Utilisé par la
+        /// popup pour ses recalculs sans subir le double-splice
+        /// (cf. brief 2026-05-07 fix double-splice).</summary>
+        public string BaseTopLatex { get; }
+
         public ResolvedZone(string rawSource, string mutedSource, string topLatex,
             AmbiguitySpot? spot, int? spotStart, int? spotEnd,
-            IReadOnlyList<AmbiguityMatch> allMatches, bool isIncomplete)
+            IReadOnlyList<AmbiguityMatch> allMatches, bool isIncomplete,
+            string? baseTopLatex = null)
         {
             RawSource = rawSource;
             MutedSource = mutedSource;
@@ -60,6 +69,7 @@ namespace MathCursor.Core
             SpotEnd = spotEnd;
             AllMatches = allMatches;
             IsIncomplete = isIncomplete;
+            BaseTopLatex = baseTopLatex ?? topLatex;
         }
     }
 
@@ -116,6 +126,215 @@ namespace MathCursor.Core
             => !string.IsNullOrEmpty(ruleId) && _preferences.ContainsKey(ruleId);
 
         /// <summary>
+        /// Résout avec un <see cref="MathCursor.Core.Resolution.GlobalContext"/>
+        /// qui agrège plusieurs <see cref="MathCursor.Core.Resolution.IContextSignal"/>s
+        /// (sidecar L1, résolutions ¶ L2, etc.). Point d'entrée recommandé :
+        /// le SuggestionService passe son GlobalContext de session.
+        ///
+        /// <para>Logique :</para>
+        /// <list type="number">
+        ///   <item>Pipeline normal sur <paramref name="rawSource"/>.</item>
+        ///   <item>Pour chaque ambiguïté, cherche un <see cref="MathCursor.Core.Resolution.SpanPin"/>
+        ///     matchant span-level (offset + len + rule + source.Substring).
+        ///     Si trouvé, last-write-wins → splice direct. C'est l'ancien
+        ///     comportement pin du sidecar, préservé pour la précision span.</item>
+        ///   <item>Sinon, demande <see cref="MathCursor.Core.Resolution.ScoringHints.BestAltForRule"/>
+        ///     pour cette rule. Si une alt a un score positif, splice.</item>
+        ///   <item>Sinon laisse le défaut.</item>
+        /// </list>
+        ///
+        /// <para>Cf. brief <c>2026-05-07-global-context-multi-zoom-ranking</c>
+        /// + ADR sidecar 06-05 (les pins span-level restent dominants pour
+        /// préserver les choix utilisateur localisés).</para>
+        /// </summary>
+        public ResolvedZone Resolve(
+            string rawSource,
+            MathCursor.Core.Resolution.GlobalContext? globalCtx,
+            MathCursor.Core.Resolution.ResolutionSidecar? sidecar)
+        {
+            var baseResolved = Resolve(rawSource);
+            bool hasSidecar = sidecar != null && !sidecar.IsEmpty;
+            bool hasContext = globalCtx != null && globalCtx.SignalCount > 0;
+            if (!hasSidecar && !hasContext) return baseResolved;
+
+            string topLatex = baseResolved.TopLatex ?? string.Empty;
+            string source = rawSource ?? string.Empty;
+
+            // Hints agrégés depuis tous les signaux configurés.
+            MathCursor.Core.Resolution.ScoringHints hints;
+            if (globalCtx != null)
+            {
+                var snapshot = globalCtx.Snapshot(
+                    rawSource,
+                    sidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty);
+                hints = globalCtx.Scorer.Aggregate(snapshot);
+            }
+            else
+            {
+                hints = MathCursor.Core.Resolution.ScoringHints.Empty;
+            }
+
+            // Splice position-aware (cf. bug user 06-05 « u(1,2) v(1,2) ») :
+            // remplace IN-PLACE par (start, end). Apply right-to-left pour
+            // préserver les positions.
+            var splices = new System.Collections.Generic.List<(int Start, int End, string AltLatex)>();
+            // Track quel altIdx a été appliqué pour chaque match → enrichit
+            // les AmbiguityMatch avec AppliedAltIdx pour que la popup filtre
+            // par construction la même alt qui est en final (demande user
+            // 2026-05-07 « pas de doublon entre désambig et final »).
+            var appliedByMatch = new System.Collections.Generic.Dictionary<AmbiguityMatch, int>();
+
+            foreach (var match in baseResolved.AllMatches)
+            {
+                if (match.Spot == null || string.IsNullOrEmpty(match.Spot.RuleId)) continue;
+                if (match.Start < 0 || match.End > topLatex.Length || match.Start >= match.End) continue;
+
+                int bestAlt = ResolveBestAlt(match, source, sidecar, hints);
+                if (bestAlt < 0 || bestAlt >= match.Spot.Alternatives.Count) continue;
+
+                appliedByMatch[match] = bestAlt;
+                string altLatex = match.Spot.Alternatives[bestAlt].Latex;
+                splices.RemoveAll(s => s.Start == match.Start && s.End == match.End);
+                splices.Add((match.Start, match.End, altLatex));
+            }
+
+            splices.Sort((a, b) => b.Start.CompareTo(a.Start));
+            foreach (var s in splices)
+            {
+                if (s.Start < 0 || s.End > topLatex.Length || s.Start >= s.End) continue;
+                topLatex = topLatex.Substring(0, s.Start) + s.AltLatex + topLatex.Substring(s.End);
+            }
+
+            // Comportement V1 souhaité par l'utilisateur (2026-05-07) : la popup
+            // d'ambig reste ouverte pour permettre changement (l'utilisateur
+            // peut vouloir une autre alt pour ce span précis). Le scoring
+            // contextuel a déjà splicé le TopLatex avec l'alt préférée — donc
+            // l'utilisateur voit le rendu attendu (\vec{AD}+\vec{DE}=\vec{AE}).
+            // S'il valide direct, c'est cette résolution qui passe.
+            //
+            // Conséquence : Spot et AllMatches sont retournés tels quels,
+            // pas filtrés. Itération future : aligner la sélection par
+            // défaut de la popup sur l'alt scorée.
+            // Enrichit AllMatches avec AppliedAltIdx (= ce que le splice a
+            // effectivement appliqué). Garantie de cohérence avec le filtre
+            // popup côté SuggestionPopupWindow.
+            IReadOnlyList<AmbiguityMatch> enrichedMatches;
+            if (appliedByMatch.Count == 0)
+            {
+                enrichedMatches = baseResolved.AllMatches;
+            }
+            else
+            {
+                var list = new System.Collections.Generic.List<AmbiguityMatch>(baseResolved.AllMatches.Count);
+                foreach (var m in baseResolved.AllMatches)
+                {
+                    if (appliedByMatch.TryGetValue(m, out int altIdx))
+                        list.Add(m.WithAppliedAlt(altIdx));
+                    else
+                        list.Add(m);
+                }
+                enrichedMatches = list;
+            }
+
+            return new ResolvedZone(
+                rawSource: baseResolved.RawSource,
+                mutedSource: baseResolved.MutedSource,
+                topLatex: topLatex,
+                spot: baseResolved.Spot,
+                spotStart: baseResolved.SpotStart,
+                spotEnd: baseResolved.SpotEnd,
+                allMatches: enrichedMatches,
+                isIncomplete: baseResolved.IsIncomplete,
+                baseTopLatex: baseResolved.TopLatex);
+        }
+
+        /// <summary>
+        /// Décide l'alternative à appliquer pour un match donné. Ordre de
+        /// précédence (cf. brief 2026-05-07-rule-pin-span-override-refactor) :
+        /// <list type="number">
+        /// <item><b>SpanOverride</b> par signature (v2) — choix explicite
+        /// localisé. Si <see cref="MathCursor.Core.Resolution.SpanOverride.IsRevert"/>
+        /// → retourne -1 sans fallback (l'utilisateur veut explicitement le
+        /// default ici).</item>
+        /// <item><b>RulePin</b> par rule (v2) — choix session-wide.</item>
+        /// <item><b>SpanPin legacy</b> par offset+len+source.Substring
+        /// (v1) — préservation pour les sidecars non encore migrés.</item>
+        /// <item><b>ScoringHints</b> contextuels (via signaux GlobalContext).</item>
+        /// </list>
+        /// Retourne <c>-1</c> = pas de splice (default reste affiché).
+        /// </summary>
+        private static int ResolveBestAlt(
+            Lattice.AmbiguityMatch match,
+            string source,
+            MathCursor.Core.Resolution.ResolutionSidecar? sidecar,
+            MathCursor.Core.Resolution.ScoringHints hints)
+        {
+            int altCount = match.Spot.Alternatives.Count;
+
+            // 1) SpanOverride v2 par signature.
+            if (sidecar != null && match.Signature != null)
+            {
+                foreach (var ov in sidecar.SpanOverrides)
+                {
+                    if (!ov.Signature.Equals(match.Signature)) continue;
+                    if (ov.IsRevert) return -1;  // explicit revert → no fallback
+                    if (ov.AltIdx >= 0 && ov.AltIdx < altCount)
+                        return ov.AltIdx;
+                }
+            }
+
+            // 2) RulePin v2 par rule.
+            if (sidecar != null)
+            {
+                foreach (var rp in sidecar.RulePins)
+                {
+                    if (rp.RuleId != match.Spot.RuleId) continue;
+                    if (rp.AltIdx >= 0 && rp.AltIdx < altCount)
+                        return rp.AltIdx;
+                }
+            }
+
+            // 3) SpanPin legacy v1. Préservation pour les sidecars non
+            // encore migrés (= ouverture d'OMaths anciens en mode edit).
+            // Last-write-wins.
+            int lastPinAlt = -1;
+            if (sidecar != null)
+            {
+                foreach (var pin in sidecar.SpanPins)
+                {
+                    if (pin.Rule != match.Spot.RuleId) continue;
+                    if (pin.Offset < 0 || pin.Len <= 0) continue;
+                    if (pin.Offset + pin.Len > source.Length) continue;
+                    if (source.Substring(pin.Offset, pin.Len) != match.Spot.DefaultLatex) continue;
+                    if (pin.AltIdx < 0 || pin.AltIdx >= altCount) continue;
+                    lastPinAlt = pin.AltIdx;
+                }
+            }
+            if (lastPinAlt >= 0) return lastPinAlt;
+
+            // 4) Hints contextuels (signaux GlobalContext).
+            var (alt, score) = hints.BestAltForRule(match.Spot.RuleId);
+            if (alt < 0 || score <= 0) return -1;
+            return alt;
+        }
+
+        /// <summary>
+        /// Overload historique préservé. Wrap le sidecar dans un
+        /// <see cref="MathCursor.Core.Resolution.GlobalContext"/> jetable
+        /// avec un <see cref="MathCursor.Core.Resolution.Signals.SidecarSignal"/>
+        /// pour iso-comportement avec l'ancienne logique (pins + votes).
+        /// Préféré : passer directement le GlobalContext de session via
+        /// <see cref="Resolve(string, MathCursor.Core.Resolution.GlobalContext, MathCursor.Core.Resolution.ResolutionSidecar)"/>.
+        /// </summary>
+        public ResolvedZone Resolve(string rawSource, MathCursor.Core.Resolution.ResolutionSidecar sidecar)
+        {
+            if (sidecar == null || sidecar.IsEmpty) return Resolve(rawSource);
+            var globalCtx = new MathCursor.Core.Resolution.GlobalContext();
+            globalCtx.AddSignal(new MathCursor.Core.Resolution.Signals.SidecarSignal());
+            return Resolve(rawSource, globalCtx, sidecar);
+        }
+
+        /// <summary>
         /// Résout une source brute : applique les préférences source-mutation
         /// récursivement, lance le pipeline, calcule <see cref="ResolvedZone.IsIncomplete"/>.
         /// </summary>
@@ -130,6 +349,11 @@ namespace MathCursor.Core
             var preprocessed = PreprocessCanonicalSetModifiers(rawSource);
             var muted = ApplyPreferences(preprocessed);
             var ambig = _engine.ConvertWithAmbiguity(muted);
+            // Décoration des matches avec leur Signature (cf. brief 2026-05-07
+            // rule-pin-span-override-refactor). L'AlternativeGenerator émet
+            // les matches avec les positions topLatex ; on calcule ici
+            // l'OccurrenceIdx via un scan ordonné par Start.
+            var decoratedMatches = DecorateMatchesWithSignatures(ambig.AllMatches);
             bool incomplete = ComputeIsIncomplete(rawSource, ambig.TopLatex);
             return new ResolvedZone(
                 rawSource: rawSource,
@@ -138,8 +362,50 @@ namespace MathCursor.Core
                 spot: ambig.Spot,
                 spotStart: ambig.SpotStart,
                 spotEnd: ambig.SpotEnd,
-                allMatches: ambig.AllMatches,
+                allMatches: decoratedMatches,
                 isIncomplete: incomplete);
+        }
+
+        /// <summary>
+        /// Enrichit chaque <see cref="AmbiguityMatch"/> avec sa
+        /// <see cref="MathCursor.Core.Resolution.MatchSignature"/>.
+        /// L'OccurrenceIdx est calculé par scan ordonné gauche-à-droite :
+        /// pour chaque (RuleId, DefaultLatex), on incrémente un compteur
+        /// au fur et à mesure des rencontres.
+        ///
+        /// <para>Ex : <c>"AB+CD=AB"</c> avec 3 matches two-uppercase →
+        /// 1ʳᵉ AB → occ=0, CD → occ=0, 2ᵉ AB → occ=1.</para>
+        /// </summary>
+        private static IReadOnlyList<AmbiguityMatch> DecorateMatchesWithSignatures(
+            IReadOnlyList<AmbiguityMatch> matches)
+        {
+            if (matches == null || matches.Count == 0) return matches ?? new List<AmbiguityMatch>();
+
+            // Tri par Start ASC (déjà le cas en pratique mais on s'assure).
+            // ToArray pour ne pas muter la liste source.
+            var ordered = matches.ToArray();
+            System.Array.Sort(ordered, (a, b) => a.Start.CompareTo(b.Start));
+
+            var occCount = new Dictionary<(string, string), int>();
+            var result = new List<AmbiguityMatch>(ordered.Length);
+            foreach (var m in ordered)
+            {
+                if (m.Spot == null || string.IsNullOrEmpty(m.Spot.RuleId) || m.Start < 0)
+                {
+                    result.Add(m); // pas de signature possible (cas defensif)
+                    continue;
+                }
+                var key = (m.Spot.RuleId, m.Spot.DefaultLatex ?? string.Empty);
+                if (!occCount.TryGetValue(key, out int idx)) idx = 0;
+                var sig = new MathCursor.Core.Resolution.MatchSignature(
+                    ruleId: m.Spot.RuleId,
+                    defaultLatex: m.Spot.DefaultLatex ?? string.Empty,
+                    rawSourcePos: m.Start,   // V1 : utilise la position topLatex
+                    occurrenceIdx: idx);
+                result.Add(m.WithSignature(sig));
+                occCount[key] = idx + 1;
+            }
+            return result;
         }
 
         /// <summary>
