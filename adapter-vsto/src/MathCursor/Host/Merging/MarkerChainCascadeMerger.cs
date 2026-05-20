@@ -101,9 +101,12 @@ namespace MathCursor.Host.Merging
                 int prevContentEnd = prev.Range.End - 1; // exclut ¶ mark
                 if (prevContentEnd <= prevStart) break; // ¶ vide = barrier
 
-                string prevText = doc.Range(prevStart, prevContentEnd).Text ?? "";
-                if (string.IsNullOrWhiteSpace(prevText)) break;
-
+                // Probe OMath AVANT le check whitespace : un ¶ qui contient
+                // uniquement une OMath display (= m:oMathPara) a souvent un
+                // Range.Text vide ou juste des markers structurels. Si on
+                // testait IsNullOrWhiteSpace en premier, on aborterait le
+                // loop avant de trouver l'OMath. Bug 2026-05-20 : f(x)
+                // committed display + =1 ne fusionne plus.
                 var omathTop = _probe.FindOwnedAtEnd(doc, prevStart, prevContentEnd);
                 if (omathTop.HasValue)
                 {
@@ -113,6 +116,9 @@ namespace MathCursor.Host.Merging
                     _log($"xparMerge_mode1: absorbed OMath top range=[{omathTop.Value.omStart},{prevContentEnd}] source=\"{Preview(omathTop.Value.source)}\"");
                     break;
                 }
+
+                string prevText = doc.Range(prevStart, prevContentEnd).Text ?? "";
+                if (string.IsNullOrWhiteSpace(prevText)) break;
 
                 if (StartsWithAlignMarker(prevText, out _))
                 {

@@ -28,9 +28,16 @@ namespace MathCursor.Host.Merging
         /// Cherche un OMath à nous (wrappé dans un CC MathCursor) qui termine
         /// le paragraphe [<paramref name="paraStart"/>, <paramref name="paraContentEnd"/>]
         /// (ce qui suit l'OMath jusqu'au ¶ mark doit être whitespace).
-        /// Retourne <c>(omStart, source, handle)</c> si trouvé, <c>null</c> sinon.
+        /// Retourne <c>(omStart, source, handle, ccStart)</c> si trouvé,
+        /// <c>null</c> sinon.
+        ///
+        /// <para><c>ccStart</c> est la position de l'anchor CC (pattern anchor
+        /// ADR 2026-05-19). Quand le cross-merger absorbe l'OMath, il doit
+        /// étendre la zone d'absorption jusqu'à <c>ccStart</c> pour que
+        /// <c>ZoneCleaner</c> nettoie aussi l'anchor (sinon il reste orphelin
+        /// dans le doc). Pour les OMaths legacy wrap, <c>ccStart == omStart</c>.</para>
         /// </summary>
-        public (int omStart, string source, string handle)? FindOwnedAtEnd(
+        public (int omStart, string source, string handle, int ccStart, string latex)? FindOwnedAtEnd(
             Word.Document doc, int paraStart, int paraContentEnd)
         {
             try
@@ -44,10 +51,11 @@ namespace MathCursor.Host.Merging
                         string after = doc.Range(rng.End, paraContentEnd).Text ?? "";
                         if (after.Trim().Length > 0) continue;
                     }
-                    var (_, meta) = CcMetaResolver.ResolveAt(om);
+                    var (cc, meta) = CcMetaResolver.ResolveAt(om);
                     if (meta == null) continue;
                     if (string.IsNullOrEmpty(meta.HandleId) || string.IsNullOrEmpty(meta.Steno)) continue;
-                    return (rng.Start, meta.Steno, meta.HandleId);
+                    int ccStart = cc?.Range.Start ?? rng.Start;
+                    return (rng.Start, meta.Steno, meta.HandleId, ccStart, meta.Latex ?? "");
                 }
             }
             catch (Exception ex) { _log("cascade_owned_omath_scan_error: " + ex.Message); }

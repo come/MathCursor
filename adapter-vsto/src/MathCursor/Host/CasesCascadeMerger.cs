@@ -55,6 +55,7 @@ namespace MathCursor.Host
             return trimmed.Length >= 2 && trimmed[0] == '{' && trimmed[1] == ' ';
         }
 
+
         /// <summary>
         /// Construit la cascade cases depuis un current source et la liste
         /// des ¶ situés au-dessus (ordre top→bottom : index 0 = ¶ le plus

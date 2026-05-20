@@ -77,12 +77,32 @@ namespace MathCursor.Host.Merging
                 var omathTop = _probe.FindOwnedAtEnd(doc, prevStart, prevContentEnd);
                 if (omathTop.HasValue)
                 {
-                    if (CasesCascadeMerger.StartsWithCasesMarker(omathTop.Value.source))
+                    // Source de vérité = le LaTeX rendu (cc.Tag.Latex). Un
+                    // OMath EST cases ssi son latex contient `\begin{cases}`.
+                    // Ça résout l'ambiguïté de la source steno :
+                    //   - `{x+2=3` rendu cases (typé sans espace, 1ère cellule)
+                    //   - `{1,2}` set en extension, PAS cases
+                    // La source seule ne suffit pas. Le current source reste
+                    // validé strictement via StartsWithCasesMarker (l'user a
+                    // tapé `{ ` car listmode a pré-injecté).
+                    bool aboveIsCases = !string.IsNullOrEmpty(omathTop.Value.latex)
+                        && omathTop.Value.latex.IndexOf("\\begin{cases}", StringComparison.Ordinal) >= 0;
+                    if (aboveIsCases)
                     {
-                        paragraphsAbove.Insert(0, omathTop.Value.source);
+                        // Normaliser la source absorbée à `{ ` (avec espace) si
+                        // manquant — sinon BuildCascade rejettera (StartsWithCasesMarker strict).
+                        string absorbedSource = omathTop.Value.source;
+                        var trimmed = absorbedSource.TrimStart();
+                        if (trimmed.Length >= 1 && trimmed[0] == '{'
+                            && (trimmed.Length < 2 || trimmed[1] != ' '))
+                        {
+                            int idxBrace = absorbedSource.IndexOf('{');
+                            absorbedSource = absorbedSource.Substring(0, idxBrace + 1) + " " + absorbedSource.Substring(idxBrace + 1);
+                        }
+                        paragraphsAbove.Insert(0, absorbedSource);
                         removedHandles.Add(omathTop.Value.handle);
                         chainStart = omathTop.Value.omStart;
-                        _log($"xparMerge_cases: absorbed OMath top range=[{omathTop.Value.omStart},{prevContentEnd}] source=\"{Preview(omathTop.Value.source)}\"");
+                        _log($"xparMerge_cases: absorbed OMath top range=[{omathTop.Value.omStart},{prevContentEnd}] source=\"{Preview(absorbedSource)}\" (cases via latex)");
                     }
                     else
                     {

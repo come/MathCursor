@@ -1553,28 +1553,196 @@ namespace MathCursor.Host
         }
 
         /// <summary>
+        /// Résultat de l'orchestration des mergers (intra puis cross-line
+        /// cascade). Si aucun merger n'a matché, contient les bornes/source/
+        /// latex d'entrée inchangés et <c>WasCrossMerge=false</c>.
+        /// </summary>
+        private readonly struct MergeOutcome
+        {
+            public int AbsStart { get; }
+            public int AbsEnd { get; }
+            public string Source { get; }
+            public string Latex { get; }
+            public bool WasCrossMerge { get; }
+            public string CrossMergeMarker { get; }
+
+            public MergeOutcome(int absStart, int absEnd, string source, string latex,
+                bool wasCrossMerge, string crossMergeMarker)
+            {
+                AbsStart = absStart;
+                AbsEnd = absEnd;
+                Source = source;
+                Latex = latex;
+                WasCrossMerge = wasCrossMerge;
+                CrossMergeMarker = crossMergeMarker;
+            }
+
+            public static MergeOutcome Identity(int absStart, int absEnd, string source, string latex)
+                => new MergeOutcome(absStart, absEnd, source, latex, false, null);
+        }
+
+        /// <summary>
+        /// Traduction string-pos NER → Word interne pour les bornes de la
+        /// zone courante. En mode édition, no-op (les <c>_lastZone*</c> sont
+        /// déjà en coords internes via TryEnterEditMode).
+        ///
+        /// <para>Le NER renvoie des offsets dans paragraphText (avec OMath
+        /// masquées) ; SetRange attend des positions internes (qui incluent
+        /// les wrappers cachés). On itère <c>paragraph.Range.Characters</c>
+        /// pour mapper proprement (cf. <see cref="Detection.ParagraphPositionTranslator"/>).</para>
+        /// </summary>
+        private (int absStart, int absEnd) TranslateNerToInternal(
+            bool isEditMode, int defaultAbsStart, int defaultAbsEnd)
+        {
+            if (isEditMode || _lastZoneStringStart < 0 || _lastZoneParaRangeStart < 0)
+                return (defaultAbsStart, defaultAbsEnd);
+            try
+            {
+                var doc = _app.ActiveDocument;
+                if (doc == null) return (defaultAbsStart, defaultAbsEnd);
+                var paraRange = doc.Range(_lastZoneParaRangeStart, _lastZoneParaRangeStart)
+                    .Paragraphs[1].Range;
+                int absStart = Detection.ParagraphPositionTranslator
+                    .StringPosToInternal(paraRange, _lastZoneStringStart);
+                int absEnd = Detection.ParagraphPositionTranslator
+                    .StringPosToInternal(paraRange, _lastZoneStringEnd);
+                return (absStart, absEnd);
+            }
+            catch (Exception ex)
+            {
+                LogDiag("commit_translate_error: " + ex.Message);
+                return (defaultAbsStart, defaultAbsEnd);
+            }
+        }
+
+        /// <summary>
+        /// Orchestre les mergers : intra-¶ d'abord (LaTeX-preserving via
+        /// <c>cc.Tag.Latex</c>), puis cross-line cascade (markers align ou
+        /// cases <c>{</c>). En mode édition, no-op. Renvoie l'identité si
+        /// aucun merger n'a matché.
+        /// </summary>
+        private MergeOutcome ApplyMergers(int absStart, int absEnd, string source,
+            string latex, EquationHandle editingHandle)
+        {
+            if (editingHandle != null)
+                return MergeOutcome.Identity(absStart, absEnd, source, latex);
+
+            // 1. Intra-¶ (Phase B revival, ADR 2026-05-18). Si la source
+            //    commence par marker (=, <=>, =>, {) et qu'une OMath voisine
+            //    existe à gauche, fusionne en préservant son LaTeX.
+            var intra = TryIntraMerge(absStart, absEnd, source, latex);
+            if (intra != null)
+                return new MergeOutcome(
+                    intra.AbsStart, intra.AbsEnd,
+                    intra.MergedSource, intra.MergedLatex,
+                    wasCrossMerge: false, crossMergeMarker: null);
+
+            // 2. Cross-line cascade (ADR 2026-04 + ADR 04-05 + ADR 05-05).
+            //    MarkerChain pour align, CasesChain pour {. Re-resolve via
+            //    ZoneResolver pour générer le LaTeX multi-ligne (eqArray/cases).
+            var cross = TryCrossLineCascade(absStart, absEnd, source);
+            if (cross != null)
+            {
+                var resolved = ResolveWithContext(cross.MergedSource, cross.MergedSidecar);
+                if (resolved != null && !string.IsNullOrEmpty(resolved.TopLatex))
+                {
+                    string marker = ExtractMarkerFromMergedSource(cross.MergedSource);
+                    LogDiag(string.Format(
+                        "cross_cascade applied: zone [{0},{1}) → [{2},{3}), source=\"{4}\", latex=\"{5}\", marker=\"{6}\"",
+                        absStart, absEnd, cross.AbsStart, cross.AbsEnd,
+                        Preview(cross.MergedSource), Preview(resolved.TopLatex), marker));
+                    return new MergeOutcome(
+                        cross.AbsStart, cross.AbsEnd,
+                        cross.MergedSource, resolved.TopLatex,
+                        wasCrossMerge: true, crossMergeMarker: marker);
+                }
+                LogDiag("cross_cascade: re-resolve failed, skip");
+            }
+
+            return MergeOutcome.Identity(absStart, absEnd, source, latex);
+        }
+
+        /// <summary>
+        /// Intra-¶ merger (LaTeX-preserving). Construit les helpers puis
+        /// appelle <see cref="MathCursor.Host.Merging.IntraOMathsMerger.TryMergeWithLeft"/>.
+        /// Retourne <c>null</c> si pas de match ou erreur.
+        /// </summary>
+        private MathCursor.Host.Merging.MergeResult TryIntraMerge(
+            int absStart, int absEnd, string source, string latex)
+        {
+            try
+            {
+                var finder = new MathCursor.Host.Merging.NeighborFinder(
+                    () => _app.ActiveDocument, LogDiag);
+                var merger = new MathCursor.Host.Merging.IntraOMathsMerger(
+                    finder,
+                    () => _popup?.CurrentSidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty,
+                    h => GetSidecarForHandle(h),
+                    LogDiag);
+                var result = merger.TryMergeWithLeft(absStart, absEnd, source, latex);
+                if (result == null || string.IsNullOrEmpty(result.MergedLatex)) return null;
+                LogDiag(string.Format(
+                    "merge_left applied: zone [{0},{1}) → [{2},{3}), source=\"{4}\", latex=\"{5}\"",
+                    absStart, absEnd, result.AbsStart, result.AbsEnd,
+                    Preview(result.MergedSource), Preview(result.MergedLatex)));
+                return result;
+            }
+            catch (Exception ex) { LogDiag("merge_left_call_error: " + ex.Message); return null; }
+        }
+
+        /// <summary>
+        /// Cross-line cascade : tente le MarkerChain (align) puis le
+        /// CasesChain ({). Premier match wins. Retourne <c>null</c> si aucun
+        /// n'a matché ou erreur.
+        /// </summary>
+        private MathCursor.Host.Merging.MergeResult TryCrossLineCascade(
+            int absStart, int absEnd, string source)
+        {
+            try
+            {
+                var probe = new MathCursor.Host.Merging.ParagraphCascadeProbe(LogDiag);
+                Func<MathCursor.Core.Resolution.ResolutionSidecar> popupSc =
+                    () => _popup?.CurrentSidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty;
+                Func<string, MathCursor.Core.Resolution.ResolutionSidecar> handleSc =
+                    h => GetSidecarForHandle(h);
+
+                var markerChain = new MathCursor.Host.Merging.MarkerChainCascadeMerger(
+                    () => _app.ActiveDocument, probe, popupSc, handleSc, LogDiag);
+                var result = markerChain.TryMerge(absStart, absEnd, source);
+                if (result != null && !string.IsNullOrEmpty(result.MergedSource)) return result;
+
+                var casesChain = new MathCursor.Host.Merging.CasesChainCascadeMerger(
+                    () => _app.ActiveDocument, probe, popupSc, handleSc, LogDiag);
+                result = casesChain.TryMerge(absStart, absEnd, source);
+                if (result != null && !string.IsNullOrEmpty(result.MergedSource)) return result;
+
+                return null;
+            }
+            catch (Exception ex) { LogDiag("cross_cascade_call_error: " + ex.Message); return null; }
+        }
+
+        /// <summary>
         /// Corps du commit (séparé de l'enveloppe ScreenUpdating). Cf.
         /// <see cref="CommitLatexAndOMath"/> pour le wrapper.
+        ///
+        /// <para>Pipeline du commit (Phase 3b — ADR
+        /// 2026-05-06-Meta-l4-pipeline-and-session). Le flow se lit en 4
+        /// étapes :</para>
+        /// <list type="number">
+        /// <item>Initial sidecar (edit mode : merge stored + popup).</item>
+        /// <item>Traduction NER → Word interne via <see cref="TranslateNerToInternal"/>.</item>
+        /// <item>Orchestration mergers via <see cref="ApplyMergers"/> (intra
+        /// puis cross-line cascade).</item>
+        /// <item><see cref="MathCursor.Host.Pipeline.CommitPipeline.Run"/> :
+        /// Resolver → Snapshot → Inserter → Store → Layout (les stages
+        /// délèguent à <see cref="InserterImpl"/> / <see cref="LayoutImpl"/>).</item>
+        /// </list>
         /// </summary>
         private bool CommitLatexAndOMathCore(string latex, string source)
         {
-            // Pipeline du commit (Phase 3b — ADR 2026-05-06-Meta-l4-pipeline-and-session).
-            // 6 stages composés : Merger → Resolver → Snapshot → Inserter →
-            // Store → Layout. Les délégués pointent vers des méthodes privées
-            // de SuggestionService qui contiennent la logique métier (Inserter
-            // = OOXML/transplant, Store = bookmark+sidecar, Layout = align +
-            // list-mode). À nettoyer en Phase 4 quand la logique sera vraiment
-            // extraite dans les classes des stages.
-            //
-            // En mode édition, MergerStage skip. ResolverStage skip si
-            // !WasMerged && Sidecar.IsEmpty. InserterStage peut signaler
-            // IsAborted (rollback Word) → les stages suivants pass-through.
-            //
-            // Pre-load sidecar en edit mode (fix canary 4) : sinon le revert
-            // d'un OMath multi-ligne avec vec perd ses désambiguïsations.
-            // Merge stored + popup pour que anciens pins ET nouveaux choix
-            // popup soient combinés (last-write-wins via ZoneResolver pour
-            // les pins divergents sur le même span).
+            // 1. Initial sidecar. Edit mode : pre-load stored + popup mergé
+            //    (fix canary 4) sinon le revert d'OMath multi-ligne avec vec
+            //    perd ses désambiguïsations. Last-write-wins via ZoneResolver.
             var initialSidecar = MathCursor.Core.Resolution.ResolutionSidecar.Empty;
             var editingHandle = _editController?.CurrentEditingHandle;
             if (editingHandle != null)
@@ -1587,97 +1755,39 @@ namespace MathCursor.Host
                     },
                     new[] { 0, 0 });
             }
-            // Traduction string-pos NER → Word interne pos pour les
-            // positions de la zone. Le NER renvoie des offsets dans
-            // paragraphText (avec OMath masquées) ; SetRange attend des
-            // positions internes (qui incluent les wrappers cachés).
-            // On itère paragraph.Range.Characters pour mapper proprement
-            // (cf. ParagraphPositionTranslator). Fait UNIQUEMENT au commit
-            // (pas au tick polling). En mode édition, on bypasse — les
-            // _lastZone* sont déjà en coords internes via TryEnterEditMode.
-            int absStartForCtx = _lastZoneAbsStart;
-            int absEndForCtx = _lastZoneAbsEnd;
-            if (editingHandle == null && _lastZoneStringStart >= 0 && _lastZoneParaRangeStart >= 0)
-            {
-                try
-                {
-                    var doc = _app.ActiveDocument;
-                    if (doc != null)
-                    {
-                        var paraRange = doc.Range(_lastZoneParaRangeStart, _lastZoneParaRangeStart)
-                            .Paragraphs[1].Range;
-                        absStartForCtx = Detection.ParagraphPositionTranslator
-                            .StringPosToInternal(paraRange, _lastZoneStringStart);
-                        absEndForCtx = Detection.ParagraphPositionTranslator
-                            .StringPosToInternal(paraRange, _lastZoneStringEnd);
-                    }
-                }
-                catch (Exception ex) { LogDiag("commit_translate_error: " + ex.Message); }
-            }
 
-            // Intra-¶ merger amont (Phase B revival, ADR 2026-05-18) :
-            // si la source commence par marker (=, <=>, =>, {) et qu'il y a
-            // une OMath voisine à gauche, fusionne en préservant son LaTeX
-            // (lu depuis cc.Tag.Latex, pas de re-rendu). La zone d'insertion
-            // est étendue à cc.Range.Start ; mergedLatex est passé tel quel
-            // à CommitContext (Sidecar.Empty + WasMerged=false → ResolverStage
-            // skip → inserter utilise notre LaTeX sans toucher).
-            string sourceForCtx = source;
-            string latexForCtx = latex;
-            if (editingHandle == null)
-            {
-                try
-                {
-                    var finder = new MathCursor.Host.Merging.NeighborFinder(
-                        () => _app.ActiveDocument,
-                        LogDiag);
-                    var merger = new MathCursor.Host.Merging.IntraOMathsMerger(
-                        finder,
-                        () => _popup?.CurrentSidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty,
-                        h => GetSidecarForHandle(h),
-                        LogDiag);
-                    var mergeResult = merger.TryMergeWithLeft(
-                        absStartForCtx, absEndForCtx, source, latex);
-                    if (mergeResult != null && !string.IsNullOrEmpty(mergeResult.MergedLatex))
-                    {
-                        LogDiag(string.Format(
-                            "merge_left applied: zone [{0},{1}) → [{2},{3}), source=\"{4}\", latex=\"{5}\"",
-                            absStartForCtx, absEndForCtx,
-                            mergeResult.AbsStart, mergeResult.AbsEnd,
-                            Preview(mergeResult.MergedSource),
-                            Preview(mergeResult.MergedLatex)));
-                        absStartForCtx = mergeResult.AbsStart;
-                        absEndForCtx = mergeResult.AbsEnd;
-                        sourceForCtx = mergeResult.MergedSource;
-                        latexForCtx = mergeResult.MergedLatex;
-                        // ZoneCleaner (appelé dans InsertOMathAt) supprimera
-                        // la CC voisine en même temps que le contenu plain text
-                        // — pas besoin de pre-delete ici.
-                    }
-                }
-                catch (Exception exMerge) { LogDiag("merge_left_call_error: " + exMerge.Message); }
-            }
+            // 2. Traduction NER → Word interne.
+            var (translatedStart, translatedEnd) = TranslateNerToInternal(
+                isEditMode: editingHandle != null,
+                defaultAbsStart: _lastZoneAbsStart,
+                defaultAbsEnd: _lastZoneAbsEnd);
 
+            // 3. Orchestration mergers (intra puis cross-line cascade).
+            var outcome = ApplyMergers(translatedStart, translatedEnd, source, latex, editingHandle);
+
+            // 4. CommitContext + run pipeline.
             var ctx = new MathCursor.Host.Pipeline.CommitContext(
-                absStart: absStartForCtx,
-                absEnd: absEndForCtx,
-                source: sourceForCtx,
-                latex: latexForCtx,
+                absStart: outcome.AbsStart,
+                absEnd: outcome.AbsEnd,
+                source: outcome.Source,
+                latex: outcome.Latex,
                 sidecar: initialSidecar,
-                editingHandle: editingHandle);
+                editingHandle: editingHandle,
+                wasCrossParagraphMerge: outcome.WasCrossMerge,
+                crossMergeMarker: outcome.CrossMergeMarker);
 
             // Trace commit (debug inspecteur) : ouvre un buffer, capture les
             // logs des stages + InsertOMathAt, fire CommitTraced à la fin.
             _commitTrace = new System.Text.StringBuilder();
-            _commitOrigAbsStart = absStartForCtx;
-            _commitOrigAbsEnd = absEndForCtx;
+            _commitOrigAbsStart = outcome.AbsStart;
+            _commitOrigAbsEnd = outcome.AbsEnd;
             _commitOrigSource = source;
             _commitPreInsertAbsStart = -1;
             _commitPreInsertAbsEnd = -1;
             _commitInternalStart = -1;
             _commitInternalEnd = -1;
             Log($"=== COMMIT @ {DateTime.Now:HH:mm:ss.fff} ===");
-            Log($"INPUT  stringPos=[{_lastZoneStringStart},{_lastZoneStringEnd}) paraStart={_lastZoneParaRangeStart} → internal=[{absStartForCtx},{absEndForCtx}) source=\"{Preview(source)}\" latex=\"{Preview(latex)}\" editing={(editingHandle != null ? editingHandle.Id : "no")}");
+            Log($"INPUT  stringPos=[{_lastZoneStringStart},{_lastZoneStringEnd}) paraStart={_lastZoneParaRangeStart} → internal=[{outcome.AbsStart},{outcome.AbsEnd}) source=\"{Preview(source)}\" latex=\"{Preview(latex)}\" editing={(editingHandle != null ? editingHandle.Id : "no")}");
 
             // UndoRecordScope conservé : sans, le BuildUp crée une entrée
             // undo séparée du TypeText (1 Ctrl+Z annule le BuildUp, 2e
@@ -2108,15 +2218,34 @@ namespace MathCursor.Host
                 }
                 catch (Exception ex) { Log("insert_setrange_error: " + ex.Message); return (absStart, absEnd, null); }
 
-                // 4. TypeText ZWSP en plain text (= séparateur structurel
-                //    AVANT le math, pas encore wrappé en CC).
+                // 3b. Détection liste (numérotée, puce, outline). En liste,
+                //     deux comportements diffèrent (cf. bug 2026-05-20) :
+                //     - Font.Hidden sur le ZWSP est appliqué APRÈS cc.Add (sinon
+                //       Word foire le wrap du run vanish → SDT vide + placeholder).
+                //     - DecideOMathTyping force Inline (pas de promotion display
+                //       qui sortirait la formule de la ligne de bullet).
+                bool isInList = false;
+                try
+                {
+                    var listFormat = doc.Range(afterCleanupPos, afterCleanupPos).Paragraphs[1].Range.ListFormat;
+                    isInList = listFormat != null && listFormat.ListType != Word.WdListType.wdListNoNumbering;
+                    if (isInList) Log($"InsertOMathAt: liste détectée (type={listFormat.ListType}) → Inline forcé + Font.Hidden post-cc.Add");
+                }
+                catch (Exception exL) { Log("insert_list_probe_error: " + exL.Message); }
+
+                // 4. TypeText ZWSP en plain text. Font.Hidden appliqué tout
+                //    de suite HORS liste (comportement validé) ; APRÈS cc.Add
+                //    EN liste (workaround Word bug, cf. 3b).
                 int caretBeforeZwsp = sel.Start;
                 try { sel.TypeText("​"); }
                 catch (Exception ex) { Log("insert_zwsp_typetext_error: " + ex.Message); return (absStart, absEnd, null); }
                 int zwspStart = caretBeforeZwsp;
                 int zwspEnd = sel.Start;
                 Log($"InsertOMathAt: ZWSP typed at {zwspStart}, sel=[{sel.Start},{sel.End})");
-                try { doc.Range(zwspStart, zwspEnd).Font.Hidden = -1; } catch { }
+                if (!isInList)
+                {
+                    try { doc.Range(zwspStart, zwspEnd).Font.Hidden = -1; } catch { }
+                }
 
                 // 5. TypeText math source APRÈS le ZWSP.
                 int mathStart = sel.Start;
@@ -2148,7 +2277,16 @@ namespace MathCursor.Host
                         newEnd = om.Range.End;
                         Log($"InsertOMathAt: OMath built, range=[{newStart},{newEnd})");
 
-                        (omType, omJc) = DecideOMathTyping(om, source, Log);
+                        if (isInList)
+                        {
+                            omType = Word.WdOMathType.wdOMathInline;
+                            omJc = Word.WdOMathJc.wdOMathJcLeft;
+                            Log("InsertOMathAt: liste → Inline + Left (skip DecideOMathTyping)");
+                        }
+                        else
+                        {
+                            (omType, omJc) = DecideOMathTyping(om, source, Log);
+                        }
                         Word.WdOMathType currentType;
                         try { currentType = om.Type; }
                         catch { currentType = Word.WdOMathType.wdOMathInline; }
@@ -2180,6 +2318,13 @@ namespace MathCursor.Host
                     try { cc.Appearance = Word.WdContentControlAppearance.wdContentControlHidden; } catch { }
                     try { cc.LockContentControl = false; } catch { }
                     try { cc.LockContents = false; } catch { }
+                    // En liste : Font.Hidden APRÈS cc.Add (sinon Word foire
+                    // le wrap du run vanish, cf. 3b). Hors liste : déjà
+                    // appliqué à l'étape 4.
+                    if (isInList)
+                    {
+                        try { cc.Range.Font.Hidden = -1; } catch (Exception exH) { Log("insert_cc_font_hidden_error: " + exH.Message); }
+                    }
                     Log($"InsertOMathAt: anchor CC créé sur ZWSP : cc.Range=[{cc.Range.Start},{cc.Range.End})");
 
                     // Re-probe om car positions ont pu shifter post-CC wrap.
@@ -2315,12 +2460,14 @@ namespace MathCursor.Host
                 //   \a (Chr  7) cell marker (= contexte cellule de tableau)
                 //   \t (Chr  9) tab
                 //   \f (Chr 12) page break
+                //   ​ ZWSP de l'anchor CC (= notre marker, pas de la prose user)
                 // → si reste vide après strip, l'OMath est « seule dans son contexte »
                 //   (¶ vide ou cellule vide) → DISPLAY.
                 string remaining = paraText.Replace(omText, "")
                     .Replace("\r", "").Replace("\n", "")
                     .Replace("\v", "").Replace("\a", "")
                     .Replace("\t", "").Replace("\f", "")
+                    .Replace("​", "")
                     .Trim();
 
                 if (string.IsNullOrEmpty(remaining))

@@ -52,9 +52,16 @@ namespace MathCursor.Host.Layout
         }
 
         /// <summary>
-        /// Crée un ¶ vide après l'OMath uniquement si l'OMath est le dernier
-        /// ¶ du doc (sinon le ¶ suivant existe déjà comme landing zone).
+        /// Crée un ¶ vide après l'OMath si nécessaire (= si l'OMath est le
+        /// dernier ¶ de son container : doc ou cellule de tableau). Sinon
+        /// le ¶ suivant existe déjà comme landing zone et on n'ajoute rien.
         /// Retourne la position du caret final, ou -1 si pas trouvé.
+        ///
+        /// <para>En cellule de tableau : sans cette guarde, <c>omPara.Range.End</c>
+        /// pointe le cell marker (Chr 7) → Word interprète comme « cellule
+        /// suivante » et le caret saute à la mauvaise cellule (bug 2026-05-20
+        /// remonté par user : <c>{ x+1 = 0</c> commit en cellule → caret en
+        /// cellule d'à côté au lieu de nouvelle ligne dans la cellule).</para>
         /// </summary>
         public int AppendEmptyParagraphAfterOMath(Word.Document doc, int posInOMath, out bool didCreateNewPara)
         {
@@ -67,17 +74,48 @@ namespace MathCursor.Host.Layout
                     var omPara = om.Range.Paragraphs[1];
                     int afterOMathPara = omPara.Range.End;
 
-                    if (afterOMathPara >= doc.Content.End)
+                    bool needsNewPara = afterOMathPara >= doc.Content.End;
+                    if (!needsNewPara && IsLastParaOfTableCell(omPara, afterOMathPara))
+                    {
+                        needsNewPara = true;
+                        _log("append_para: OMath en dernier ¶ de cellule, ¶ vide nécessaire pour éviter saut de cellule");
+                    }
+
+                    if (needsNewPara)
                     {
                         omPara.Range.InsertParagraphAfter();
                         didCreateNewPara = true;
-                        _log("append_para: OMath était last para, ¶ vide créé pour caret");
+                        _log("append_para: ¶ vide créé pour caret");
                     }
                     return afterOMathPara;
                 }
             }
             catch (Exception ex) { _log("xparMerge_append_para_error: " + ex.Message); }
             return -1;
+        }
+
+        /// <summary>
+        /// Détecte si <paramref name="omPara"/> est le dernier ¶ de sa cellule
+        /// (= <c>omPara.Range.End</c> tombe sur le cell marker Chr 7). Cas
+        /// hors-table : retourne false. Best-effort, swallow toute exception
+        /// (paragraphes hors story, ranges invalides, etc.).
+        /// </summary>
+        private bool IsLastParaOfTableCell(Word.Paragraph omPara, int afterOMathPara)
+        {
+            try
+            {
+                bool inTable = (bool)omPara.Range.Information[Word.WdInformation.wdWithInTable];
+                if (!inTable) return false;
+                var cell = omPara.Range.Cells[1];
+                // Cell.Range.End pointe juste après le cell marker (Chr 7).
+                // Donc cell marker = Cell.Range.End - 1.
+                return afterOMathPara >= cell.Range.End - 1;
+            }
+            catch (Exception ex)
+            {
+                _log("appendpara_table_probe_error: " + ex.Message);
+                return false;
+            }
         }
 
         public void SetCaretAtPosition(int caretPos)
