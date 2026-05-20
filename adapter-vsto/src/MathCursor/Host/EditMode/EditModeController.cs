@@ -157,21 +157,15 @@ namespace MathCursor.Host.EditMode
             try
             {
                 var sel = _app.Selection;
+                var doc = _app.ActiveDocument;
 
-                // 3. Sélectionne TOUT l'OMath, en bornant À DROITE par
-                //    om.Range.End — pas cc.Range.End ! Le CC peut être
-                //    sur-étendu par auto-grow Word (test 2026-05-18 le
-                //    montre : cc.Range peut englober ¶+ et OMath voisine).
-                //    selStart = cc.Range.Start pour capturer le wrapper
-                //    d'ouverture. selEnd clamp à l'OMath = sûr.
+                // 3. Sélectionne TOUT l'OMath (et son CC s'il y en a un).
                 int selStart = cc?.Range.Start ?? om.Range.Start;
                 int selEnd = om.Range.End;
                 sel.SetRange(selStart, selEnd);
-                _log($"revert: select [{selStart},{selEnd}) (om.End clamped) post-snap sel=[{sel.Start},{sel.End})");
+                _log($"revert: select [{selStart},{selEnd}) post-snap sel=[{sel.Start},{sel.End})");
 
-                // Unlock CC avant Delete/TypeText : la CC est LockContents=true
-                // depuis le commit (anti auto-grow). Le revert doit pouvoir
-                // muter son contenu.
+                // Unlock CC anchor (LockContentControl peut bloquer).
                 if (cc != null)
                 {
                     try { cc.LockContents = false; } catch { }
@@ -183,19 +177,20 @@ namespace MathCursor.Host.EditMode
                 sel.TypeText(revertText);
                 int newEnd = sel.Start;
 
-                // 5. Dispose le CC wrapper (= devenu un wrapper d'OMath
-                //    « ghost » que Word préserve cosmétiquement, et
-                //    possiblement du contenu absorbé après l'OMath).
+                // 5. Dispose le CC wrapper (= devenu un wrapper « ghost »
+                //    que Word préserve après le sel.Delete).
                 //    cc.Delete(false) = wrapper-only, contenu préservé.
                 if (cc != null)
                 {
                     try { cc.Delete(false); } catch (Exception exCc) { _log("revert_cc_dispose_error: " + exCc.Message); }
                 }
 
+                int afterPos = selStart;
+
                 if (source.IndexOf('\n') >= 0)
                 {
-                    _log($"revert: multi-ligne zone tracked [{selStart},{newEnd}] handle={handle.Id}");
-                    MultiLineReverted?.Invoke(selStart, newEnd, handle.Id);
+                    _log($"revert: multi-ligne zone tracked [{afterPos},{newEnd}] handle={handle.Id}");
+                    MultiLineReverted?.Invoke(afterPos, newEnd, handle.Id);
                 }
                 else
                 {

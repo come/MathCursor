@@ -2108,53 +2108,100 @@ namespace MathCursor.Host
                 }
                 catch (Exception ex) { Log("insert_setrange_error: " + ex.Message); return (absStart, absEnd, null); }
 
-                // 4. TypeText sur range vide → caret avance exactement de
-                //    unicodeMath.Length chars.
-                try { sel.TypeText(unicodeMath); Log($"InsertOMathAt: TypeText done, sel=[{sel.Start},{sel.End})"); }
+                // 4. TypeText ZWSP en plain text (= séparateur structurel
+                //    AVANT le math, pas encore wrappé en CC).
+                int caretBeforeZwsp = sel.Start;
+                try { sel.TypeText("​"); }
+                catch (Exception ex) { Log("insert_zwsp_typetext_error: " + ex.Message); return (absStart, absEnd, null); }
+                int zwspStart = caretBeforeZwsp;
+                int zwspEnd = sel.Start;
+                Log($"InsertOMathAt: ZWSP typed at {zwspStart}, sel=[{sel.Start},{sel.End})");
+                try { doc.Range(zwspStart, zwspEnd).Font.Hidden = -1; } catch { }
+
+                // 5. TypeText math source APRÈS le ZWSP.
+                int mathStart = sel.Start;
+                try { sel.TypeText(unicodeMath); Log($"InsertOMathAt: math TypeText done, sel=[{sel.Start},{sel.End})"); }
                 catch (Exception ex) { Log("insert_typetext_error: " + ex.Message); return (absStart, absEnd, null); }
 
                 int afterEnd = sel.Start;
-                int srcStart = afterEnd - unicodeMath.Length;
-                Log($"InsertOMathAt: srcStart={srcStart} afterEnd={afterEnd}");
+                int srcStart = mathStart;
+                Log($"InsertOMathAt: math typed range=[{srcStart},{afterEnd})");
 
-                // 5. CC wrap AVANT BuildUp (ordre POC-validé 2026-05-18 :
-                //    crée le CC sur du plain text, puis BuildUp à l'intérieur
-                //    — Word ne « catch » pas le caret en zone math au wrap).
-                Word.ContentControl cc = null;
+                // 6. OMaths.Add + BuildUp UNIQUEMENT sur la math range.
+                //    Word convertit la math en OMath SANS toucher au ZWSP
+                //    (séparé par 1 char en amont).
+                int newStart = srcStart, newEnd = afterEnd;
+                Word.OMath om = null;
+                Word.WdOMathType omType = Word.WdOMathType.wdOMathInline;
+                Word.WdOMathJc omJc = Word.WdOMathJc.wdOMathJcLeft;
                 try
                 {
                     var typedRange = doc.Range(srcStart, afterEnd);
-                    cc = typedRange.ContentControls.Add(Word.WdContentControlType.wdContentControlRichText);
-                    cc.Title = MathCursor.Host.CCMeta.MCMetaJson.CcTitle;
-                    try { cc.Appearance = Word.WdContentControlAppearance.wdContentControlHidden; }
-                    catch (Exception exApp) { Log("insert_cc_appearance_error: " + exApp.Message); }
-                    try { cc.LockContentControl = false; } catch { }
-                    try { cc.LockContents = false; } catch { }
-                    Log($"InsertOMathAt: CC wrap cc.Range=[{cc.Range.Start},{cc.Range.End})");
-                }
-                catch (Exception exCc) { Log("insert_cc_wrap_error: " + exCc.Message); }
-
-                // 6. OMaths.Add + BuildUp sur cc.Range (ou fallback typedRange).
-                int newStart = srcStart, newEnd = afterEnd;
-                Word.OMath om = null;
-                try
-                {
-                    var innerRange = cc?.Range ?? doc.Range(srcStart, afterEnd);
-                    var addedRange = innerRange.OMaths.Add(innerRange);
+                    var addedRange = typedRange.OMaths.Add(typedRange);
                     addedRange.OMaths.BuildUp();
 
                     foreach (Word.OMath o in addedRange.OMaths) { om = o; break; }
 
                     if (om != null)
                     {
-                        try { om.Justification = Word.WdOMathJc.wdOMathJcLeft; } catch { }
                         newStart = om.Range.Start;
                         newEnd = om.Range.End;
                         Log($"InsertOMathAt: OMath built, range=[{newStart},{newEnd})");
+
+                        (omType, omJc) = DecideOMathTyping(om, source, Log);
+                        Word.WdOMathType currentType;
+                        try { currentType = om.Type; }
+                        catch { currentType = Word.WdOMathType.wdOMathInline; }
+                        if (currentType != omType)
+                        {
+                            try { om.Type = omType; Log($"InsertOMathAt: om.Type SET {currentType}→{omType}"); }
+                            catch (Exception exType) { Log("insert_omath_type_error: " + exType.Message); }
+                        }
+                        else { Log($"InsertOMathAt: om.Type déjà {omType} (skip setter)"); }
+
+                        try { om.Justification = omJc; }
+                        catch (Exception exJc) { Log("insert_omath_jc_error: " + exJc.Message); }
+                        newStart = om.Range.Start;
+                        newEnd = om.Range.End;
+                        Log($"InsertOMathAt: OMath finalized as {omType} / {omJc}, range=[{newStart},{newEnd})");
                     }
                     else { Log("InsertOMathAt: addedRange.OMaths empty after BuildUp"); }
                 }
                 catch (Exception ex) { Log("insert_buildup_error: " + ex.Message); return (srcStart, afterEnd, null); }
+
+                // 7. Wrap le ZWSP dans une CC RichText hidden EN DERNIER.
+                //    Le math/OMath est settled, la CC ne le perturbe plus.
+                Word.ContentControl cc = null;
+                try
+                {
+                    var anchorRange = doc.Range(zwspStart, zwspEnd);
+                    cc = anchorRange.ContentControls.Add(Word.WdContentControlType.wdContentControlRichText);
+                    cc.Title = MathCursor.Host.CCMeta.MCMetaJson.CcTitle;
+                    try { cc.Appearance = Word.WdContentControlAppearance.wdContentControlHidden; } catch { }
+                    try { cc.LockContentControl = false; } catch { }
+                    try { cc.LockContents = false; } catch { }
+                    Log($"InsertOMathAt: anchor CC créé sur ZWSP : cc.Range=[{cc.Range.Start},{cc.Range.End})");
+
+                    // Re-probe om car positions ont pu shifter post-CC wrap.
+                    try
+                    {
+                        foreach (Word.OMath o2 in doc.Range(cc.Range.End, Math.Min(doc.Content.End, cc.Range.End + (newEnd - newStart) + 5)).OMaths)
+                        { om = o2; break; }
+                        if (om != null)
+                        {
+                            newStart = om.Range.Start;
+                            newEnd = om.Range.End;
+                        }
+                    }
+                    catch (Exception exP) { Log("insert_reprobe_om_error: " + exP.Message); }
+
+                    // Caret APRÈS l'OMath, prêt à taper.
+                    if (om != null)
+                    {
+                        try { _app.Selection.SetRange(om.Range.End, om.Range.End); } catch { }
+                    }
+                }
+                catch (Exception exCc) { Log("insert_anchor_cc_error: " + exCc.Message); cc = null; }
 
                 // 7. Génère handle + écrit Tag JSON sur le CC (hash POST wrap
                 //    pour que store-hash == read-hash sinon stale=True).
@@ -2181,20 +2228,19 @@ namespace MathCursor.Host
                     catch (Exception exTag) { Log("insert_tag_error: " + exTag.Message); }
                 }
 
-                // 7b. LOCK contents : empêche Word de mut'er le contenu du CC
-                //     (= bloque l'auto-grow quand l'utilisateur tape à la
-                //     sticky-zone). À unlocker en edit mode (revert / re-edit).
-                //     Cf. ADR 2026-05-19 lock-contents-anti-auto-grow.
-                if (cc != null)
-                {
-                    try { cc.LockContents = true; Log("InsertOMathAt: cc.LockContents = true (anti auto-grow)"); }
-                    catch (Exception exLock) { Log("insert_lock_error: " + exLock.Message); }
-                }
+                // 7b. (retiré 2026-05-19) Anciennement : cc.LockContents=true
+                //     pour empêcher l'auto-grow. Cassait l'edit mode + revert.
+                //     Défense gardée : flèches qui sélectionnent l'OMath
+                //     (TrySelectOMathOnLeft/Right) + ZoneCleaner qui skip
+                //     les CCs étrangères. Risque accepté : auto-grow peut
+                //     toujours arriver mais bornes contrôlées en aval.
 
-                // 8. Sort le caret de la sticky-zone du CC (= +1 après cc.End).
-                //    Évite que la prochaine frappe user (Enter pour passer au
-                //    ¶ suivant, ou texte) soit absorbée par auto-grow du CC.
-                if (cc != null) MathCursor.Host.CCMeta.CcSticky.EscapeCaretAfter(_app, cc);
+                // 8. CcSticky.EscapeCaretAfter : caduc avec le pattern anchor.
+                //    Le CC est tiny et avant l'OMath, pas autour. Le caret est
+                //    déjà repositionné à om.Range.End dans l'étape 6 ci-dessus.
+                //    L'auto-grow de la sticky-zone du CC ne peut pas affecter
+                //    l'OMath (séparée). On laisse Word gérer naturellement.
+                //    if (cc != null) MathCursor.Host.CCMeta.CcSticky.EscapeCaretAfter(_app, cc);
 
                 // 9. Cleanup absorbed handles : juste sidecar in-memory
                 //    (les CCs des OMaths absorbées ont été supprimées par
@@ -2214,6 +2260,86 @@ namespace MathCursor.Host
             finally
             {
                 DebugInProgress = prevDebug;
+            }
+        }
+
+
+        /// <summary>
+        /// Décide le mode d'affichage de l'OMath fraîchement créée
+        /// (Display = bloc centré sur sa propre ligne, Inline = dans le flux)
+        /// ET sa justification (= alignement). 3 cas :
+        ///
+        /// <list type="number">
+        ///   <item><b>Source commence par un espace</b> (override utilisateur
+        ///         explicite « je veux inline ») → Inline + Left.</item>
+        ///   <item><b>OMath seule dans son ¶</b> (= pas de prose autour) →
+        ///         Display + Left.</item>
+        ///   <item><b>Autres cas</b> (OMath mixée avec du texte) → Inline + Left.</item>
+        /// </list>
+        ///
+        /// <para>Tous les cas alignent à gauche (jamais centré ni justifié)
+        /// pour respecter l'ergonomie standard d'un cours de maths au PAP.</para>
+        /// </summary>
+        private static (Word.WdOMathType type, Word.WdOMathJc justification)
+            DecideOMathTyping(Word.OMath om, string source, Action<string> log)
+        {
+            var fallback = (Word.WdOMathType.wdOMathInline, Word.WdOMathJc.wdOMathJcLeft);
+            if (om == null) return fallback;
+
+            try
+            {
+                // Cas 1 : source commence par espace → override user explicite
+                if (!string.IsNullOrEmpty(source) && source.StartsWith(" "))
+                {
+                    log?.Invoke("decide_typing: leading space dans source → Inline + Left (user override)");
+                    return fallback;
+                }
+
+                // Cas 2 : OMath toute seule dans son contexte (¶, cellule, etc.) ?
+                string paraText, omText;
+                try
+                {
+                    paraText = om.Range.Paragraphs[1].Range.Text ?? "";
+                    omText = om.Range.Text ?? "";
+                }
+                catch (Exception exRead)
+                {
+                    log?.Invoke("decide_typing_read_error: " + exRead.Message + " → Inline default");
+                    return fallback;
+                }
+
+                // Strip l'OMath + chars structurels Word (= non-prose) :
+                //   \r (Chr 13) paragraph mark
+                //   \n (Chr 10) line feed
+                //   \v (Chr 11) vertical tab / soft line break
+                //   \a (Chr  7) cell marker (= contexte cellule de tableau)
+                //   \t (Chr  9) tab
+                //   \f (Chr 12) page break
+                // → si reste vide après strip, l'OMath est « seule dans son contexte »
+                //   (¶ vide ou cellule vide) → DISPLAY.
+                string remaining = paraText.Replace(omText, "")
+                    .Replace("\r", "").Replace("\n", "")
+                    .Replace("\v", "").Replace("\a", "")
+                    .Replace("\t", "").Replace("\f", "")
+                    .Trim();
+
+                if (string.IsNullOrEmpty(remaining))
+                {
+                    log?.Invoke("decide_typing: OMath seule sur sa ligne → Display + Left");
+                    return (Word.WdOMathType.wdOMathDisplay, Word.WdOMathJc.wdOMathJcLeft);
+                }
+
+                // Cas 3 : OMath mixée avec du texte → Inline + Left
+                string previewRem = remaining.Length > 30
+                    ? remaining.Substring(0, 30) + "…"
+                    : remaining;
+                log?.Invoke($"decide_typing: OMath mixée (rest=\"{previewRem}\") → Inline + Left");
+                return fallback;
+            }
+            catch (Exception ex)
+            {
+                log?.Invoke("decide_typing_error: " + ex.Message + " → Inline default");
+                return fallback;
             }
         }
 

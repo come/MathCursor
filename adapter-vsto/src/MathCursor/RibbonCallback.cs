@@ -1140,6 +1140,290 @@ namespace MathCursor
             catch { return -1; }
         }
 
+        // ─── Variantes d'insertion display+CC pour comparaison ─────────
+
+        public void OnDebugVariantEClicked(IRibbonControl control)
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunVariantE_BuildUpFirst_NoTypeSet_CcOnFullPara);
+
+        public void OnDebugVariantG4Clicked(IRibbonControl control)
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunVariantG4_LikeG3PlusCaretAfterOm);
+
+        public void OnDebugPocDeleteClicked(IRibbonControl control)
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunPocDeleteOMathAndAnchor);
+
+        public void OnDebugVariantGClicked(IRibbonControl control)
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunVariantG_NoCc);
+
+        public void OnDebugVariantG1Clicked(IRibbonControl control)
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunVariantG1_AnchorCcBefore);
+
+        public void OnDebugVariantG2Clicked(IRibbonControl control)
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunVariantG2_CcViaOoxml);
+
+        public void OnDebugVariantG3Clicked(IRibbonControl control)
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunVariantG3_CcOmRangeLate);
+
+        private void RunVariant(Func<Microsoft.Office.Interop.Word.Application, string> variant)
+        {
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null) return;
+                string trace = variant(app);
+                LogDebug("variant_run: see inspector");
+                Globals.ThisAddIn.PushDebugTrace(trace);
+            }
+            catch (Exception ex)
+            {
+                LogDebug("variant_run_error: " + ex.Message);
+                Globals.ThisAddIn.PushDebugTrace("Variant run ERROR:\n" + ex.Message);
+            }
+        }
+
+        /// <summary>POC : inspecte CC + OMath au caret. Dump ranges + parent chain.</summary>
+        public void OnDebugInspectCcAtCaretClicked(IRibbonControl control)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("=== POC : inspect CC + OMath @ caret ===");
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                var doc = app?.ActiveDocument;
+                var sel = app?.Selection;
+                if (doc == null || sel == null) { sb.AppendLine("doc/sel null"); Globals.ThisAddIn.PushDebugTrace(sb.ToString()); return; }
+
+                int caret = sel.Start;
+                sb.AppendLine($"caret = {caret}   docEnd = {doc.Content.End}");
+
+                // CC parent direct
+                Microsoft.Office.Interop.Word.ContentControl cc = null;
+                try { cc = sel.Range.ParentContentControl; } catch { }
+                sb.AppendLine($"sel.Range.ParentContentControl = {(cc == null ? "null" : $"Range=[{cc.Range.Start},{cc.Range.End}) Title=\"{cc.Title}\" Tag.Len={(cc.Tag ?? "").Length}")}");
+
+                // OMath au caret (toutes les variantes)
+                sb.AppendLine();
+                sb.AppendLine("OMaths via sel.OMaths :");
+                try
+                {
+                    int n = 0;
+                    foreach (Microsoft.Office.Interop.Word.OMath o in sel.OMaths)
+                    { n++; sb.AppendLine($"  #{n} Range=[{o.Range.Start},{o.Range.End}) Type={o.Type}"); }
+                    if (n == 0) sb.AppendLine("  (aucune)");
+                }
+                catch (Exception ex) { sb.AppendLine("  ERR " + ex.Message); }
+
+                // OMaths dans le ¶
+                sb.AppendLine();
+                sb.AppendLine("OMaths via paragraph.Range.OMaths :");
+                try
+                {
+                    var paraRange = sel.Paragraphs[1].Range;
+                    sb.AppendLine($"  paragraph.Range = [{paraRange.Start},{paraRange.End}) text.Len={(paraRange.Text ?? "").Length}");
+                    int n = 0;
+                    foreach (Microsoft.Office.Interop.Word.OMath o in paraRange.OMaths)
+                    {
+                        n++;
+                        Microsoft.Office.Interop.Word.ContentControl parentCc = null;
+                        try { parentCc = o.Range.ParentContentControl; } catch { }
+                        sb.AppendLine($"  #{n} OMath.Range=[{o.Range.Start},{o.Range.End}) Type={o.Type}");
+                        sb.AppendLine($"     ParentCC = {(parentCc == null ? "null" : $"[{parentCc.Range.Start},{parentCc.Range.End}) Title=\"{parentCc.Title}\"")}");
+                    }
+                }
+                catch (Exception ex) { sb.AppendLine("  ERR " + ex.Message); }
+
+                // CCs dans le ¶
+                sb.AppendLine();
+                sb.AppendLine("CCs via paragraph.Range.ContentControls :");
+                try
+                {
+                    var paraRange = sel.Paragraphs[1].Range;
+                    int n = 0;
+                    foreach (Microsoft.Office.Interop.Word.ContentControl c in paraRange.ContentControls)
+                    {
+                        n++;
+                        sb.AppendLine($"  #{n} CC.Range=[{c.Range.Start},{c.Range.End}) Title=\"{c.Title}\" Lock={c.LockContents}");
+                        try
+                        {
+                            int oCount = c.Range.OMaths.Count;
+                            sb.AppendLine($"     OMaths.Count = {oCount}");
+                        }
+                        catch (Exception exO) { sb.AppendLine("     OMaths.Count ERR " + exO.Message); }
+                    }
+                    if (n == 0) sb.AppendLine("  (aucun)");
+                }
+                catch (Exception ex) { sb.AppendLine("  ERR " + ex.Message); }
+            }
+            catch (Exception ex)
+            {
+                sb.AppendLine("ERROR: " + ex.Message);
+            }
+            Globals.ThisAddIn.PushDebugTrace(sb.ToString());
+        }
+
+        /// <summary>POC : insertion display g(x)=1/x avec le nouveau flow (reorder + CC wrap large).</summary>
+        public void OnDebugDisplayFullFlowClicked(IRibbonControl control)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("=== POC : display full flow g(x)=1/x ===");
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                var doc = app?.ActiveDocument;
+                var sel = app?.Selection;
+                if (doc == null || sel == null) { sb.AppendLine("doc/sel null"); Globals.ThisAddIn.PushDebugTrace(sb.ToString()); return; }
+
+                int insertPos = sel.Start;
+                sb.AppendLine($"insertPos = {insertPos}");
+
+                // 1. TypeText
+                string unicodeMath = "g(x)=1/x";
+                sel.TypeText(unicodeMath);
+                int afterEnd = sel.Start;
+                int srcStart = afterEnd - unicodeMath.Length;
+                sb.AppendLine($"TypeText done : srcStart={srcStart} afterEnd={afterEnd}");
+
+                // 2. OMaths.Add + BuildUp (sans CC)
+                var typedRange = doc.Range(srcStart, afterEnd);
+                var added = typedRange.OMaths.Add(typedRange);
+                added.OMaths.BuildUp();
+                Microsoft.Office.Interop.Word.OMath om = null;
+                foreach (Microsoft.Office.Interop.Word.OMath o in added.OMaths) { om = o; break; }
+                if (om == null) { sb.AppendLine("OMath null after BuildUp"); Globals.ThisAddIn.PushDebugTrace(sb.ToString()); return; }
+                sb.AppendLine($"OMath built : Range=[{om.Range.Start},{om.Range.End}) Type={om.Type}");
+
+                // 3. Type=Display + Justification
+                try { om.Type = Microsoft.Office.Interop.Word.WdOMathType.wdOMathDisplay; }
+                catch (Exception exT) { sb.AppendLine("set Type ERR " + exT.Message); }
+                try { om.Justification = Microsoft.Office.Interop.Word.WdOMathJc.wdOMathJcLeft; }
+                catch (Exception exJ) { sb.AppendLine("set Justification ERR " + exJ.Message); }
+                sb.AppendLine($"after Type=Display : Range=[{om.Range.Start},{om.Range.End}) Type={om.Type}");
+
+                // 4. CC wrap sur ¶ - \r
+                Microsoft.Office.Interop.Word.ContentControl cc = null;
+                try
+                {
+                    var paraRange = om.Range.Paragraphs[1].Range.Duplicate;
+                    paraRange.MoveEnd(Microsoft.Office.Interop.Word.WdUnits.wdCharacter, -1);
+                    sb.AppendLine($"CC wrap target range = [{paraRange.Start},{paraRange.End})");
+                    cc = paraRange.ContentControls.Add(Microsoft.Office.Interop.Word.WdContentControlType.wdContentControlRichText);
+                    cc.Title = MathCursor.Host.CCMeta.MCMetaJson.CcTitle;
+                    cc.Tag = "{\"v\":1,\"poc\":\"display_full_flow\"}";
+                    sb.AppendLine($"CC wrapped : Range=[{cc.Range.Start},{cc.Range.End})");
+                }
+                catch (Exception exCc) { sb.AppendLine("CC wrap ERR " + exCc.Message); }
+
+                // 5. Dump OOXML final pour vérification
+                sb.AppendLine();
+                sb.AppendLine("=== OOXML final ===");
+                try
+                {
+                    string xml = om.Range.Paragraphs[1].Range.WordOpenXML;
+                    int b = xml.IndexOf("<w:body>", StringComparison.Ordinal);
+                    int e = xml.IndexOf("</w:body>", StringComparison.Ordinal);
+                    string slice = (b >= 0 && e > b) ? xml.Substring(b, e - b + 9) : xml;
+                    if (slice.Length > 1500) slice = slice.Substring(0, 1500) + "…[truncated]";
+                    sb.AppendLine(slice);
+                }
+                catch (Exception exX) { sb.AppendLine("XML dump ERR " + exX.Message); }
+            }
+            catch (Exception ex)
+            {
+                sb.AppendLine("ERROR: " + ex.Message);
+            }
+            Globals.ThisAddIn.PushDebugTrace(sb.ToString());
+        }
+
+        /// <summary>POC : insertion display brute g(x)=1/x au caret pour
+        /// diagnostiquer le comportement de om.Type=wdOMathDisplay.
+        /// Pas de CC, pas de Tag, juste l'OMath + OOXML dump avant/après.</summary>
+        public void OnDebugInsertDisplayRawClicked(IRibbonControl control)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("=== POC : insertion display brute g(x)=1/x ===");
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null) { sb.AppendLine("app null"); return; }
+                var doc = app.ActiveDocument;
+                if (doc == null) { sb.AppendLine("doc null"); return; }
+                var sel = app.Selection;
+                if (sel == null) { sb.AppendLine("sel null"); return; }
+
+                int insertPos = sel.Start;
+                sb.AppendLine($"insertPos = {insertPos}  docEnd = {doc.Content.End}");
+
+                // 1. Type unicode math au caret.
+                string unicodeMath = "g(x)=1/x";
+                sel.TypeText(unicodeMath);
+                sb.AppendLine($"after TypeText: sel.Start = {sel.Start}");
+
+                // 2. OMaths.Add + BuildUp (pas de CC wrap !)
+                int afterEnd = insertPos + unicodeMath.Length;
+                var typedRange = doc.Range(insertPos, afterEnd);
+                var added = typedRange.OMaths.Add(typedRange);
+                added.OMaths.BuildUp();
+
+                Microsoft.Office.Interop.Word.OMath om = null;
+                foreach (Microsoft.Office.Interop.Word.OMath o in added.OMaths) { om = o; break; }
+                if (om == null) { sb.AppendLine("OMath null after BuildUp"); Globals.ThisAddIn.PushDebugTrace(sb.ToString()); return; }
+
+                sb.AppendLine($"OMath built: range=[{om.Range.Start},{om.Range.End})");
+                sb.AppendLine($"OMath para text BEFORE Type set: {DumpParaText(om)}");
+                sb.AppendLine();
+                sb.AppendLine("=== OOXML before Type=Display ===");
+                sb.AppendLine(TruncateXml(om.Range.WordOpenXML, 1200));
+                sb.AppendLine();
+
+                // 3. Set Type=Display (= ce qu'on suspecte ajoute les <w:br/>)
+                try { om.Type = Microsoft.Office.Interop.Word.WdOMathType.wdOMathDisplay; }
+                catch (Exception exT) { sb.AppendLine("set Type error: " + exT.Message); }
+
+                sb.AppendLine($"OMath after Type=Display: range=[{om.Range.Start},{om.Range.End})");
+                sb.AppendLine($"OMath para text AFTER Type set: {DumpParaText(om)}");
+                sb.AppendLine();
+                sb.AppendLine("=== OOXML after Type=Display ===");
+                sb.AppendLine(TruncateXml(om.Range.WordOpenXML, 1500));
+
+                LogDebug("poc_insert_display_raw: see inspector");
+            }
+            catch (Exception ex)
+            {
+                sb.AppendLine("ERROR: " + ex.Message);
+                sb.AppendLine(ex.StackTrace);
+            }
+            Globals.ThisAddIn.PushDebugTrace(sb.ToString());
+        }
+
+        private static string DumpParaText(Microsoft.Office.Interop.Word.OMath om)
+        {
+            try
+            {
+                var para = om.Range.Paragraphs[1].Range;
+                string text = para.Text ?? "";
+                var b = new System.Text.StringBuilder();
+                b.Append($"len={text.Length} chars=");
+                for (int i = 0; i < text.Length && i < 30; i++)
+                {
+                    char c = text[i];
+                    if (c >= 32 && c < 127) b.Append(c);
+                    else b.Append($"[{(int)c:X2}]");
+                }
+                return b.ToString();
+            }
+            catch (Exception ex) { return "DumpErr: " + ex.Message; }
+        }
+
+        private static string TruncateXml(string xml, int max)
+        {
+            if (string.IsNullOrEmpty(xml)) return "(empty)";
+            // Extract just the <w:body>...</w:body> for focus
+            int b = xml.IndexOf("<w:body>", StringComparison.Ordinal);
+            int e = xml.IndexOf("</w:body>", StringComparison.Ordinal);
+            string slice = (b >= 0 && e > b) ? xml.Substring(b, e - b + 9) : xml;
+            if (slice.Length > max) slice = slice.Substring(0, max) + "…[truncated " + (slice.Length - max) + " more]";
+            return slice;
+        }
+
         public void OnDebugInsertOMathClicked(IRibbonControl control)
         {
             try

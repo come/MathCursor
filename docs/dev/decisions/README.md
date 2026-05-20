@@ -19,6 +19,9 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-05-19
+- `[forte]` Feat — [Anchor CC pattern : CC adjacent à l'OMath au lieu de wrap](2026-05-19-Feat-anchor-cc-pattern.md) — fix display math propre sans `<w:br/>` + élimine sticky auto-grow + caret naturel post-commit, CC tiny sur ZWSP hidden avant l'OMath, lookup backward probe O(1) (1-3 positions)
+
 ### 2026-05-18
 - `[molle]` Feat — [Intra-OMaths merger : revival LaTeX-preserving, voisin gauche uniquement](2026-05-18-Feat-intra-omaths-merger-revival.md) — fix `F(x)` + `=1` → 1 OMath `F(x)=1` (pas 2), `mergedLatex = leftLatex + newLatex` lu depuis `cc.Tag.Latex` (pas de re-rendu), marker guard (`=`/`<=>`/`=>`/`{`), skip si hash drift OMML détecté
 

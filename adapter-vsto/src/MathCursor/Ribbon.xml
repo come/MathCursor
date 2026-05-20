@@ -124,56 +124,61 @@
                   size="normal"
                   getImage="OnGetButtonImage"
                   onAction="OnContextInspectorClicked" />
-          <button id="DebugInsertOMathButton"
-                  label="Debug : f(x)=1"
-                  screentip="Insère une OMath simple f(x)=1 au curseur et place le caret à la fin. Outil de test pour isoler les bugs d'insertion sans passer par NER/popup."
+          <!-- ── Anciens boutons debug (commentés 2026-05-19, à réactiver ponctuellement) ──
+          <button id="DebugInsertOMathButton" label="Debug : f(x)=1" size="normal" onAction="OnDebugInsertOMathClicked" />
+          <button id="DebugReplaceByOMathButton" label="Debug : replace → f(x)=1" size="normal" onAction="OnDebugReplaceByOMathClicked" />
+          <button id="DebugWrapOMathInCCButton" label="POC : wrap OMath en CC" size="normal" onAction="OnDebugWrapOMathInCCClicked" />
+          <button id="DebugReadCCAtCaretButton" label="POC : read CC at caret" size="normal" onAction="OnDebugReadCCAtCaretClicked" />
+          <button id="DebugInsertWrappedOMathButton" label="POC : insert g(x)=2 wrappé" size="normal" onAction="OnDebugInsertWrappedOMathClicked" />
+          <button id="DebugCleanupOrphanCCsButton" label="POC : cleanup orphan CCs" size="normal" onAction="OnDebugCleanupOrphanCCsClicked" />
+          <button id="DebugStepStartButton" label="POC Step : start [=1]" size="normal" onAction="OnDebugStepStartClicked" />
+          <button id="DebugStepNextButton" label="POC Step : next" size="normal" onAction="OnDebugStepNextClicked" />
+          <button id="DebugDumpCharPositionsButton" label="POC : dump char positions" size="normal" onAction="OnDebugDumpCharPositionsClicked" />
+          <button id="DebugProbeLeftNeighborButton" label="POC : probe left neighbor" size="normal" onAction="OnDebugProbeLeftNeighborClicked" />
+          <button id="DebugInsertDisplayRawButton" label="POC : display raw g(x)=1/x" size="normal" onAction="OnDebugInsertDisplayRawClicked" />
+          ──────────────────────────────────────────────────────────────────────── -->
+          <!-- Nouveaux boutons debug Display + CC reorder (2026-05-19) -->
+          <button id="DebugInspectCcAtCaretButton"
+                  label="POC : inspect CC + OMath @ caret"
+                  screentip="Dump dans l'inspecteur : OMath et CC au caret, leurs ranges, le ParentContentControl chain."
                   size="normal"
-                  onAction="OnDebugInsertOMathClicked" />
-          <button id="DebugReplaceByOMathButton"
-                  label="Debug : replace → f(x)=1"
-                  screentip="Replace la sélection (ou les 6 chars avant le caret) par une OMath f(x)=1 alignée à gauche. Simule la recette minimale post-popup : range.Text = unicodeMath + OMaths.Add + BuildUp + om.Justification, sans toucher au caret."
+                  onAction="OnDebugInspectCcAtCaretClicked" />
+          <!-- Recette validée G + variantes CC à explorer pour ajouter le backlink. -->
+          <button id="DebugVariantEButton"
+                  label="Variant E : BuildUp → NO Type set → CC full para"
+                  screentip="E: TypeText → OMaths.Add+BuildUp → AUCUN Type set (trust Word auto-promo) → CC RichText sur paragraph COMPLET (block-level)."
                   size="normal"
-                  onAction="OnDebugReplaceByOMathClicked" />
-          <button id="DebugWrapOMathInCCButton"
-                  label="POC : wrap OMath en CC"
-                  screentip="POC ContentControl-based metadata. Prend l'OMath collée au caret (probe doc.Range(caret-1,caret).OMaths), l'enveloppe dans un CC Hidden avec Title=MathCursor + Tag JSON (steno/latex/hash/version). Test du backlink O(1) via ParentContentControl."
+                  onAction="OnDebugVariantEClicked" />
+          <button id="DebugVariantGButton"
+                  label="Variant G : recette propre SANS CC"
+                  screentip="G: TypeText → OMaths.Add+BuildUp → Type=Display, sans CC. Référence : display propre, pas de &lt;w:br/&gt;."
                   size="normal"
-                  onAction="OnDebugWrapOMathInCCClicked" />
-          <button id="DebugReadCCAtCaretButton"
-                  label="POC : read CC at caret"
-                  screentip="POC lecture. Affiche dans le pane debug ce que renvoie om.Range.ParentContentControl pour l'OMath collée au caret, et le contenu JSON parsé de cc.Tag. Vérifie que le backlink natif fonctionne."
+                  onAction="OnDebugVariantGClicked" />
+          <button id="DebugVariantG1Button"
+                  label="Variant G1 : G + anchor CC ZWSP avant l'OMath"
+                  screentip="G1: G + CC RichText hidden autour d'un ZWSP (​) hidden inséré juste AVANT l'OMath. Le CC ne wrappe pas l'OMath, juste un ancrage adjacent. Lookup OMath via cc.Range.Next."
                   size="normal"
-                  onAction="OnDebugReadCCAtCaretClicked" />
-          <button id="DebugInsertWrappedOMathButton"
-                  label="POC : insert g(x)=2 wrappé"
-                  screentip="POC full flow. Insère g(x)=2 au caret (TypeText + OMaths.Add + BuildUp + Justification.Left) ET enveloppe atomiquement dans un CC MathCursor avec Tag JSON (steno, latex, hash post-wrap). Simule ce que la Phase B/C fera dans InsertOMathAt."
+                  onAction="OnDebugVariantG1Clicked" />
+          <button id="DebugVariantG2Button"
+                  label="Variant G2 : G + wrap CC via OOXML"
+                  screentip="G2: G + lit l'OOXML du ¶, wrap &lt;w:p&gt; dans &lt;w:sdt&gt; via XDocument, re-injecte via Range.InsertXML. Bypass l'API ContentControls.Add."
                   size="normal"
-                  onAction="OnDebugInsertWrappedOMathClicked" />
-          <button id="DebugCleanupOrphanCCsButton"
-                  label="POC : cleanup orphan CCs"
-                  screentip="Scanne doc.ContentControls et liste les CCs MathCursor sans OMath dedans (= orphelins fantômes). Affiche le diag dans le pane + supprime les orphelins trouvés."
+                  onAction="OnDebugVariantG2Clicked" />
+          <button id="DebugVariantG3Button"
+                  label="Variant G3 : G + CC RichText sur om.Range (tardif)"
+                  screentip="G3: G + CC RichText sur om.Range APRÈS Type+Justification. Test : Word a-t-il finalisé l'OMathPara au moment du CC ?"
                   size="normal"
-                  onAction="OnDebugCleanupOrphanCCsClicked" />
-          <button id="DebugStepStartButton"
-                  label="POC Step : start [=1]"
-                  screentip="Capture la sélection courante comme zone d'insertion, source = '=1', latex = '= 1'. Réinit le step runner. Sélectionne ton '=1' plain text dans le doc avant de cliquer."
+                  onAction="OnDebugVariantG3Clicked" />
+          <button id="DebugVariantG4Button"
+                  label="Variant G4 : G3 + caret après l'OMath"
+                  screentip="G4: G3 + SetRange explicite caret @ cc.Range.End post-wrap, pour continuer à taper directement après l'équation (in-line, pas saut de ¶)."
                   size="normal"
-                  onAction="OnDebugStepStartClicked" />
-          <button id="DebugStepNextButton"
-                  label="POC Step : next"
-                  screentip="Avance d'une étape dans la séquence d'InsertOMathAt. Affiche dans le pane debug l'état du doc après l'étape. Cycle : Normalize → SetRange → Delete → TypeText → CC wrap → OMath build → Tag → CcSticky."
+                  onAction="OnDebugVariantG4Clicked" />
+          <button id="DebugPocDeleteButton"
+                  label="POC DELETE : OMath + anchor CC au caret"
+                  screentip="Place le caret DANS une OMath puis clique : tente de supprimer l'OMath + son anchor CC sans typetext. Logs ultra détaillés sur chaque étape (find OMath, find anchor, unlock, cc.Delete, om.Delete, état final). Diagnostic pur du problème de suppression."
                   size="normal"
-                  onAction="OnDebugStepNextClicked" />
-          <button id="DebugDumpCharPositionsButton"
-                  label="POC : dump char positions"
-                  screentip="Itère paragraph.Range.Characters du ¶ courant et dump pour chaque char : Range.Start, Range.End, Range.Text (escapé). Sert à valider si Word.Characters[i].Start = position interne du char visible i (= alternative au translator string→internal)."
-                  size="normal"
-                  onAction="OnDebugDumpCharPositionsClicked" />
-          <button id="DebugProbeLeftNeighborButton"
-                  label="POC : probe left neighbor"
-                  screentip="Sonde tous les chemins de détection « voisin gauche OMath » au caret : ParentContentControl à 5 positions autour, doc.Range(p,p+1).OMaths sur 5 positions, NeighborFinder.FindAdjacent, IntraOMathsMerger.TryMergeWithLeft simulé avec source='=1'. Affiche dans l'inspecteur ce que chaque probe retourne sans rien modifier."
-                  size="normal"
-                  onAction="OnDebugProbeLeftNeighborClicked" />
+                  onAction="OnDebugPocDeleteClicked" />
           <button id="AboutButton"
                   getLabel="OnGetAboutButtonLabel"
                   getScreentip="OnGetAboutButtonScreentip"
