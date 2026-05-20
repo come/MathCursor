@@ -76,7 +76,10 @@ namespace MathCursor.Host
                 var omathStringRegions = new List<(int stringStart, int stringLen)>();
                 try
                 {
-                    foreach (Word.OMath om in doc.OMaths)
+                    // Itère uniquement les OMaths du ¶ courant via Range.OMaths
+                    // (pas doc.OMaths qui scanne tout le doc à chaque tick — sur
+                    // 200 pages × 2000 OMaths × 5 Hz polling c'est inutilisable).
+                    foreach (Word.OMath om in doc.Range(paraStart, paraEnd).OMaths)
                     {
                         var r = om.Range;
                         if (r.End <= paraStart || r.Start >= paraEnd) continue;

@@ -179,6 +179,11 @@
                   screentip="Place le caret DANS une OMath puis clique : tente de supprimer l'OMath + son anchor CC sans typetext. Logs ultra détaillés sur chaque étape (find OMath, find anchor, unlock, cc.Delete, om.Delete, état final). Diagnostic pur du problème de suppression."
                   size="normal"
                   onAction="OnDebugPocDeleteClicked" />
+          <button id="DebugRunScenariosButton"
+                  label="Run Word scenarios"
+                  screentip="Lance une suite de scenarios end-to-end qui exercent les fixes Word interop : prose+OMath inline, OMath seule display, liste numérotée, cellule de tableau. Ouvre un doc Word temporaire (fermé sans save) et affiche les résultats."
+                  size="normal"
+                  onAction="OnDebugRunScenariosClicked" />
           <button id="AboutButton"
                   getLabel="OnGetAboutButtonLabel"
                   getScreentip="OnGetAboutButtonScreentip"

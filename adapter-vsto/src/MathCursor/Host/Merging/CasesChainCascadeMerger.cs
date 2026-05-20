@@ -77,28 +77,16 @@ namespace MathCursor.Host.Merging
                 var omathTop = _probe.FindOwnedAtEnd(doc, prevStart, prevContentEnd);
                 if (omathTop.HasValue)
                 {
-                    // Source de vérité = le LaTeX rendu (cc.Tag.Latex). Un
-                    // OMath EST cases ssi son latex contient `\begin{cases}`.
-                    // Ça résout l'ambiguïté de la source steno :
-                    //   - `{x+2=3` rendu cases (typé sans espace, 1ère cellule)
-                    //   - `{1,2}` set en extension, PAS cases
-                    // La source seule ne suffit pas. Le current source reste
-                    // validé strictement via StartsWithCasesMarker (l'user a
-                    // tapé `{ ` car listmode a pré-injecté).
-                    bool aboveIsCases = !string.IsNullOrEmpty(omathTop.Value.latex)
-                        && omathTop.Value.latex.IndexOf("\\begin{cases}", StringComparison.Ordinal) >= 0;
-                    if (aboveIsCases)
+                    // Source de vérité = le LaTeX rendu (cc.Tag.Latex), pas
+                    // la heuristique source : résout l'ambiguïté `{x+2=3`
+                    // (cases sans espace, 1ère cellule) vs `{1,2}` (set en
+                    // extension). Le current source reste validé strictement
+                    // via StartsWithCasesMarker au début de TryMerge.
+                    if (CasesCascadeMerger.LatexIsCases(omathTop.Value.latex))
                     {
-                        // Normaliser la source absorbée à `{ ` (avec espace) si
-                        // manquant — sinon BuildCascade rejettera (StartsWithCasesMarker strict).
-                        string absorbedSource = omathTop.Value.source;
-                        var trimmed = absorbedSource.TrimStart();
-                        if (trimmed.Length >= 1 && trimmed[0] == '{'
-                            && (trimmed.Length < 2 || trimmed[1] != ' '))
-                        {
-                            int idxBrace = absorbedSource.IndexOf('{');
-                            absorbedSource = absorbedSource.Substring(0, idxBrace + 1) + " " + absorbedSource.Substring(idxBrace + 1);
-                        }
+                        // Normaliser la source absorbée à `{ ` (avec espace)
+                        // pour rester compat avec BuildCascade strict.
+                        string absorbedSource = CasesCascadeMerger.NormalizeCasesSource(omathTop.Value.source);
                         paragraphsAbove.Insert(0, absorbedSource);
                         removedHandles.Add(omathTop.Value.handle);
                         chainStart = omathTop.Value.omStart;

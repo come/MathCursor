@@ -55,6 +55,42 @@ namespace MathCursor.Host
             return trimmed.Length >= 2 && trimmed[0] == '{' && trimmed[1] == ' ';
         }
 
+        /// <summary>
+        /// Détecte si un LaTeX rendu correspond à un système d'équations
+        /// (= contient <c>\begin{cases}</c>). Utilisé comme source de
+        /// vérité non-ambiguë pour décider si un OMath voisin doit être
+        /// absorbé dans une cascade cases, à la place de l'heuristique
+        /// source (qui ne distingue pas <c>{x</c> = cases sans espace vs
+        /// <c>{1,2}</c> = set en extension).
+        /// </summary>
+        public static bool LatexIsCases(string latex)
+        {
+            if (string.IsNullOrEmpty(latex)) return false;
+            return latex.IndexOf("\\begin{cases}", System.StringComparison.Ordinal) >= 0;
+        }
+
+        /// <summary>
+        /// Normalise une source cases en garantissant un espace après le
+        /// <c>{</c> initial. Utile pour aligner une steno tapée <c>{x+1=0</c>
+        /// (sans espace, typique 1ère cellule de tableau où le listmode n'a
+        /// pas pré-injecté <c>{ </c>) sur le format attendu par
+        /// <see cref="BuildCascade"/> et <see cref="StartsWithCasesMarker"/>.
+        ///
+        /// <para>Best-effort : si la source ne commence pas par <c>{</c>, ou
+        /// si elle a déjà un espace, retourne <paramref name="source"/>
+        /// inchangée.</para>
+        /// </summary>
+        public static string NormalizeCasesSource(string source)
+        {
+            if (string.IsNullOrEmpty(source)) return source;
+            string trimmedStart = source.TrimStart();
+            if (trimmedStart.Length == 0 || trimmedStart[0] != '{') return source;
+            if (trimmedStart.Length >= 2 && trimmedStart[1] == ' ') return source;
+            int idxBrace = source.IndexOf('{');
+            if (idxBrace < 0) return source;
+            return source.Substring(0, idxBrace + 1) + " " + source.Substring(idxBrace + 1);
+        }
+
 
         /// <summary>
         /// Construit la cascade cases depuis un current source et la liste

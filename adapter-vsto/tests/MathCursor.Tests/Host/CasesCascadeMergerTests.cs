@@ -194,5 +194,97 @@ namespace MathCursor.Tests.Host
             Assert.False(CasesCascadeMerger.StartsWithCasesMarker(""));
             Assert.False(CasesCascadeMerger.StartsWithCasesMarker("   "));
         }
+
+        // ──────────── LatexIsCases ────────────
+
+        [Fact(DisplayName = "LatexIsCases : latex avec \\begin{cases} → true")]
+        public void LatexIsCases_BeginCases_True()
+        {
+            Assert.True(CasesCascadeMerger.LatexIsCases(@"\begin{cases} x+1 & = 0 \end{cases}"));
+        }
+
+        [Fact(DisplayName = "LatexIsCases : latex sans \\begin{cases} → false")]
+        public void LatexIsCases_NoCases_False()
+        {
+            Assert.False(CasesCascadeMerger.LatexIsCases(@"f\left(x\right)"));
+            Assert.False(CasesCascadeMerger.LatexIsCases(@"\begin{align*} x & = 1 \end{align*}"));
+        }
+
+        [Fact(DisplayName = "LatexIsCases : null/empty → false")]
+        public void LatexIsCases_NullEmpty_False()
+        {
+            Assert.False(CasesCascadeMerger.LatexIsCases(null));
+            Assert.False(CasesCascadeMerger.LatexIsCases(""));
+        }
+
+        [Fact(DisplayName = "LatexIsCases : set en extension {1,2} latex-rendu → false")]
+        public void LatexIsCases_SetExtension_False()
+        {
+            // Un set { 1, 2 } rendu en latex ne contient PAS \begin{cases}.
+            // Distingue cases vs set, qui partagent le glyph `{` en source.
+            Assert.False(CasesCascadeMerger.LatexIsCases(@"\left\{1,2\right\}"));
+        }
+
+        // ──────────── NormalizeCasesSource ────────────
+
+        [Fact(DisplayName = "NormalizeCasesSource : {x+1=0 (sans espace) → { x+1=0")]
+        public void NormalizeCasesSource_NoSpace_AddsSpace()
+        {
+            Assert.Equal("{ x+1=0", CasesCascadeMerger.NormalizeCasesSource("{x+1=0"));
+        }
+
+        [Fact(DisplayName = "NormalizeCasesSource : { x+1=0 (déjà espacé) → inchangé")]
+        public void NormalizeCasesSource_Spaced_Unchanged()
+        {
+            Assert.Equal("{ x+1=0", CasesCascadeMerger.NormalizeCasesSource("{ x+1=0"));
+        }
+
+        [Fact(DisplayName = "NormalizeCasesSource : whitespace en tête préservé")]
+        public void NormalizeCasesSource_LeadingWhitespace_Preserved()
+        {
+            // L'espace est inséré après le `{` trouvé, pas en début de string.
+            Assert.Equal("  { x+1=0", CasesCascadeMerger.NormalizeCasesSource("  {x+1=0"));
+        }
+
+        [Fact(DisplayName = "NormalizeCasesSource : ne commence pas par { → inchangé")]
+        public void NormalizeCasesSource_NotCases_Unchanged()
+        {
+            Assert.Equal("x+1=0", CasesCascadeMerger.NormalizeCasesSource("x+1=0"));
+            Assert.Equal("=1", CasesCascadeMerger.NormalizeCasesSource("=1"));
+        }
+
+        [Fact(DisplayName = "NormalizeCasesSource : null/empty → inchangé")]
+        public void NormalizeCasesSource_NullEmpty_Unchanged()
+        {
+            Assert.Null(CasesCascadeMerger.NormalizeCasesSource(null));
+            Assert.Equal("", CasesCascadeMerger.NormalizeCasesSource(""));
+        }
+
+        [Fact(DisplayName = "NormalizeCasesSource : { seul (1 char) → ajoute espace")]
+        public void NormalizeCasesSource_BraceOnly_AddsSpace()
+        {
+            Assert.Equal("{ ", CasesCascadeMerger.NormalizeCasesSource("{"));
+        }
+
+        [Fact(DisplayName = "NormalizeCasesSource + BuildCascade : steno 1ère cellule {x normalisée puis absorbée")]
+        public void NormalizeCasesSource_IntegratesWithBuildCascade()
+        {
+            // Reproduit le scenario bug 2026-05-20 : commit 1 stocke `{x+2=3`
+            // (sans espace, 1ère cellule de tableau), commit 2 = `{ x+4=5`.
+            // Sans normalisation, BuildCascade (strict) rejette `{x+2=3` →
+            // absorbed=0 → null. Avec normalisation, c'est OK.
+            string topSource = "{x+2=3";        // ligne 1 telle que stockée
+            string currentSource = "{ x+4=5";   // ligne 2 (listmode a injecté `{ `)
+
+            string normalized = CasesCascadeMerger.NormalizeCasesSource(topSource);
+            Assert.Equal("{ x+2=3", normalized);
+
+            var paragraphsAbove = new List<string> { normalized };
+            var result = CasesCascadeMerger.BuildCascade(paragraphsAbove, currentSource);
+
+            Assert.NotNull(result);
+            Assert.Equal(1, result.AbsorbedCount);
+            Assert.Equal("{ x+2=3\n{ x+4=5", result.MergedSource);
+        }
     }
 }

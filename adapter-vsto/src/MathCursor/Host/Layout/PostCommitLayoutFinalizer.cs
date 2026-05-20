@@ -68,7 +68,12 @@ namespace MathCursor.Host.Layout
             didCreateNewPara = false;
             try
             {
-                foreach (Word.OMath om in doc.OMaths)
+                // Probe local : l'OMath qui contient posInOMath chevauche
+                // forcément [posInOMath, posInOMath+1]. Évite d'itérer
+                // doc.OMaths qui scanne tout le doc (O(n) sur 200 pages).
+                int probeEnd = Math.Min(posInOMath + 1, doc.Content.End);
+                int probeStart = Math.Max(0, posInOMath);
+                foreach (Word.OMath om in doc.Range(probeStart, probeEnd).OMaths)
                 {
                     if (om.Range.Start > posInOMath || om.Range.End <= posInOMath) continue;
                     var omPara = om.Range.Paragraphs[1];

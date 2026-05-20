@@ -2125,6 +2125,48 @@ namespace MathCursor.Host
         /// Retourne (newStart, newEnd) = bornes de l'OMath ET le handleId
         /// fraîchement généré (mémorisé dans le Tag, clé du registry sidecar).
         /// </summary>
+        ///
+        /// <remarks>
+        /// Entrée de test pour <see cref="MathCursor.Host.Debug.WordScenarioRunner"/> :
+        /// expose <c>InsertOMathAt</c> sans passer par le pipeline NER+popup.
+        /// </remarks>
+        internal (int newStart, int newEnd, string newHandle) InsertOMathForScenarioTest(
+            int absStart, int absEnd, string latex, string source)
+            => InsertOMathAt(absStart, absEnd, latex, source, null);
+
+        /// <summary>
+        /// Entrée de test qui passe par <see cref="ApplyMergers"/> AVANT
+        /// <see cref="InsertOMathAt"/> — couvre les scenarios cross-merge
+        /// (chaînes équivalences align*, systèmes cases multi-ligne). Pas
+        /// de NER, pas de popup, pas de store/layout. Sidecar.Empty.
+        /// </summary>
+        internal (int newStart, int newEnd, string newHandle) CommitWithMergersForScenarioTest(
+            int absStart, int absEnd, string latex, string source)
+        {
+            var outcome = ApplyMergers(absStart, absEnd, source, latex, editingHandle: null);
+            return InsertOMathAt(outcome.AbsStart, outcome.AbsEnd, outcome.Latex, outcome.Source, null);
+        }
+
+        /// <summary>
+        /// Entrée de test qui invoque le <c>LayoutFinalizer</c> pour le cas
+        /// cases single-line (= reproduit la branche IsCasesLatex de
+        /// <see cref="LayoutImpl"/>). À appeler APRÈS un commit cases pour
+        /// déclencher la création du ¶ vide d'atterrissage (ex. en cellule
+        /// de tableau).
+        /// </summary>
+        internal void FinalizeLayoutForCasesScenarioTest(int omPosition)
+        {
+            try
+            {
+                var doc = _app.ActiveDocument;
+                if (doc == null) return;
+                bool didCreate;
+                int caretPos = _layoutFinalizer.AppendEmptyParagraphAfterOMath(doc, omPosition, out didCreate);
+                if (caretPos >= 0) _layoutFinalizer.SetCaretAtPosition(caretPos);
+            }
+            catch (Exception ex) { LogDiag("finalize_layout_test_error: " + ex.Message); }
+        }
+
         private (int newStart, int newEnd, string newHandle) InsertOMathAt(int absStart, int absEnd, string latex,
             string source,
             System.Collections.Generic.IReadOnlyList<string> absorbedHandles = null)

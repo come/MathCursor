@@ -192,14 +192,16 @@ namespace MathCursor
             try
             {
                 int n = ParseColumnCountFromId(control?.Id);
+                LogDebug($"insert_columns_click id={control?.Id ?? "<null>"} n={n}");
                 if (n < 1 || n > 4)
                 {
                     LogDebug($"insert_columns_invalid_n id={control?.Id ?? "<null>"}");
                     return;
                 }
                 var app = Globals.ThisAddIn?.Application;
-                if (app == null) return;
+                if (app == null) { LogDebug("insert_columns: app null"); return; }
                 MathCursor.Host.ColumnLayoutInserter.Insert(app, n);
+                LogDebug($"insert_columns_done n={n} tablesCount={app.ActiveDocument?.Tables?.Count}");
             }
             catch (Exception ex)
             {
@@ -1150,6 +1152,29 @@ namespace MathCursor
 
         public void OnDebugPocDeleteClicked(IRibbonControl control)
             => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunPocDeleteOMathAndAnchor);
+
+        /// <summary>Lance la suite de scenarios Word end-to-end (cellule,
+        /// liste, prose, alone, chain, system…). Écrit séparateurs + titres
+        /// + résultats directement dans le doc actuel — pas de window UI.
+        /// Le résumé final est appendé en fin de doc.</summary>
+        public void OnDebugRunScenariosClicked(IRibbonControl control)
+        {
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                var svc = Globals.ThisAddIn?.Suggestions;
+                if (app == null || svc == null)
+                {
+                    LogDebug("run_scenarios: app ou service null, abort");
+                    return;
+                }
+                MathCursor.Host.Debug.WordScenarioRunner.RunAll(svc, app);
+            }
+            catch (Exception ex)
+            {
+                LogDebug("run_scenarios_error: " + ex.Message);
+            }
+        }
 
         public void OnDebugVariantGClicked(IRibbonControl control)
             => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunVariantG_NoCc);

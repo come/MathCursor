@@ -305,6 +305,7 @@
     <Compile Include="Host\Caret\CaretScreenPositionReader.cs" />
     <Compile Include="Host\ZoneCleaner.cs" />
     <Compile Include="Host\Debug\OMathInsertVariants.cs" />
+    <Compile Include="Host\Debug\WordScenarioRunner.cs" />
     <Compile Include="Host\Detection\NerInputWindow.cs" />
     <Compile Include="Host\Detection\ParagraphPositionTranslator.cs" />
     <Compile Include="Host\Detection\ZoneRefiner.cs" />
