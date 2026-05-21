@@ -1,6 +1,6 @@
 # ROADMAP — État des chantiers MathCursor
 
-**Dernière mise à jour** : 2026-05-14
+**Dernière mise à jour** : 2026-05-21
 **Audience** : moi-future / Claude Code re-démarré / contributeur tiers
 
 Document unique d'orientation. Lecture en 2 minutes → état complet des
@@ -124,6 +124,32 @@ plans en cours. **Mis à jour à chaque fin de sous-livraison.**
   - Tests associés (`CaretPositionCalculatorTests`, `OMathParaJcPatcherTests`, `InlineOMathSplicerTests`, `InsertTransplantIntegrationTests`, `Perf/InsertPipelinePerfTests`)
 - [ ] `WarmUp` event-driven retiré (plus de ghost à pre-warm)
 - [ ] ADR de bilan : pourquoi la recette minimale a remplacé le pipeline complexe (= snapshot des décisions)
+
+---
+
+## Chantier 6 — Pattern Templates (axe A — constructions structurées)
+
+**ADR-clé** : [`2026-05-21-Meta-pattern-templates-vs-ambig-closed.md`](../decisions/2026-05-21-Meta-pattern-templates-vs-ambig-closed.md)
+**Objectif** : séparer 2 concepts mélangés aujourd'hui dans `IAmbiguityScanner` — les **ambig closed** (AB/tight-chain/decimal) restent, les **patterns structurés** (V/Lim/Sum/∫/dérivée) passent dans un nouveau contrat `IPatternTemplate` compositionnel + caret-aware.
+
+### Étapes
+
+- [x] **P0** — Attendre commit stable du WIP popup en cours (`PopupAltFilter` / `BuildSidecar` / `RemovePreference`) — commits `817c4d3` / `8477602` / `538f61e`
+- [x] **P1** — Caret-aware `ZoneResolver` : ajout paramètre `caretOffset` + service `CaretLocator.FindDeepestMatchAtCaret`. ADR [`Refactor-caret-aware-zone-resolver`](../decisions/2026-05-21-Refactor-caret-aware-zone-resolver.md). +24 tests verts (13 `CaretLocator` + 11 `CaretAwareZoneResolver`), 393/393 adapter inchangé.
+- [ ] **P2** — Squelette `core-csharp/src/MathCursor.Core/Patterns/` : contrats (`IPatternTemplate`, `PatternMatch`, `PatternSlot`, `PatternCompletion`, `PatternPipeline`, `PatternRegistry`) vides, build vert.
+- [ ] **P3** — `EnsembleTemplate` (heads R/R*/N/Z/Q/C + delegate à `IntervalUnionTemplate` pour `[`). C# pur.
+- [ ] **P4** — `IntervalUnionTemplate` (récursif, `[a,b]∪[c,d]`, opérateurs `U`/`union`/`inter`).
+- [ ] **P5** — `ForallBelongsTemplate` (head V/E, slot var csv-of-identifiers, slot domain optionnel `app a` ref `EnsembleTemplate`).
+- [ ] **P6** — Retrait `VAsForallEAsExistsScanner` + `CanonicalSetLettersScanner` du `AmbiguityScannerPipeline` (couverts par P5+P3).
+- [ ] **P7** — `SuggestionPopupWindow` consomme `PatternCompletion[]` + `AmbiguityMatch[]`. Rendu HintLatex avec carrés (`\square` LaTeX ou `▭` Unicode, à trancher en P7).
+- [ ] **P8** — Test bout-en-bout dans Word : `V x app a [0,1]U[3,4]` → `\forall x \in [0,1]\cup[3,4]` avec carrés pendant la saisie.
+- [ ] **P9+** — `LimTemplate`, `SumTemplate`, `IntegralTemplate`, `DerivativeTemplate` + migration YAML des patterns triviaux (`EnsembleTemplate` candidat éligible).
+
+### Couplage avec les autres chantiers
+
+- **Chantier 1 (source-mut pins S2/S3)** : zones de code différentes (`ZoneResolver.ApplyAllMutations` vs `Patterns/`), peut paralléliser. S3 idéalement **après P6** pour ne pas redéplacer du code.
+- **Chantier 2 (harnais)** : MC0006 inchangé par ce chantier (les templates produisent toujours `SourceMutation`, jamais de splice).
+- **Chantier 5 (pipeline insertion)** : indépendant.
 
 ---
 

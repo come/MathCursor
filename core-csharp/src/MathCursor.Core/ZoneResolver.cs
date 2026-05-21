@@ -189,12 +189,13 @@ namespace MathCursor.Core
         public ResolvedZone Resolve(
             string rawSource,
             MathCursor.Core.Resolution.GlobalContext? globalCtx,
-            MathCursor.Core.Resolution.ResolutionSidecar? sidecar)
+            MathCursor.Core.Resolution.ResolutionSidecar? sidecar,
+            int? caretOffset = null)
         {
             var baseResolved = Resolve(rawSource);
             bool hasSidecar = sidecar != null && !sidecar.IsEmpty;
             bool hasContext = globalCtx != null && globalCtx.SignalCount > 0;
-            if (!hasSidecar && !hasContext) return baseResolved;
+            if (!hasSidecar && !hasContext) return ApplyCaretAware(baseResolved, caretOffset);
 
             string topLatex = baseResolved.TopLatex ?? string.Empty;
             string source = rawSource ?? string.Empty;
@@ -257,7 +258,7 @@ namespace MathCursor.Core
                 enrichedMatches = list;
             }
 
-            return new ResolvedZone(
+            var resolved = new ResolvedZone(
                 rawSource: baseResolved.RawSource,
                 mutedSource: baseResolved.MutedSource,
                 topLatex: topLatex,
@@ -267,6 +268,42 @@ namespace MathCursor.Core
                 allMatches: enrichedMatches,
                 isIncomplete: baseResolved.IsIncomplete,
                 baseTopLatex: baseResolved.TopLatex);
+            return ApplyCaretAware(resolved, caretOffset);
+        }
+
+        /// <summary>
+        /// Si <paramref name="caretOffset"/> est fourni, recherche dans
+        /// <see cref="ResolvedZone.AllMatches"/> le <see cref="AmbiguityMatch"/>
+        /// au plus petit span contenant le caret (cf.
+        /// <see cref="MathCursor.Core.Patterns.CaretLocator.FindDeepestMatchAtCaret"/>).
+        /// Si trouvé : retourne un nouveau <see cref="ResolvedZone"/> avec
+        /// <c>Spot</c>/<c>SpotStart</c>/<c>SpotEnd</c> repointés sur ce match.
+        /// Sinon (caret null, hors zone, aucun match contenant) : retourne
+        /// <paramref name="zone"/> inchangé (Spot legacy = rightmost préservé).
+        ///
+        /// <para>AllMatches reste identique : seul le <c>Spot</c> exposé à
+        /// la popup change. Les annotations <c>AppliedAltIdx</c> sont
+        /// préservées.</para>
+        ///
+        /// <para>Cf. ADR <c>2026-05-21-Meta-pattern-templates-vs-ambig-closed</c>,
+        /// étape P1.</para>
+        /// </summary>
+        private static ResolvedZone ApplyCaretAware(ResolvedZone zone, int? caretOffset)
+        {
+            if (caretOffset == null) return zone;
+            var deepest = MathCursor.Core.Patterns.CaretLocator.FindDeepestMatchAtCaret(
+                zone.AllMatches, caretOffset.Value);
+            if (deepest == null) return zone;
+            return new ResolvedZone(
+                rawSource: zone.RawSource,
+                mutedSource: zone.MutedSource,
+                topLatex: zone.TopLatex,
+                spot: deepest.Spot,
+                spotStart: deepest.Start,
+                spotEnd: deepest.End,
+                allMatches: zone.AllMatches,
+                isIncomplete: zone.IsIncomplete,
+                baseTopLatex: zone.BaseTopLatex);
         }
 
         /// <summary>
@@ -410,19 +447,21 @@ namespace MathCursor.Core
         /// Conservé pour les tests + appels legacy qui n'ont pas de
         /// <c>GlobalContext</c> de session sous la main.
         /// </summary>
-        public ResolvedZone Resolve(string rawSource, MathCursor.Core.Resolution.ResolutionSidecar sidecar)
+        public ResolvedZone Resolve(string rawSource,
+            MathCursor.Core.Resolution.ResolutionSidecar sidecar,
+            int? caretOffset = null)
         {
-            if (sidecar == null || sidecar.IsEmpty) return Resolve(rawSource);
+            if (sidecar == null || sidecar.IsEmpty) return Resolve(rawSource, caretOffset);
             var globalCtx = new MathCursor.Core.Resolution.GlobalContext();
             globalCtx.AddSignal(new MathCursor.Core.Resolution.Signals.SidecarSignal());
-            return Resolve(rawSource, globalCtx, sidecar);
+            return Resolve(rawSource, globalCtx, sidecar, caretOffset);
         }
 
         /// <summary>
         /// Résout une source brute : applique les préférences source-mutation
         /// récursivement, lance le pipeline, calcule <see cref="ResolvedZone.IsIncomplete"/>.
         /// </summary>
-        public ResolvedZone Resolve(string rawSource)
+        public ResolvedZone Resolve(string rawSource, int? caretOffset = null)
         {
             rawSource = rawSource ?? string.Empty;
             // Préprocesseur : `R*`/`N+`/`Z*-` etc. (lettre canonique + 1 ou 2
@@ -446,7 +485,7 @@ namespace MathCursor.Core
             // une préférence pour leur ruleId ; popup filtre cet alt en aval.
             var annotatedMatches = AnnotateAppliedAltIdxFromPreferences(decoratedMatches);
             bool incomplete = ComputeIsIncomplete(rawSource, ambig.TopLatex);
-            return new ResolvedZone(
+            var resolved = new ResolvedZone(
                 rawSource: rawSource,
                 mutedSource: muted,
                 topLatex: ambig.TopLatex,
@@ -455,6 +494,7 @@ namespace MathCursor.Core
                 spotEnd: ambig.SpotEnd,
                 allMatches: annotatedMatches,
                 isIncomplete: incomplete);
+            return ApplyCaretAware(resolved, caretOffset);
         }
 
         /// <summary>

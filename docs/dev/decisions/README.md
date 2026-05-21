@@ -19,6 +19,10 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-05-21
+- `[molle]` Refactor — [Caret-aware ZoneResolver via CaretLocator (P1 du plan Patterns)](2026-05-21-Refactor-caret-aware-zone-resolver.md) — nouveau service `CaretLocator.FindDeepestMatchAtCaret` + paramètre optionnel `caretOffset` sur les 3 overloads `ZoneResolver.Resolve`, default null = legacy rightmost préservé, +24 tests verts, 393/393 adapter inchangé
+- `[forte]` Meta — [Séparation Pattern Template vs Ambig Closed + désambig caret-aware](2026-05-21-Meta-pattern-templates-vs-ambig-closed.md) — `IAmbiguityScanner` pour les ambig fermées (AB/tight-chain) + nouveau `IPatternTemplate` compositionnel (V/Lim/Sum) avec slots optionnels et sous-patterns isolables, pilote `forall-belongs` + `ensemble` + `interval-union` en C# pur, retrait du scanner V legacy, plan en 9 étapes P1-P9+
+
 ### 2026-05-19
 - `[forte]` Feat — [Anchor CC pattern : CC adjacent à l'OMath au lieu de wrap](2026-05-19-Feat-anchor-cc-pattern.md) — fix display math propre sans `<w:br/>` + élimine sticky auto-grow + caret naturel post-commit, CC tiny sur ZWSP hidden avant l'OMath, lookup backward probe O(1) (1-3 positions)
 
