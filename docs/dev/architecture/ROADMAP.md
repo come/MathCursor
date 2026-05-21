@@ -137,7 +137,7 @@ plans en cours. **Mis à jour à chaque fin de sous-livraison.**
 - [x] **P0** — Attendre commit stable du WIP popup en cours (`PopupAltFilter` / `BuildSidecar` / `RemovePreference`) — commits `817c4d3` / `8477602` / `538f61e`
 - [x] **P1** — Caret-aware `ZoneResolver` : ajout paramètre `caretOffset` + service `CaretLocator.FindDeepestMatchAtCaret`. ADR [`Refactor-caret-aware-zone-resolver`](../decisions/2026-05-21-Refactor-caret-aware-zone-resolver.md). +24 tests verts (13 `CaretLocator` + 11 `CaretAwareZoneResolver`), 393/393 adapter inchangé.
 - [x] **P2** — Squelette `core-csharp/src/MathCursor.Core/Patterns/` : 9 fichiers contrats (`IPatternTemplate`, `PatternScanContext`, `SlotType`+4 sealed, `SlotSpec`, `SlotValue`+3 sealed, `PatternMatch`, `PatternCompletion`, `PatternPipeline`, `PatternRegistry`). ADR [`Refactor-pattern-pipeline-skeleton`](../decisions/2026-05-21-Refactor-pattern-pipeline-skeleton.md). +16 tests sanity verts, aucun template inscrit.
-- [ ] **P3** — `EnsembleTemplate` (heads R/R*/N/Z/Q/C + delegate à `IntervalUnionTemplate` pour `[`). C# pur.
+- [x] **P3** — `EnsembleTemplate` : heads R/N/Z/Q/C + 1-2 modifiers (* + -), SourceMutation vers bbX, leaf template. ADR [`Feat-ensemble-pattern`](../decisions/2026-05-21-Feat-ensemble-pattern.md). +33 tests verts. Délégation à `IntervalUnionTemplate` pour `[` reportée à P4.
 - [ ] **P4** — `IntervalUnionTemplate` (récursif, `[a,b]∪[c,d]`, opérateurs `U`/`union`/`inter`).
 - [ ] **P5** — `ForallBelongsTemplate` (head V/E, slot var csv-of-identifiers, slot domain optionnel `app a` ref `EnsembleTemplate`).
 - [ ] **P6** — Retrait `VAsForallEAsExistsScanner` + `CanonicalSetLettersScanner` du `AmbiguityScannerPipeline` (couverts par P5+P3).
