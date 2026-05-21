@@ -66,6 +66,64 @@ namespace MathCursor.Core.Tests.Patterns.Templates
             Assert.Equal("2", primes);
         }
 
+        // ─── Variantes Unicode (Word auto-correct typographique) ──────
+
+        [Fact]
+        public void Matches_word_autocorrected_right_single_quote()
+        {
+            // Word auto-corrige `'` ASCII en `’` (U+2019 right single quotation
+            // mark). Le pattern doit reconnaître la variante typographique.
+            var m = New().TryMatchHead(Ctx("f’"));
+            Assert.NotNull(m);
+            Assert.Equal("1", ((FilledSlotAtom)m!.Slots["primes_count"]).Text);
+        }
+
+        [Fact]
+        public void Matches_double_unicode_right_single_quote_as_two_primes()
+        {
+            // f’’ (= 2 single quotes typographiques) = f'' = 2 primes
+            var m = New().TryMatchHead(Ctx("f’’"));
+            Assert.NotNull(m);
+            Assert.Equal("2", ((FilledSlotAtom)m!.Slots["primes_count"]).Text);
+        }
+
+        [Fact]
+        public void Matches_unicode_math_prime_U2032()
+        {
+            // ′ (U+2032) = prime math symbol direct
+            var m = New().TryMatchHead(Ctx("f′"));
+            Assert.NotNull(m);
+            Assert.Equal("1", ((FilledSlotAtom)m!.Slots["primes_count"]).Text);
+        }
+
+        [Fact]
+        public void Matches_unicode_math_double_prime_U2033()
+        {
+            // ″ (U+2033) = double prime math symbol
+            var m = New().TryMatchHead(Ctx("f″"));
+            Assert.NotNull(m);
+            Assert.Equal("2", ((FilledSlotAtom)m!.Slots["primes_count"]).Text);
+        }
+
+        [Fact]
+        public void Matches_word_autocorrected_double_quote()
+        {
+            // Word auto-corrige `"` en `”` (U+201D right double quotation mark)
+            var m = New().TryMatchHead(Ctx("f”"));
+            Assert.NotNull(m);
+            Assert.Equal("2", ((FilledSlotAtom)m!.Slots["primes_count"]).Text);
+        }
+
+        [Fact]
+        public void Mutation_normalizes_unicode_variants_to_ascii_apostrophes()
+        {
+            // f’ (U+2019) → mutation canonique f' (= ASCII), idem pour
+            // tous les guillemets typographiques. La mutation source
+            // normalise vers la forme LaTeX standard `f'`.
+            var c = ExpandAll("f’(x)");
+            Assert.Equal("f'(x)", c.Mutation!.Replacement);
+        }
+
         [Fact]
         public void Rejects_letter_alone_no_prime()
         {

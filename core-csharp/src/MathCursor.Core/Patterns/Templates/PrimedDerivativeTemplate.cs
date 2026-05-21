@@ -47,10 +47,11 @@ namespace MathCursor.Core.Patterns.Templates
 
                 int j = i + 1;
                 int primesCount = 0;
-                while (j < src.Length && (src[j] == '\'' || src[j] == '"'))
+                while (j < src.Length)
                 {
-                    // " (guillemet ASCII) = 2 apostrophes typographiquement
-                    primesCount += src[j] == '"' ? 2 : 1;
+                    int countForChar = CountPrimesForChar(src[j]);
+                    if (countForChar == 0) break;
+                    primesCount += countForChar;
                     j++;
                 }
                 if (primesCount == 0) continue; // pas primed
@@ -162,6 +163,40 @@ namespace MathCursor.Core.Patterns.Templates
                 sb.Append("(").Append(args).Append(")");
             }
             return new SourceMutation(parentStart, parentEnd - parentStart, sb.ToString());
+        }
+
+        /// <summary>
+        /// Compte le nombre de primes équivalent pour un caractère donné.
+        /// Word auto-corrige souvent <c>'</c> ASCII en <c>'</c> (U+2019)
+        /// typographique, et <c>"</c> en <c>"</c>/<c>"</c>. Cette méthode
+        /// reconnaît toutes les variantes pour rester robuste.
+        ///
+        /// <list type="bullet">
+        ///   <item>1 prime : <c>'</c> (U+0027 ASCII), <c>'</c> (U+2019),
+        ///     <c>'</c> (U+2018), <c>′</c> (U+2032 math prime)</item>
+        ///   <item>2 primes : <c>"</c> (U+0022 ASCII), <c>"</c> (U+201D),
+        ///     <c>"</c> (U+201C), <c>″</c> (U+2033 math double prime)</item>
+        ///   <item>3 primes : <c>‴</c> (U+2034 triple prime)</item>
+        ///   <item>4 primes : <c>⁗</c> (U+2057 quadruple prime)</item>
+        ///   <item>0 (= pas un marqueur prime) : tout autre caractère</item>
+        /// </list>
+        /// </summary>
+        private static int CountPrimesForChar(char c)
+        {
+            return c switch
+            {
+                '\'' => 1,      // U+0027 apostrophe ASCII
+                '’' => 1,  // ’ right single quotation mark (= auto-correct Word)
+                '‘' => 1,  // ‘ left single quotation mark
+                '′' => 1,  // ′ prime math symbol
+                '"' => 2,       // U+0022 quotation mark ASCII
+                '”' => 2,  // ” right double quotation mark
+                '“' => 2,  // “ left double quotation mark
+                '″' => 2,  // ″ double prime
+                '‴' => 3,  // ‴ triple prime
+                '⁗' => 4,  // ⁗ quadruple prime
+                _ => 0,
+            };
         }
 
         /// <summary>
