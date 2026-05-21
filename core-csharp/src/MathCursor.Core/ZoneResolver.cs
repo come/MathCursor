@@ -521,14 +521,21 @@ namespace MathCursor.Core
             // 2026-05-20. Règle : matches reçoivent AppliedAltIdx s'il y a
             // une préférence pour leur ruleId ; popup filtre cet alt en aval.
             var annotatedMatches = AnnotateAppliedAltIdxFromPreferences(decoratedMatches);
-            bool incomplete = ComputeIsIncomplete(rawSource, ambig.TopLatex);
-
             // P7a : invoquer le PatternPipeline si configuré (sinon Empty).
             // On passe rawSource (= ce que l'user a tapé) : c'est sur ce texte
             // que les templates matchent leur head (V, [, R, etc.). La source
             // mutée (= post préprocesseur canonical + prefs) ne ferait plus
             // matcher V→∀ par exemple (V devient déjà forall après prefs).
             var patternCompletions = RunPatternPipeline(rawSource, ambig.TopLatex, caretOffset);
+
+            // P5R+ : IsIncomplete élargi pour inclure les patterns partiels.
+            // La popup reste ouverte tant qu'au moins une PatternCompletion a
+            // un score < 100 (= incomplete). Sans ça, un `V` seul ou `V x `
+            // (trailing space) verrait la popup se fermer car le topLatex
+            // pipeline ne contient pas de \square. Cf. ADR
+            // 2026-05-21-Feat-pattern-trailing-hints-and-isincomplete.
+            bool incomplete = ComputeIsIncomplete(rawSource, ambig.TopLatex)
+                || HasPartialPatternCompletion(patternCompletions);
 
             var resolved = new ResolvedZone(
                 rawSource: rawSource,
@@ -746,6 +753,22 @@ namespace MathCursor.Core
                 if (i >= 0 && TrailingOperatorChars.IndexOf(rawSource[i]) >= 0)
                     return true;
             }
+            return false;
+        }
+
+        /// <summary>
+        /// P5R+ (2026-05-21) : true si au moins une <see cref="MathCursor.Core.Patterns.PatternCompletion"/>
+        /// n'est pas complète (score &lt; 100). Garde la popup ouverte tant
+        /// que l'user est en train de remplir un pattern (= V seul, V x
+        /// avec trailing space, etc.). Cf. ADR
+        /// <c>2026-05-21-Feat-pattern-trailing-hints-and-isincomplete</c>.
+        /// </summary>
+        private static bool HasPartialPatternCompletion(
+            IReadOnlyList<MathCursor.Core.Patterns.PatternCompletion>? completions)
+        {
+            if (completions == null || completions.Count == 0) return false;
+            foreach (var pc in completions)
+                if (pc.CompletenessScore < 100) return true;
             return false;
         }
     }

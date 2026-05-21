@@ -70,6 +70,14 @@ namespace MathCursor.Core.Patterns.Templates
             var rawArgs = ParseArgs(ctx.Source, state.SourceEnd);
             var classification = ClassifyArgs(rawArgs, ctx);
 
+            // P5R+ : détection trailing whitespace après les args → signal
+            // que l'user attend un arg suivant (= le slot domain optionnel).
+            // Ce signal active l'affichage d'un carré hint `\in \square` dans
+            // HintLatex (mais pas PreviewLatex). Convention 2026-05-21 :
+            // « la popup ne doit pas se fermer à l'espace + carrés sur args ».
+            bool hintDomainExpected = HasTrailingWhitespaceAfterArgs(
+                ctx.Source, state.SourceEnd, rawArgs);
+
             // État final : remplit les slots var/domain selon la classification
             var slots = new Dictionary<string, SlotValue>(state.Slots.Count + 2);
             foreach (var kv in state.Slots) slots[kv.Key] = kv.Value;
@@ -112,7 +120,26 @@ namespace MathCursor.Core.Patterns.Templates
                 slots: slots,
                 isComplete: isComplete);
 
-            return new[] { BuildCompletion(finalState, variant, classification, ctx) };
+            return new[] { BuildCompletion(finalState, variant, classification, ctx, hintDomainExpected) };
+        }
+
+        /// <summary>
+        /// P5R+ : détecte si la source a un trailing whitespace après le dernier
+        /// arg consommé (ou après le head si pas d'arg). Signale que l'user
+        /// attend visuellement un arg suivant — utilisé pour rendre le carré
+        /// `\in \square` hint pour le slot domain optionnel.
+        /// </summary>
+        private static bool HasTrailingWhitespaceAfterArgs(
+            string source, int sourceAfterHead, IReadOnlyList<ArgSpan> args)
+        {
+            int lastEnd = args.Count > 0 ? args[args.Count - 1].End : sourceAfterHead;
+            if (lastEnd >= source.Length) return false;
+            // Au moins 1 whitespace au début de la suite, et toute la suite
+            // est whitespace (= user a fini de taper et appuyé espace).
+            if (!char.IsWhiteSpace(source[lastEnd])) return false;
+            for (int i = lastEnd; i < source.Length; i++)
+                if (!char.IsWhiteSpace(source[i])) return false;
+            return true;
         }
 
         private static string JoinVars(IReadOnlyList<ArgSpan> varArgs)
@@ -135,7 +162,8 @@ namespace MathCursor.Core.Patterns.Templates
             PatternMatch state,
             QuantifierVariant variant,
             ArgClassification classification,
-            PatternScanContext ctx)
+            PatternScanContext ctx,
+            bool hintDomainExpected)
         {
             // Sub-completion du domain (si présent) pour rendu LaTeX
             PatternCompletion? domainCompletion = null;
@@ -147,8 +175,8 @@ namespace MathCursor.Core.Patterns.Templates
                     domainCompletion = subCompletions[0];
             }
 
-            string preview = BuildLatex(state, variant, classification, domainCompletion, hideEmpty: true);
-            string hint = BuildLatex(state, variant, classification, domainCompletion, hideEmpty: false);
+            string preview = BuildLatex(state, variant, classification, domainCompletion, hideEmpty: true, hintDomainExpected: false);
+            string hint = BuildLatex(state, variant, classification, domainCompletion, hideEmpty: false, hintDomainExpected: hintDomainExpected);
             string description = BuildDescription(variant, classification, domainCompletion);
             SourceMutation? mutation = BuildMutation(state, variant, classification, domainCompletion, ctx);
             int score = ComputeScore(classification);
@@ -163,7 +191,8 @@ namespace MathCursor.Core.Patterns.Templates
 
         private static string BuildLatex(
             PatternMatch state, QuantifierVariant variant,
-            ArgClassification classification, PatternCompletion? domainCompletion, bool hideEmpty)
+            ArgClassification classification, PatternCompletion? domainCompletion,
+            bool hideEmpty, bool hintDomainExpected)
         {
             var sb = new StringBuilder();
             sb.Append(variant.LatexSymbol);
@@ -180,6 +209,13 @@ namespace MathCursor.Core.Patterns.Templates
                 sb.Append(domainCompletion != null
                     ? (hideEmpty ? domainCompletion.PreviewLatex : domainCompletion.HintLatex)
                     : (hideEmpty ? "" : "\\square"));
+            }
+            else if (hintDomainExpected && !hideEmpty)
+            {
+                // P5R+ : trailing whitespace après args → l'user attend un
+                // domain. Affiche le carré hint dans HintLatex uniquement
+                // (jamais dans PreviewLatex qui sert au commit OMath final).
+                sb.Append(" \\in \\square");
             }
             return sb.ToString();
         }

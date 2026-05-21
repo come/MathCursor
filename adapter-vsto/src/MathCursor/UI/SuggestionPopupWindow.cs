@@ -67,12 +67,15 @@ namespace MathCursor.UI
             = Array.Empty<MathCursor.Core.Patterns.PatternCompletion>();
 
         /// <summary>
-        /// Sentinel pour <see cref="_altIdxMap"/> qui marque une entry comme
-        /// PatternCompletion (vs ambig closed). Valeur &lt; <see cref="MathCursor.Core.Resolution.SpanOverride.AltIdxRevert"/>
-        /// pour ne pas collisionner. Local au popup (pas dans Core) car
-        /// c'est un détail de l'UI.
+        /// Base sentinel pour <see cref="_altIdxMap"/> qui marque une entry
+        /// comme PatternCompletion (vs ambig closed). L'index dans
+        /// <see cref="_patternCompletions"/> est encodé via
+        /// <c>AltIdxPatternBase - patternIndex</c> (-1000 = pattern 0,
+        /// -1001 = pattern 1, etc.). Permet de retrouver le PatternCompletion
+        /// original (et son PreviewLatex pour le commit, distinct du
+        /// HintLatex affiché). Local au popup (pas dans Core).
         /// </summary>
-        private const int AltIdxPattern = -200;
+        private const int AltIdxPatternBase = -1000;
 
         private readonly TextBlock _debugFooter;
         private readonly TextBlock _reportLink;
@@ -397,8 +400,15 @@ namespace MathCursor.UI
         /// <summary>
         /// Convertit chaque <see cref="MathCursor.Core.Patterns.PatternCompletion"/>
         /// en <see cref="MathCursor.Core.Lattice.AmbiguityAlternative"/> virtuelle
-        /// (Latex = PreviewLatex, Mutation préservée), prepend en tête de
-        /// <paramref name="baseAlts"/> et retourne la liste combinée.
+        /// (Latex = <b>HintLatex</b> avec carrés `\square` pour les slots vides,
+        /// Mutation préservée), prepend en tête de <paramref name="baseAlts"/>
+        /// et retourne la liste combinée. L'index dans <see cref="_patternCompletions"/>
+        /// est encodé dans <paramref name="prependedMap"/> via
+        /// <c>AltIdxPatternBase - i</c> (P5R+ 2026-05-21).
+        ///
+        /// <para>Le commit Enter (= ResolveCurrentAltIfFocused → set
+        /// _resolvedLatex) utilise le <b>PreviewLatex</b> distinct (sans
+        /// carrés) en faisant le lookup inverse via patternIndex.</para>
         /// </summary>
         private IReadOnlyList<MathCursor.Core.Lattice.AmbiguityAlternative> PrependPatternCompletions(
             IReadOnlyList<MathCursor.Core.Lattice.AmbiguityAlternative> baseAlts,
@@ -412,11 +422,14 @@ namespace MathCursor.UI
             var combined = new System.Collections.Generic.List<MathCursor.Core.Lattice.AmbiguityAlternative>(
                 _patternCompletions.Count + baseAlts.Count);
             var mapList = new System.Collections.Generic.List<int>(_patternCompletions.Count);
-            foreach (var pc in _patternCompletions)
+            for (int i = 0; i < _patternCompletions.Count; i++)
             {
+                var pc = _patternCompletions[i];
+                // HintLatex pour l'affichage popup (= avec carrés visuels)
                 combined.Add(new MathCursor.Core.Lattice.AmbiguityAlternative(
-                    pc.PreviewLatex, pc.Mutation));
-                mapList.Add(AltIdxPattern);
+                    pc.HintLatex, pc.Mutation));
+                // Encodage de l'index pour retrouver pc.PreviewLatex au commit
+                mapList.Add(AltIdxPatternBase - i);
             }
             foreach (var alt in baseAlts) combined.Add(alt);
             prependedMap = mapList;
@@ -563,16 +576,22 @@ namespace MathCursor.UI
                 ? _altIdxMap[_altIndex]
                 : _altIndex; // fallback rétro-compat (ne devrait pas arriver)
 
-            // P7d : Pattern sélectionné → set _resolvedLatex et fermer la zone
-            // d'ambig. Le commit Enter standard insère cet OMath via
-            // CurrentFinalLatex. Pas de re-resolve, pas de mutation source
-            // (laisser P9+ si besoin de persistance cross-popup).
-            if (realAltIdx == AltIdxPattern)
+            // P7d + P5R+ : Pattern sélectionné → set _resolvedLatex avec le
+            // PreviewLatex (= sans carrés) et fermer la zone d'ambig. L'affichage
+            // popup montrait HintLatex (avec carrés), mais le commit Enter
+            // utilise le PreviewLatex pour l'OMath final inséré dans Word.
+            if (realAltIdx <= AltIdxPatternBase)
             {
-                var patternAlt = _alternatives[_altIndex];
-                LogPopup($"Resolved as PATTERN latex=\"{patternAlt.Latex}\"");
-                _resolvedLatex = patternAlt.Latex;
-                // Refresh final container avec le nouveau latex
+                int patternIndex = AltIdxPatternBase - realAltIdx;
+                if (patternIndex < 0 || patternIndex >= _patternCompletions.Count)
+                {
+                    LogPopup($"  → SKIP (pattern index oob: {patternIndex})");
+                    return false;
+                }
+                var pc = _patternCompletions[patternIndex];
+                LogPopup($"Resolved as PATTERN[{patternIndex}] preview=\"{pc.PreviewLatex}\" (hint was \"{pc.HintLatex}\")");
+                _resolvedLatex = pc.PreviewLatex;
+                // Refresh final container avec le PreviewLatex (commit-clean)
                 _finalContainer.Children.Clear();
                 _finalContainer.Children.Add(BuildFinalRow(_resolvedLatex));
                 // Fermer la zone d'ambig comme un identity pick
