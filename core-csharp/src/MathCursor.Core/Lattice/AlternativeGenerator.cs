@@ -246,9 +246,6 @@ namespace MathCursor.Core.Lattice
         // Visibilité internal pour exposition à AmbiguityScannerPipeline.
         internal static int GetRulePriority(string ruleId) => ruleId switch
         {
-            RuleVAsForall => 1,
-            RuleEAsExists => 1,
-            RuleCanonicalSet => 2,
             RuleTwoUppercase => 3,
             RuleThreeUppercase => 3,
             RuleLetterSupNumber => 3,
@@ -285,71 +282,8 @@ namespace MathCursor.Core.Lattice
             _ => 99,
         };
 
-        /// <summary>
-        /// Scan SOURCE : R/N/Z/Q/C isolées (précédées de non-lettre, suivies
-        /// d'espace/EOF/ponctuation/fermeture) → popup ensemble vs lettre.
-        /// Critère « isolé » strict pour préserver les formules de géométrie
-        /// (`pi*R^2`, `2N+1`, etc.) où R est une variable.
-        ///
-        /// Émet 2 alternatives :
-        /// <list type="number">
-        /// <item>Alt 0 (focus défaut) : ensemble `\mathbb{R}` via mutation
-        ///   source `R` → `bbR` (le keyword bbR est consommé par ParseScope
-        ///   et rend `\mathbb{R}`).</item>
-        /// <item>Alt 1 : lettre identity (R reste atom, variable).</item>
-        /// </list>
-        ///
-        /// Délimiteurs droits qui valident l'isolation : espace, EOF,
-        /// ponctuation `, ; .`, fermeture `]`/`)`/`}`. Les opérateurs math
-        /// (`+`, `-`, `*`, `/`, `^`, `_`) NE sont pas considérés isolants
-        /// car ils suggèrent un contexte arithmétique (variable).
-        /// </summary>
-        internal static void ScanCanonicalSetLetters(string source, string topLatex,
-            List<AmbiguityMatch> output, bool[] consumed)
-        {
-            for (int i = 0; i < source.Length; i++)
-            {
-                char c = source[i];
-                if (c != 'R' && c != 'N' && c != 'Z' && c != 'Q' && c != 'C') continue;
-                // Word boundary à gauche
-                if (i > 0 && char.IsLetter(source[i - 1])) continue;
-                // À droite : EOF, espace, ou délimiteur de contexte ensemble
-                bool followedByDelim = i + 1 == source.Length
-                    || IsCanonicalSetDelimiter(source[i + 1]);
-                if (!followedByDelim) continue;
-
-                // Position dans topLatex : pour une lettre seule rendue telle
-                // quelle, position identique. Sinon on saute (rare).
-                int topPos = i < topLatex.Length && topLatex[i] == c ? i : topLatex.IndexOf(c, 0);
-                if (topPos < 0 || topPos >= topLatex.Length || consumed[topPos]) continue;
-
-                var canonical = "bb" + c;
-                var ensemblePreview = RenderAfterMutation(source, i, 1, canonical);
-                var identityPreview = RenderAfterMutation(source, i, 1, c.ToString());
-
-                var alts = new List<AmbiguityAlternative>
-                {
-                    // Alt 0 (focus par défaut) : ensemble \mathbb{X} via mutation
-                    new AmbiguityAlternative(
-                        ensemblePreview,
-                        new SourceMutation(i, 1, canonical)),
-                    // Alt 1 : lettre identity (no mutation, R reste variable)
-                    new AmbiguityAlternative(identityPreview, mutation: null),
-                };
-
-                var spot = new AmbiguitySpot(RuleCanonicalSet, c.ToString(), alts);
-                consumed[topPos] = true;
-                output.Add(new AmbiguityMatch(spot, topPos, topPos + 1));
-            }
-        }
-
-        // Caractères qui suivent une lettre canonique en contexte « ensemble ».
-        // Whitespace OU ponctuation OU fermeture de groupement. Les opérateurs
-        // math (+ - * / ^ _) sont volontairement exclus pour préserver les
-        // formules variables (pi*R², 2N+1, R^2, etc.).
-        private static bool IsCanonicalSetDelimiter(char c)
-            => char.IsWhiteSpace(c) || c == ',' || c == ';' || c == '.'
-               || c == ')' || c == ']' || c == '}';
+        // ScanCanonicalSetLetters et IsCanonicalSetDelimiter retirés P6
+        // (2026-05-21). Couverts par EnsembleTemplate (Patterns).
 
         /// <summary>
         /// Scan SOURCE : `f(<arg>, <arg>[, <arg>])` où <c>f</c> est un ident
@@ -966,80 +900,9 @@ namespace MathCursor.Core.Lattice
             }
         }
 
-        /// <summary>
-        /// Scan SOURCE (pas LaTeX rendu) : `V ` (V suivi d'un espace ou EOF)
-        /// déclenche un Spot avec 3 alternatives :
-        /// <list type="number">
-        /// <item>V (identity) — pas de mutation, garde V comme variable. C'est
-        ///   le choix par défaut si l'utilisateur continue à taper sans
-        ///   sélectionner explicitement une alt.</item>
-        /// <item>∀ (forall scope) — mutation `V` → `forall`, le pipeline rend
-        ///   `\forall x \in R` (avec Holes pour les args manquants).</item>
-        /// <item>√ (racine scope) — mutation `V` → `racine`, le pipeline rend
-        ///   `\sqrt{x}` (avec Hole si pas d'arg).</item>
-        /// </list>
-        /// Idem E : 2 alts (E identity / ∃).
-        ///
-        /// Convention typographique : ∀ ressemble à un V à l'envers, ∃ à un E
-        /// miroir, √ à un V étiré — l'utilisateur tape V/E et choisit dans la
-        /// popup ce qu'il voulait dire.
-        ///
-        /// Trigger strict « V suivi d'un espace ou EOF » : les autres cas
-        /// (V*x, V+x, Vx, V), V_x) ne déclenchent PAS l'ambig (V garde sa
-        /// sémantique de variable / multiplicateur).
-        /// </summary>
-        internal static void ScanVAsForallEAsExists(string source, string topLatex,
-            List<AmbiguityMatch> output, bool[] consumed)
-        {
-            for (int i = 0; i < source.Length; i++)
-            {
-                char c = source[i];
-                if (c != 'V' && c != 'E') continue;
-                if (i > 0 && char.IsLetter(source[i - 1])) continue;
-                bool followedByDelim = i + 1 == source.Length || source[i + 1] == ' ';
-                if (!followedByDelim) continue;
-
-                int topPos = i < topLatex.Length && topLatex[i] == c ? i : topLatex.IndexOf(c, 0);
-                if (topPos < 0 || topPos >= topLatex.Length || consumed[topPos]) continue;
-
-                var ruleId = c == 'V' ? RuleVAsForall : RuleEAsExists;
-
-                // Alt 0 : identity (pas de mutation). Aperçu = la source telle
-                // qu'elle, rendue par le pipeline normal. Sélectionner cette
-                // alt = "garder V" (popup se ferme, source inchangée).
-                var identityPreview = RenderAfterMutation(source, i, 1, c.ToString()); // no-op mutation
-                var alts = new List<AmbiguityAlternative>
-                {
-                    new AmbiguityAlternative(identityPreview, mutation: null),
-                };
-
-                if (c == 'V')
-                {
-                    // Alt 1 : ∀ — mutation V→forall
-                    var forallPreview = RenderAfterMutation(source, i, 1, "forall");
-                    alts.Add(new AmbiguityAlternative(
-                        forallPreview,
-                        new SourceMutation(i, 1, "forall")));
-
-                    // Alt 2 : √ — mutation V→racine
-                    var racinePreview = RenderAfterMutation(source, i, 1, "racine");
-                    alts.Add(new AmbiguityAlternative(
-                        racinePreview,
-                        new SourceMutation(i, 1, "racine")));
-                }
-                else // E → ∃
-                {
-                    var existsPreview = RenderAfterMutation(source, i, 1, "exists");
-                    alts.Add(new AmbiguityAlternative(
-                        existsPreview,
-                        new SourceMutation(i, 1, "exists")));
-                }
-
-                var spot = new AmbiguitySpot(ruleId, c.ToString(), alts);
-                consumed[topPos] = true;
-                output.Add(new AmbiguityMatch(spot, topPos, topPos + 1));
-            }
-        }
+        // ScanVAsForallEAsExists retiré P6 (2026-05-21). Couvert par
+        // ForallBelongsTemplate (Patterns). Pour la conversion V→√, voir
+        // le futur RacineTemplate planifié en P9+.
 
         internal static void CollectAllMatchesRec(AstNode node, string topLatex,
             List<AmbiguityMatch> output, bool[] consumed)
@@ -1172,7 +1035,7 @@ namespace MathCursor.Core.Lattice
             // Restriction au `*` explicite (pas la juxtaposition `ab`/`AB`)
             // pour ne pas voler le terrain aux autres cascades :
             //   `AB` juxtaposition → RuleTwoUppercase (vec/paren/crochet)
-            //   `V x` juxtaposition → RuleVAsForall (∀)
+            //   `V x` juxtaposition → ForallBelongsTemplate (∀, chantier Patterns)
             //   `xy` juxtaposition → variables liées, pas de promotion vec
             // La présence du `*` est un signal explicite que l'utilisateur
             // distingue les opérandes — d'où la pertinence de la cascade.
@@ -1217,9 +1080,11 @@ namespace MathCursor.Core.Lattice
         public const string RuleTwoUppercase = "two-uppercase";
         public const string RuleThreeUppercase = "three-uppercase";
         public const string RuleLetterSupNumber = "letter-sup-number";
-        public const string RuleVAsForall = "v-as-forall";
-        public const string RuleEAsExists = "e-as-exists";
-        public const string RuleCanonicalSet = "canonical-set";
+        // RuleVAsForall / RuleEAsExists / RuleCanonicalSet retirés P6
+        // (2026-05-21). Comportement V→∀, E→∃, R/N/Z/Q/C→ℝ/ℕ/ℤ/ℚ/ℂ
+        // désormais couvert par ForallBelongsTemplate + EnsembleTemplate
+        // (chantier Patterns). Cf. ADR
+        // 2026-05-21-Refactor-remove-legacy-quantifier-set-scanners.
         // Ambig f(1, 2) : function call (default) vs vec coords \vec{f}(1, 2).
         // Cf. brief 2026-04-29-vector-coordinates-shorthand §3.1. Le pattern
         // n'est déclenché QUE pour les idents typique fonction (f, g, h, F,

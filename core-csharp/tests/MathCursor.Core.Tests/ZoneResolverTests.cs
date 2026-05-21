@@ -6,9 +6,16 @@ namespace MathCursor.Core.Tests
 {
     /// <summary>
     /// Tests du ZoneResolver — point d'entrée unique pour la résolution de
-    /// zone. Vérifie : passthrough sans préférence, application récursive des
-    /// prefs source-mutation, calcul de IsIncomplete (Hole + opérateur final),
-    /// reset des prefs.
+    /// zone. Vérifie : passthrough sans préférence, calcul de IsIncomplete
+    /// (Hole + opérateur final), reset des prefs.
+    ///
+    /// <para>Note P6 (2026-05-21) : les tests <c>Resolve_V_*</c> sur le
+    /// scanner legacy <c>VAsForallEAsExistsScanner</c> ont été retirés. Le
+    /// comportement V→∀/√, E→∃ est désormais couvert par
+    /// <c>ForallBelongsTemplateTests</c> dans le chantier Patterns.
+    /// Les tests <c>Clear_resets_preferences</c> et <c>HasPreference</c>
+    /// utilisent désormais <c>RuleTwoUppercase</c> comme exemple générique
+    /// (rule encore branchée dans le pipeline).</para>
     /// </summary>
     public sealed class ZoneResolverTests
     {
@@ -36,66 +43,6 @@ namespace MathCursor.Core.Tests
             Assert.Equal("a+b", r.RawSource);
             Assert.Equal("a+b", r.MutedSource);
             Assert.Equal("a+b", r.TopLatex);
-        }
-
-        [Fact]
-        public void Resolve_V_alone_no_pref_yields_ambig_spot()
-        {
-            // V seul → ambig (V identity / ∀ / √)
-            var r = MakeResolver().Resolve("V");
-            Assert.NotNull(r.Spot);
-            Assert.Equal(AlternativeGenerator.RuleVAsForall, r.Spot!.RuleId);
-            Assert.Equal(3, r.Spot.Alternatives.Count);
-        }
-
-        // ---- AddPreference : V → forall ----
-
-        [Fact]
-        public void Resolve_V_with_forall_pref_mutates_to_forall()
-        {
-            // L'utilisateur a déjà choisi ∀ (altIdx=1) pour V.
-            // Décomposition modulaire (ADR 29-04) : forall seul rend "\forall ".
-            var resolver = MakeResolver();
-            resolver.AddPreference(AlternativeGenerator.RuleVAsForall, 1);
-            var r = resolver.Resolve("V");
-            Assert.Equal("V", r.RawSource);
-            Assert.Equal("forall", r.MutedSource);
-            Assert.Contains("\\forall", r.TopLatex);
-        }
-
-        [Fact]
-        public void Resolve_V_x_dans_R_with_forall_pref_renders_full()
-        {
-            // V x dans R + pref forall → forall x dans R → "\forall x \in R"
-            // Décomposition modulaire : `dans` keyword explicite pour le \in.
-            var resolver = MakeResolver();
-            resolver.AddPreference(AlternativeGenerator.RuleVAsForall, 1);
-            var r = resolver.Resolve("V x dans R");
-            Assert.Equal("forall x dans R", r.MutedSource);
-            Assert.Equal("\\forall x \\in R", r.TopLatex);
-        }
-
-        [Fact]
-        public void Resolve_V_with_identity_pref_no_mutation()
-        {
-            // Pref altIdx=0 = V identity (pas de mutation). MutedSource ==
-            // RawSource. Le Spot ambig reste exposé (l'utilisateur peut
-            // re-changer d'avis).
-            var resolver = MakeResolver();
-            resolver.AddPreference(AlternativeGenerator.RuleVAsForall, 0);
-            var r = resolver.Resolve("V x R");
-            Assert.Equal("V x R", r.MutedSource);
-        }
-
-        [Fact]
-        public void Resolve_V_with_racine_pref_mutates_to_racine()
-        {
-            // Pref altIdx=2 = √ (mutation V→racine).
-            var resolver = MakeResolver();
-            resolver.AddPreference(AlternativeGenerator.RuleVAsForall, 2);
-            var r = resolver.Resolve("V x");
-            Assert.Equal("racine x", r.MutedSource);
-            Assert.Contains("\\sqrt", r.TopLatex);
         }
 
         // ---- IsIncomplete ----
@@ -141,33 +88,19 @@ namespace MathCursor.Core.Tests
             Assert.True(r.IsIncomplete);
         }
 
-        [Fact]
-        public void IsIncomplete_with_forall_pref_after_dans()
-        {
-            // V x dans (avec pref forall) → forall x dans → "\forall x \in "
-            // Le \in n'est qu'un Const, donc IsIncomplete via Hole=false. Mais
-            // on a un Const " \in " qui se termine par un espace : pas
-            // d'opérateur final non plus → IsIncomplete=false.
-            // Pour la décomposition modulaire (29-04), c'est l'utilisateur qui
-            // décide quand sa formule est complète, le résolveur ne devine pas.
-            var resolver = MakeResolver();
-            resolver.AddPreference(AlternativeGenerator.RuleVAsForall, 1);
-            var r = resolver.Resolve("V x dans");
-            // Pas de Hole (\square), pas d'op trailing dans la source brute "V x dans"
-            Assert.False(r.IsIncomplete);
-        }
-
-        // ---- Clear ----
+        // ---- Clear / HasPreference (utilise RuleTwoUppercase comme exemple) ----
 
         [Fact]
         public void Clear_resets_preferences()
         {
+            // Vérifie le mécanisme générique de pref + reset. Utilise
+            // RuleTwoUppercase (AB→vec/paren/bracket) comme exemple — rule
+            // encore branchée dans le pipeline post-P6.
             var resolver = MakeResolver();
-            resolver.AddPreference(AlternativeGenerator.RuleVAsForall, 1);
+            resolver.AddPreference(AlternativeGenerator.RuleTwoUppercase, 0);
+            Assert.True(resolver.HasPreference(AlternativeGenerator.RuleTwoUppercase));
             resolver.Clear();
-            var r = resolver.Resolve("V x R");
-            // Sans pref, la mutation n'est plus appliquée
-            Assert.Equal("V x R", r.MutedSource);
+            Assert.False(resolver.HasPreference(AlternativeGenerator.RuleTwoUppercase));
         }
 
         [Fact]
@@ -184,12 +117,13 @@ namespace MathCursor.Core.Tests
         [Fact]
         public void HasPreference_reflects_state()
         {
+            // Exemple générique avec RuleTwoUppercase (vec/paren/bracket).
             var resolver = MakeResolver();
-            Assert.False(resolver.HasPreference(AlternativeGenerator.RuleVAsForall));
-            resolver.AddPreference(AlternativeGenerator.RuleVAsForall, 1);
-            Assert.True(resolver.HasPreference(AlternativeGenerator.RuleVAsForall));
+            Assert.False(resolver.HasPreference(AlternativeGenerator.RuleTwoUppercase));
+            resolver.AddPreference(AlternativeGenerator.RuleTwoUppercase, 1);
+            Assert.True(resolver.HasPreference(AlternativeGenerator.RuleTwoUppercase));
             resolver.Clear();
-            Assert.False(resolver.HasPreference(AlternativeGenerator.RuleVAsForall));
+            Assert.False(resolver.HasPreference(AlternativeGenerator.RuleTwoUppercase));
         }
     }
 }

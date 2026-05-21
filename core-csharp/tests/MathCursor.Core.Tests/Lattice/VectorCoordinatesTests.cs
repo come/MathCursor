@@ -306,13 +306,10 @@ namespace MathCursor.Core.Tests.Lattice
         public void Exists_y_in_N_unchanged()
             => Assert.Equal("\\exists y \\in N", Top("exists y dans N"));
 
-        [Fact]
-        public void V_alone_keeps_v_as_forall_ambig()
-        {
-            var r = _engine.ConvertWithAmbiguity("V x");
-            Assert.NotNull(r.Spot);
-            Assert.Equal(AlternativeGenerator.RuleVAsForall, r.Spot!.RuleId);
-        }
+        // Test V_alone_keeps_v_as_forall_ambig retiré P6 (2026-05-21) :
+        // le scanner VAsForallEAsExists a été retiré, le comportement V→∀ est
+        // désormais couvert par ForallBelongsTemplate (Patterns). Cf. ADR
+        // 2026-05-21-Refactor-remove-legacy-quantifier-set-scanners.
 
         // ---- Définitions de fonctions ----
 

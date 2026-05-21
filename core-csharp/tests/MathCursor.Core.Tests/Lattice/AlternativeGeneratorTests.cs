@@ -309,67 +309,18 @@ namespace MathCursor.Core.Tests.Lattice
             Assert.Equal(AlternativeGenerator.RuleLetterSupNumber, r.Spot!.RuleId);
         }
 
-        // ---- V → forall / racine (3 alts : V identity / ∀ / √) ----
-
-        [Fact]
-        public void V_yields_three_alternatives()
-        {
-            // V suivi d'espace → 3 alts : V identity (no mutation), ∀ (mutation
-            // V→forall), √ (mutation V→racine). L'utilisateur choisit dans la popup.
-            // Source sans R/N/Z/Q/C à droite pour que le rightmost spot reste V
-            // (sinon canonical-set sur R écrase, cf. ADR canonical sets).
-            var r = _engine.ConvertWithAmbiguity("V x y");
-            Assert.NotNull(r.Spot);
-            Assert.Equal(AlternativeGenerator.RuleVAsForall, r.Spot!.RuleId);
-            Assert.Equal(3, r.Spot.Alternatives.Count);
-
-            // Alt 0 : V identity (pas de mutation)
-            Assert.Null(r.Spot.Alternatives[0].Mutation);
-
-            // Alt 1 : ∀ (mutation V → forall)
-            var forallAlt = r.Spot.Alternatives[1];
-            Assert.NotNull(forallAlt.Mutation);
-            Assert.Equal(0, forallAlt.Mutation!.Offset);
-            Assert.Equal(1, forallAlt.Mutation.Length);
-            Assert.Equal("forall", forallAlt.Mutation.Replacement);
-
-            // Alt 2 : √ (mutation V → racine)
-            var racineAlt = r.Spot.Alternatives[2];
-            Assert.NotNull(racineAlt.Mutation);
-            Assert.Equal("racine", racineAlt.Mutation!.Replacement);
-        }
-
-        [Fact]
-        public void V_alone_yields_three_alternatives()
-        {
-            // V seul (suivi d'EOF) déclenche aussi : EOF est analogue à un
-            // espace pour le pattern scope.
-            var r = _engine.ConvertWithAmbiguity("V");
-            Assert.NotNull(r.Spot);
-            Assert.Equal(AlternativeGenerator.RuleVAsForall, r.Spot!.RuleId);
-            Assert.Equal(3, r.Spot.Alternatives.Count);
-            Assert.Null(r.Spot.Alternatives[0].Mutation);
-            Assert.Equal("forall", r.Spot.Alternatives[1].Mutation!.Replacement);
-            Assert.Equal("racine", r.Spot.Alternatives[2].Mutation!.Replacement);
-        }
-
-        [Fact]
-        public void V_alt_previews_render_real_post_mutation()
-        {
-            // Décomposition modulaire (ADR 29-04) : forall n'est plus un scope.
-            // L'aperçu de l'alt ∀ pour `V x y` est juste `\forall xy` (juxtaposition
-            // simple, pas de \in automatique). L'utilisateur ajoute `dans`/`in`
-            // explicitement après s'il veut le \in.
-            var r = _engine.ConvertWithAmbiguity("V x y");
-            Assert.NotNull(r.Spot);
-            Assert.Equal(AlternativeGenerator.RuleVAsForall, r.Spot!.RuleId);
-            // Alt 0 (V identity)
-            Assert.Contains("V", r.Spot.Alternatives[0].Latex);
-            // Alt 1 (∀) : rendu post-mutation V→forall, juxtaposition
-            Assert.Contains("\\forall", r.Spot.Alternatives[1].Latex);
-            // Alt 2 (√) : rendu post-mutation V→racine
-            Assert.Contains("\\sqrt", r.Spot.Alternatives[2].Latex);
-        }
+        // ---- V / E / R / N / Z / Q / C : section P6 (2026-05-21) ----
+        // Les tests ambig sur le scanner VAsForallEAsExists et CanonicalSetLetters
+        // ont été retirés au passage P6. Leur comportement est désormais couvert
+        // par les templates ForallBelongsTemplate et EnsembleTemplate du chantier
+        // Patterns (cf. Patterns/Templates/ForallBelongsTemplateTests.cs et
+        // EnsembleTemplateTests.cs). Voir ADR
+        // 2026-05-21-Refactor-remove-legacy-quantifier-set-scanners.
+        //
+        // Tests préservés ci-dessous : ceux qui vérifient le RENDU (juxtaposition
+        // forall x dans bbR → \forall x \in \mathbb{R}, etc.) — non concernés
+        // par les scanners ambig, c'est de la décomposition modulaire dans le
+        // pipeline lattice (Vocabulary + Parser + LatexRenderer).
 
         [Fact]
         public void Vx_collé_no_ambig()
@@ -377,18 +328,6 @@ namespace MathCursor.Core.Tests.Lattice
             // Vx (collé) = variable composée, pas un quantificateur
             var r = _engine.ConvertWithAmbiguity("Vx");
             Assert.Null(r.Spot);
-        }
-
-        [Fact]
-        public void V_times_x_no_forall_ambig()
-        {
-            // V*x = produit V·x, pas un quantificateur (pas d'espace après V).
-            // Depuis la cascade vec-dot-product (avril 2026), V*x propose
-            // \vec{V} \cdot \vec{x} en alt — c'est volontaire. L'important
-            // ici est que V→forall ne fire PAS sur ce pattern.
-            var r = _engine.ConvertWithAmbiguity("V*x");
-            Assert.NotEqual(AlternativeGenerator.RuleVAsForall, r.Spot?.RuleId);
-            Assert.NotEqual(AlternativeGenerator.RuleEAsExists, r.Spot?.RuleId);
         }
 
         [Fact]
@@ -400,112 +339,12 @@ namespace MathCursor.Core.Tests.Lattice
         }
 
         [Fact]
-        public void Forall_x_dans_R_juxtaposition()
-        {
-            // Décomposition modulaire (ADR 29-04) : forall + x + dans + R
-            // se composent par juxtaposition. Plus de scope avec \in auto.
-            var r = _engine.ConvertWithAmbiguity("forall x dans R");
-            Assert.Equal("\\forall x \\in R", r.TopLatex);
-            // Ambig canonical-set proposée sur R isolé
-            Assert.NotNull(r.Spot);
-            Assert.Equal(AlternativeGenerator.RuleCanonicalSet, r.Spot!.RuleId);
-        }
-
-        [Fact]
         public void Forall_alone_renders_just_forall()
         {
             // Décomposition modulaire : forall seul = juste "\forall " (avec
             // trailing space pour la juxtaposition future).
             var r = _engine.ConvertWithAmbiguity("forall");
             Assert.Equal("\\forall ", r.TopLatex);
-        }
-
-        [Fact]
-        public void E_yields_two_alternatives()
-        {
-            // E : 2 alts (E identity / ∃). Pas de "racine" pour E (uniquement V).
-            // Source sans R/N/Z/Q/C à droite pour que rightmost reste E.
-            var r = _engine.ConvertWithAmbiguity("E y z");
-            Assert.NotNull(r.Spot);
-            Assert.Equal(AlternativeGenerator.RuleEAsExists, r.Spot!.RuleId);
-            Assert.Equal(2, r.Spot.Alternatives.Count);
-            Assert.Null(r.Spot.Alternatives[0].Mutation);
-            Assert.Equal("exists", r.Spot.Alternatives[1].Mutation!.Replacement);
-        }
-
-        // ---- Ensembles canoniques R/N/Z/Q/C ----
-
-        [Fact]
-        public void R_isolated_yields_two_alts_ensemble_default()
-        {
-            // R seul (suivi d'EOF) → popup avec 2 alts :
-            // - alt 0 (focus défaut) = ensemble \mathbb{R} via mutation R→bbR
-            // - alt 1 = R lettre identity (variable)
-            var r = _engine.ConvertWithAmbiguity("R");
-            Assert.NotNull(r.Spot);
-            Assert.Equal(AlternativeGenerator.RuleCanonicalSet, r.Spot!.RuleId);
-            Assert.Equal(2, r.Spot.Alternatives.Count);
-            // Alt 0 : mutation R → bbR
-            Assert.NotNull(r.Spot.Alternatives[0].Mutation);
-            Assert.Equal("bbR", r.Spot.Alternatives[0].Mutation!.Replacement);
-            Assert.Contains("\\mathbb{R}", r.Spot.Alternatives[0].Latex);
-            // Alt 1 : identity
-            Assert.Null(r.Spot.Alternatives[1].Mutation);
-        }
-
-        [Fact]
-        public void R_in_pi_R_squared_no_ambig()
-        {
-            // pi*R^2 : R suivi de ^ tight (opérateur math) → PAS isolé,
-            // pas de popup. Préserve la formule de géométrie.
-            var r = _engine.ConvertWithAmbiguity("pi*R^2");
-            // Pas d'ambig sur R (peut y avoir une autre, ex sur sup/x², mais pas R)
-            if (r.Spot != null)
-                Assert.NotEqual(AlternativeGenerator.RuleCanonicalSet, r.Spot.RuleId);
-        }
-
-        [Fact]
-        public void R_in_pi_R_squared_unicode_no_ambig()
-        {
-            // pi*R² : idem avec unicode super-2 (préprocessé en ^2)
-            var r = _engine.ConvertWithAmbiguity("pi*R²");
-            if (r.Spot != null)
-                Assert.NotEqual(AlternativeGenerator.RuleCanonicalSet, r.Spot.RuleId);
-        }
-
-        [Fact]
-        public void R_followed_by_op_no_ambig()
-        {
-            // 2R+1 : R suivi de + (op math) → pas isolé
-            var r = _engine.ConvertWithAmbiguity("2R+1");
-            if (r.Spot != null)
-                Assert.NotEqual(AlternativeGenerator.RuleCanonicalSet, r.Spot.RuleId);
-        }
-
-        [Fact]
-        public void R_followed_by_comma_yields_ambig()
-        {
-            // x dans R, x ≥ 0 : R suivi de , → isolé, popup
-            var r = _engine.ConvertWithAmbiguity("x dans R, x");
-            Assert.NotNull(r.Spot);
-            Assert.Equal(AlternativeGenerator.RuleCanonicalSet, r.Spot!.RuleId);
-        }
-
-        [Fact]
-        public void N_isolated_yields_ambig()
-        {
-            var r = _engine.ConvertWithAmbiguity("N");
-            Assert.NotNull(r.Spot);
-            Assert.Equal(AlternativeGenerator.RuleCanonicalSet, r.Spot!.RuleId);
-            Assert.Equal("bbN", r.Spot.Alternatives[0].Mutation!.Replacement);
-        }
-
-        [Fact]
-        public void Z_isolated_yields_ambig()
-        {
-            var r = _engine.ConvertWithAmbiguity("Z");
-            Assert.NotNull(r.Spot);
-            Assert.Equal("bbZ", r.Spot!.Alternatives[0].Mutation!.Replacement);
         }
 
         [Fact]

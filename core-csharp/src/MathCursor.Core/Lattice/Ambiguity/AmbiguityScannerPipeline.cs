@@ -25,17 +25,18 @@ namespace MathCursor.Core.Lattice.Ambiguity
             _scanners = scanners.OrderBy(s => s.Order).ToList();
         }
 
-        /// <summary>Pipeline par défaut avec les 10 scanners initiaux dans
-        /// l'ordre défini par leurs <c>Order</c>. Utilisé par
-        /// <see cref="AlternativeGenerator"/> en façade.</summary>
+        /// <summary>Pipeline par défaut. P6 (2026-05-21) a retiré
+        /// <c>VAsForallEAsExistsScanner</c> et <c>CanonicalSetLettersScanner</c>
+        /// — leur comportement est désormais couvert par les templates
+        /// <c>ForallBelongsTemplate</c> et <c>EnsembleTemplate</c> du chantier
+        /// Patterns (cf. ADR <c>2026-05-21-Refactor-remove-legacy-quantifier-set-scanners</c>).
+        /// 8 scanners restants pour les ambig closed.</summary>
         public static AmbiguityScannerPipeline Default { get; } = new AmbiguityScannerPipeline(new IAmbiguityScanner[]
         {
             new AngleTwoLetterPlaceholderScanner(),     // 0
             new AstBasedScanner(),                       // 1
             new DecoratedTwoThreeUpperScanner(),         // 2
             new UppercaseSequencesScanner(),             // 3
-            new VAsForallEAsExistsScanner(),             // 4
-            new CanonicalSetLettersScanner(),            // 5
             new FunctionTypicalCommaCoordsScanner(),     // 6
             new VectorLayoutFlipTopLevelScanner(),       // 7
             new TightChainExtensionScanner(),            // 8
