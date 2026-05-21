@@ -58,6 +58,22 @@ namespace MathCursor.UI
         private System.Collections.Generic.IReadOnlyList<int> _altIdxMap
             = System.Array.Empty<int>();
 
+        // P7d (2026-05-21) : PatternCompletion[] reçues du ZoneResolver et
+        // affichées en tête de la liste d'alternatives. Quand l'user
+        // sélectionne une entry pattern, TryResolveAlt set
+        // _resolvedLatex = selectedAlt.Latex (= PreviewLatex du pattern)
+        // pour que le commit Enter insère cet OMath.
+        private IReadOnlyList<MathCursor.Core.Patterns.PatternCompletion> _patternCompletions
+            = Array.Empty<MathCursor.Core.Patterns.PatternCompletion>();
+
+        /// <summary>
+        /// Sentinel pour <see cref="_altIdxMap"/> qui marque une entry comme
+        /// PatternCompletion (vs ambig closed). Valeur &lt; <see cref="MathCursor.Core.Resolution.SpanOverride.AltIdxRevert"/>
+        /// pour ne pas collisionner. Local au popup (pas dans Core) car
+        /// c'est un détail de l'UI.
+        /// </summary>
+        private const int AltIdxPattern = -200;
+
         private readonly TextBlock _debugFooter;
         private readonly TextBlock _reportLink;
         private bool _navMode;
@@ -246,17 +262,20 @@ namespace MathCursor.UI
         {
             LogPopup($"Show top=\"{topLatex}\" rule=\"{ruleId}\" alts={(alternatives?.Count ?? 0)} pos=({screenX:F0},{screenY:F0}) patterns={(patternCompletions?.Count ?? 0)}");
 
-            // P7c (2026-05-21) : pass-through spike. Les PatternCompletion[]
-            // arrivent du ZoneResolver via SuggestionService. Pour P7c, on
-            // les logge en diagnostic mais on ne modifie PAS encore le
-            // rendering popup — l'objectif P7c est de valider le flux
-            // technique end-to-end. P7d validera en Word puis itèrera sur
-            // le rendering (Pattern d'abord, click handler, etc.) selon
-            // l'observation manuelle. Cf. ADR
-            // 2026-05-21-Feat-popup-pattern-completion-spike (P7c).
-            if (patternCompletions != null && patternCompletions.Count > 0)
+            // P7d (2026-05-21) : rendering définitif des PatternCompletion[].
+            // Pattern d'abord en tête des alternatives (Choix 5 du plan P7),
+            // converties en AmbiguityAlternative virtuelles (Latex =
+            // PreviewLatex, Mutation préservée). Sentinel AltIdxPattern dans
+            // _altIdxMap pour distinguer ces entries des ambig closed.
+            // Quand l'user sélectionne une entry Pattern : TryResolveAlt
+            // détecte le sentinel et set _resolvedLatex = selectedAlt.Latex.
+            // Le commit Enter standard insère cet OMath. Cf. ADR
+            // 2026-05-21-Feat-popup-pattern-completion-rendering (P7d).
+            _patternCompletions = patternCompletions
+                ?? Array.Empty<MathCursor.Core.Patterns.PatternCompletion>();
+            if (_patternCompletions.Count > 0)
             {
-                LogPopup($"Pattern completions: {patternCompletions.Count}, first preview=\"{patternCompletions[0].PreviewLatex}\" desc=\"{patternCompletions[0].Description}\"");
+                LogPopup($"Pattern completions: {_patternCompletions.Count}, first preview=\"{_patternCompletions[0].PreviewLatex}\" desc=\"{_patternCompletions[0].Description}\"");
             }
 
             // Spot bounds : le topLatex est déjà splicé par le ZoneResolver
@@ -299,11 +318,12 @@ namespace MathCursor.UI
                 var filtered = MathCursor.Core.Resolution.PopupAltFilter.Filter(
                     spotStart, spotEnd, alternatives, allMatches, defaultLatex);
 
-                _alternatives = filtered.Built;
-                _altIdxMap = filtered.AltIdxMap;
+                // P7d : prepend les PatternCompletion en tête (Choix 5 plan P7).
+                _alternatives = PrependPatternCompletions(filtered.Built, out var prependedMap);
+                _altIdxMap = MergePrependedMap(prependedMap, filtered.AltIdxMap);
 
                 // Diag pour debug bugs filter rapportés (« click X fait Y »).
-                LogPopup($"filter activeAltIdx={filtered.ActiveAltIdx} spotStart={spotStart} spotEnd={spotEnd} allMatches={allMatches?.Count ?? 0}");
+                LogPopup($"filter activeAltIdx={filtered.ActiveAltIdx} spotStart={spotStart} spotEnd={spotEnd} allMatches={allMatches?.Count ?? 0} prepended={prependedMap.Count}");
                 if (allMatches != null)
                 {
                     for (int dbgI = 0; dbgI < allMatches.Count; dbgI++)
@@ -318,6 +338,17 @@ namespace MathCursor.UI
                     altDbg.Append($"[{dbgI}]→real={_altIdxMap[dbgI]} latex=\"{_alternatives[dbgI].Latex}\" ");
                 }
                 LogPopup(altDbg.ToString());
+            }
+            else if (_patternCompletions.Count > 0)
+            {
+                // P7d : pas d'ambig closed mais des Pattern → la popup ne
+                // montre QUE les Patterns. Cas typique : V x app a R sans
+                // ambig closed (pas de AB / tight-chain / etc.) dans la zone.
+                _alternatives = PrependPatternCompletions(
+                    Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>(),
+                    out var patternMap);
+                _altIdxMap = patternMap;
+                LogPopup($"Patterns-only popup: {_alternatives.Count} entries");
             }
             else
             {
@@ -361,6 +392,53 @@ namespace MathCursor.UI
         /// latex de l'alt, + handlers <c>MouseEnter</c> (preview) et
         /// <c>MouseLeftButtonUp</c> (résolution direct).
         /// </summary>
+        // P7d helpers : intégration PatternCompletion[] en tête des alts ambig.
+
+        /// <summary>
+        /// Convertit chaque <see cref="MathCursor.Core.Patterns.PatternCompletion"/>
+        /// en <see cref="MathCursor.Core.Lattice.AmbiguityAlternative"/> virtuelle
+        /// (Latex = PreviewLatex, Mutation préservée), prepend en tête de
+        /// <paramref name="baseAlts"/> et retourne la liste combinée.
+        /// </summary>
+        private IReadOnlyList<MathCursor.Core.Lattice.AmbiguityAlternative> PrependPatternCompletions(
+            IReadOnlyList<MathCursor.Core.Lattice.AmbiguityAlternative> baseAlts,
+            out IReadOnlyList<int> prependedMap)
+        {
+            if (_patternCompletions.Count == 0)
+            {
+                prependedMap = Array.Empty<int>();
+                return baseAlts;
+            }
+            var combined = new System.Collections.Generic.List<MathCursor.Core.Lattice.AmbiguityAlternative>(
+                _patternCompletions.Count + baseAlts.Count);
+            var mapList = new System.Collections.Generic.List<int>(_patternCompletions.Count);
+            foreach (var pc in _patternCompletions)
+            {
+                combined.Add(new MathCursor.Core.Lattice.AmbiguityAlternative(
+                    pc.PreviewLatex, pc.Mutation));
+                mapList.Add(AltIdxPattern);
+            }
+            foreach (var alt in baseAlts) combined.Add(alt);
+            prependedMap = mapList;
+            return combined;
+        }
+
+        /// <summary>
+        /// Fusionne <paramref name="prependedMap"/> (entries Pattern en tête)
+        /// avec <paramref name="baseMap"/> (entries ambig closed standard) en
+        /// préservant l'ordre.
+        /// </summary>
+        private static IReadOnlyList<int> MergePrependedMap(
+            IReadOnlyList<int> prependedMap,
+            IReadOnlyList<int> baseMap)
+        {
+            if (prependedMap.Count == 0) return baseMap;
+            var combined = new System.Collections.Generic.List<int>(prependedMap.Count + baseMap.Count);
+            combined.AddRange(prependedMap);
+            combined.AddRange(baseMap);
+            return combined;
+        }
+
         private void BuildAltCells()
         {
             _altsRow.Children.Clear();
@@ -477,13 +555,41 @@ namespace MathCursor.UI
             if (_focusOnFinal) { LogPopup("  → SKIP (focus on final)"); return false; }
             if (_alternatives.Count == 0) { LogPopup("  → SKIP (no alts)"); return false; }
             if (_altIndex < 0 || _altIndex >= _alternatives.Count) { LogPopup("  → SKIP (altIdx oob)"); return false; }
-            if (_spotStart < 0 || _spotEnd <= _spotStart) { LogPopup("  → SKIP (invalid spot)"); return false; }
 
             // === Mapping index UI → altIdx réel (cf. brief 2026-05-07 étape 7) ===
-            // _altIdxMap[uiIndex] = altIdx réel, ou AltIdxRevert (-1) pour l'alt-revert.
+            // _altIdxMap[uiIndex] = altIdx réel, ou AltIdxRevert (-1) pour l'alt-revert,
+            // ou AltIdxPattern (-200) pour une PatternCompletion (P7d).
             int realAltIdx = _altIndex < _altIdxMap.Count
                 ? _altIdxMap[_altIndex]
                 : _altIndex; // fallback rétro-compat (ne devrait pas arriver)
+
+            // P7d : Pattern sélectionné → set _resolvedLatex et fermer la zone
+            // d'ambig. Le commit Enter standard insère cet OMath via
+            // CurrentFinalLatex. Pas de re-resolve, pas de mutation source
+            // (laisser P9+ si besoin de persistance cross-popup).
+            if (realAltIdx == AltIdxPattern)
+            {
+                var patternAlt = _alternatives[_altIndex];
+                LogPopup($"Resolved as PATTERN latex=\"{patternAlt.Latex}\"");
+                _resolvedLatex = patternAlt.Latex;
+                // Refresh final container avec le nouveau latex
+                _finalContainer.Children.Clear();
+                _finalContainer.Children.Add(BuildFinalRow(_resolvedLatex));
+                // Fermer la zone d'ambig comme un identity pick
+                _alternatives = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
+                _altsRow.Children.Clear();
+                _altsRowBorder.Visibility = Visibility.Collapsed;
+                _spotStart = _spotEnd = -1;
+                _focusOnFinal = true;
+                UpdateHighlight();
+                return true;
+            }
+
+            // Le check _spotStart < 0 ne s'applique pas aux Patterns (déjà
+            // sortis au-dessus). Pour les autres entries, on a besoin d'un
+            // span valide pour AddPreference/Revert.
+            if (_spotStart < 0 || _spotEnd <= _spotStart) { LogPopup("  → SKIP (invalid spot)"); return false; }
+
             bool isRevert = realAltIdx == MathCursor.Core.Resolution.SpanOverride.AltIdxRevert;
 
             // === Index revert : l'utilisateur veut le defaultLatex brut ===
