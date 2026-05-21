@@ -200,6 +200,53 @@ namespace MathCursor.Core.Tests.Patterns.Templates
             Assert.Contains("tan x & cot x", c.PreviewLatex);
         }
 
+        // ─── Mode auto-detect + accolades pour expressions complexes ──
+
+        [Fact]
+        public void Mat_with_curly_braces_groups_expression()
+        {
+            // P9f+ : `mat {sin x} {cos x} {tan x} {cot x}` (4 args complexes
+            // via accolades). Les accolades sont strippées à la lecture.
+            // Permet expressions avec espaces en mode auto-detect.
+            var t = New();
+            var ctx = Ctx("mat {sin x} {cos x} {tan x} {cot x}");
+            var head = t.TryMatchHead(ctx)!;
+            var completions = t.Expand(head, ctx);
+            // 4 args → 3 layouts (2×2, 1×4, 4×1)
+            Assert.Equal(3, completions.Count);
+            // 2×2 d'abord (proche du carré)
+            Assert.Contains("sin x & cos x", completions[0].PreviewLatex);
+            Assert.Contains("tan x & cot x", completions[0].PreviewLatex);
+            // Pas d'accolades dans le rendu (= strippées)
+            Assert.DoesNotContain("{sin", completions[0].PreviewLatex);
+        }
+
+        [Fact]
+        public void Mat_mixed_simple_and_curly_groups()
+        {
+            // Mix de tokens simples et de groupes : `mat a {b+1} c {d-2}`
+            var t = New();
+            var ctx = Ctx("mat a {b+1} c {d-2}");
+            var head = t.TryMatchHead(ctx)!;
+            var c = t.Expand(head, ctx)[0];
+            Assert.Contains("a & b+1", c.PreviewLatex);
+            Assert.Contains("c & d-2", c.PreviewLatex);
+        }
+
+        [Fact]
+        public void Mat3x2_with_curly_expressions()
+        {
+            // Mode head paramétré + accolades
+            var t = New();
+            var ctx = Ctx("mat3x2 {a+1} {b-2} {c*3} {d/4} {e^2} {f+g}");
+            var head = t.TryMatchHead(ctx)!;
+            var c = t.Expand(head, ctx)[0];
+            Assert.Contains("a+1 & b-2", c.PreviewLatex);
+            Assert.Contains("c*3 & d/4", c.PreviewLatex);
+            Assert.Contains("e^2 & f+g", c.PreviewLatex);
+            Assert.Equal(100, c.CompletenessScore);
+        }
+
         // ─── Délimiteur culture-aware ─────────────────────────────────
 
         [Fact]

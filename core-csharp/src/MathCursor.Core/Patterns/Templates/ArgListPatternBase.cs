@@ -115,10 +115,18 @@ namespace MathCursor.Core.Patterns.Templates
         /// <summary>
         /// Parse les args bruts à partir de <paramref name="pos"/> dans
         /// <paramref name="src"/>. Chaque arg est une séquence non-whitespace
-        /// (= identifier, nombre, ou un block délimité <c>[...]</c>/<c>(...)</c>).
+        /// (= identifier, nombre, ou un block délimité <c>[...]</c>/<c>(...)</c>/<c>{...}</c>).
         ///
-        /// <para>Les whitespaces séparent les args. Un block crocheté/parenthésé
-        /// est considéré comme UN arg (= permet <c>V x [0,1]</c> = 2 args).</para>
+        /// <para>Les whitespaces séparent les args. Un block crocheté/parenthésé/
+        /// accoladé est considéré comme UN arg (= permet <c>V x [0,1]</c> = 2 args,
+        /// ou <c>mat {a+1} {sin x} c d</c> = 4 args avec expressions complexes).</para>
+        ///
+        /// <para><b>Groupage par accolades</b> (P9f+ 2026-05-21) : <c>{...}</c>
+        /// permet à l'user de grouper une expression complexe contenant des
+        /// espaces. Les accolades sont <b>strippées</b> à la lecture
+        /// (= l'<see cref="ArgSpan.Text"/> contient l'intérieur seulement).
+        /// Convention LaTeX standard pour le groupage syntaxique. Parens et
+        /// crochets restent intacts (= sémantique math préservée).</para>
         /// </summary>
         protected static IReadOnlyList<ArgSpan> ParseArgs(string src, int pos)
         {
@@ -131,7 +139,35 @@ namespace MathCursor.Core.Patterns.Templates
                 int start = pos;
                 char c = src[pos];
 
+                // Accolades : groupage syntaxique LaTeX, strippées à la lecture
+                if (c == '{')
+                {
+                    pos++; // skip ouverture
+                    int innerStart = pos;
+                    int depth = 1;
+                    while (pos < src.Length && depth > 0)
+                    {
+                        char ch = src[pos];
+                        if (ch == '{') depth++;
+                        else if (ch == '}') depth--;
+                        if (depth > 0) pos++;
+                    }
+                    // pos pointe sur l'accolade fermante (si trouvée)
+                    int innerEnd = pos;
+                    if (pos < src.Length) pos++; // skip fermeture
+                    if (innerEnd > innerStart)
+                    {
+                        // Strip les accolades : arg = contenu seulement, bornes
+                        // source sur l'intérieur (= utilisé pour mutations)
+                        args.Add(new ArgSpan(
+                            src.Substring(innerStart, innerEnd - innerStart),
+                            innerStart, innerEnd));
+                    }
+                    continue;
+                }
+
                 // Block crocheté/parenthésé = 1 arg atomique (pour intervals)
+                // Parens et crochets sont CONSERVÉS dans le text (= sémantique math).
                 if (c == '[' || c == '(')
                 {
                     char closeChar = c == '[' ? ']' : ')';
