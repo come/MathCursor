@@ -84,20 +84,8 @@ namespace MathCursor.Core.Patterns.Templates
                 completenessScore: score) };
         }
 
-        // ─── Helpers ──────────────────────────────────────────────────
-
-        /// <summary>
-        /// Concatène les args à partir de <paramref name="startIdx"/> en
-        /// préservant les whitespaces originaux entre eux (= reproduit la
-        /// sous-chaîne source brute du premier au dernier).
-        /// </summary>
-        private static string ConcatArgsFrom(IReadOnlyList<ArgSpan> args, int startIdx, string source)
-        {
-            if (startIdx >= args.Count) return string.Empty;
-            int from = args[startIdx].Start;
-            int to = args[args.Count - 1].End;
-            return source.Substring(from, to - from);
-        }
+        // ─── Helpers (helpers communs Convert* / ConcatArgsFrom remontés
+        //     dans ArgListPatternBase en P9b 2026-05-21). ─────────────
 
         private static string BuildLatex(
             string? varText, string? limitText, string? exprText, bool hideEmpty)
@@ -125,45 +113,6 @@ namespace MathCursor.Core.Patterns.Templates
             sb.Append(" ");
             sb.Append(exprText ?? "▭");
             return sb.ToString();
-        }
-
-        /// <summary>
-        /// Convertit les tokens raccourcis pour l'infini en LaTeX :
-        /// <c>+oo</c> → <c>+\infty</c>, <c>-oo</c> → <c>-\infty</c>,
-        /// <c>oo</c> → <c>\infty</c>, <c>+infini</c>/<c>-infini</c> idem.
-        /// Retourne null si <paramref name="text"/> est null.
-        /// </summary>
-        private static string? ConvertInfinityToken(string? text)
-        {
-            if (text == null) return null;
-            return text switch
-            {
-                "oo" => "\\infty",
-                "+oo" => "+\\infty",
-                "-oo" => "-\\infty",
-                "infini" => "\\infty",
-                "+infini" => "+\\infty",
-                "-infini" => "-\\infty",
-                "∞" => "\\infty",
-                "+∞" => "+\\infty",
-                "-∞" => "-\\infty",
-                _ => text,
-            };
-        }
-
-        private static string? ConvertInfinityToUnicode(string? text)
-        {
-            if (text == null) return null;
-            return text switch
-            {
-                "oo" => "∞",
-                "+oo" => "+∞",
-                "-oo" => "-∞",
-                "infini" => "∞",
-                "+infini" => "+∞",
-                "-infini" => "-∞",
-                _ => text,
-            };
         }
 
         private static SourceMutation? BuildMutation(

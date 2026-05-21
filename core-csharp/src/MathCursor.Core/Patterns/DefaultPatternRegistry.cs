@@ -35,6 +35,7 @@ namespace MathCursor.Core.Patterns
                 new EnsembleTemplate(),
                 new IntervalUnionTemplate(),
                 new LimTemplate(),
+                new SumTemplate(),
             });
         }
 
@@ -53,6 +54,7 @@ namespace MathCursor.Core.Patterns
                 new EnsembleTemplate(),
                 new IntervalUnionTemplate(),
                 new LimTemplate(),
+                new SumTemplate(),
             };
             return (new PatternPipeline(templates), new PatternRegistry(templates));
         }

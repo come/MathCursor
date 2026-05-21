@@ -275,5 +275,66 @@ namespace MathCursor.Core.Patterns.Templates
                 if (src[pos + k] != needle[k]) return false;
             return true;
         }
+
+        // ─── Helpers partagés Lim/Sum/Int/Dérivée (P9 series) ──────────
+
+        /// <summary>
+        /// Concatène les args à partir de <paramref name="startIdx"/> en
+        /// préservant les whitespaces originaux entre eux (= reproduit la
+        /// sous-chaîne source brute du premier au dernier arg).
+        /// Utilisé par les templates dont le dernier slot accepte une
+        /// expression multi-tokens (ex. <c>Lim x 0 f x</c> où expression = "f x").
+        /// </summary>
+        protected static string ConcatArgsFrom(IReadOnlyList<ArgSpan> args, int startIdx, string source)
+        {
+            if (startIdx < 0 || startIdx >= args.Count) return string.Empty;
+            int from = args[startIdx].Start;
+            int to = args[args.Count - 1].End;
+            return source.Substring(from, to - from);
+        }
+
+        /// <summary>
+        /// Convertit les tokens raccourcis pour l'infini en LaTeX :
+        /// <c>+oo</c> → <c>+\infty</c>, <c>-oo</c> → <c>-\infty</c>, etc.
+        /// Retourne null si <paramref name="text"/> est null ; retourne le
+        /// texte tel quel si pas de match (= permet d'avoir d'autres bornes
+        /// littérales comme `a`, `n+1`, etc.).
+        /// </summary>
+        protected static string? ConvertInfinityToken(string? text)
+        {
+            if (text == null) return null;
+            return text switch
+            {
+                "oo" => "\\infty",
+                "+oo" => "+\\infty",
+                "-oo" => "-\\infty",
+                "infini" => "\\infty",
+                "+infini" => "+\\infty",
+                "-infini" => "-\\infty",
+                "∞" => "\\infty",
+                "+∞" => "+\\infty",
+                "-∞" => "-\\infty",
+                _ => text,
+            };
+        }
+
+        /// <summary>
+        /// Variante Unicode-friendly de <see cref="ConvertInfinityToken"/>,
+        /// pour les descriptions popup (ex. <c>+oo</c> → <c>+∞</c>).
+        /// </summary>
+        protected static string? ConvertInfinityToUnicode(string? text)
+        {
+            if (text == null) return null;
+            return text switch
+            {
+                "oo" => "∞",
+                "+oo" => "+∞",
+                "-oo" => "-∞",
+                "infini" => "∞",
+                "+infini" => "+∞",
+                "-infini" => "-∞",
+                _ => text,
+            };
+        }
     }
 }
