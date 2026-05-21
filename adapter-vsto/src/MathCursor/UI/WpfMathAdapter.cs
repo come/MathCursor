@@ -131,6 +131,17 @@ namespace MathCursor.UI
         private static string StackrelDelim(string body, string leftDelim, string rightDelim)
         {
             var lines = Regex.Split(body.Trim(), @"\s*\\\\\s*");
+
+            // P9f (2026-05-21) : pour les matrices 2D émises par MatrixTemplate
+            // (= contiennent `&` entre colonnes), on substitue `&` par `\quad`
+            // (espace large) sur chaque ligne. WpfMath 2.1 ne supporte pas
+            // \begin{array}/\matrix donc l'alignement vertical des colonnes
+            // est sacrifié au profit d'un rendu lisible : `(a  b ; c  d)`
+            // visuellement. Le rendu final Word OMath via LatexToUnicodeMath
+            // reste une vraie matrice 2D — ce code n'affecte QUE l'aperçu popup.
+            for (int i = 0; i < lines.Length; i++)
+                lines[i] = Regex.Replace(lines[i], @"\s*&\s*", " \\quad ");
+
             if (lines.Length == 0) return leftDelim + rightDelim;
             if (lines.Length == 1) return leftDelim + lines[0].Trim() + rightDelim;
 
