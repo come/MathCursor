@@ -44,7 +44,7 @@ namespace MathCursor.Core.Patterns.Templates
             var src = ctx.Source;
             if (string.IsNullOrEmpty(src)) return null;
 
-            for (int i = 0; i < src.Length; i++)
+            for (int i = ctx.StartPos; i < src.Length; i++)
             {
                 char c = src[i];
                 if (c != '[' && c != '(') continue;
@@ -65,12 +65,19 @@ namespace MathCursor.Core.Patterns.Templates
                     ["rightBracket"] = EmptySlot.Instance,
                 };
 
-                return new PatternMatch(
+                var headOnly = new PatternMatch(
                     templateId: TemplateId,
                     sourceStart: i,
                     sourceEnd: i + 1,
                     slots: slots,
                     isComplete: false);
+
+                // P5 : eager parse — le state retourné a déjà son SourceEnd
+                // étendu sur toute la chaîne d'intervals. Permet aux parents
+                // (ForallBelongsTemplate) de connaître la fin du sub-pattern
+                // après TryMatchHead, sans devoir appeler Expand. Expand
+                // devient un pur rendu LaTeX depuis le state final.
+                return ParseFromState(headOnly, src);
             }
             return null;
         }
@@ -78,7 +85,10 @@ namespace MathCursor.Core.Patterns.Templates
         public IReadOnlyList<PatternCompletion> Expand(PatternMatch state, PatternScanContext ctx)
         {
             if (state == null || ctx == null) return System.Array.Empty<PatternCompletion>();
-            var finalState = ParseFromState(state, ctx.Source);
+            // P5 : state est déjà eager-parsed par TryMatchHead. On ne re-parse
+            // pas (idempotent : ParseFromState sur un state déjà complet le
+            // laisse tel quel).
+            var finalState = state;
             var preview = BuildLatex(finalState, hideEmpty: true);
             var hint = BuildLatex(finalState, hideEmpty: false);
             var description = BuildDescription(finalState);

@@ -28,12 +28,46 @@ namespace MathCursor.Core.Patterns
         /// inconnue. Indexée par offset source.</summary>
         public int? CaretOffset { get; }
 
+        /// <summary>
+        /// Position de départ pour le scan dans <see cref="Source"/>. Default 0
+        /// pour les appels top-level. Les sub-patterns (composition parent↔enfant
+        /// via <see cref="PatternRefSlot"/>) construisent un sub-contexte avec
+        /// <see cref="StartPos"/> ajustée pour scanner depuis la fin de l'opener
+        /// parent. Ajouté en P5 pour la composition. Les templates qui ne
+        /// supportent pas la composition peuvent l'ignorer (= comportement
+        /// rétro-compat scan from 0).
+        /// </summary>
+        public int StartPos { get; }
+
+        /// <summary>
+        /// Registre des templates pour résoudre les <see cref="PatternRefSlot"/>
+        /// (composition parent↔enfant). <c>null</c> = template isolé, pas de
+        /// composition possible. Ajouté en P5 ; les templates P3/P4 fonctionnent
+        /// sans (rétro-compat).
+        /// </summary>
+        public PatternRegistry? Registry { get; }
+
         public PatternScanContext(AstNode topAst, string topLatex, string source, int? caretOffset)
+            : this(topAst, topLatex, source, caretOffset, startPos: 0, registry: null) { }
+
+        public PatternScanContext(
+            AstNode topAst, string topLatex, string source,
+            int? caretOffset, int startPos, PatternRegistry? registry)
         {
             TopAst = topAst;
             TopLatex = topLatex ?? string.Empty;
             Source = source ?? string.Empty;
             CaretOffset = caretOffset;
+            StartPos = startPos < 0 ? 0 : startPos;
+            Registry = registry;
         }
+
+        /// <summary>
+        /// Construit un nouveau <see cref="PatternScanContext"/> identique avec
+        /// <see cref="StartPos"/> ajustée. Utilisé par les templates parents
+        /// pour déléguer à un sub-pattern à partir d'une position arbitraire.
+        /// </summary>
+        public PatternScanContext WithStartPos(int newStartPos)
+            => new PatternScanContext(TopAst, TopLatex, Source, CaretOffset, newStartPos, Registry);
     }
 }

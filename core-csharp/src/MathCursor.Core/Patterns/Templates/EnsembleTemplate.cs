@@ -36,9 +36,44 @@ namespace MathCursor.Core.Patterns.Templates
             var source = ctx.Source;
             if (string.IsNullOrEmpty(source)) return null;
 
-            for (int i = 0; i < source.Length; i++)
+            for (int i = ctx.StartPos; i < source.Length; i++)
             {
-                if (!IsCanonicalLetter(source[i])) continue;
+                char head = source[i];
+
+                // P5.2 : délégation à interval-union pour les brackets si le
+                // Registry est fourni dans le ctx. EnsembleTemplate devient
+                // un dispatcher entre lettres canoniques et intervalles.
+                if ((head == '[' || head == '(') && ctx.Registry != null)
+                {
+                    var intervalTemplate = ctx.Registry.Get("interval-union");
+                    if (intervalTemplate != null)
+                    {
+                        var subCtx = ctx.WithStartPos(i);
+                        var subMatch = intervalTemplate.TryMatchHead(subCtx);
+                        if (subMatch != null)
+                        {
+                            // Wrap : ensemble match qui pointe vers le sub-match
+                            // interval-union via slot « delegated ». Expand
+                            // d'EnsembleTemplate forwarde à interval-union.Expand
+                            // (qui parsera la suite à partir de subMatch.SourceEnd).
+                            var slots = new Dictionary<string, SlotValue>(1)
+                            {
+                                ["delegated"] = new FilledSlotSubPattern(subMatch),
+                            };
+                            return new PatternMatch(
+                                templateId: TemplateId,
+                                sourceStart: i,
+                                sourceEnd: subMatch.SourceEnd,
+                                slots: slots,
+                                isComplete: subMatch.IsComplete);
+                        }
+                    }
+                    // Bracket sans Registry interval-union → fallback, on essaie
+                    // les lettres canoniques (qui rejetteront ce char et continueront).
+                    continue;
+                }
+
+                if (!IsCanonicalLetter(head)) continue;
                 if (i > 0 && char.IsLetter(source[i - 1])) continue; // word boundary
 
                 // Modifiers tight : 1 ou 2 max parmi * + -.
@@ -64,6 +99,16 @@ namespace MathCursor.Core.Patterns.Templates
         public IReadOnlyList<PatternCompletion> Expand(PatternMatch state, PatternScanContext ctx)
         {
             if (state == null || ctx == null) return System.Array.Empty<PatternCompletion>();
+
+            // P5.2 : si délégué à interval-union, forwarder.
+            if (state.Slots.TryGetValue("delegated", out var delegated)
+                && delegated is FilledSlotSubPattern delSub)
+            {
+                var intervalTemplate = ctx.Registry?.Get("interval-union");
+                if (intervalTemplate == null) return System.Array.Empty<PatternCompletion>();
+                return intervalTemplate.Expand(delSub.Sub, ctx);
+            }
+
             int len = state.SourceEnd - state.SourceStart;
             if (len < 1 || state.SourceStart < 0
                 || state.SourceEnd > ctx.Source.Length) return System.Array.Empty<PatternCompletion>();

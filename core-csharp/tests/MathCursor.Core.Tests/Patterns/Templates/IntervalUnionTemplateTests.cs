@@ -274,19 +274,22 @@ namespace MathCursor.Core.Tests.Patterns.Templates
         // ─── Slots internes ───────────────────────────────────────────
 
         [Fact]
-        public void Complete_match_has_all_4_fixed_slots_filled()
+        public void TryMatchHead_returns_eager_parsed_state_with_filled_slots()
         {
+            // P5 : TryMatchHead fait un eager parse complet (state.SourceEnd
+            // étendu sur toute la chaîne). Les slots fixes sont remplis si
+            // la source est complète.
             var t = New();
             var ctx = Ctx("[0,1]");
             var head = t.TryMatchHead(ctx)!;
-            // Note : Expand ne retourne pas le state. On vérifie head + via
-            // CompletenessScore retourné par Expand.
-            Assert.Equal(SlotsRequiredForHead, head.Slots.Count);
-            Assert.False(head.Slots["lo"].IsEmpty == false); // lo empty at head
+            Assert.Equal(0, head.SourceStart);
+            Assert.Equal(5, head.SourceEnd); // [0,1] entier consommé
+            Assert.False(head.Slots["lo"].IsEmpty);
+            Assert.False(head.Slots["hi"].IsEmpty);
+            Assert.False(head.Slots["rightBracket"].IsEmpty);
+            Assert.True(head.IsComplete);
             var c = t.Expand(head, ctx)[0];
             Assert.Equal(100, c.CompletenessScore);
         }
-
-        private const int SlotsRequiredForHead = 4; // leftBracket, lo, hi, rightBracket
     }
 }
