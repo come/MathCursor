@@ -65,20 +65,28 @@ namespace MathCursor.UI
                 return "\\{" + acc;
             });
 
-            // 4b) \begin{pmatrix}/bmatrix/vmatrix : matrices à 1 colonne (vecteurs
-            //     colonnes émis par notre LatexRenderer pour `u (1 2)` etc.).
-            //     WpfMath 2.1 ne supporte pas \begin{pmatrix} → on stack via
-            //     \stackrel imbriqués entourés du bon délimiteur :
-            //       pmatrix → ( … )
-            //       bmatrix → [ … ]
-            //       vmatrix → | … |
-            //     Visuel dégradé (espacement \stackrel < pmatrix natif) mais
-            //     identifiable comme vecteur colonne. La conversion vers Word OMath
-            //     ne passe pas ici (cf. LatexToUnicodeMath), donc le rendu final
-            //     dans le doc reste une vraie matrice.
-            s = PmatrixRegex.Replace(s, m => StackrelDelim(m.Groups["body"].Value, "(", ")"));
-            s = BmatrixRegex.Replace(s, m => StackrelDelim(m.Groups["body"].Value, "[", "]"));
-            s = VmatrixRegex.Replace(s, m => StackrelDelim(m.Groups["body"].Value, "|", "|"));
+            // 4b) \begin{pmatrix}/bmatrix/vmatrix : WpfMath utilise une syntaxe
+            //     DIFFÉRENTE du LaTeX standard. Cf. doc :
+            //     https://github.com/sskodje/wpf-math/blob/master/docs/matrices.md
+            //     - \matrix{a & b \\ c & d} : matrice SANS delim
+            //     - \pmatrix{a & b \\ c & d} : matrice avec delim (square brackets
+            //       selon doc, mais ambiguité → on contrôle explicit via \left/\right)
+            //     Rows séparées par \\ ou \cr, cells par &.
+            //
+            //     Approche : on transforme \begin{pmatrix}...\end{pmatrix} en
+            //     `\left( \matrix{...} \right)` pour contrôler les délimiteurs
+            //     de façon prédictible et indépendante de la sémantique WpfMath
+            //     `\pmatrix`. Idem bmatrix → `\left[ \matrix{} \right]`,
+            //     vmatrix → `\left| \matrix{} \right|`. Avant P9f+ (2026-05-21),
+            //     on stackait via \binom/\genfrac qui ne marchaient que pour
+            //     matrices 1-col (= vecteurs colonnes) — désormais matrice 2D
+            //     supportée nativement par WpfMath via \matrix{a & b \\ c & d}.
+            s = PmatrixRegex.Replace(s, m =>
+                "\\left( \\matrix{" + m.Groups["body"].Value.Trim() + "} \\right)");
+            s = BmatrixRegex.Replace(s, m =>
+                "\\left[ \\matrix{" + m.Groups["body"].Value.Trim() + "} \\right]");
+            s = VmatrixRegex.Replace(s, m =>
+                "\\left| \\matrix{" + m.Groups["body"].Value.Trim() + "} \\right|");
 
             // 5) Substitutions littérales mot-à-mot (ordre préservé).
             foreach (var (from, to) in LiteralSubs)

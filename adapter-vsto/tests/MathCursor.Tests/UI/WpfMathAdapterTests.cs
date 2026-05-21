@@ -102,23 +102,30 @@ namespace MathCursor.Tests.UI
             Assert.Contains("z", got);
         }
 
-        // ---- \begin{pmatrix}/bmatrix/vmatrix → \binom / \genfrac ----
+        // ---- \begin{pmatrix}/bmatrix/vmatrix → \left( \matrix{} \right) ----
+        // P9f+ (2026-05-21) : WpfMath supporte \matrix{...} avec & et \\
+        // pour matrices 2D natives. Cf. doc :
+        // https://github.com/sskodje/wpf-math/blob/master/docs/matrices.md
 
         [Fact]
-        public void Pmatrix_two_elements_becomes_binom()
+        public void Pmatrix_becomes_left_paren_matrix_right_paren()
         {
-            // Cas v0.5.3 : vecteur colonne `u (1 2)` rendu en \begin{pmatrix}1\\2\end{pmatrix}
-            // dans le LatexRenderer. WpfMath préfère \binom pour le rendu popup.
+            // 2 éléments verticaux : matrice 1 colonne
             var got = WpfMathAdapter.Adapt("\\begin{pmatrix} 1 \\\\ 2 \\end{pmatrix}");
-            Assert.Contains("\\binom{1}{2}", got);
+            Assert.Contains("\\left( \\matrix{", got);
+            Assert.Contains("\\right)", got);
         }
 
         [Fact]
-        public void Pmatrix_three_elements_becomes_genfrac_brackets()
+        public void Pmatrix_2d_preserves_amp_and_doubleslash()
         {
-            // 3+ éléments : on bascule en brackets stacked (\genfrac{[}{]}).
-            var got = WpfMathAdapter.Adapt("\\begin{pmatrix} 1 \\\\ 2 \\\\ 3 \\end{pmatrix}");
-            Assert.Contains("\\genfrac{[}{]}", got);
+            // Matrice 2D avec colonnes (P9f) : \matrix{} accepte
+            // a & b \\ c & d natively (= cells & rows WpfMath syntax)
+            var got = WpfMathAdapter.Adapt(
+                "\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}");
+            Assert.Contains("a & b", got);
+            Assert.Contains("c & d", got);
+            Assert.Contains("\\left( \\matrix{", got);
         }
 
         [Fact]
