@@ -73,7 +73,7 @@ namespace MathCursor.Core.Patterns.Templates
         /// Ex. pour forall-belongs : V, E, ∀, ∃.</summary>
         protected abstract IReadOnlyList<QuantifierVariant> Heads { get; }
 
-        public PatternMatch? TryMatchHead(PatternScanContext ctx)
+        public virtual PatternMatch? TryMatchHead(PatternScanContext ctx)
         {
             if (ctx == null) return null;
             var src = ctx.Source;

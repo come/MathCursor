@@ -57,6 +57,7 @@ namespace MathCursor.Core.Patterns
             templates.Add(new ForallBelongsTemplate());
             templates.Add(new EnsembleTemplate());
             templates.Add(new IntervalUnionTemplate());
+            templates.Add(new MatrixTemplate());
 
             // Templates YAML (= moule "args espace" générique). Chaque YAML
             // embedded dans data/patterns/ est chargé et wrappé dans un

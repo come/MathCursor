@@ -32,14 +32,29 @@ namespace MathCursor.Core
         public string MultSymbol { get; set; } = ResolveCultureDefault();
 
         /// <summary>
-        /// Résout le symbole par défaut depuis la culture courante. Appelée
-        /// lors de l'init de <see cref="MultSymbol"/>. L'adapter peut
-        /// override après pour appliquer un setting Registry explicite.
+        /// Délimiteur LaTeX pour les matrices : <c>pmatrix</c> (parenthèses,
+        /// convention FR lycée) ou <c>bmatrix</c> (crochets, convention US).
+        /// Default culture-aware : FR utilise <c>pmatrix</c>, les autres
+        /// cultures gardent <c>bmatrix</c>. Cf. P9f MatrixTemplate.
+        /// </summary>
+        public string MatrixDelim { get; set; } = ResolveMatrixDelimCultureDefault();
+
+        /// <summary>
+        /// Résout le symbole de multiplication par défaut depuis la culture.
         /// </summary>
         public static string ResolveCultureDefault()
         {
             var iso = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
             return iso == "fr" ? "\\times " : "\\cdot ";
+        }
+
+        /// <summary>
+        /// Résout le délimiteur matrice par défaut depuis la culture.
+        /// </summary>
+        public static string ResolveMatrixDelimCultureDefault()
+        {
+            var iso = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+            return iso == "fr" ? "pmatrix" : "bmatrix";
         }
     }
 }
