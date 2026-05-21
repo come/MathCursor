@@ -27,7 +27,7 @@ namespace MathCursor.Core.Tests.Patterns.Templates
 
         private static PatternScanContext Ctx(string source) =>
             new PatternScanContext(
-                topAst: new Atom("Ident", "x"),
+                topAst: null,
                 topLatex: source,
                 source: source,
                 caretOffset: null,

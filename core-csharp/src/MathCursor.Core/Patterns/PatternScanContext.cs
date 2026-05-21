@@ -15,8 +15,15 @@ namespace MathCursor.Core.Patterns
     /// </summary>
     public sealed class PatternScanContext
     {
-        /// <summary>AST top-1 produit par le parser sur la source mutée.</summary>
-        public AstNode TopAst { get; }
+        /// <summary>AST top-1 produit par le parser sur la source mutée.
+        /// <para>Nullable depuis P7a (2026-05-21) : aucun des templates pilotes
+        /// actuels (forall-belongs, ensemble, interval-union) ne consomme l'AST
+        /// — ils scannent <see cref="Source"/>. Quand le <c>ZoneResolver</c>
+        /// invoque le <c>PatternPipeline</c>, l'AST n'est pas exposé par
+        /// <c>LatticeEngine.ConvertWithAmbiguity</c> et reste null. Si un futur
+        /// template AST-aware en P9+ a besoin de l'AST, il fera <c>if (ctx.TopAst != null)</c>
+        /// et le caller (resolver) sera adapté.</para></summary>
+        public AstNode? TopAst { get; }
 
         /// <summary>LaTeX rendu à partir de <see cref="TopAst"/>.</summary>
         public string TopLatex { get; }
@@ -47,11 +54,11 @@ namespace MathCursor.Core.Patterns
         /// </summary>
         public PatternRegistry? Registry { get; }
 
-        public PatternScanContext(AstNode topAst, string topLatex, string source, int? caretOffset)
+        public PatternScanContext(AstNode? topAst, string topLatex, string source, int? caretOffset)
             : this(topAst, topLatex, source, caretOffset, startPos: 0, registry: null) { }
 
         public PatternScanContext(
-            AstNode topAst, string topLatex, string source,
+            AstNode? topAst, string topLatex, string source,
             int? caretOffset, int startPos, PatternRegistry? registry)
         {
             TopAst = topAst;

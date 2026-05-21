@@ -56,10 +56,22 @@ namespace MathCursor.Core
         /// (cf. brief 2026-05-07 fix double-splice).</summary>
         public string BaseTopLatex { get; }
 
+        /// <summary>
+        /// Complétions issues du <c>PatternPipeline</c> (P7a, 2026-05-21).
+        /// Vide si le <see cref="ZoneResolver"/> a été construit sans
+        /// <c>PatternPipeline</c> (= comportement legacy P1-P6).
+        ///
+        /// <para>Convention popup (Choix 5 du plan P7) : Pattern d'abord
+        /// (PatternCompletions), puis AmbiguityMatch (AllMatches). La popup
+        /// liste ces complétions en tête, suivies des ambig closed.</para>
+        /// </summary>
+        public IReadOnlyList<MathCursor.Core.Patterns.PatternCompletion> PatternCompletions { get; }
+
         public ResolvedZone(string rawSource, string mutedSource, string topLatex,
             AmbiguitySpot? spot, int? spotStart, int? spotEnd,
             IReadOnlyList<AmbiguityMatch> allMatches, bool isIncomplete,
-            string? baseTopLatex = null)
+            string? baseTopLatex = null,
+            IReadOnlyList<MathCursor.Core.Patterns.PatternCompletion>? patternCompletions = null)
         {
             RawSource = rawSource;
             MutedSource = mutedSource;
@@ -70,6 +82,8 @@ namespace MathCursor.Core
             AllMatches = allMatches;
             IsIncomplete = isIncomplete;
             BaseTopLatex = baseTopLatex ?? topLatex;
+            PatternCompletions = patternCompletions
+                ?? System.Array.Empty<MathCursor.Core.Patterns.PatternCompletion>();
         }
     }
 
@@ -102,9 +116,30 @@ namespace MathCursor.Core
         private readonly Dictionary<string, int> _preferences
             = new Dictionary<string, int>();
 
+        // P7a (2026-05-21) : injection optionnelle du PatternPipeline + Registry
+        // pour activer les templates compositionnels (forall-belongs, ensemble,
+        // interval-union). Null = comportement legacy P1-P6 préservé.
+        private readonly MathCursor.Core.Patterns.PatternPipeline? _patternPipeline;
+        private readonly MathCursor.Core.Patterns.PatternRegistry? _patternRegistry;
+
         public ZoneResolver(LatticeEngine engine)
+            : this(engine, patternPipeline: null, patternRegistry: null) { }
+
+        /// <summary>
+        /// Ctor étendu P7a (2026-05-21) : accepte un <see cref="MathCursor.Core.Patterns.PatternPipeline"/>
+        /// et un <see cref="MathCursor.Core.Patterns.PatternRegistry"/> optionnels
+        /// pour activer les templates compositionnels. Construire via
+        /// <see cref="MathCursor.Core.Patterns.DefaultPatternRegistry.BuildBoth"/>
+        /// pour le setup pilote (forall-belongs + ensemble + interval-union).
+        /// </summary>
+        public ZoneResolver(
+            LatticeEngine engine,
+            MathCursor.Core.Patterns.PatternPipeline? patternPipeline,
+            MathCursor.Core.Patterns.PatternRegistry? patternRegistry)
         {
             _engine = engine ?? throw new System.ArgumentNullException(nameof(engine));
+            _patternPipeline = patternPipeline;
+            _patternRegistry = patternRegistry;
         }
 
         /// <summary>
@@ -267,7 +302,8 @@ namespace MathCursor.Core
                 spotEnd: baseResolved.SpotEnd,
                 allMatches: enrichedMatches,
                 isIncomplete: baseResolved.IsIncomplete,
-                baseTopLatex: baseResolved.TopLatex);
+                baseTopLatex: baseResolved.TopLatex,
+                patternCompletions: baseResolved.PatternCompletions);
             return ApplyCaretAware(resolved, caretOffset);
         }
 
@@ -303,7 +339,8 @@ namespace MathCursor.Core
                 spotEnd: deepest.End,
                 allMatches: zone.AllMatches,
                 isIncomplete: zone.IsIncomplete,
-                baseTopLatex: zone.BaseTopLatex);
+                baseTopLatex: zone.BaseTopLatex,
+                patternCompletions: zone.PatternCompletions);
         }
 
         /// <summary>
@@ -485,6 +522,14 @@ namespace MathCursor.Core
             // une préférence pour leur ruleId ; popup filtre cet alt en aval.
             var annotatedMatches = AnnotateAppliedAltIdxFromPreferences(decoratedMatches);
             bool incomplete = ComputeIsIncomplete(rawSource, ambig.TopLatex);
+
+            // P7a : invoquer le PatternPipeline si configuré (sinon Empty).
+            // On passe rawSource (= ce que l'user a tapé) : c'est sur ce texte
+            // que les templates matchent leur head (V, [, R, etc.). La source
+            // mutée (= post préprocesseur canonical + prefs) ne ferait plus
+            // matcher V→∀ par exemple (V devient déjà forall après prefs).
+            var patternCompletions = RunPatternPipeline(rawSource, ambig.TopLatex, caretOffset);
+
             var resolved = new ResolvedZone(
                 rawSource: rawSource,
                 mutedSource: muted,
@@ -493,8 +538,30 @@ namespace MathCursor.Core
                 spotStart: ambig.SpotStart,
                 spotEnd: ambig.SpotEnd,
                 allMatches: annotatedMatches,
-                isIncomplete: incomplete);
+                isIncomplete: incomplete,
+                patternCompletions: patternCompletions);
             return ApplyCaretAware(resolved, caretOffset);
+        }
+
+        /// <summary>
+        /// P7a : invoque le <see cref="MathCursor.Core.Patterns.PatternPipeline"/>
+        /// si configuré. Retourne la liste de <see cref="MathCursor.Core.Patterns.PatternCompletion"/>
+        /// ou liste vide si pas de pipeline. Le <see cref="MathCursor.Core.Patterns.PatternScanContext.TopAst"/>
+        /// est null (aucun template pilote actuel ne l'utilise — cf. ADR
+        /// 2026-05-21-Feat-pattern-pipeline-integration-zone-resolver).
+        /// </summary>
+        private IReadOnlyList<MathCursor.Core.Patterns.PatternCompletion>? RunPatternPipeline(
+            string rawSource, string topLatex, int? caretOffset)
+        {
+            if (_patternPipeline == null) return null;
+            var patternCtx = new MathCursor.Core.Patterns.PatternScanContext(
+                topAst: null,
+                topLatex: topLatex ?? string.Empty,
+                source: rawSource,
+                caretOffset: caretOffset,
+                startPos: 0,
+                registry: _patternRegistry);
+            return _patternPipeline.Run(patternCtx);
         }
 
         /// <summary>
