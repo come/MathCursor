@@ -144,7 +144,7 @@ plans en cours. **Mis à jour à chaque fin de sous-livraison.**
 - [→] **P7** — Branchement Patterns ↔ ZoneResolver ↔ Popup. Décomposé en 4 sous-étapes commits séparés.
   - [x] **P7a** — Core : ZoneResolver invoque PatternPipeline + expose PatternCompletion[] dans ResolvedZone, DefaultPatternRegistry factory, TopAst nullable. ADR [`Feat-pattern-pipeline-integration-zone-resolver`](../decisions/2026-05-21-Feat-pattern-pipeline-integration-zone-resolver.md). +10 tests verts.
   - [x] **P7b** — Adapter VSTO : SuggestionService.cs construit registry+pipeline via DefaultPatternRegistry.BuildBoth() et les injecte au ZoneResolver. ADR [`Feat-suggestion-service-pattern-injection`](../decisions/2026-05-21-Feat-suggestion-service-pattern-injection.md).
-  - [ ] **P7c** — WPF popup : SuggestionPopupWindow consomme PatternCompletion[] en tête + AmbiguityMatch[] en queue, rendu `\square` LaTeX via OMath natural
+  - [x] **P7c** — Popup spike pass-through : SuggestionPopupWindow.Show accepte patternCompletions optionnel + log diag, pas de rendering modifié (décidé en P7d après observation Word). ADR [`Feat-popup-pattern-completion-spike`](../decisions/2026-05-21-Feat-popup-pattern-completion-spike.md) (provisoire).
   - [ ] **P7d** — Test bout-en-bout dans Word + ADR final + commit
 - [ ] **P8** — Test bout-en-bout dans Word : `V x app a [0,1]U[3,4]` → `\forall x \in [0,1]\cup[3,4]` avec carrés pendant la saisie.
 - [ ] **P9+** — `LimTemplate`, `SumTemplate`, `IntegralTemplate`, `DerivativeTemplate` + migration YAML des patterns triviaux (`EnsembleTemplate` candidat éligible).

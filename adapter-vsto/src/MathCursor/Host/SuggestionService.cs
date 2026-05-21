@@ -1283,8 +1283,13 @@ namespace MathCursor.Host
             // déjà AppliedAltIdx sur chaque match via Resolve(...). La popup
             // lit cette annotation pour filtrer l'alt active. Cf. refacto
             // désambig 2026-05-21 (audit B — suppression FindActiveAltIdxForRule).
+            // P7c (2026-05-21) : transmettre les PatternCompletion[] produites
+            // par le ZoneResolver (P7a) à la popup. Pour l'instant pass-through
+            // pour log diag — le rendering UX sera ajusté en P7d après test
+            // manuel Word. Cf. ADR 2026-05-21-Feat-popup-pattern-completion-spike.
             _popup.Show(resolved.TopLatex, ruleId, alts, spotStart, spotEnd,
-                resolved.AllMatches, popupX, popupY, debugText);
+                resolved.AllMatches, popupX, popupY, debugText,
+                resolved.PatternCompletions);
         }
 
         /// <summary>

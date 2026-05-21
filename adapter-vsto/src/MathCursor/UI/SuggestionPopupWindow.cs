@@ -241,9 +241,23 @@ namespace MathCursor.UI
             IReadOnlyList<MathCursor.Core.Lattice.AmbiguityMatch> allMatches,
             double screenX,
             double screenY,
-            string debugText = "")
+            string debugText = "",
+            IReadOnlyList<MathCursor.Core.Patterns.PatternCompletion>? patternCompletions = null)
         {
-            LogPopup($"Show top=\"{topLatex}\" rule=\"{ruleId}\" alts={(alternatives?.Count ?? 0)} pos=({screenX:F0},{screenY:F0})");
+            LogPopup($"Show top=\"{topLatex}\" rule=\"{ruleId}\" alts={(alternatives?.Count ?? 0)} pos=({screenX:F0},{screenY:F0}) patterns={(patternCompletions?.Count ?? 0)}");
+
+            // P7c (2026-05-21) : pass-through spike. Les PatternCompletion[]
+            // arrivent du ZoneResolver via SuggestionService. Pour P7c, on
+            // les logge en diagnostic mais on ne modifie PAS encore le
+            // rendering popup — l'objectif P7c est de valider le flux
+            // technique end-to-end. P7d validera en Word puis itèrera sur
+            // le rendering (Pattern d'abord, click handler, etc.) selon
+            // l'observation manuelle. Cf. ADR
+            // 2026-05-21-Feat-popup-pattern-completion-spike (P7c).
+            if (patternCompletions != null && patternCompletions.Count > 0)
+            {
+                LogPopup($"Pattern completions: {patternCompletions.Count}, first preview=\"{patternCompletions[0].PreviewLatex}\" desc=\"{patternCompletions[0].Description}\"");
+            }
 
             // Spot bounds : le topLatex est déjà splicé par le ZoneResolver
             // (= AppliedAltIdx reflète la pref active). Pas de re-substitution
