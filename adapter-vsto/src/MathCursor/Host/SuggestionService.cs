@@ -192,7 +192,15 @@ namespace MathCursor.Host
             _app = app ?? throw new ArgumentNullException(nameof(app));
             _ner = ner ?? throw new ArgumentNullException(nameof(ner));
             _engine = engine ?? throw new ArgumentNullException(nameof(engine));
-            _resolver = new ZoneResolver(_engine);
+            // P7b (2026-05-21) : injection du PatternPipeline + Registry pour
+            // activer les templates compositionnels (forall-belongs, ensemble,
+            // interval-union) — restauration UX de la popup après P6 et
+            // extension via composition. Cf. ADR
+            // 2026-05-21-Feat-pattern-pipeline-integration-zone-resolver (P7a)
+            // + 2026-05-21-Feat-suggestion-service-pattern-injection (P7b).
+            var (patternPipeline, patternRegistry) =
+                MathCursor.Core.Patterns.DefaultPatternRegistry.BuildBoth();
+            _resolver = new ZoneResolver(_engine, patternPipeline, patternRegistry);
             // Contexte global de session : agrège SidecarSignal (L1, votes du
             // sidecar) + ParagraphResolutionsSignal (L2, pins du ¶ courant).
             // Alimenté par PropagateCommittedPinsToParagraphHistory au commit

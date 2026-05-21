@@ -143,7 +143,7 @@ plans en cours. **Mis à jour à chaque fin de sous-livraison.**
 - [x] **P6** — Retrait `VAsForallEAsExistsScanner` + `CanonicalSetLettersScanner` du `AmbiguityScannerPipeline.Default` (= 8 scanners restants) + suppression fichiers + 3 const + 2 méthodes statiques + 20 tests legacy supprimés. ADR [`Refactor-remove-legacy-quantifier-set-scanners`](../decisions/2026-05-21-Refactor-remove-legacy-quantifier-set-scanners.md). **Régression UX temporaire main jusqu'à P7 assumée** (l'utilisateur Word ne verra plus la popup pour V/E/R/N/Z/Q/C — restauré par P7).
 - [→] **P7** — Branchement Patterns ↔ ZoneResolver ↔ Popup. Décomposé en 4 sous-étapes commits séparés.
   - [x] **P7a** — Core : ZoneResolver invoque PatternPipeline + expose PatternCompletion[] dans ResolvedZone, DefaultPatternRegistry factory, TopAst nullable. ADR [`Feat-pattern-pipeline-integration-zone-resolver`](../decisions/2026-05-21-Feat-pattern-pipeline-integration-zone-resolver.md). +10 tests verts.
-  - [ ] **P7b** — Adapter VSTO : SuggestionService construit le Registry et l'injecte au resolver
+  - [x] **P7b** — Adapter VSTO : SuggestionService.cs construit registry+pipeline via DefaultPatternRegistry.BuildBoth() et les injecte au ZoneResolver. ADR [`Feat-suggestion-service-pattern-injection`](../decisions/2026-05-21-Feat-suggestion-service-pattern-injection.md).
   - [ ] **P7c** — WPF popup : SuggestionPopupWindow consomme PatternCompletion[] en tête + AmbiguityMatch[] en queue, rendu `\square` LaTeX via OMath natural
   - [ ] **P7d** — Test bout-en-bout dans Word + ADR final + commit
 - [ ] **P8** — Test bout-en-bout dans Word : `V x app a [0,1]U[3,4]` → `\forall x \in [0,1]\cup[3,4]` avec carrés pendant la saisie.
