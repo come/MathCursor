@@ -36,6 +36,12 @@
     <EmbeddedResource Include="..\..\..\data\*.json">
       <Link>Data\%(Filename)%(Extension)</Link>
     </EmbeddedResource>
+    <!-- Specs YAML des patterns (P9e 2026-05-21) — chargées au boot via
+         PatternSpecLoader. Le namespace embedded sera
+         MathCursor.Core.data.patterns.{filename}.yaml -->
+    <EmbeddedResource Include="..\..\..\data\patterns\*.yaml">
+      <Link>data\patterns\%(Filename)%(Extension)</Link>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

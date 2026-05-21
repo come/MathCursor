@@ -1,13 +1,13 @@
 using System.Linq;
 using Xunit;
 using MathCursor.Core.Patterns;
-using MathCursor.Core.Patterns.Templates;
+using MathCursor.Core.Patterns.Yaml;
 
 namespace MathCursor.Core.Tests.Patterns.Templates
 {
     /// <summary>
-    /// Tests <see cref="DerivativeTemplate"/> (P9d, 2026-05-21). Cf. ADR
-    /// <c>2026-05-21-Feat-derivative-pattern</c>.
+    /// Tests du pattern <c>derivative</c> (P9d + P9e refacto YAML, 2026-05-21) :
+    /// défini dans <c>data/patterns/derivative.yaml</c> embedded.
     /// </summary>
     public class DerivativeTemplateTests
     {
@@ -20,7 +20,8 @@ namespace MathCursor.Core.Tests.Patterns.Templates
                 startPos: 0,
                 registry: null);
 
-        private static DerivativeTemplate New() => new DerivativeTemplate();
+        private static YamlArgListPatternTemplate New()
+            => new YamlArgListPatternTemplate(PatternSpecLoader.LoadEmbedded("derivative.yaml"));
 
         private static PatternCompletion ExpandAll(string source)
         {

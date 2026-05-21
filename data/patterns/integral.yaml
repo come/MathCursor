@@ -1,0 +1,28 @@
+# Pattern integral — intégrale définie
+# 4 slots positionnels : var, from, to, expression (multi-token)
+# var en premier pour cohérence MathCursor avec Lim/Sum
+# Migré depuis IntegralTemplate.cs en P9e (2026-05-21)
+
+template_id: integral
+order: 0
+
+heads:
+  - { source: Int,       latex: '\int', mutation: int, weight: 100 }
+  - { source: int,       latex: '\int', mutation: int, weight: 95 }
+  - { source: intégrale, latex: '\int', mutation: int, weight: 90 }
+  - { source: '∫',       latex: '\int', mutation: int, weight: 100 }
+
+slots:
+  - { position: 0, name: var }
+  - { position: 1, name: from, convert: infinity }
+  - { position: 2, name: to, convert: infinity }
+  - { position: 3, name: expression, multi_token: true }
+
+scoring:
+  base: 20
+  per_slot: 20
+
+render:
+  preview: '\int_{<from>}^{<to>} <expression> \, d<var>'
+  hint:    '\int_{<from|\square>}^{<to|\square>} <expression|\square> \, d<var|\square>'
+  description: '∫_{<from|▭>}^{<to|▭>} <expression|▭> d<var|▭>'

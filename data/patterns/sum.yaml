@@ -1,0 +1,28 @@
+# Pattern sum — sommation mathématique
+# 4 slots positionnels : var, from, to, expression (multi-token)
+# Migré depuis SumTemplate.cs en P9e (2026-05-21)
+
+template_id: sum
+order: 0
+
+heads:
+  - { source: Sum,   latex: '\sum', mutation: sum, weight: 100 }
+  - { source: sum,   latex: '\sum', mutation: sum, weight: 95 }
+  - { source: somme, latex: '\sum', mutation: sum, weight: 90 }
+  - { source: '∑',   latex: '\sum', mutation: sum, weight: 100 }
+  - { source: 'Σ',   latex: '\sum', mutation: sum, weight: 100 }
+
+slots:
+  - { position: 0, name: var }
+  - { position: 1, name: from, convert: infinity }
+  - { position: 2, name: to, convert: infinity }
+  - { position: 3, name: expression, multi_token: true }
+
+scoring:
+  base: 20
+  per_slot: 20
+
+render:
+  preview: '\sum_{<var>=<from>}^{<to>} <expression>'
+  hint:    '\sum_{<var|\square>=<from|\square>}^{<to|\square>} <expression|\square>'
+  description: 'Σ_{<var|▭>=<from|▭>}^{<to|▭>} <expression|▭>'

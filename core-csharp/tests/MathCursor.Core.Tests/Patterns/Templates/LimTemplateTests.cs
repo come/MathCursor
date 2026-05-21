@@ -1,15 +1,17 @@
 using System.Linq;
 using Xunit;
 using MathCursor.Core.Patterns;
-using MathCursor.Core.Patterns.Templates;
+using MathCursor.Core.Patterns.Yaml;
 
 namespace MathCursor.Core.Tests.Patterns.Templates
 {
     /// <summary>
-    /// Tests <see cref="LimTemplate"/> (P9a, 2026-05-21) : head Lim/lim,
-    /// 3 slots positionnels var/limit/expression, rendu \lim_{var \to limit}
-    /// expression, conversion +oo / -oo / ∞ vers \infty, hints carrés pour
-    /// slots vides. Cf. ADR <c>2026-05-21-Feat-lim-pattern</c>.
+    /// Tests du pattern <c>lim</c> (P9a + P9e refacto YAML, 2026-05-21) :
+    /// le pattern est maintenant défini dans <c>data/patterns/lim.yaml</c>
+    /// embedded et instancié via <see cref="YamlArgListPatternTemplate"/>.
+    /// Comportement identique à l'ancien <c>LimTemplate.cs</c> (supprimé en
+    /// P9e). Couvre : head Lim/lim, 3 slots positionnels var/limit/expression,
+    /// rendu \lim_{var \to limit} expression, conversion +oo/-oo/∞.
     /// </summary>
     public class LimTemplateTests
     {
@@ -22,7 +24,8 @@ namespace MathCursor.Core.Tests.Patterns.Templates
                 startPos: 0,
                 registry: null);
 
-        private static LimTemplate New() => new LimTemplate();
+        private static YamlArgListPatternTemplate New()
+            => new YamlArgListPatternTemplate(PatternSpecLoader.LoadEmbedded("lim.yaml"));
 
         private static PatternCompletion ExpandAll(string source)
         {

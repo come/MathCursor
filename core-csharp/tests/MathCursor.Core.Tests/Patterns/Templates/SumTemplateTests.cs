@@ -1,15 +1,15 @@
 using System.Linq;
 using Xunit;
 using MathCursor.Core.Patterns;
-using MathCursor.Core.Patterns.Templates;
+using MathCursor.Core.Patterns.Yaml;
 
 namespace MathCursor.Core.Tests.Patterns.Templates
 {
     /// <summary>
-    /// Tests <see cref="SumTemplate"/> (P9b, 2026-05-21) : head Sum/sum/somme/Σ/∑,
-    /// 4 slots positionnels var/from/to/expression, rendu
-    /// \sum_{var=from}^{to} expression, conversion infini, hints carrés.
-    /// Cf. ADR <c>2026-05-21-Feat-sum-pattern</c>.
+    /// Tests du pattern <c>sum</c> (P9b + P9e refacto YAML, 2026-05-21) :
+    /// défini dans <c>data/patterns/sum.yaml</c> embedded, instancié via
+    /// <see cref="YamlArgListPatternTemplate"/>. Comportement identique à
+    /// l'ancien <c>SumTemplate.cs</c> (supprimé en P9e).
     /// </summary>
     public class SumTemplateTests
     {
@@ -22,7 +22,8 @@ namespace MathCursor.Core.Tests.Patterns.Templates
                 startPos: 0,
                 registry: null);
 
-        private static SumTemplate New() => new SumTemplate();
+        private static YamlArgListPatternTemplate New()
+            => new YamlArgListPatternTemplate(PatternSpecLoader.LoadEmbedded("sum.yaml"));
 
         private static PatternCompletion ExpandAll(string source)
         {

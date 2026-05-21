@@ -1,0 +1,23 @@
+# Pattern probability — probabilité d'un événement P(event)
+# 1 slot positionnel (multi-token pour permettre P A∩B etc.)
+# NOUVEAU PATTERN P9e — créé uniquement via YAML, sans .cs
+# Validation que le DSL YAML supporte l'ajout d'un pattern sans code
+
+template_id: probability
+order: 0
+
+heads:
+  - { source: P,    latex: P, mutation: P, weight: 100 }
+  - { source: Prob, latex: P, mutation: P, weight: 90 }
+
+slots:
+  - { position: 0, name: event, multi_token: true }
+
+scoring:
+  base: 50
+  per_slot: 50
+
+render:
+  preview: 'P(<event>)'
+  hint:    'P(<event|\square>)'
+  description: 'P(<event|▭>)'

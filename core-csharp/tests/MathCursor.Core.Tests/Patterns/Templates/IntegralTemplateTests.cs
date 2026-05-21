@@ -1,13 +1,14 @@
 using System.Linq;
 using Xunit;
 using MathCursor.Core.Patterns;
-using MathCursor.Core.Patterns.Templates;
+using MathCursor.Core.Patterns.Yaml;
 
 namespace MathCursor.Core.Tests.Patterns.Templates
 {
     /// <summary>
-    /// Tests <see cref="IntegralTemplate"/> (P9c, 2026-05-21). Cf. ADR
-    /// <c>2026-05-21-Feat-integral-pattern</c>.
+    /// Tests du pattern <c>integral</c> (P9c + P9e refacto YAML, 2026-05-21) :
+    /// défini dans <c>data/patterns/integral.yaml</c> embedded, instancié via
+    /// <see cref="YamlArgListPatternTemplate"/>.
     /// </summary>
     public class IntegralTemplateTests
     {
@@ -20,7 +21,8 @@ namespace MathCursor.Core.Tests.Patterns.Templates
                 startPos: 0,
                 registry: null);
 
-        private static IntegralTemplate New() => new IntegralTemplate();
+        private static YamlArgListPatternTemplate New()
+            => new YamlArgListPatternTemplate(PatternSpecLoader.LoadEmbedded("integral.yaml"));
 
         private static PatternCompletion ExpandAll(string source)
         {
