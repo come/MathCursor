@@ -12,7 +12,7 @@ namespace MathCursor.Core.Tests.Patterns
     /// active les templates et peuple <c>ResolvedZone.PatternCompletions</c>.
     ///
     /// <para>Le test pilote de l'ADR cadrage P0
-    /// (<c>V x app a [0,1]U[3,4]</c> → ∀x ∈ [0,1]∪[3,4]) est validé ici au
+    /// (<c>V x [0,1]U[3,4]</c> → ∀x ∈ [0,1]∪[3,4]) est validé ici au
     /// niveau ZoneResolver, complétant les tests
     /// <c>ForallBelongsCompositionTests</c> au niveau Template.</para>
     /// </summary>
@@ -32,7 +32,7 @@ namespace MathCursor.Core.Tests.Patterns
         [Fact]
         public void Resolver_without_pipeline_yields_empty_PatternCompletions()
         {
-            var r = MakeResolverWithoutPatterns().Resolve("V x app a R");
+            var r = MakeResolverWithoutPatterns().Resolve("V x R");
             Assert.NotNull(r.PatternCompletions);
             Assert.Empty(r.PatternCompletions);
         }
@@ -52,7 +52,7 @@ namespace MathCursor.Core.Tests.Patterns
         [Fact]
         public void V_x_app_a_R_yields_pattern_completion_for_forall_belongs()
         {
-            var r = MakeResolverWithPatterns().Resolve("V x app a R");
+            var r = MakeResolverWithPatterns().Resolve("V x R");
             Assert.NotEmpty(r.PatternCompletions);
             var first = r.PatternCompletions[0];
             Assert.Equal(@"\forall x \in \mathbb{R}", first.PreviewLatex);
@@ -62,7 +62,7 @@ namespace MathCursor.Core.Tests.Patterns
         [Fact]
         public void E_x_app_a_N_yields_exists_pattern_completion()
         {
-            var r = MakeResolverWithPatterns().Resolve("E x app a N");
+            var r = MakeResolverWithPatterns().Resolve("E x N");
             Assert.NotEmpty(r.PatternCompletions);
             var first = r.PatternCompletions[0];
             Assert.Equal(@"\exists x \in \mathbb{N}", first.PreviewLatex);
@@ -95,7 +95,7 @@ namespace MathCursor.Core.Tests.Patterns
             // Test pilote bout-en-bout au niveau ZoneResolver. Complète
             // ForallBelongsCompositionTests.PILOT_V_x_app_a_interval_union_end_to_end
             // qui le valide au niveau Template direct.
-            var r = MakeResolverWithPatterns().Resolve("V x app a [0,1]U[3,4]");
+            var r = MakeResolverWithPatterns().Resolve("V x [0,1]U[3,4]");
             Assert.NotEmpty(r.PatternCompletions);
             var forall = r.PatternCompletions.First(c =>
                 c.PreviewLatex.StartsWith(@"\forall"));
@@ -132,10 +132,10 @@ namespace MathCursor.Core.Tests.Patterns
         public void Patterns_and_AmbigMatch_flows_are_independent()
         {
             // Vérifie que les 2 flux sont peuplés indépendamment :
-            // - "V x app a R" : pattern actif, ambig closed N/A
+            // - "V x R" : pattern actif, ambig closed N/A
             // - "AB" : pattern N/A, ambig closed actif
             var resolver = MakeResolverWithPatterns();
-            var rPattern = resolver.Resolve("V x app a R");
+            var rPattern = resolver.Resolve("V x R");
             var rAmbig = resolver.Resolve("AB");
 
             Assert.NotEmpty(rPattern.PatternCompletions);

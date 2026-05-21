@@ -1,19 +1,22 @@
 using System.Linq;
 using Xunit;
-using MathCursor.Core.Lattice.Ast;
 using MathCursor.Core.Patterns;
 using MathCursor.Core.Patterns.Templates;
 
 namespace MathCursor.Core.Tests.Patterns.Templates
 {
     /// <summary>
-    /// Tests unitaires <see cref="ForallBelongsTemplate"/> : head V/E (+ ∀/∃),
-    /// var CSV (x / x,y / x,y,z), 6 openers (app a, appartient, dans, (-, ∈,
-    /// in), états partiels, rejet de boundary, mutation source. Étape P5
-    /// (ADR <c>2026-05-21-Feat-forall-belongs-pattern</c>).
+    /// Tests unitaires <see cref="ForallBelongsTemplate"/> (post-refacto P5R
+    /// 2026-05-21 : convention args espace). Couvre : head V/E/∀/∃, parsing
+    /// args, classification var vs domain (= dernier arg = ensemble),
+    /// rendering, mutation source.
     ///
-    /// <para>Pour les tests bout-en-bout compositionnel (V x app a R,
-    /// V x app a [0,1]U[3,4]), voir <c>ForallBelongsCompositionTests</c>.</para>
+    /// <para>Tests "openers" (app a / appartient / dans / in / (- / ∈)
+    /// retirés au passage P5R — ces tokens ne sont plus reconnus. Cf. ADR
+    /// <c>2026-05-21-Refactor-forall-belongs-arglist-convention</c>.</para>
+    ///
+    /// <para>Pour les tests bout-en-bout compositionnel (V x R, V x [0,1]U[3,4]),
+    /// voir <c>ForallBelongsCompositionTests</c>.</para>
     /// </summary>
     public class ForallBelongsTemplateTests
     {
@@ -42,7 +45,7 @@ namespace MathCursor.Core.Tests.Patterns.Templates
         [Theory]
         [InlineData("V")]
         [InlineData("V x")]
-        [InlineData("V x app a R")]
+        [InlineData("V x R")]
         public void Matches_V_head(string source)
         {
             var m = New().TryMatchHead(Ctx(source));
@@ -75,8 +78,6 @@ namespace MathCursor.Core.Tests.Patterns.Templates
         [Fact]
         public void Rejects_V_in_word_no_boundary_right()
         {
-            // "Vx" : V suivi directement par lettre → rejet (sinon "VAR"
-            // matcherait sur V).
             Assert.Null(New().TryMatchHead(Ctx("Vx")));
         }
 
@@ -89,7 +90,6 @@ namespace MathCursor.Core.Tests.Patterns.Templates
         [Fact]
         public void Rejects_V_after_letter_no_boundary_left()
         {
-            // "xV" : V précédé d'une lettre → rejet.
             Assert.Null(New().TryMatchHead(Ctx("xV")));
         }
 
@@ -99,7 +99,7 @@ namespace MathCursor.Core.Tests.Patterns.Templates
             Assert.Null(New().TryMatchHead(Ctx("")));
         }
 
-        // ─── Expand : V seul, V x, V x,y ──────────────────────────────
+        // ─── Expand : V seul, V x, V x y (sans Registry = tous = vars) ─
 
         [Fact]
         public void V_alone_yields_forall_with_var_square_hint()
@@ -116,72 +116,32 @@ namespace MathCursor.Core.Tests.Patterns.Templates
         {
             var c = ExpandAll("V x");
             Assert.Equal(@"\forall x", c.PreviewLatex);
-            Assert.Equal(@"\forall x", c.HintLatex);
             Assert.Equal("∀x", c.Description);
         }
 
         [Fact]
-        public void V_x_y_yields_forall_x_y()
+        public void V_x_y_two_args_space_yields_forall_x_y_when_no_registry()
         {
-            var c = ExpandAll("V x,y");
+            // Sans Registry : ClassifyArgs ne peut pas tester si y est un
+            // ensemble → tous = vars. "V x y" → ∀x,y.
+            var c = ExpandAll("V x y");
             Assert.Equal(@"\forall x,y", c.PreviewLatex);
         }
 
         [Fact]
-        public void V_three_idents_csv()
+        public void V_x_y_z_three_args_space()
         {
-            var c = ExpandAll("V x,y,z");
+            var c = ExpandAll("V x y z");
             Assert.Equal(@"\forall x,y,z", c.PreviewLatex);
         }
 
         [Fact]
-        public void V_csv_with_spaces_around_commas()
+        public void V_csv_inline_x_y_works_as_single_arg()
         {
-            // Tolérance espaces : "V x , y" doit matcher comme CSV
-            var c = ExpandAll("V x , y");
-            Assert.Contains("x", c.PreviewLatex);
-            Assert.Contains("y", c.PreviewLatex);
-        }
-
-        // ─── Expand : openers sans Registry (domain non parsé) ────────
-
-        [Theory]
-        [InlineData("V x app a R", "app a")]
-        [InlineData("V x appartient R", "appartient")]
-        [InlineData("V x dans R", "dans")]
-        [InlineData("V x (- R", "(-")]
-        [InlineData("V x ∈ R", "∈")]
-        [InlineData("V x in R", "in")]
-        public void Each_opener_recognized_without_registry(string source, string expectedOpenerToken)
-        {
-            // Sans Registry : opener reconnu mais domain non parsé (slot
-            // domain reste vide). PreviewLatex montre `\forall x \in` mais
-            // sans le R rendu.
-            var c = ExpandAll(source);
-            Assert.Contains(@"\forall x \in", c.PreviewLatex);
-            // Description doit aussi montrer ∈ + placeholder ▭ car domain absent
-            Assert.Contains("∈", c.Description);
-            Assert.Contains("▭", c.Description);
-        }
-
-        [Fact]
-        public void V_x_app_a_without_domain_yields_hint_with_square()
-        {
-            // Sans Registry, le domain n'est pas parsé donc on tombe sur le
-            // cas "opener sans sub-completion" → hint montre `\square`.
-            var c = ExpandAll("V x app a R");
-            Assert.Contains(@"\square", c.HintLatex);
-        }
-
-        [Fact]
-        public void Rejects_opener_without_word_boundary()
-        {
-            // "in" suivi de "ner" devrait être rejeté (= word boundary
-            // requise pour les mots openers).
-            var c = ExpandAll("V x inner");
-            // opener "in" suivi de "ner" (lettre) → rejet → 1 completion sans
-            // domain ni opener
-            Assert.DoesNotContain(@"\in", c.PreviewLatex);
+            // L'user peut aussi taper "V x,y" sans espace → 1 arg "x,y"
+            // → décomposé tel quel comme var-list pour le rendu.
+            var c = ExpandAll("V x,y");
+            Assert.Contains("x,y", c.PreviewLatex);
         }
 
         // ─── Mutation source ──────────────────────────────────────────
@@ -191,9 +151,7 @@ namespace MathCursor.Core.Tests.Patterns.Templates
         {
             var c = ExpandAll("V x");
             Assert.NotNull(c.Mutation);
-            // Mutation couvre toute la zone du pattern (V à x)
             Assert.Equal(0, c.Mutation!.Offset);
-            // "V x" → "forall x"
             Assert.Equal("forall x", c.Mutation.Replacement);
         }
 
@@ -210,18 +168,19 @@ namespace MathCursor.Core.Tests.Patterns.Templates
             var c = ExpandAll("V");
             Assert.Equal("forall", c.Mutation!.Replacement);
             Assert.Equal(0, c.Mutation.Offset);
-            Assert.Equal(1, c.Mutation.Length); // juste le V
+            Assert.Equal(1, c.Mutation.Length);
         }
 
         // ─── Multi-completion (mécanisme par poids) ───────────────────
+        // Note P5R : avec retrait des openers, plus de multi-completion
+        // alias possible. Mais le mécanisme du modèle data-ready est
+        // préservé pour P9+ (ex. Σ vs sum vs somme).
 
         [Fact]
-        public void Single_opener_match_yields_single_completion()
+        public void Single_completion_per_source()
         {
-            // Avec les 6 aliases actuels qui commencent tous par des chars
-            // différents, en pratique 1 alias = 1 completion.
             var t = New();
-            var ctx = Ctx("V x app a R");
+            var ctx = Ctx("V x R");
             var head = t.TryMatchHead(ctx)!;
             var completions = t.Expand(head, ctx);
             Assert.Single(completions);

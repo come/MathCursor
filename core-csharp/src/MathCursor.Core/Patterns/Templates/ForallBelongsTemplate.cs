@@ -6,9 +6,30 @@ namespace MathCursor.Core.Patterns.Templates
 {
     /// <summary>
     /// Pattern <c>"forall-belongs"</c> : quantificateur (universel ou
-    /// existentiel) sur une variable ou une liste de variables, avec un
-    /// slot optionnel d'appartenance à un ensemble. Forme idiomatique :
+    /// existentiel) sur une ou plusieurs variables, avec un slot optionnel
+    /// d'appartenance à un ensemble. Forme idiomatique :
     /// <c>∀x [∈ E]</c>, <c>∃x,y [∈ E]</c>.
+    ///
+    /// <para><b>Convention args espacés (refacto 2026-05-21 P5R)</b> :
+    /// l'utilisateur sépare les arguments par des espaces (et/ou virgules
+    /// pour les vars), comme pour <c>Lim x 0 f(x)</c> ou <c>sum k 0 n k²</c>.
+    /// Les openers textuels (<c>app a</c>, <c>appartient</c>, <c>dans</c>,
+    /// <c>in</c>, <c>(-</c>, <c>∈</c>) ont été retirés — cohérent avec la
+    /// doctrine "rapidité de saisie".</para>
+    ///
+    /// <para>Discrimination var vs domain : si le DERNIER arg matche un
+    /// pattern <c>ensemble</c> (R/N/Z/Q/C avec/sans modifier, ou intervalle
+    /// <c>[...]</c>/<c>[..]U[..]</c>), c'est le domain. Sinon tous les args
+    /// = vars. Exemples :</para>
+    /// <list type="bullet">
+    ///   <item><c>V x</c> → <c>∀x</c> (1 var, pas de domain)</item>
+    ///   <item><c>V x R</c> → <c>∀x ∈ ℝ</c> (var + domain ℝ)</item>
+    ///   <item><c>V x y</c> → <c>∀x,y</c> (2 vars, y pas ensemble)</item>
+    ///   <item><c>V x y R</c> → <c>∀x,y ∈ ℝ</c></item>
+    ///   <item><c>V x [0,1]</c> → <c>∀x ∈ [0,1]</c></item>
+    ///   <item><c>V x [0,1]U[3,4]</c> → <c>∀x ∈ [0,1]∪[3,4]</c></item>
+    ///   <item><c>V x,y [0,1]</c> → <c>∀x,y ∈ [0,1]</c> (virgule = équivalente à espace pour vars)</item>
+    /// </list>
     ///
     /// <para>Heads supportés (cf. <see cref="QuantifierVariant"/>) :
     /// <c>V</c>/<c>E</c> (raccourcis ASCII) et <c>∀</c>/<c>∃</c> (unicode
@@ -16,34 +37,17 @@ namespace MathCursor.Core.Patterns.Templates
     /// LatexSymbol/MutationReplacement viennent du
     /// <see cref="QuantifierVariant"/> matché.</para>
     ///
-    /// <para>Openers du slot <c>domain</c> (cf. <see cref="OpenerAlias"/>) :
-    /// 6 alternatives <c>app a</c>, <c>appartient</c>, <c>dans</c>, <c>(-</c>,
-    /// <c>∈</c>, <c>in</c>. Pondérées par weight pour la désambig — si
-    /// plusieurs matchent à la même position (rare), le template émet
-    /// plusieurs <see cref="PatternCompletion"/> triées par weight desc.</para>
-    ///
-    /// <para>Slot <c>domain</c> compositionnel : si un opener est trouvé, le
-    /// template délègue à <c>Registry.Get("ensemble")</c> pour parser
-    /// l'ensemble qui suit (lettres canoniques R/N/Z/Q/C ou intervals via
-    /// délégation interne ensemble→interval-union).</para>
-    ///
-    /// <para><b>Approche data-ready</b> (option γ du plan P5) : variants et
-    /// openers vivent comme <c>static readonly</c> arrays C# pour P5.
-    /// Migration YAML (P9+) ne touche que la source de ces arrays ; le code
-    /// du template reste identique.</para>
-    ///
-    /// <para>Cf. ADR <c>2026-05-21-Meta-pattern-templates-vs-ambig-closed</c>
-    /// (cadrage) et <c>2026-05-21-Feat-forall-belongs-pattern</c> (livraison
-    /// P5).</para>
+    /// <para>Cf. ADRs : cadrage <c>2026-05-21-Meta-pattern-templates-vs-ambig-closed</c>
+    /// + P5 <c>Feat-forall-belongs-pattern</c> + P5R refacto
+    /// <c>Refactor-forall-belongs-arglist-convention</c>.</para>
     /// </summary>
-    public sealed class ForallBelongsTemplate : IPatternTemplate
+    public sealed class ForallBelongsTemplate : ArgListPatternBase
     {
-        public string TemplateId => "forall-belongs";
-        public int Order => 0;
+        public override string TemplateId => "forall-belongs";
 
         // ─── Data-ready variants (préparation YAML P9+) ───────────────
 
-        private static readonly QuantifierVariant[] Variants = new[]
+        private static readonly QuantifierVariant[] _variants = new[]
         {
             new QuantifierVariant("V", "\\forall", "forall", weight: 100),
             new QuantifierVariant("E", "\\exists", "exists", weight: 100),
@@ -51,212 +55,78 @@ namespace MathCursor.Core.Patterns.Templates
             new QuantifierVariant("∃", "\\exists", "exists", weight: 100),
         };
 
-        private static readonly OpenerAlias[] Openers = new[]
-        {
-            new OpenerAlias("∈",          "in", weight: 100, requiresWordBoundary: false),
-            new OpenerAlias("appartient", "in", weight: 90,  requiresWordBoundary: true),
-            new OpenerAlias("dans",       "in", weight: 85,  requiresWordBoundary: true),
-            new OpenerAlias("(-",         "in", weight: 80,  requiresWordBoundary: false),
-            new OpenerAlias("app a",      "in", weight: 70,  requiresWordBoundary: true),
-            new OpenerAlias("in",         "in", weight: 60,  requiresWordBoundary: true),
-        };
-
-        // ─── TryMatchHead ─────────────────────────────────────────────
-
-        public PatternMatch? TryMatchHead(PatternScanContext ctx)
-        {
-            if (ctx == null) return null;
-            var src = ctx.Source;
-            if (string.IsNullOrEmpty(src)) return null;
-
-            for (int i = ctx.StartPos; i < src.Length; i++)
-            {
-                foreach (var variant in Variants)
-                {
-                    if (!StartsWithAt(src, i, variant.Head)) continue;
-                    int end = i + variant.Head.Length;
-
-                    // Boundary gauche : pas une lettre/digit
-                    if (i > 0 && char.IsLetterOrDigit(src[i - 1])) continue;
-                    // Boundary droite : EOF ou non-lettre/non-digit (sinon
-                    // "Vx" ou "Var" matcherait sur V seul)
-                    if (end < src.Length && char.IsLetterOrDigit(src[end])) continue;
-
-                    var slots = new Dictionary<string, SlotValue>(4)
-                    {
-                        ["polarity"] = new FilledSlotAtom(variant.Head, i, end),
-                        ["var"] = EmptySlot.Instance,
-                        ["opener"] = EmptySlot.Instance,
-                        ["domain"] = EmptySlot.Instance,
-                    };
-                    return new PatternMatch(
-                        templateId: TemplateId,
-                        sourceStart: i,
-                        sourceEnd: end,
-                        slots: slots,
-                        isComplete: false);
-                }
-            }
-            return null;
-        }
+        protected override IReadOnlyList<QuantifierVariant> Heads => _variants;
 
         // ─── Expand ────────────────────────────────────────────────────
 
-        public IReadOnlyList<PatternCompletion> Expand(PatternMatch state, PatternScanContext ctx)
+        public override IReadOnlyList<PatternCompletion> Expand(
+            PatternMatch state, PatternScanContext ctx)
         {
             if (state == null || ctx == null) return System.Array.Empty<PatternCompletion>();
-            var src = ctx.Source;
-
-            // Récupère la variant utilisée (via le head dans le slot polarity)
-            var variant = FindVariantForState(state);
+            var variant = FindVariantForState(state, _variants);
             if (variant == null) return System.Array.Empty<PatternCompletion>();
 
-            int pos = state.SourceEnd;
+            // Parse + classifier les args depuis state.SourceEnd
+            var rawArgs = ParseArgs(ctx.Source, state.SourceEnd);
+            var classification = ClassifyArgs(rawArgs, ctx);
 
-            // 1. Parse var (identifier list CSV)
-            pos = SkipWhitespace(src, pos);
-            var varAtom = ParseIdentifierList(src, pos);
-            var stateWithVar = state;
-            if (varAtom != null)
+            // État final : remplit les slots var/domain selon la classification
+            var slots = new Dictionary<string, SlotValue>(state.Slots.Count + 2);
+            foreach (var kv in state.Slots) slots[kv.Key] = kv.Value;
+            int finalSourceEnd = state.SourceEnd;
+
+            // Slot "var" : concat des VarArgs séparés par virgules pour le rendu
+            // (= convention LaTeX : `\forall x,y` ; espaces tolérés à l'entrée
+            // mais on normalise en virgule)
+            if (classification.VarArgs.Count > 0)
             {
-                stateWithVar = state.WithSlot("var", varAtom).WithSourceEnd(varAtom.End);
-                pos = varAtom.End;
+                var varText = JoinVars(classification.VarArgs);
+                var firstVar = classification.VarArgs[0];
+                var lastVar = classification.VarArgs[classification.VarArgs.Count - 1];
+                slots["var"] = new FilledSlotAtom(varText, firstVar.Start, lastVar.End);
+                finalSourceEnd = lastVar.End;
+            }
+            else
+            {
+                slots["var"] = EmptySlot.Instance;
             }
 
-            // 2. Parse opener(s) — collecte tous les matchs pour multi-completion
-            pos = SkipWhitespace(src, pos);
-            var matchedOpeners = FindAllMatchingOpeners(src, pos);
-
-            if (matchedOpeners.Count == 0)
+            // Slot "domain" : sub-pattern ensemble si classification l'a identifié
+            if (classification.DomainSubMatch != null && classification.DomainArg != null)
             {
-                // Pas d'opener → 1 completion sans domain (V x → ∀x)
-                return new[] { BuildCompletion(stateWithVar, variant, openerInfo: null, domainSub: null, ctx) };
+                slots["domain"] = new FilledSlotSubPattern(classification.DomainSubMatch);
+                finalSourceEnd = classification.DomainArg.End;
+            }
+            else
+            {
+                slots["domain"] = EmptySlot.Instance;
             }
 
-            // 3. Pour chaque opener qui matche, essayer de parser le domain
-            var completions = new List<PatternCompletion>(matchedOpeners.Count);
-            foreach (var openerInfo in matchedOpeners)
+            bool isComplete = classification.VarArgs.Count > 0
+                && (classification.DomainSubMatch == null || classification.DomainSubMatch.IsComplete);
+
+            var finalState = new PatternMatch(
+                templateId: TemplateId,
+                sourceStart: state.SourceStart,
+                sourceEnd: finalSourceEnd,
+                slots: slots,
+                isComplete: isComplete);
+
+            return new[] { BuildCompletion(finalState, variant, classification, ctx) };
+        }
+
+        private static string JoinVars(IReadOnlyList<ArgSpan> varArgs)
+        {
+            if (varArgs.Count == 1) return varArgs[0].Text;
+            var sb = new StringBuilder();
+            for (int i = 0; i < varArgs.Count; i++)
             {
-                var stateWithOpener = stateWithVar
-                    .WithSlot("opener", new FilledSlotAtom(openerInfo.Alias.Token, openerInfo.Start, openerInfo.End))
-                    .WithSourceEnd(openerInfo.End);
-
-                // Try parse domain via Registry.Get("ensemble")
-                PatternMatch? domainSub = null;
-                int posAfterDomain = openerInfo.End;
-                var ensembleTemplate = ctx.Registry?.Get("ensemble");
-                if (ensembleTemplate != null)
-                {
-                    int posDomainStart = SkipWhitespace(src, openerInfo.End);
-                    var subCtx = ctx.WithStartPos(posDomainStart);
-                    domainSub = ensembleTemplate.TryMatchHead(subCtx);
-                    if (domainSub != null)
-                    {
-                        posAfterDomain = domainSub.SourceEnd;
-                    }
-                }
-
-                var stateWithDomain = domainSub != null
-                    ? stateWithOpener
-                        .WithSlot("domain", new FilledSlotSubPattern(domainSub))
-                        .WithSourceEnd(posAfterDomain)
-                        .WithComplete(domainSub.IsComplete)
-                    : stateWithOpener;
-
-                completions.Add(BuildCompletion(stateWithDomain, variant, openerInfo, domainSub, ctx));
+                if (i > 0) sb.Append(',');
+                // Normalise : si l'arg lui-même contient déjà des virgules
+                // (ex. "x,y" tapé en 1 token), on l'ajoute tel quel.
+                sb.Append(varArgs[i].Text);
             }
-            return completions;
-        }
-
-        // ─── Helpers de parsing ───────────────────────────────────────
-
-        private static int SkipWhitespace(string src, int pos)
-        {
-            while (pos < src.Length && char.IsWhiteSpace(src[pos])) pos++;
-            return pos;
-        }
-
-        private static bool StartsWithAt(string src, int pos, string needle)
-        {
-            if (pos + needle.Length > src.Length) return false;
-            for (int k = 0; k < needle.Length; k++)
-                if (src[pos + k] != needle[k]) return false;
-            return true;
-        }
-
-        /// <summary>
-        /// Parse une liste d'identifiers séparés par virgules : <c>x</c>,
-        /// <c>x,y</c>, <c>x,y,z</c>. Espaces autour des virgules tolérés.
-        /// Retourne un <see cref="FilledSlotAtom"/> couvrant toute la liste,
-        /// ou null si pas d'identifier au début.
-        /// </summary>
-        private static FilledSlotAtom? ParseIdentifierList(string src, int pos)
-        {
-            int start = pos;
-            if (pos >= src.Length || !char.IsLetter(src[pos])) return null;
-            while (pos < src.Length && char.IsLetter(src[pos])) pos++;
-            int end = pos;
-            // Optional : ", ident" répété
-            while (true)
-            {
-                int posSkip = SkipWhitespace(src, pos);
-                if (posSkip >= src.Length || src[posSkip] != ',') break;
-                int posAfterComma = SkipWhitespace(src, posSkip + 1);
-                if (posAfterComma >= src.Length || !char.IsLetter(src[posAfterComma])) break;
-                // Consomme l'identifier suivant
-                pos = posAfterComma;
-                while (pos < src.Length && char.IsLetter(src[pos])) pos++;
-                end = pos;
-            }
-            return new FilledSlotAtom(src.Substring(start, end - start), start, end);
-        }
-
-        private readonly struct MatchedOpener
-        {
-            public readonly OpenerAlias Alias;
-            public readonly int Start;
-            public readonly int End;
-            public MatchedOpener(OpenerAlias alias, int start, int end)
-            {
-                Alias = alias;
-                Start = start;
-                End = end;
-            }
-        }
-
-        /// <summary>
-        /// Cherche tous les <see cref="OpenerAlias"/> qui matchent à
-        /// <paramref name="pos"/> dans <paramref name="src"/>. Retourne la
-        /// liste triée par <see cref="OpenerAlias.Weight"/> décroissant. En
-        /// pratique 0 ou 1 match (les 6 aliases actuels commencent par des
-        /// chars différents), mais le mécanisme supporte multi-match pour
-        /// désambig future.
-        /// </summary>
-        private static List<MatchedOpener> FindAllMatchingOpeners(string src, int pos)
-        {
-            var matches = new List<MatchedOpener>();
-            foreach (var alias in Openers)
-            {
-                if (!StartsWithAt(src, pos, alias.Token)) continue;
-                int end = pos + alias.Token.Length;
-                if (alias.RequiresWordBoundary
-                    && end < src.Length
-                    && char.IsLetter(src[end]))
-                    continue;
-                matches.Add(new MatchedOpener(alias, pos, end));
-            }
-            // Tri par poids desc (premier = meilleur candidat)
-            matches.Sort((a, b) => b.Alias.Weight.CompareTo(a.Alias.Weight));
-            return matches;
-        }
-
-        private static QuantifierVariant? FindVariantForState(PatternMatch state)
-        {
-            if (!state.Slots.TryGetValue("polarity", out var pol)
-                || !(pol is FilledSlotAtom polAtom)) return null;
-            foreach (var v in Variants)
-                if (v.Head == polAtom.Text) return v;
-            return null;
+            return sb.ToString();
         }
 
         // ─── BuildCompletion (Latex + Mutation composite) ─────────────
@@ -264,26 +134,24 @@ namespace MathCursor.Core.Patterns.Templates
         private static PatternCompletion BuildCompletion(
             PatternMatch state,
             QuantifierVariant variant,
-            MatchedOpener? openerInfo,
-            PatternMatch? domainSub,
+            ArgClassification classification,
             PatternScanContext ctx)
         {
-            // Récupère la sub-completion du domain si présente (pour le rendu
-            // LaTeX et la composition de mutation).
+            // Sub-completion du domain (si présent) pour rendu LaTeX
             PatternCompletion? domainCompletion = null;
-            if (domainSub != null)
+            if (classification.DomainSubMatch != null)
             {
                 var ensembleTemplate = ctx.Registry?.Get("ensemble");
-                var subCompletions = ensembleTemplate?.Expand(domainSub, ctx);
+                var subCompletions = ensembleTemplate?.Expand(classification.DomainSubMatch, ctx);
                 if (subCompletions != null && subCompletions.Count > 0)
                     domainCompletion = subCompletions[0];
             }
 
-            string preview = BuildLatex(state, variant, openerInfo, domainCompletion, hideEmpty: true);
-            string hint = BuildLatex(state, variant, openerInfo, domainCompletion, hideEmpty: false);
-            string description = BuildDescription(state, variant, openerInfo, domainCompletion);
-            SourceMutation? mutation = BuildMutation(state, variant, openerInfo, domainCompletion, ctx);
-            int score = ComputeScore(state, openerInfo, domainSub);
+            string preview = BuildLatex(state, variant, classification, domainCompletion, hideEmpty: true);
+            string hint = BuildLatex(state, variant, classification, domainCompletion, hideEmpty: false);
+            string description = BuildDescription(variant, classification, domainCompletion);
+            SourceMutation? mutation = BuildMutation(state, variant, classification, domainCompletion, ctx);
+            int score = ComputeScore(classification);
 
             return new PatternCompletion(
                 description: description,
@@ -295,44 +163,51 @@ namespace MathCursor.Core.Patterns.Templates
 
         private static string BuildLatex(
             PatternMatch state, QuantifierVariant variant,
-            MatchedOpener? openerInfo, PatternCompletion? domainCompletion, bool hideEmpty)
+            ArgClassification classification, PatternCompletion? domainCompletion, bool hideEmpty)
         {
             var sb = new StringBuilder();
             sb.Append(variant.LatexSymbol);
 
-            string varText = SlotText(state, "var");
+            string varText = JoinVarsForLatex(classification.VarArgs);
             if (!string.IsNullOrEmpty(varText))
                 sb.Append(" ").Append(varText);
             else if (!hideEmpty)
                 sb.Append(" \\square");
 
-            if (openerInfo.HasValue)
+            if (classification.DomainSubMatch != null)
             {
                 sb.Append(" \\in ");
-                if (domainCompletion != null)
-                {
-                    sb.Append(hideEmpty ? domainCompletion.PreviewLatex : domainCompletion.HintLatex);
-                }
-                else if (!hideEmpty)
-                {
-                    sb.Append("\\square");
-                }
+                sb.Append(domainCompletion != null
+                    ? (hideEmpty ? domainCompletion.PreviewLatex : domainCompletion.HintLatex)
+                    : (hideEmpty ? "" : "\\square"));
+            }
+            return sb.ToString();
+        }
+
+        private static string JoinVarsForLatex(IReadOnlyList<ArgSpan> varArgs)
+        {
+            if (varArgs.Count == 0) return string.Empty;
+            if (varArgs.Count == 1) return varArgs[0].Text;
+            var sb = new StringBuilder();
+            for (int i = 0; i < varArgs.Count; i++)
+            {
+                if (i > 0) sb.Append(',');
+                sb.Append(varArgs[i].Text);
             }
             return sb.ToString();
         }
 
         private static string BuildDescription(
-            PatternMatch state, QuantifierVariant variant,
-            MatchedOpener? openerInfo, PatternCompletion? domainCompletion)
+            QuantifierVariant variant, ArgClassification classification, PatternCompletion? domainCompletion)
         {
             var sb = new StringBuilder();
             sb.Append(variant.Head == "V" || variant.Head == "∀" ? "∀" : "∃");
 
-            string varText = SlotText(state, "var");
+            string varText = JoinVarsForLatex(classification.VarArgs);
             if (!string.IsNullOrEmpty(varText)) sb.Append(varText);
             else sb.Append("▭");
 
-            if (openerInfo.HasValue)
+            if (classification.DomainSubMatch != null)
             {
                 sb.Append("∈");
                 sb.Append(domainCompletion?.Description ?? "▭");
@@ -342,13 +217,12 @@ namespace MathCursor.Core.Patterns.Templates
 
         private static SourceMutation? BuildMutation(
             PatternMatch state, QuantifierVariant variant,
-            MatchedOpener? openerInfo, PatternCompletion? domainCompletion,
+            ArgClassification classification, PatternCompletion? domainCompletion,
             PatternScanContext ctx)
         {
-            // Composite : on construit la string replacement qui remplace
-            // toute la zone source du pattern par sa forme canonique
-            // ("V x app a R*" → "forall x in bbR*"). Inclut les sub-mutations
-            // si présentes (sinon utilise la source telle quelle pour le domain).
+            // Composite : "V x R" → "forall x in bbR" (mutation couvrant
+            // la zone source complète du pattern). Inclut la mutation
+            // canonique du domain si disponible (= bbR), sinon source brute.
             var src = ctx.Source;
             int parentStart = state.SourceStart;
             int parentEnd = state.SourceEnd;
@@ -358,46 +232,33 @@ namespace MathCursor.Core.Patterns.Templates
             var sb = new StringBuilder();
             sb.Append(variant.MutationReplacement);
 
-            // entre head et var (whitespace + var atom, conservé tel quel
-            // depuis la source pour préserver la mise en forme user)
-            string varText = SlotText(state, "var");
+            string varText = JoinVarsForLatex(classification.VarArgs);
             if (!string.IsNullOrEmpty(varText))
                 sb.Append(" ").Append(varText);
 
-            if (openerInfo.HasValue)
+            if (classification.DomainSubMatch != null && classification.DomainArg != null)
             {
-                sb.Append(" ").Append(openerInfo.Value.Alias.Canonical).Append(" ");
-                // Domain : sub-mutation si dispo, sinon source brute
+                sb.Append(" in ");
                 if (domainCompletion?.Mutation != null)
                 {
                     sb.Append(domainCompletion.Mutation.Replacement);
                 }
-                else if (state.Slots.TryGetValue("domain", out var dom)
-                         && dom is FilledSlotSubPattern domSub)
+                else
                 {
-                    int subStart = domSub.Sub.SourceStart;
-                    int subEnd = domSub.Sub.SourceEnd;
-                    if (subStart >= 0 && subEnd <= src.Length && subEnd > subStart)
-                        sb.Append(src.Substring(subStart, subEnd - subStart));
+                    var d = classification.DomainArg;
+                    sb.Append(src.Substring(d.Start, d.End - d.Start));
                 }
             }
 
             return new SourceMutation(parentStart, parentEnd - parentStart, sb.ToString());
         }
 
-        private static int ComputeScore(PatternMatch state, MatchedOpener? openerInfo, PatternMatch? domainSub)
+        private static int ComputeScore(ArgClassification classification)
         {
             int score = 25; // head matché
-            if (!state.Slots["var"].IsEmpty) score += 25;
-            if (openerInfo.HasValue) score += 25 * openerInfo.Value.Alias.Weight / 100;
-            if (domainSub != null && domainSub.IsComplete) score += 25;
+            if (classification.VarArgs.Count > 0) score += 25;
+            if (classification.DomainSubMatch != null) score += 50;
             return score;
-        }
-
-        private static string SlotText(PatternMatch state, string slotName)
-        {
-            if (!state.Slots.TryGetValue(slotName, out var v)) return string.Empty;
-            return v is FilledSlotAtom atom ? atom.Text : string.Empty;
         }
     }
 }
