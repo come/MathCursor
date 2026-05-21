@@ -204,7 +204,7 @@ namespace MathCursor.Host
             _contextReader = new WordContextReader(_app);
             _lastActionTracker = new LastActionTracker(ReadParagraphContextForReport);
             _handleRegistry = new EquationHandleRegistry(
-                popupSidecar: () => _popup?.CurrentSidecar
+                popupSidecar: () => _resolver.BuildSidecar()
                                     ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty);
             _layoutFinalizer = new Layout.PostCommitLayoutFinalizer(_app, LogDiag);
             _manualTrigger = new ManualTrigger.ManualTriggerController(
@@ -250,7 +250,7 @@ namespace MathCursor.Host
             _commitPipeline = new MathCursor.Host.Pipeline.CommitPipeline(
                 new MathCursor.Host.Pipeline.ICommitStage[]
                 {
-                    new MathCursor.Host.Pipeline.Stages.ResolverStage(_resolver),
+                    new MathCursor.Host.Pipeline.Stages.ResolverStage(_resolver, () => _globalCtx),
                     new MathCursor.Host.Pipeline.Stages.SnapshotStage(_lastActionTracker),
                     new MathCursor.Host.Pipeline.Stages.InserterStage(InserterImpl),
                     new MathCursor.Host.Pipeline.Stages.StoreStage(_handleRegistry, LogDiag),
@@ -659,42 +659,6 @@ namespace MathCursor.Host
             var resolved = _resolver.Resolve(rawSource ?? "", _globalCtx, sidecar);
             EmitContextResolvedIfSubscribed(rawSource, sidecar, resolved);
             return resolved;
-        }
-
-        /// <summary>
-        /// Trouve l'altIdx active pour une rule donnée (= celle qui sera
-        /// appliquée par défaut par <c>ZoneResolver.ResolveBestAlt</c>).
-        /// Utilisé par la popup pour filtrer l'alt active de la liste
-        /// affichée (demande user 2026-05-07).
-        ///
-        /// <para><b>Cohérence critique</b> : utilise la MÊME logique que
-        /// ZoneResolver — <c>ScoringHints.BestAltForRule</c> sur les hints
-        /// du <c>_globalCtx</c> + RulePins du sidecar courant. Sinon
-        /// désync entre la finale (ZoneResolver) et le filtrage popup
-        /// (= bug user 2026-05-07 « final vec et alt vec dans la
-        /// liste »).</para>
-        /// </summary>
-        private int FindActiveAltIdxForRule(string ruleId)
-        {
-            if (string.IsNullOrEmpty(ruleId)) return -1;
-
-            // 1) Pref in-session via _popup.CurrentSidecar.RulePins (priorité
-            // — c'est ce que ZoneResolver consulte aussi en premier).
-            var popupSidecar = _popup?.CurrentSidecar;
-            if (popupSidecar != null)
-            {
-                foreach (var rp in popupSidecar.RulePins)
-                    if (rp.RuleId == ruleId) return rp.AltIdx;
-            }
-
-            // 2) Hints contextuels (= ce que ZoneResolver utilise comme
-            // fallback). MÊME logique BestAltForRule (premier en cas
-            // d'égalité, score > 0 obligatoire).
-            var snapshot = _globalCtx.Snapshot(
-                "", MathCursor.Core.Resolution.ResolutionSidecar.Empty);
-            var hints = _globalCtx.Scorer.Aggregate(snapshot);
-            var (alt, score) = hints.BestAltForRule(ruleId);
-            return score > 0 ? alt : -1;
         }
 
         private void EmitContextResolvedIfSubscribed(
@@ -1307,10 +1271,12 @@ namespace MathCursor.Host
             // sont reset au commit). Permet à la popup de filtrer l'alt
             // déjà appliquée par le RulePin/scoring (cf. demande user
             // 2026-05-07).
-            int activeAltIdx = FindActiveAltIdxForRule(ruleId);
+            // Pas de fallback activeAltIdxFromCaller : le ZoneResolver annote
+            // déjà AppliedAltIdx sur chaque match via Resolve(...). La popup
+            // lit cette annotation pour filtrer l'alt active. Cf. refacto
+            // désambig 2026-05-21 (audit B — suppression FindActiveAltIdxForRule).
             _popup.Show(resolved.TopLatex, ruleId, alts, spotStart, spotEnd,
-                resolved.AllMatches, popupX, popupY, debugText, activeAltIdx,
-                baseTopLatex: resolved.BaseTopLatex);
+                resolved.AllMatches, popupX, popupY, debugText);
         }
 
         /// <summary>
@@ -1329,8 +1295,19 @@ namespace MathCursor.Host
         {
             try
             {
-                if (mutation == null || string.IsNullOrEmpty(ruleId)) return;
-                _resolver.AddPreference(ruleId, altIdx);
+                // Pas de bail sur mutation == null : seuls ruleId + altIdx
+                // comptent. Le ZoneResolver.ApplyPreferences trouve l'alt
+                // sur la source originale et applique sa mutation native.
+                // Le paramètre `mutation` reste pour rétro-compat (signature
+                // event) mais n'est plus utilisé ici.
+                if (string.IsNullOrEmpty(ruleId)) return;
+                // altIdx == AltIdxRevert (-1) = clic sur defaultLatex brut
+                // dans la popup → retire la pref pour cette rule (et donc
+                // re-resolve repart de la source originale sans mutation).
+                if (altIdx == MathCursor.Core.Resolution.SpanOverride.AltIdxRevert)
+                    _resolver.RemovePreference(ruleId);
+                else
+                    _resolver.AddPreference(ruleId, altIdx);
 
                 var src = _lastZoneSource ?? string.Empty;
                 var resolved = ResolveWithContext(src);
@@ -1676,7 +1653,7 @@ namespace MathCursor.Host
                     () => _app.ActiveDocument, LogDiag);
                 var merger = new MathCursor.Host.Merging.IntraOMathsMerger(
                     finder,
-                    () => _popup?.CurrentSidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty,
+                    () => _resolver.BuildSidecar(),
                     h => GetSidecarForHandle(h),
                     LogDiag);
                 var result = merger.TryMergeWithLeft(absStart, absEnd, source, latex);
@@ -1702,7 +1679,7 @@ namespace MathCursor.Host
             {
                 var probe = new MathCursor.Host.Merging.ParagraphCascadeProbe(LogDiag);
                 Func<MathCursor.Core.Resolution.ResolutionSidecar> popupSc =
-                    () => _popup?.CurrentSidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty;
+                    () => _resolver.BuildSidecar();
                 Func<string, MathCursor.Core.Resolution.ResolutionSidecar> handleSc =
                     h => GetSidecarForHandle(h);
 
@@ -1751,7 +1728,7 @@ namespace MathCursor.Host
                     new[]
                     {
                         GetSidecarForHandle(editingHandle.Id),
-                        _popup?.CurrentSidecar ?? MathCursor.Core.Resolution.ResolutionSidecar.Empty,
+                        _resolver.BuildSidecar(),
                     },
                     new[] { 0, 0 });
             }
@@ -1827,7 +1804,7 @@ namespace MathCursor.Host
             // (via _sessionSpanPins). Lecture AVANT HidePopup() qui reset.
             try
             {
-                var popupSidecar = _popup?.CurrentSidecar;
+                var popupSidecar = _resolver.BuildSidecar();
                 if (popupSidecar != null && !popupSidecar.IsEmpty)
                     PropagateCommittedPinsToParagraphHistory(popupSidecar);
                 else if (ctx?.Sidecar != null && !ctx.Sidecar.IsEmpty)

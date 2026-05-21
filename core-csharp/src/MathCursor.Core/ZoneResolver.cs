@@ -118,8 +118,47 @@ namespace MathCursor.Core
             _preferences[ruleId] = altIdx;
         }
 
+        /// <summary>
+        /// Retire la préférence pour <paramref name="ruleId"/>. Utilisé quand
+        /// l'utilisateur clique sur le defaultLatex brut dans la popup
+        /// (= revert). Re-resolve repartira de la source originale sans
+        /// aucune mutation pour cette rule.
+        /// </summary>
+        public void RemovePreference(string ruleId)
+        {
+            if (string.IsNullOrEmpty(ruleId)) return;
+            _preferences.Remove(ruleId);
+        }
+
         /// <summary>Reset les préférences (Esc, commit final, sortie de zone).</summary>
         public void Clear() => _preferences.Clear();
+
+        /// <summary>
+        /// Construit un <see cref="MathCursor.Core.Resolution.ResolutionSidecar"/>
+        /// reflétant l'état courant de <c>_preferences</c> sous forme de
+        /// <c>RulePins</c> (= choix rule-level session). Pas de
+        /// <c>SpanPins</c>/<c>SpanOverrides</c> (legacy).
+        ///
+        /// <para>Utilisé par le service pour propager les choix utilisateur
+        /// aux re-pipelines (cross-merge multi-ligne, store post-commit).
+        /// Remplace l'ancien <c>SuggestionPopupWindow.CurrentSidecar</c> qui
+        /// dérivait des SpanPins locaux popup — source unique de vérité
+        /// maintenant côté resolver. Cf. refacto désambig 2026-05-21 (D).</para>
+        /// </summary>
+        public MathCursor.Core.Resolution.ResolutionSidecar BuildSidecar()
+        {
+            if (_preferences.Count == 0)
+                return MathCursor.Core.Resolution.ResolutionSidecar.Empty;
+            var rulePins = new MathCursor.Core.Resolution.RulePin[_preferences.Count];
+            int i = 0;
+            foreach (var kv in _preferences)
+                rulePins[i++] = new MathCursor.Core.Resolution.RulePin(kv.Key, kv.Value);
+            return new MathCursor.Core.Resolution.ResolutionSidecar(
+                spanPins: System.Array.Empty<MathCursor.Core.Resolution.SpanPin>(),
+                zoneVotes: new Dictionary<string, IReadOnlyDictionary<int, int>>(),
+                rulePins: rulePins,
+                spanOverrides: System.Array.Empty<MathCursor.Core.Resolution.SpanOverride>());
+        }
 
         /// <summary>Indique si une préférence est mémorisée pour ce ruleId.</summary>
         public bool HasPreference(string ruleId)
@@ -174,30 +213,12 @@ namespace MathCursor.Core
                 hints = MathCursor.Core.Resolution.ScoringHints.Empty;
             }
 
-            // Splice position-aware (cf. bug user 06-05 « u(1,2) v(1,2) ») :
-            // remplace IN-PLACE par (start, end). Apply right-to-left pour
-            // préserver les positions.
-            var splices = new System.Collections.Generic.List<(int Start, int End, string AltLatex)>();
-            // Track quel altIdx a été appliqué pour chaque match → enrichit
-            // les AmbiguityMatch avec AppliedAltIdx pour que la popup filtre
-            // par construction la même alt qui est en final (demande user
-            // 2026-05-07 « pas de doublon entre désambig et final »).
-            var appliedByMatch = new System.Collections.Generic.Dictionary<AmbiguityMatch, int>();
+            // Construit la liste des splices à appliquer + le mapping
+            // match → altIdx appliqué (utilisé pour annoter AppliedAltIdx).
+            var (splices, appliedByMatch) = BuildSplices(
+                baseResolved.AllMatches, source, sidecar, hints, topLatex.Length);
 
-            foreach (var match in baseResolved.AllMatches)
-            {
-                if (match.Spot == null || string.IsNullOrEmpty(match.Spot.RuleId)) continue;
-                if (match.Start < 0 || match.End > topLatex.Length || match.Start >= match.End) continue;
-
-                int bestAlt = ResolveBestAlt(match, source, sidecar, hints);
-                if (bestAlt < 0 || bestAlt >= match.Spot.Alternatives.Count) continue;
-
-                appliedByMatch[match] = bestAlt;
-                string altLatex = match.Spot.Alternatives[bestAlt].Latex;
-                splices.RemoveAll(s => s.Start == match.Start && s.End == match.End);
-                splices.Add((match.Start, match.End, altLatex));
-            }
-
+            // Apply right-to-left pour préserver les positions.
             splices.Sort((a, b) => b.Start.CompareTo(a.Start));
             foreach (var s in splices)
             {
@@ -246,6 +267,68 @@ namespace MathCursor.Core
                 allMatches: enrichedMatches,
                 isIncomplete: baseResolved.IsIncomplete,
                 baseTopLatex: baseResolved.TopLatex);
+        }
+
+        /// <summary>
+        /// Pour chaque match, décide quel <c>altIdx</c> doit s'appliquer sur
+        /// le <c>topLatex</c>. 4 cas :
+        /// <list type="number">
+        /// <item><b>Pref session avec Mutation native</b> → annote
+        /// AppliedAltIdx, PAS de splice (<c>ApplyPreferences</c> a déjà muté
+        /// la source en amont, splice ferait du nesting).</item>
+        /// <item><b>Pref session sans Mutation native</b> (ex.
+        /// <c>tight-chain-extension</c>) → annote + splice <c>alt.Latex</c>
+        /// dans <c>topLatex</c>.</item>
+        /// <item><b>Pas de pref + ResolveBestAlt &gt;= 0</b> (= sidecar pin
+        /// ou hints contextuels) → annote + splice.</item>
+        /// <item><b>Aucun</b> → match laissé tel quel.</item>
+        /// </list>
+        /// </summary>
+        /// <param name="topLatexLength">Longueur du <c>topLatex</c> pour bornes-check.</param>
+        /// <returns>
+        /// <c>(splices, appliedByMatch)</c> : la liste des splices à appliquer
+        /// (sans tri) + le mapping <c>match → altIdx appliqué</c> pour
+        /// annotation <c>AppliedAltIdx</c>.
+        /// </returns>
+        private (List<(int Start, int End, string AltLatex)> splices,
+                 Dictionary<AmbiguityMatch, int> appliedByMatch)
+            BuildSplices(
+                IReadOnlyList<AmbiguityMatch> matches,
+                string source,
+                MathCursor.Core.Resolution.ResolutionSidecar? sidecar,
+                MathCursor.Core.Resolution.ScoringHints hints,
+                int topLatexLength)
+        {
+            var splices = new List<(int Start, int End, string AltLatex)>();
+            var appliedByMatch = new Dictionary<AmbiguityMatch, int>();
+
+            if (matches == null) return (splices, appliedByMatch);
+
+            foreach (var match in matches)
+            {
+                if (match.Spot == null || string.IsNullOrEmpty(match.Spot.RuleId)) continue;
+                if (match.Start < 0 || match.End > topLatexLength || match.Start >= match.End) continue;
+
+                // Cas 1+2 : pref session prioritaire (vs sidecar/hints).
+                if (_preferences.TryGetValue(match.Spot.RuleId, out int prefAlt)
+                    && prefAlt >= 0 && prefAlt < match.Spot.Alternatives.Count)
+                {
+                    var prefAltObj = match.Spot.Alternatives[prefAlt];
+                    appliedByMatch[match] = prefAlt;
+                    if (prefAltObj.Mutation != null) continue; // cas 1 : déjà muté
+                    splices.Add((match.Start, match.End, prefAltObj.Latex)); // cas 2
+                    continue;
+                }
+
+                // Cas 3 : sidecar / hints contextuels.
+                int bestAlt = ResolveBestAlt(match, source, sidecar, hints);
+                if (bestAlt < 0 || bestAlt >= match.Spot.Alternatives.Count) continue;
+
+                appliedByMatch[match] = bestAlt;
+                splices.Add((match.Start, match.End, match.Spot.Alternatives[bestAlt].Latex));
+            }
+
+            return (splices, appliedByMatch);
         }
 
         /// <summary>
@@ -318,13 +401,14 @@ namespace MathCursor.Core
             return alt;
         }
 
+
         /// <summary>
-        /// Overload historique préservé. Wrap le sidecar dans un
-        /// <see cref="MathCursor.Core.Resolution.GlobalContext"/> jetable
-        /// avec un <see cref="MathCursor.Core.Resolution.Signals.SidecarSignal"/>
-        /// pour iso-comportement avec l'ancienne logique (pins + votes).
-        /// Préféré : passer directement le GlobalContext de session via
-        /// <see cref="Resolve(string, MathCursor.Core.Resolution.GlobalContext, MathCursor.Core.Resolution.ResolutionSidecar)"/>.
+        /// Overload rétro-compat : équivalent à
+        /// <see cref="Resolve(string, GlobalContext, ResolutionSidecar)"/>
+        /// avec un <see cref="MathCursor.Core.Resolution.GlobalContext"/>
+        /// jetable wrappant un <see cref="MathCursor.Core.Resolution.Signals.SidecarSignal"/>.
+        /// Conservé pour les tests + appels legacy qui n'ont pas de
+        /// <c>GlobalContext</c> de session sous la main.
         /// </summary>
         public ResolvedZone Resolve(string rawSource, MathCursor.Core.Resolution.ResolutionSidecar sidecar)
         {
@@ -354,6 +438,13 @@ namespace MathCursor.Core
             // les matches avec les positions topLatex ; on calcule ici
             // l'OccurrenceIdx via un scan ordonné par Start.
             var decoratedMatches = DecorateMatchesWithSignatures(ambig.AllMatches);
+            // Annote AppliedAltIdx pour chaque match selon les préférences
+            // accumulées de la session. Sans ça, la popup ne sait pas que
+            // l'alt vec (par ex.) est déjà la default et la propose à nouveau
+            // → l'user re-pick → double splice (\vec{\vec{AB}}). Cf. bug
+            // 2026-05-20. Règle : matches reçoivent AppliedAltIdx s'il y a
+            // une préférence pour leur ruleId ; popup filtre cet alt en aval.
+            var annotatedMatches = AnnotateAppliedAltIdxFromPreferences(decoratedMatches);
             bool incomplete = ComputeIsIncomplete(rawSource, ambig.TopLatex);
             return new ResolvedZone(
                 rawSource: rawSource,
@@ -362,8 +453,56 @@ namespace MathCursor.Core
                 spot: ambig.Spot,
                 spotStart: ambig.SpotStart,
                 spotEnd: ambig.SpotEnd,
-                allMatches: decoratedMatches,
+                allMatches: annotatedMatches,
                 isIncomplete: incomplete);
+        }
+
+        /// <summary>
+        /// Pour chaque match, set son <see cref="AmbiguityMatch.AppliedAltIdx"/> :
+        /// <list type="number">
+        /// <item>déjà set → on garde (splice contextuel précédent)</item>
+        /// <item>pref session (<c>_preferences[ruleId]</c>) → utilise altIdx</item>
+        /// <item>fallback "default rendering" : alt dont
+        /// <c>Latex == Spot.DefaultLatex</c> (= alt qui correspond au rendu
+        /// par défaut de l'engine, ex. <c>tight-chain-extension</c>) → la
+        /// popup filtre cet alt pour éviter le doublon visuel (même formule
+        /// en final ET dans la liste d'alts).</item>
+        /// </list>
+        /// </summary>
+        private IReadOnlyList<AmbiguityMatch> AnnotateAppliedAltIdxFromPreferences(
+            IReadOnlyList<AmbiguityMatch> matches)
+        {
+            if (matches == null) return new List<AmbiguityMatch>();
+            if (matches.Count == 0) return matches;
+            var result = new List<AmbiguityMatch>(matches.Count);
+            foreach (var m in matches)
+            {
+                if (m.AppliedAltIdx >= 0) { result.Add(m); continue; }
+                int chosenAlt = -1;
+                if (m.Spot != null && !string.IsNullOrEmpty(m.Spot.RuleId) && m.Spot.Alternatives != null)
+                {
+                    // Cas 2 : pref session.
+                    if (_preferences.TryGetValue(m.Spot.RuleId, out int prefAlt)
+                        && prefAlt >= 0 && prefAlt < m.Spot.Alternatives.Count)
+                    {
+                        chosenAlt = prefAlt;
+                    }
+                    // Cas 3 : alt qui correspond au default rendering.
+                    else if (!string.IsNullOrEmpty(m.Spot.DefaultLatex))
+                    {
+                        for (int i = 0; i < m.Spot.Alternatives.Count; i++)
+                        {
+                            if (string.Equals(m.Spot.Alternatives[i].Latex, m.Spot.DefaultLatex, System.StringComparison.Ordinal))
+                            {
+                                chosenAlt = i;
+                                break;
+                            }
+                        }
+                    }
+                }
+                result.Add(chosenAlt >= 0 ? m.WithAppliedAlt(chosenAlt) : m);
+            }
+            return result;
         }
 
         /// <summary>
