@@ -65,7 +65,7 @@ namespace MathCursor.Core.Resolution
                     activeAltIdx: -1);
             }
 
-            // AppliedAltIdx du match au même span que le Spot.
+            // AppliedAltIdx du match au même span que le Spot (= choix user).
             int activeAltIdx = -1;
             if (allMatches != null)
             {
@@ -86,17 +86,26 @@ namespace MathCursor.Core.Resolution
             var built = new List<AmbiguityAlternative>(alternatives.Count + 1);
             var altIdxMap = new List<int>(alternatives.Count + 1);
 
-            // Revert en tête si actif.
+            // Revert en tête si une alt active via pref user (permet go-back).
+            // Pas de revert pour les alts juste qui « matchent default
+            // rendering » — c'est de la sémantique d'affichage, pas un choix
+            // user (rien à revert).
             if (hasActive)
             {
                 built.Add(new AmbiguityAlternative(defaultLatex ?? string.Empty));
                 altIdxMap.Add(SpanOverride.AltIdxRevert);
             }
 
-            // Vraies alts, sauf l'active.
+            // Itère les alts, exclut :
+            //   - l'active (= choix user, déjà affichée en final)
+            //   - les alts dont Latex == defaultLatex (= rendu par défaut de
+            //     l'engine, déjà affiché en final ⇒ doublon visuel sinon).
             for (int i = 0; i < alternatives.Count; i++)
             {
                 if (i == activeAltIdx) continue;
+                if (!string.IsNullOrEmpty(defaultLatex)
+                    && string.Equals(alternatives[i].Latex, defaultLatex, System.StringComparison.Ordinal))
+                    continue;
                 built.Add(alternatives[i]);
                 altIdxMap.Add(i);
             }

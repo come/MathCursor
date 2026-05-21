@@ -55,19 +55,19 @@ namespace MathCursor.Core.Tests
         }
 
         [Fact]
-        public void Resolver_no_pref_annotates_default_matching_alt()
+        public void Resolver_no_pref_leaves_AppliedAltIdx_at_minus_1()
         {
-            // Sans pref, AppliedAltIdx = index de l'alt dont Latex ==
-            // Spot.DefaultLatex (= l'alt qui correspond au rendu par défaut
-            // de l'engine). Permet à la popup de filtrer cet alt pour éviter
-            // le doublon visuel default ↔ liste alts. Cf. UX 2026-05-21.
+            // Sans pref, AppliedAltIdx reste -1 (pas de choix user).
+            // Le filtrage de l'alt qui matche DefaultLatex est fait CÔTÉ
+            // FILTER (PopupAltFilter), pas via AppliedAltIdx → pas de revert
+            // dans ce cas (rien à revert).
             var engine = new LatticeEngine();
             var resolver = new ZoneResolver(engine);
             var r = resolver.Resolve(Source);
 
             Assert.NotNull(r.AllMatches);
             Assert.Single(r.AllMatches);
-            Assert.Equal(0, r.AllMatches[0].AppliedAltIdx);
+            Assert.Equal(-1, r.AllMatches[0].AppliedAltIdx);
         }
 
         [Fact]

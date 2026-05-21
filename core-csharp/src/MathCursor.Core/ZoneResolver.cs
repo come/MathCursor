@@ -458,49 +458,40 @@ namespace MathCursor.Core
         }
 
         /// <summary>
-        /// Pour chaque match, set son <see cref="AmbiguityMatch.AppliedAltIdx"/> :
-        /// <list type="number">
-        /// <item>déjà set → on garde (splice contextuel précédent)</item>
-        /// <item>pref session (<c>_preferences[ruleId]</c>) → utilise altIdx</item>
-        /// <item>fallback "default rendering" : alt dont
-        /// <c>Latex == Spot.DefaultLatex</c> (= alt qui correspond au rendu
-        /// par défaut de l'engine, ex. <c>tight-chain-extension</c>) → la
-        /// popup filtre cet alt pour éviter le doublon visuel (même formule
-        /// en final ET dans la liste d'alts).</item>
-        /// </list>
+        /// Pour chaque match sans <c>AppliedAltIdx</c>, set-le depuis
+        /// <c>_preferences[ruleId]</c> si une pref existe. = source de vérité
+        /// pour "ce que le ZoneResolver a effectivement appliqué via pref user".
+        /// La popup filtre cet alt + ajoute un revert.
+        ///
+        /// <para>Le filtrage de l'alt qui correspond au "default rendering"
+        /// de l'engine (= alt.Latex == Spot.DefaultLatex pour les rules
+        /// type <c>tight-chain-extension</c>) est fait CÔTÉ FILTER, sans
+        /// passer par AppliedAltIdx — parce qu'il ne s'agit pas d'un choix
+        /// user mais d'une sémantique d'affichage (« ne pas afficher l'alt
+        /// qui dupliquerait la formule finale »). Donc pas de revert ajouté
+        /// dans ce cas (l'user n'a rien à revert).</para>
         /// </summary>
         private IReadOnlyList<AmbiguityMatch> AnnotateAppliedAltIdxFromPreferences(
             IReadOnlyList<AmbiguityMatch> matches)
         {
             if (matches == null) return new List<AmbiguityMatch>();
-            if (matches.Count == 0) return matches;
+            if (matches.Count == 0 || _preferences.Count == 0) return matches;
             var result = new List<AmbiguityMatch>(matches.Count);
             foreach (var m in matches)
             {
                 if (m.AppliedAltIdx >= 0) { result.Add(m); continue; }
-                int chosenAlt = -1;
-                if (m.Spot != null && !string.IsNullOrEmpty(m.Spot.RuleId) && m.Spot.Alternatives != null)
+                if (m.Spot != null
+                    && !string.IsNullOrEmpty(m.Spot.RuleId)
+                    && m.Spot.Alternatives != null
+                    && _preferences.TryGetValue(m.Spot.RuleId, out int prefAlt)
+                    && prefAlt >= 0 && prefAlt < m.Spot.Alternatives.Count)
                 {
-                    // Cas 2 : pref session.
-                    if (_preferences.TryGetValue(m.Spot.RuleId, out int prefAlt)
-                        && prefAlt >= 0 && prefAlt < m.Spot.Alternatives.Count)
-                    {
-                        chosenAlt = prefAlt;
-                    }
-                    // Cas 3 : alt qui correspond au default rendering.
-                    else if (!string.IsNullOrEmpty(m.Spot.DefaultLatex))
-                    {
-                        for (int i = 0; i < m.Spot.Alternatives.Count; i++)
-                        {
-                            if (string.Equals(m.Spot.Alternatives[i].Latex, m.Spot.DefaultLatex, System.StringComparison.Ordinal))
-                            {
-                                chosenAlt = i;
-                                break;
-                            }
-                        }
-                    }
+                    result.Add(m.WithAppliedAlt(prefAlt));
                 }
-                result.Add(chosenAlt >= 0 ? m.WithAppliedAlt(chosenAlt) : m);
+                else
+                {
+                    result.Add(m);
+                }
             }
             return result;
         }

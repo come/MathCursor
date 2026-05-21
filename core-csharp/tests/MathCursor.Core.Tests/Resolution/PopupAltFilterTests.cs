@@ -103,12 +103,13 @@ namespace MathCursor.Core.Tests.Resolution
         // ─── End-to-end ZoneResolver → Filter ────────────────────────
 
         [Fact]
-        public void E2E_Lim_filters_default_alt_via_DefaultLatex_match()
+        public void E2E_Lim_filters_default_alt_via_latex_match_no_revert()
         {
-            // Sans pref user mais alt[0].Latex == Spot.DefaultLatex →
-            // Resolver annote AppliedAltIdx=0 (fallback default rendering)
-            // → filter exclut alt[0] + ajoute revert pour éviter doublon
-            // visuel popup-alts ↔ final. Cf. UX 2026-05-21.
+            // Sans pref user. alt[0].Latex == Spot.DefaultLatex (= alt qui
+            // duplique la formule finale visuellement). Filter exclut cette
+            // alt SANS ajouter revert (l'user n'a rien fait à revert).
+            // Résultat affiché : seulement alt[1] (= la vraie alternative).
+            // Cf. UX 2026-05-21.
             var engine = new LatticeEngine();
             var resolver = new ZoneResolver(engine);
             var r = resolver.Resolve("Lim x 0 f(x)= 1/x+1 *4");
@@ -117,16 +118,19 @@ namespace MathCursor.Core.Tests.Resolution
                 r.SpotStart ?? -1, r.SpotEnd ?? -1,
                 r.Spot.Alternatives, r.AllMatches, r.Spot.DefaultLatex);
 
-            Assert.Equal(0, filtered.ActiveAltIdx);
-            Assert.Equal(2, filtered.Built.Count); // revert + alt[1]
-            Assert.Equal(SpanOverride.AltIdxRevert, filtered.AltIdxMap[0]);
-            Assert.Equal(1, filtered.AltIdxMap[1]);
+            Assert.Equal(-1, filtered.ActiveAltIdx); // pas de pref → -1
+            Assert.Single(filtered.Built); // alt[1] seule, pas de revert
+            Assert.Equal(1, filtered.AltIdxMap[0]);
         }
 
         [Fact]
         public void E2E_Lim_with_pref_filters_active_alt()
         {
-            // Avec pref alt[1], filter exclut alt[1] + ajoute revert.
+            // Avec pref alt[1] (= 1/(x+1)), final affiche alt[1]. Popup :
+            //   - revert (= retour à 1/x+1 = DefaultLatex)
+            //   - alt[1] exclu (= active)
+            //   - alt[0] exclu (= matches DefaultLatex, équivalent à revert)
+            // Reste 1 item : revert.
             var engine = new LatticeEngine();
             var resolver = new ZoneResolver(engine);
             resolver.AddPreference("tight-chain-extension", 1);
@@ -137,9 +141,8 @@ namespace MathCursor.Core.Tests.Resolution
                 r.Spot.Alternatives, r.AllMatches, r.Spot.DefaultLatex);
 
             Assert.Equal(1, filtered.ActiveAltIdx);
-            Assert.Equal(2, filtered.Built.Count); // revert + alt[0]
+            Assert.Single(filtered.Built); // revert seul (alt[0] exclu car == default)
             Assert.Equal(SpanOverride.AltIdxRevert, filtered.AltIdxMap[0]);
-            Assert.Equal(0, filtered.AltIdxMap[1]);
         }
 
         [Fact]
