@@ -459,6 +459,13 @@ namespace MathCursor.Core.Lattice
             }
             if (altList.Count == 0) return;
 
+            // La règle expose TOUTES les alts (incluant le default à l'index 0)
+            // pour garder une sémantique cohérente. La popup
+            // (<see cref="MathCursor.Core.Resolution.PopupAltFilter"/>)
+            // exclut visuellement l'alt qui matche DefaultLatex pour éviter
+            // le doublon avec le final. Filter côté présentation = source
+            // de vérité des choix retient TOUS les alts au niveau règle.
+            // Cf. user 2026-05-21.
             var alts = new List<AmbiguityAlternative>
             {
                 new AmbiguityAlternative(topLatex, mutation: null),  // default
