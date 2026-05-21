@@ -34,6 +34,7 @@ namespace MathCursor.Core.Patterns
                 new ForallBelongsTemplate(),
                 new EnsembleTemplate(),
                 new IntervalUnionTemplate(),
+                new LimTemplate(),
             });
         }
 
@@ -51,6 +52,7 @@ namespace MathCursor.Core.Patterns
                 new ForallBelongsTemplate(),
                 new EnsembleTemplate(),
                 new IntervalUnionTemplate(),
+                new LimTemplate(),
             };
             return (new PatternPipeline(templates), new PatternRegistry(templates));
         }
