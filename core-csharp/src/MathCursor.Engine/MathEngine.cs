@@ -286,14 +286,17 @@ namespace MathCursor.Engine
                 var t = tokens[ti];
                 if (t.Kind == TokenKind.Sep)
                 {
-                    // Cas `+ y2` ou `- y2` : si le bucket contient juste un
-                    // leading unary en attente d'opérande, on traverse le Sep
-                    // pour absorber l'opérande qui suit. Sinon (= bucket vide
-                    // ou expression complète), break normalement.
-                    // Cf. ADR 2026-05-23-Fix-engine-leading-unary-prefix.
-                    if (bucket.Count == 1
+                    // Cas `+ y2`, `- y2`, `<=> x+1`, `=> y2`, `= 1/2` : si le
+                    // bucket contient juste un leading marker en attente
+                    // d'opérande, on traverse le Sep pour absorber l'opérande
+                    // qui suit. Sinon break normalement.
+                    // Cf. StackParser.IsLeadingUnaryAllowed pour la liste.
+                    // Skip aussi Sep("\n") qui est traité par le pre-pass
+                    // multi-line en amont.
+                    if (t.Text != "\n"
+                        && bucket.Count == 1
                         && (bucket[0].Kind == TokenKind.Symbol || bucket[0].Kind == TokenKind.Glue)
-                        && (bucket[0].Text == "+" || bucket[0].Text == "-"))
+                        && Parsing.StackParser.IsLeadingUnaryAllowed(bucket[0].Text))
                     {
                         ti++;
                         continue;

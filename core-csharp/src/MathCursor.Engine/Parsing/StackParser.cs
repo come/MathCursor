@@ -99,22 +99,31 @@ namespace MathCursor.Engine.Parsing
                     {
                         if (operands.Count == 0)
                         {
-                            // Leading unary `+` ou `-` : whitelist explicite
-                            // (sémantique math valide en préfixe). Consomme le
-                            // prochain operand récursivement et l'encapsule dans
-                            // un UnaryPrefixNode. Cf. ADR
-                            // 2026-05-23-Fix-engine-leading-unary-prefix.
-                            //
-                            // Autres operators (=, *, /, <, >, etc.) : leur
-                            // sémantique unaire n'a pas de sens math → skip
-                            // (= robustesse historique, conservée).
+                            // Leading unary : (a) `+`/`-` signe math compact,
+                            // (b) markers comp/rel `=`, `<=>`, `=>`, `<=` qui
+                            // signifient "continuation de chaîne d'équivalences"
+                            // (user-report 2026-05-23 « le = saute au commit »).
+                            // Pour (b) on stocke `rel.Tex + " "` (= LaTeX cmd
+                            // avec espace trailing pour ne pas coller au prochain
+                            // token). Pour (a) on stocke `tok.Text` brut.
+                            // Cf. ADR 2026-05-23-Fix-engine-leading-unary-prefix
+                            // + 2026-05-23-Fix-engine-leading-relation-prefix.
                             if (IsLeadingUnaryAllowed(tok.Text))
                             {
+                                string opRender = (tok.Text == "+" || tok.Text == "-")
+                                    ? tok.Text
+                                    : rel.Tex + " ";
                                 i++;
-                                var operand = ParseUnaryOperand(tokens, ref i, depth);
+                                // L'opérande de l'unary consomme tous les ops de
+                                // tier STRICTEMENT supérieur au tier du leading
+                                // marker (= conv math standard : `+y2+1` =
+                                // `(+y²)+1` mais `<=> x+1` = `<=> (x+1)`). Le
+                                // tier-1 sert de borne d'arrêt (= stop dès qu'on
+                                // rencontre un op de tier ≤ tier du leading).
+                                var operand = ParseUnaryOperand(tokens, ref i, depth, rel.Tier);
                                 if (operand != null)
                                 {
-                                    operands.Add(new UnaryPrefixNode(tok.Text, operand));
+                                    operands.Add(new UnaryPrefixNode(opRender, operand));
                                 }
                                 continue;
                             }
@@ -212,24 +221,51 @@ namespace MathCursor.Engine.Parsing
         }
 
         /// <summary>
-        /// Whitelist des opérateurs valides en préfixe unaire au début d'une
-        /// expression. Limité à <c>+</c> et <c>-</c> qui ont une sémantique
-        /// math claire (signe). Les autres opérateurs (=, *, /, &lt;, &gt;,
-        /// etc.) restent skipped en début (= robustesse, sémantique unaire
-        /// non définie). Cf. ADR
-        /// <c>2026-05-23-Fix-engine-leading-unary-prefix</c>.
+        /// Whitelist des opérateurs valides en préfixe en début d'une
+        /// expression :
+        /// <list type="bullet">
+        ///   <item><c>+</c>, <c>-</c> : signe math compact ;</item>
+        ///   <item><c>=</c>, <c>&lt;=&gt;</c>, <c>=&gt;</c>, <c>&lt;=</c>
+        ///     (et variants Unicode <c>⇔ ⇒ ⇐</c>) : continuation de chaîne
+        ///     d'équivalences/égalités quand le source n'est PAS multi-line
+        ///     (= déjà couvert par le pre-pass multi-line). User-report
+        ///     « le = saute au commit » 2026-05-23.</item>
+        /// </list>
+        /// <para>Les opérateurs <c>*</c>, <c>/</c>, <c>&lt;</c>, <c>&gt;</c>
+        /// restent skipped en début (= sémantique unaire non définie).</para>
+        /// Cf. ADRs <c>2026-05-23-Fix-engine-leading-unary-prefix</c> +
+        /// <c>2026-05-23-Fix-engine-leading-relation-prefix</c>.
         /// </summary>
-        private static bool IsLeadingUnaryAllowed(string text)
-            => text == "+" || text == "-";
+        public static bool IsLeadingUnaryAllowed(string text)
+        {
+            switch (text)
+            {
+                case "+": case "-":
+                case "=":
+                case "<=>": case "<==>": case "⇔": case "↔": case "⟺":
+                case "=>": case "==>": case "⇒": case "⟹":
+                case "<=": case "<==": case "⇐": case "⟸":
+                    return true;
+                default:
+                    return false;
+            }
+        }
 
         /// <summary>
         /// Parse l'opérande consommé par un <see cref="UnaryPrefixNode"/>.
         /// Identique à <see cref="ParseExpression"/> sauf qu'on s'arrête au
-        /// premier opérateur de tier ≥ <see cref="PrecedenceTier.Addsub"/> :
-        /// l'unary lie plus fort que <c>+/-</c> binaire (cf. <c>-y2+1</c>
-        /// = <c>(-y²) + 1</c>, pas <c>-(y² + 1)</c>).
+        /// premier opérateur de tier &lt;= <paramref name="leadingTier"/> :
+        /// l'opérande inclut tous les ops STRICTEMENT plus serrés que l'unary
+        /// leading. Exemples :
+        /// <list type="bullet">
+        ///   <item><c>-y2+1</c> avec leading tier Addsub → operand=<c>y²</c>
+        ///     (break sur <c>+</c> tier Addsub), résultat=<c>(-y²)+1</c>.</item>
+        ///   <item><c>&lt;=&gt; x+1</c> avec leading tier Comp/Rel → operand=
+        ///     <c>x+1</c> entier (le <c>+</c> Addsub est strictement plus
+        ///     fort), résultat=<c>\Leftrightarrow x+1</c>.</item>
+        /// </list>
         /// </summary>
-        private AstNode? ParseUnaryOperand(IReadOnlyList<Token> tokens, ref int i, int depth)
+        private AstNode? ParseUnaryOperand(IReadOnlyList<Token> tokens, ref int i, int depth, PrecedenceTier leadingTier)
         {
             var operands = new List<AstNode>();
             var ops = new List<Relation>();
@@ -242,6 +278,7 @@ namespace MathCursor.Engine.Parsing
                 if (tok.Kind == TokenKind.Sep)
                 {
                     if (tok.Text == "," || tok.Text == ";") break;
+                    if (tok.Text == "\n") break;
                     i++;
                     continue;
                 }
@@ -267,9 +304,11 @@ namespace MathCursor.Engine.Parsing
                 {
                     if (_vocab.Relations.TryGetValue(tok.Text, out var rel))
                     {
-                        // STOP sur Addsub (et plus haut) : referme l'unary,
-                        // l'op sera traité par le parent.
-                        if ((int)rel.Tier >= (int)PrecedenceTier.Addsub) break;
+                        // STOP si tier op ≥ tier leading (en (int), où plus
+                        // PETIT = plus FORT, cf. PrecedenceTier.cs). L'op
+                        // revient au parent. Inclure si STRICTEMENT plus
+                        // fort (= int strictement plus petit = lié plus serré).
+                        if ((int)rel.Tier >= (int)leadingTier) break;
                         if (operands.Count == 0) { i++; continue; }
                         ops.Add(rel);
                         i++;

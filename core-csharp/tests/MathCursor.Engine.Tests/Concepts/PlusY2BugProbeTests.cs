@@ -57,5 +57,47 @@ namespace MathCursor.Engine.Tests.Concepts
             Assert.Contains("y^{2}", r.TopLatex);
             Assert.Contains("+", r.TopLatex);
         }
+
+        // Bug user-reported 2026-05-23 « le = saute au commit » — source
+        // `=1/2x+1` rendu `\frac{1}{2}x+1` au lieu de `=\frac{1}{2}x+1`.
+        // Même classe que le bug `+y2` mais sur `=` (et tous markers comp/rel).
+        [Fact]
+        public void Equals_in_isolation_must_keep_leading_equal()
+        {
+            var engine = MathEngine.BuildDefault("fr");
+            var r = engine.Resolve("=1/2x+1");
+            _output.WriteLine($"input='=1/2x+1'");
+            _output.WriteLine($"top='{r.TopLatex}'");
+            Assert.Contains("=", r.TopLatex);
+            Assert.Contains("\\frac{1}{2}", r.TopLatex);
+        }
+
+        [Fact]
+        public void Leftrightarrow_in_isolation_must_keep_leading_marker()
+        {
+            var engine = MathEngine.BuildDefault("fr");
+            var r = engine.Resolve("<=> x+1");
+            _output.WriteLine($"input='<=> x+1'");
+            _output.WriteLine($"top='{r.TopLatex}'");
+            // \iff et \Leftrightarrow sont équivalents LaTeX (= rendu ⇔).
+            Assert.True(
+                r.TopLatex.Contains("\\Leftrightarrow") || r.TopLatex.Contains("\\iff"),
+                $"Expected \\Leftrightarrow or \\iff, got: {r.TopLatex}");
+            Assert.Contains("x", r.TopLatex);
+        }
+
+        [Fact]
+        public void Rightarrow_in_isolation_must_keep_leading_marker()
+        {
+            var engine = MathEngine.BuildDefault("fr");
+            var r = engine.Resolve("=> y2");
+            _output.WriteLine($"input='=> y2'");
+            _output.WriteLine($"top='{r.TopLatex}'");
+            // \Rightarrow et \implies sont équivalents LaTeX.
+            Assert.True(
+                r.TopLatex.Contains("\\Rightarrow") || r.TopLatex.Contains("\\implies"),
+                $"Expected \\Rightarrow or \\implies, got: {r.TopLatex}");
+            Assert.Contains("y^{2}", r.TopLatex);
+        }
     }
 }
