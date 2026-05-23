@@ -33,18 +33,32 @@ namespace MathCursor.Core.Patterns
         /// les plus complètes en premier.</summary>
         public int CompletenessScore { get; }
 
+        /// <summary>Position de début du span source matché (= identique à
+        /// <c>PatternMatch.SourceStart</c>). <c>-1</c> si non fourni (= legacy
+        /// call-sites). Utilisé par <see cref="Ranking.IPatternRanker"/> pour
+        /// NMS overlap + bonus span complet + caret-aware.</summary>
+        public int SourceStart { get; }
+
+        /// <summary>Position de fin (exclue) du span source matché.
+        /// <c>-1</c> si non fourni.</summary>
+        public int SourceEnd { get; }
+
         public PatternCompletion(
             string description,
             string previewLatex,
             string hintLatex,
             SourceMutation? mutation,
-            int completenessScore)
+            int completenessScore,
+            int sourceStart = -1,
+            int sourceEnd = -1)
         {
             Description = description ?? throw new System.ArgumentNullException(nameof(description));
             PreviewLatex = previewLatex ?? throw new System.ArgumentNullException(nameof(previewLatex));
             HintLatex = hintLatex ?? throw new System.ArgumentNullException(nameof(hintLatex));
             Mutation = mutation;
             CompletenessScore = completenessScore;
+            SourceStart = sourceStart;
+            SourceEnd = sourceEnd;
         }
     }
 }

@@ -1,0 +1,145 @@
+# Vocabulaire MathCursor (locale FR) — brief v4 §3.
+# Synonymes semés depuis le corpus, pas l'imagination.
+# Cf. ADR 2026-05-22-Feat-engine-poc-isolation.
+
+classes:
+  to:     ['->', '→', 'td', 'tend vers']
+  filler: ['quand', 'lorsque']
+  dir:    ['+', '-', '⁺', '⁻']
+
+anchors:
+  limite: lim
+  somme:  sum
+  produit: prod
+  integrale: int
+  int: int
+  derivee: derive
+  derive: derive
+  iint: iint
+  intint: iint
+  # P17 — quantificateurs logiques.
+  forall: forall
+  V: forall
+  '∀': forall
+  exists: exists
+  E: exists
+  '∃': exists
+  # P23 — fractions, racines, vecteurs.
+  frac: frac
+  fraction: frac
+  racine: sqrt
+  sqrt: sqrt
+  vec: vec
+  vecteur: vec
+  # P29 — norme.
+  norm: norm
+  norme: norm
+  congru: congru
+  congruent: congru
+  # P23 : pas d'anchor pour P (= juste un identifier libre).
+  # P(A) est rendu par le parser : P + (A) → produit implicite → P(A).
+
+functions:
+  sin:  '\sin'
+  cos:  '\cos'
+  tan:  '\tan'
+  cot:  '\cot'
+  sec:  '\sec'
+  csc:  '\csc'
+  arcsin: '\arcsin'
+  arccos: '\arccos'
+  arctan: '\arctan'
+  sinh: '\sinh'
+  cosh: '\cosh'
+  tanh: '\tanh'
+  ln:   '\ln'
+  log:  '\log'
+  exp:  '\exp'
+  min:  '\min'
+  max:  '\max'
+  sup:  '\sup'
+  # `inf` = infinity (= sémantique math courante : +inf, -inf).
+  # Pour l'infimum mathématique, taper `infimum`.
+  inf:  '\infty'
+  oo:   '\infty'
+  infty: '\infty'
+  infinity: '\infty'
+  infimum: '\inf'
+  det:  '\det'
+  tr:   '\operatorname{tr}'
+  tg:   '\tan'
+  ch:   '\cosh'
+  sh:   '\sinh'
+  th:   '\tanh'
+  pgcd: '\gcd'
+  ppcm: '\operatorname{ppcm}'
+  # P18 — ensembles canoniques mappés via tokenizer.
+  R:    '\mathbb{R}'
+  N:    '\mathbb{N}'
+  Z:    '\mathbb{Z}'
+  Q:    '\mathbb{Q}'
+  C:    '\mathbb{C}'
+  ℝ:    '\mathbb{R}'
+  ℕ:    '\mathbb{N}'
+  ℤ:    '\mathbb{Z}'
+  ℚ:    '\mathbb{Q}'
+  ℂ:    '\mathbb{C}'
+
+# Relations : table de précédence multi-tier (brief §1.2).
+# Tiers (du plus fort au plus faible) :
+#   funcpow > muldiv > addsub > setop > comp > rel > and > or > implies > iff
+relations:
+  '+':      { tex: '+',           tier: addsub }
+  '-':      { tex: '-',           tier: addsub }
+  '*':      { tex: '\cdot',       tier: muldiv }
+  '·':      { tex: '\cdot',       tier: muldiv }
+  '/':      { tex: '/',           tier: muldiv }
+  '^':      { tex: '^',           tier: funcpow }
+  '_':      { tex: '_',           tier: funcpow }
+  '∪':      { tex: '\cup',        tier: setop }
+  '∩':      { tex: '\cap',        tier: setop }
+  # P28 (2026-05-22) : produit scalaire explicite `.` (= u.v → u \cdot v).
+  '.':      { tex: '\cdot',       tier: muldiv }
+  'U':      { tex: '\cup',        tier: setop }
+  '=':      { tex: '=',           tier: comp }
+  '!=':     { tex: '\neq',        tier: comp }
+  '<':      { tex: '<',           tier: comp }
+  '>':      { tex: '>',           tier: comp }
+  '<=':     { tex: '\leq',        tier: comp }
+  '>=':     { tex: '\geq',        tier: comp }
+  '≤':      { tex: '\leq',        tier: comp }
+  '≥':      { tex: '\geq',        tier: comp }
+  '≠':      { tex: '\neq',        tier: comp }
+  'in':     { tex: '\in',         tier: rel }
+  '∈':      { tex: '\in',         tier: rel }
+  '⊂':      { tex: '\subset',     tier: rel }
+  # `//` = parallèle penché (= notation manuscrite). \mathbin{/\!/}
+  # rend 2 slashes penchés avec espacement correct. \parallel donnerait
+  # le symbole vertical ‖ qui n'est pas l'attendu user FR.
+  '//':     { tex: '\mathbin{/\!/}', tier: rel }
+  '∥':      { tex: '\parallel',   tier: rel }
+  '⊥':      { tex: '\perp',       tier: rel }
+  'perp':   { tex: '\perp',       tier: rel }
+  'congru': { tex: '\equiv',      tier: rel, tail: mod }
+  '≡':      { tex: '\equiv',      tier: rel, tail: mod }
+  # P29 (2026-05-22) : `mod` infixe spécial — `wrap: true` indique que
+  # le rendu est `<tex>{<next operand>}` au lieu de l'infixe binaire.
+  # Ex. `a congru b mod 7` → `a \equiv b \pmod{7}`.
+  'mod':    { tex: '\pmod',       tier: rel, wrap: true }
+  'et':     { tex: '\land',       tier: and }
+  '∧':      { tex: '\land',       tier: and }
+  'ou':     { tex: '\lor',        tier: or }
+  '∨':      { tex: '\lor',        tier: or }
+  '=>':     { tex: '\implies',    tier: implies }
+  '⇒':      { tex: '\implies',    tier: implies }
+  '<=>':    { tex: '\iff',        tier: iff }
+  '⇔':      { tex: '\iff',        tier: iff }
+
+# Tokens "glue" qui ne séparent pas (brief §1.1) — appartiennent à un slot.
+glue:    ['->', '=', '→']
+
+# Séparateurs de liste (par locale).
+# FR : la virgule est prise par la décimale → seul l'espace fait colonne.
+colsep:  [' ']
+rowsep:  [';']
+decimal: ','

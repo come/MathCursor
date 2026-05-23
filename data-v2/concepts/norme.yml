@@ -1,0 +1,17 @@
+# Concept "norme" — norme d'un vecteur ou expression.
+# `norm u` ou `norm(u)` → ||u||
+# `norm AB` → ||AB||
+
+concept: norme
+rules:
+  - id: norme
+    anchor: norm
+    # {term} = expr arrêtée à muldiv (= stop sur +/-). Pour englober une
+    # somme : `norm (v+1)` avec parens.
+    shape: "norm {arg:term}"
+    emit:  "\\|$arg\\|"
+    tests:
+      - "norm u => \\|u\\|"
+      - "norm AB => \\|AB\\|"
+      - "norm (x+y) => \\|x+y\\|"
+      - "norm v+1 => \\|v\\|+1"

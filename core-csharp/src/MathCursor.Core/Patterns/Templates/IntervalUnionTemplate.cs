@@ -54,7 +54,7 @@ namespace MathCursor.Core.Patterns.Templates
                 if (c == '(' && i > 0)
                 {
                     char prev = src[i - 1];
-                    if (char.IsLetterOrDigit(prev)) continue;
+                    if (IsInvalidPrevForOpenParen(prev)) continue;
                 }
 
                 var slots = new Dictionary<string, SlotValue>(4)
@@ -99,7 +99,9 @@ namespace MathCursor.Core.Patterns.Templates
                 previewLatex: preview,
                 hintLatex: hint,
                 mutation: null,
-                completenessScore: score);
+                completenessScore: score,
+                sourceStart: finalState.SourceStart,
+                sourceEnd: finalState.SourceEnd);
 
             return new[] { completion };
         }
@@ -186,7 +188,7 @@ namespace MathCursor.Core.Patterns.Templates
             char c = src[pos];
             if (c != '[' && c != '(') return null;
             // Boundary gauche : seulement pour '(' (cf. TryMatchHead).
-            if (c == '(' && pos > 0 && char.IsLetterOrDigit(src[pos - 1])) return null;
+            if (c == '(' && pos > 0 && IsInvalidPrevForOpenParen(src[pos - 1])) return null;
 
             var slots = new Dictionary<string, SlotValue>(4)
             {
@@ -207,6 +209,35 @@ namespace MathCursor.Core.Patterns.Templates
         {
             while (pos < src.Length && char.IsWhiteSpace(src[pos])) pos++;
             return pos;
+        }
+
+        /// <summary>
+        /// Détermine si le caractère précédant <c>(</c> invalide un match
+        /// d'intervalle (= ce <c>(</c> ouvre un function call, pas un
+        /// intervalle ouvert). Couvre lettres/digits (= <c>f(x)</c>,
+        /// <c>2(x)</c>) et apostrophes/primes ASCII + Unicode (= primed
+        /// derivative <c>f'(x)</c>, <c>f''(x)</c>, <c>f’(x)</c> avec Word
+        /// auto-correct typographique).
+        /// </summary>
+        private static bool IsInvalidPrevForOpenParen(char prev)
+        {
+            if (char.IsLetterOrDigit(prev)) return true;
+            switch (prev)
+            {
+                case '\'':       // U+0027 apostrophe ASCII
+                case '’':   // U+2019 right single quotation mark
+                case '‘':   // U+2018 left single quotation mark
+                case '′':   // U+2032 math prime
+                case '"':        // U+0022 quotation mark ASCII
+                case '”':   // U+201D right double quotation mark
+                case '“':   // U+201C left double quotation mark
+                case '″':   // U+2033 math double prime
+                case '‴':   // U+2034 math triple prime
+                case '⁗':   // U+2057 math quadruple prime
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         /// <summary>

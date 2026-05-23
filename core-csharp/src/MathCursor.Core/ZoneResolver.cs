@@ -122,24 +122,54 @@ namespace MathCursor.Core
         private readonly MathCursor.Core.Patterns.PatternPipeline? _patternPipeline;
         private readonly MathCursor.Core.Patterns.PatternRegistry? _patternRegistry;
 
-        public ZoneResolver(LatticeEngine engine)
-            : this(engine, patternPipeline: null, patternRegistry: null) { }
+        // P11.14 (2026-05-22) : feature flag MathCursor.Engine v2. Si fourni,
+        // tenté EN PREMIER avant le pipeline lattice. Cf. ADR
+        // 2026-05-22-Feat-engine-poc-isolation.
+        private readonly IResolvedZoneSource? _engineSource;
 
-        /// <summary>
-        /// Ctor étendu P7a (2026-05-21) : accepte un <see cref="MathCursor.Core.Patterns.PatternPipeline"/>
-        /// et un <see cref="MathCursor.Core.Patterns.PatternRegistry"/> optionnels
-        /// pour activer les templates compositionnels. Construire via
-        /// <see cref="MathCursor.Core.Patterns.DefaultPatternRegistry.BuildBoth"/>
-        /// pour le setup pilote (forall-belongs + ensemble + interval-union).
-        /// </summary>
+        /// <summary>Dernière trace diag de l'engine v2 (= P11) si applicable.
+        /// Exposé pour l'inspecteur VSTO. Vide si l'engine v2 n'est pas
+        /// branché ou n'a pas tourné sur la dernière résolution.</summary>
+        public string LastEngineDiagTrace { get; private set; } = string.Empty;
+
+        /// <summary>P32.1 (2026-05-23) : compteur des appels au pipeline legacy
+        /// (= LatticeEngine + Patterns). Incrémenté quand Engine v2 :
+        /// <list type="bullet">
+        ///   <item>N'est pas branché (= kill-switch <c>MATHCURSOR_ENGINE_V2=0</c>)</item>
+        ///   <item>Retourne <c>null</c> (= exception fatale après P32.1)</item>
+        /// </list>
+        /// Exposé pour l'inspecteur VSTO et les tests — permet de vérifier
+        /// empiriquement que le legacy n'est plus appelé en condition normale.</summary>
+        public int LegacyFallbackCalls { get; private set; } = 0;
+
+        /// <summary>P32.1 (2026-05-23) : true si la dernière résolution a
+        /// utilisé le pipeline legacy. Pour log côté inspecteur.</summary>
+        public bool LastResolveUsedLegacy { get; private set; } = false;
+
+        public ZoneResolver(LatticeEngine engine)
+            : this(engine, patternPipeline: null, patternRegistry: null, engineSource: null) { }
+
         public ZoneResolver(
             LatticeEngine engine,
             MathCursor.Core.Patterns.PatternPipeline? patternPipeline,
             MathCursor.Core.Patterns.PatternRegistry? patternRegistry)
+            : this(engine, patternPipeline, patternRegistry, engineSource: null) { }
+
+        /// <summary>
+        /// Ctor P11.14 (2026-05-22) : ajoute le feature flag pour le moteur
+        /// <c>MathCursor.Engine</c> v2 via <see cref="IResolvedZoneSource"/>.
+        /// Si fourni → tenté en premier ; si retour null → fallback legacy.
+        /// </summary>
+        public ZoneResolver(
+            LatticeEngine engine,
+            MathCursor.Core.Patterns.PatternPipeline? patternPipeline,
+            MathCursor.Core.Patterns.PatternRegistry? patternRegistry,
+            IResolvedZoneSource? engineSource)
         {
             _engine = engine ?? throw new System.ArgumentNullException(nameof(engine));
             _patternPipeline = patternPipeline;
             _patternRegistry = patternRegistry;
+            _engineSource = engineSource;
         }
 
         /// <summary>
@@ -501,6 +531,38 @@ namespace MathCursor.Core
         public ResolvedZone Resolve(string rawSource, int? caretOffset = null)
         {
             rawSource = rawSource ?? string.Empty;
+
+            // P11.14 / P32 : MathCursor.Engine v2 = moteur principal. Si
+            // branché, tenté en premier ; retour non-null systématique sauf
+            // exception fatale (cf. P32.1 EngineZoneSource).
+            // La trace diag est exposée via LastEngineDiagTrace.
+            LastResolveUsedLegacy = false;
+            if (_engineSource != null)
+            {
+                var engineResult = _engineSource.TryResolve(rawSource, out var trace);
+                LastEngineDiagTrace = trace ?? string.Empty;
+                if (engineResult != null)
+                {
+                    return engineResult;
+                }
+                // P32.1 : passage ici = exception fatale dans engine v2.
+                // Le legacy reste branché comme filet, mais ce path doit
+                // être quasi-vide en condition normale.
+                LegacyFallbackCalls++;
+                LastResolveUsedLegacy = true;
+                LastEngineDiagTrace = (LastEngineDiagTrace ?? string.Empty)
+                    + "[LEGACY-FALLBACK] engine v2 returned null (= exception) → using LatticeEngine legacy. "
+                    + $"Total legacy calls this session: {LegacyFallbackCalls}\n";
+            }
+            else
+            {
+                // P32.1 : kill-switch MATHCURSOR_ENGINE_V2=0 (cf. SuggestionService).
+                // Mode legacy assumé → on n'incrémente pas le compteur (= signal
+                // explicite "v2 désactivé", pas un fallback inattendu).
+                LastEngineDiagTrace = "[LEGACY-ONLY] engine v2 not wired (kill-switch active)\n";
+                LastResolveUsedLegacy = true;
+            }
+
             // Préprocesseur : `R*`/`N+`/`Z*-` etc. (lettre canonique + 1 ou 2
             // signes modificateurs avec délim derrière) → `bbR*`/`bbN+`/`bbZ*-`.
             // Aliasing direct car la présence d'un modificateur exclut

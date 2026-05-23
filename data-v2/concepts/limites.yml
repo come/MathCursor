@@ -1,0 +1,22 @@
+# Concept "limites" — brief v5.
+# Cf. ADR 2026-05-22-Feat-engine-poc-isolation + 2026-05-22-Feat-typed-slots +
+# 2026-05-22-Feat-whitespace-sep-and-pratt-tiers.
+
+concept: limites
+rules:
+  - id: limite-x-to-bound
+    anchor: lim
+    # Brief v5 §2 : {bound} = expr addsub (= stop sur =, <, >, ∈, etc.)
+    # {body} = greedy-jusqu'à-prochaine-ancre.
+    shape: "lim <filler>? {var} <to>? {bound} {body}"
+    emit:  "\\lim_{$var \\to $bound} $body"
+    tests:
+      - "lim x->0 f(x) => \\lim_{x \\to 0} f(x)"
+      - "lim x 0 f(x) => \\lim_{x \\to 0} f(x)"
+      - "lim quand x tend vers 0 f(x) => \\lim_{x \\to 0} f(x)"
+      - "lim x 0 2x+1 => \\lim_{x \\to 0} 2x+1"
+      - "lim x +oo f(x) => \\lim_{x \\to +\\infty} f(x)"
+      - "lim x +inf f(x) => \\lim_{x \\to +\\infty} f(x)"
+      - "lim x -inf f(x) => \\lim_{x \\to -\\infty} f(x)"
+      # Brief v5 §3 : body greedy-jusqu'à-ancre (= wide steno).
+      - "lim x 0 1/x+1 => \\lim_{x \\to 0} \\frac{1}{x}+1"

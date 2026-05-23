@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>MathCursor.Engine.Adapter</RootNamespace>
+    <AssemblyName>MathCursor.Engine.Adapter</AssemblyName>
+    <LangVersion>10.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- P32 : CS0618 = usage de types [Obsolete] legacy (LatticeEngine, etc.).
+         Le adapter consomme volontairement le legacy comme fallback. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);CS0618</WarningsNotAsErrors>
+    <Version>0.1.0</Version>
+    <Description>Adapter Engine → ResolvedZone legacy. Drop-in via feature flag dans ZoneResolver. Cf. ADR 2026-05-22-Feat-engine-poc-isolation.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MathCursor.Engine\MathCursor.Engine.csproj" />
+    <ProjectReference Include="..\MathCursor.Core\MathCursor.Core.csproj" />
+  </ItemGroup>
+
+</Project>

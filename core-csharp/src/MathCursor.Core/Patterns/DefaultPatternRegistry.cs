@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using MathCursor.Core.Patterns.Ranking;
 using MathCursor.Core.Patterns.Templates;
 using MathCursor.Core.Patterns.Yaml;
 
@@ -46,7 +47,8 @@ namespace MathCursor.Core.Patterns
         public static (PatternPipeline Pipeline, PatternRegistry Registry) BuildBoth()
         {
             var templates = LoadAllTemplates();
-            return (new PatternPipeline(templates), new PatternRegistry(templates));
+            var ranker = new DefaultPatternRanker();
+            return (new PatternPipeline(templates, ranker), new PatternRegistry(templates));
         }
 
         private static IReadOnlyList<IPatternTemplate> LoadAllTemplates()

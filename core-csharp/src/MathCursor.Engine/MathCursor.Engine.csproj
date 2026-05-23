@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>MathCursor.Engine</RootNamespace>
+    <AssemblyName>MathCursor.Engine</AssemblyName>
+    <LangVersion>10.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Version>0.1.0</Version>
+    <Description>Cœur de détection MathCursor — descente récursive déterministe O(n). Moteur principal depuis P32 (cf. ADR 2026-05-23-Feat-engine-v2-promotion). Isolation conservée : zéro référence vers MathCursor.Core (cf. ADR 2026-05-22-Feat-engine-poc-isolation).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Règle dure : zéro référence vers MathCursor.Core (= moteur autonome,
+         cf. ADR 2026-05-22-Feat-engine-poc-isolation). -->
+    <PackageReference Include="YamlDotNet" Version="16.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Vocabulaire + concepts YAML embarqués. data-v2/ racine projet, séparé
+         du wildcard MSBuild legacy data/. -->
+    <EmbeddedResource Include="..\..\..\data-v2\locale\*.yml">
+      <Link>data-v2\locale\%(Filename)%(Extension)</Link>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\..\data-v2\concepts\*.yml">
+      <Link>data-v2\concepts\%(Filename)%(Extension)</Link>
+    </EmbeddedResource>
+    <!-- P31 : scores de collision déclarés en YAML. -->
+    <EmbeddedResource Include="..\..\..\data-v2\collision-scores.yml">
+      <Link>data-v2\collision-scores.yml</Link>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

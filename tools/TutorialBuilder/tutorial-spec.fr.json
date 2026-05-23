@@ -1,0 +1,274 @@
+{
+  "version": "1.0",
+  "lang": "fr",
+  "title": "MathCursor — Prise en main",
+  "intro": "Pour chaque consigne, essaie dans la case à droite. Tape, regarde, recommence. L'espace a un sens dans MathCursor : il sépare ce qui est groupé.",
+  "sections": [
+    {
+      "id": "popup",
+      "title": "Comment marche la popup",
+      "intro": "Dès que MathCursor reconnaît une notation, une petite fenêtre grise apparaît au-dessus du curseur avec la conversion principale (présélectionnée) et les alternatives possibles. `Entrée` valide la suggestion sélectionnée. `Flèche bas` puis `Entrée` choisit une alternative. `Échap` ferme la popup sans rien insérer. Si rien ne s'affiche (parce que tu es en mode silencieux, ou que MathCursor n'a pas détecté ton intention), `Ctrl + Espace` force la popup à apparaître.",
+      "items": []
+    },
+    {
+      "id": "fractions",
+      "title": "Fractions",
+      "intro": "Tape l'opérateur `/`. Numérateur et dénominateur se forment automatiquement.",
+      "items": [
+        {
+          "instruction": "Fraction simple — tape `1/x`.",
+          "input": "1/x",
+          "expectedLatex": "\\frac{1}{x}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Avec un espace, la fraction s'arrête au `/`. Tape `1/x +1` (espace avant le `+`).",
+          "input": "1/x +1",
+          "expectedLatex": "\\frac{1}{x}+1",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Sans espace, MathCursor garde la priorité math standard mais te propose l'extension dans la popup. Tape `1/x+1` (collé).",
+          "input": "1/x+1",
+          "expectedLatex": "\\frac{1}{x}+1",
+          "showsPopup": true,
+          "popupAlt": "\\frac{1}{x+1}"
+        },
+        {
+          "instruction": "Deux lettres collées comptent comme une unité. Tape `AB/BC` — la fraction se forme. La popup propose aussi une variante vecteur pour `BC` (la plus à droite, près du curseur).",
+          "input": "AB/BC",
+          "expectedLatex": "\\frac{AB}{BC}",
+          "showsPopup": true,
+          "popupAlt": "\\vec{BC}"
+        }
+      ]
+    },
+    {
+      "id": "exposants-indices",
+      "title": "Exposants & indices",
+      "intro": "Tape un chiffre après une lettre : MathCursor propose l'exposant ; la popup propose l'indice. Pour forcer, utilise `^` (exposant) ou `_` (indice).",
+      "items": [
+        {
+          "instruction": "Tape `x2`. MathCursor propose `x²` ; la popup propose `x₂`.",
+          "input": "x2",
+          "expectedLatex": "x^{2}",
+          "showsPopup": true,
+          "popupAlt": "x_{2}"
+        },
+        {
+          "instruction": "Pour forcer l'exposant, tape `x^2`. Pas de popup, choix explicite.",
+          "input": "x^2",
+          "expectedLatex": "x^{2}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Indice simple — tape `u_n`.",
+          "input": "u_n",
+          "expectedLatex": "u_{n}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Indice étendu — tape `u_n+1` (collé). Default = `uₙ + 1`, popup = `uₙ₊₁`.",
+          "input": "u_n+1",
+          "expectedLatex": "u_{n}+1",
+          "showsPopup": true,
+          "popupAlt": "u_{n+1}"
+        },
+        {
+          "instruction": "Idem pour les exposants — tape `x^a+b` (collé).",
+          "input": "x^a+b",
+          "expectedLatex": "x^{a}+b",
+          "showsPopup": true,
+          "popupAlt": "x^{a+b}"
+        }
+      ]
+    },
+    {
+      "id": "vecteurs",
+      "title": "Vecteurs",
+      "intro": "Deux majuscules collées sont ambiguës (vecteur, segment, longueur). MathCursor te propose les options dans la popup, tu choisis.",
+      "items": [
+        {
+          "instruction": "Notation `vec` explicite — tape `vec u`.",
+          "input": "vec u",
+          "expectedLatex": "\\vec{u}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Tape `AB`. La popup propose `→AB` (vecteur), `(AB)` (droite), `[AB]` (segment).",
+          "input": "AB",
+          "expectedLatex": "AB",
+          "showsPopup": true,
+          "popupAlt": "\\vec{AB}"
+        },
+        {
+          "instruction": "Coordonnées colonne — tape `u (1 2)` (espaces entre valeurs).",
+          "input": "u (1 2)",
+          "expectedLatex": "\\vec{u} \\begin{pmatrix} 1 \\\\ 2 \\end{pmatrix}",
+          "showsPopup": true,
+          "popupAlt": "\\vec{u}(1 ; 2)"
+        },
+        {
+          "instruction": "Coordonnées ligne — tape `u(1, 2)` (virgules).",
+          "input": "u(1, 2)",
+          "expectedLatex": "\\vec{u}(1 ; 2)",
+          "showsPopup": true,
+          "popupAlt": "\\vec{u} \\begin{pmatrix} 1 \\\\ 2 \\end{pmatrix}"
+        }
+      ]
+    },
+    {
+      "id": "ensembles",
+      "title": "Ensembles canoniques",
+      "intro": "Les ensembles `R`, `N`, `Z`, `Q`, `C` ont une popup pour basculer entre la lettre simple et l'ensemble en `ℝ`, `ℕ`, etc. Préfixe `bb` pour forcer le rendu ensemble.",
+      "items": [
+        {
+          "instruction": "Tape `bbR` pour forcer `ℝ`.",
+          "input": "bbR",
+          "expectedLatex": "\\mathbb{R}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Tape `bbR*` pour `ℝ*`.",
+          "input": "bbR*",
+          "expectedLatex": "\\mathbb{R}^*",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Tape `forall x dans bbR` pour `∀x ∈ ℝ`.",
+          "input": "forall x dans bbR",
+          "expectedLatex": "\\forall x \\in \\mathbb{R}",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "intervalles",
+      "title": "Intervalles",
+      "intro": "Tape les crochets directement, ouverts ou fermés. Combine avec `union`, `inter`, ou le `U` contextuel.",
+      "items": [
+        {
+          "instruction": "Intervalle fermé — tape `[0,1]`.",
+          "input": "[0,1]",
+          "expectedLatex": "[0,1]",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Ouvert à droite — tape `[0,1[`.",
+          "input": "[0,1[",
+          "expectedLatex": "[0,1[",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Union — tape `[0,1] U [3,5]` (le `U` est reconnu entre intervalles).",
+          "input": "[0,1] U [3,5]",
+          "expectedLatex": "[0,1] \\cup [3,5]",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Intersection — tape `[0,1] inter [1,2]`.",
+          "input": "[0,1] inter [1,2]",
+          "expectedLatex": "[0,1] \\cap [1,2]",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "racines-fonctions",
+      "title": "Racines & fonctions",
+      "intro": "Mots-clés FR ou EN. Pas besoin de parenthèses si l'argument est court ; mets-en si c'est composé.",
+      "items": [
+        {
+          "instruction": "Racine — tape `racine x`.",
+          "input": "racine x",
+          "expectedLatex": "\\sqrt{x}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Cosinus court — tape `cos x`.",
+          "input": "cos x",
+          "expectedLatex": "\\cos x",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Cosinus composé — tape `cos(x+y)`.",
+          "input": "cos(x+y)",
+          "expectedLatex": "\\cos\\left(x+y\\right)",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Fraction de fonctions — tape `frac sin x x` pour `sin(x)/x`.",
+          "input": "frac sin x x",
+          "expectedLatex": "\\frac{\\sin x}{x}",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "sommes-limites-integrales",
+      "title": "Sommes, limites, intégrales",
+      "intro": "Mot-clé suivi des arguments séparés par espaces. Pas de notation `_{...}^{...}` à taper — c'est positionnel.",
+      "items": [
+        {
+          "instruction": "Limite — tape `lim x 0 f(x)` pour `lim x→0 f(x)`.",
+          "input": "lim x 0 f(x)",
+          "expectedLatex": "\\lim_{x \\to 0} f\\left(x\\right)",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Somme — tape `sum k 1 n k` pour `Σ k=1..n k`.",
+          "input": "sum k 1 n k",
+          "expectedLatex": "\\sum_{k=1}^{n} k",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Intégrale — tape `int 0 1 x`.",
+          "input": "int 0 1 x",
+          "expectedLatex": "\\int_{0}^{1} x",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Avec expression complexe — tape `sum k 1 n f(k) + g(k)` (espaces autour du `+`).",
+          "input": "sum k 1 n f(k) + g(k)",
+          "expectedLatex": "\\sum_{k=1}^{n} f\\left(k\\right)+g\\left(k\\right)",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "desambig-popup",
+      "title": "La popup de désambiguïsation",
+      "intro": "Quand plusieurs lectures sont possibles, MathCursor choisit la plus probable et propose les autres dans la popup. Tu reprends la main à tout moment avec la flèche bas + Entrée.",
+      "items": [
+        {
+          "instruction": "Décimal vs produit — tape `3.4`. Default = `3·4` (produit), popup = `3,4` (décimal).",
+          "input": "3.4",
+          "expectedLatex": "3\\cdot 4",
+          "showsPopup": true,
+          "popupAlt": "3{,}4"
+        },
+        {
+          "instruction": "Produit scalaire — tape `u*v`. Default = `u×v`, popup = `→u · →v`.",
+          "input": "u*v",
+          "expectedLatex": "u\\times v",
+          "showsPopup": true,
+          "popupAlt": "\\vec{u} \\cdot \\vec{v}"
+        },
+        {
+          "instruction": "Appel vs vecteur — tape `f(1, 2)`. Default = appel `f(1,2)`, popup = `→f(1 ; 2)`.",
+          "input": "f(1, 2)",
+          "expectedLatex": "f\\left(1,2\\right)",
+          "showsPopup": true,
+          "popupAlt": "\\vec{f}(1 ; 2)"
+        },
+        {
+          "instruction": "Angle 2 points — tape `^AB`. Le 3ᵉ point est en attente.",
+          "input": "^AB",
+          "expectedLatex": "\\widehat{AB\\square }",
+          "showsPopup": true,
+          "popupAlt": "\\widehat{AB}"
+        }
+      ]
+    }
+  ]
+}

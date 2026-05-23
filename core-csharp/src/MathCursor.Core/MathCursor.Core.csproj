@@ -15,7 +15,11 @@
            axe A étape 3+).
          Cf. ADRs 2026-05-13-Meta-harness-phase-0-1-mc0001 et
          2026-05-13-Meta-mc0006-mc0009. -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);MC0001;MC0006</WarningsNotAsErrors>
+    <!-- P32 (2026-05-23) : CS0618 = warning sur usage d'[Obsolete]. Les types
+         LatticeEngine/Parser/AlternativeGenerator sont marqués DEPRECATED
+         mais maintenus comme fallback Engine v2. Le legacy s'auto-utilise
+         (= cohérent) jusqu'à retrait complet. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);MC0001;MC0006;CS0618</WarningsNotAsErrors>
     <Version>0.1.0</Version>
     <Description>Pipeline de conversion texte → équation math. Aucune dépendance plateforme.</Description>
   </PropertyGroup>

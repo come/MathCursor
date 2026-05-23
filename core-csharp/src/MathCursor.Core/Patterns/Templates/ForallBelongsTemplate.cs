@@ -186,7 +186,9 @@ namespace MathCursor.Core.Patterns.Templates
                 previewLatex: preview,
                 hintLatex: hint,
                 mutation: mutation,
-                completenessScore: score);
+                completenessScore: score,
+                sourceStart: state.SourceStart,
+                sourceEnd: state.SourceEnd);
         }
 
         private static string BuildLatex(

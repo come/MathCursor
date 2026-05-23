@@ -170,6 +170,10 @@ namespace MathCursor.Core.Lattice
     /// droite = la plus proche du caret en cours de saisie » : tout ce qui est
     /// avant a été validé mou par le fait que l'élève continue à taper.
     /// </summary>
+    [System.Obsolete("DEPRECATED P32 — replaced by " +
+        "MathCursor.Engine.Collision.Detectors.* (ICollisionDetector pipeline). " +
+        "Kept as fallback. Do not extend — new collisions go in C# detectors " +
+        "or future YAML DSL (cf. ADR 2026-05-23-Meta-yaml-collision-dsl-future).")]
     public static class AlternativeGenerator
     {
         /// <summary>

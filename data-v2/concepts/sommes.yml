@@ -1,0 +1,25 @@
+# Concept "sommes" — brief v5 §2.2 + slots typés aliases sémantiques.
+# Cf. ADR 2026-05-22-Feat-whitespace-sep-and-pratt-tiers.
+
+concept: sommes
+rules:
+  - id: somme-k-from-to
+    anchor: sum
+    # {var} {bound} {bound} {body} : from et to sont des bornes (= addsub).
+    # body = greedy-jusqu'à-ancre.
+    shape: "sum {var} =? {from:bound} {to:bound} {body}"
+    emit:  "\\sum_{$var=$from}^{$to} $body"
+    tests:
+      - "sum k 1 n (1/k) => \\sum_{k=1}^{n} \\frac{1}{k}"
+      - "sum i 0 N (a_i) => \\sum_{i=0}^{\\mathbb{N}} a_i"
+      - "sum k 1 n+1 f(k) => \\sum_{k=1}^{n+1} f(k)"
+      - "sum k 0 2n+3 g(k) => \\sum_{k=0}^{2n+3} g(k)"
+
+  - id: produit-k-from-to
+    anchor: prod
+    shape: "prod {var} =? {from:bound} {to:bound} {body}"
+    emit:  "\\prod_{$var=$from}^{$to} $body"
+    tests:
+      - "prod k 1 n k => \\prod_{k=1}^{n} k"
+      - "prod k 1 n+1 f(k) => \\prod_{k=1}^{n+1} f(k)"
+      - "prod i 0 N (1-x_i) => \\prod_{i=0}^{\\mathbb{N}} 1-x_i"

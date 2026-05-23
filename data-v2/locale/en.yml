@@ -1,0 +1,36 @@
+# MathCursor vocabulary (locale EN). Stub minimal — sera étendu en P12.
+# Brief v4 §3 : "Anglais = en.yml (decimal: '.', colsep: [' ', ',']), zéro code touché."
+
+classes:
+  to:     ['->', '→', 'to', 'tends to']
+  filler: ['when', 'as']
+  dir:    ['+', '-', '⁺', '⁻']
+
+anchors:
+  limit: lim
+  sum:   sum
+  prod:  prod
+  int:   int
+
+functions:
+  gcd: '\gcd'
+  lcm: '\operatorname{lcm}'
+
+relations:
+  '+':      { tex: '+',           tier: addsub }
+  '-':      { tex: '-',           tier: addsub }
+  '*':      { tex: '\cdot',       tier: muldiv }
+  '/':      { tex: '/',           tier: muldiv }
+  '^':      { tex: '^',           tier: funcpow }
+  '_':      { tex: '_',           tier: funcpow }
+  '=':      { tex: '=',           tier: comp }
+  '<':      { tex: '<',           tier: comp }
+  '>':      { tex: '>',           tier: comp }
+  'in':     { tex: '\in',         tier: rel }
+  '=>':     { tex: '\implies',    tier: implies }
+  '<=>':    { tex: '\iff',        tier: iff }
+
+glue:    ['->', '=', '→']
+colsep:  [' ', ',']
+rowsep:  [';']
+decimal: '.'

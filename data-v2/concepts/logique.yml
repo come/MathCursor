@@ -1,0 +1,39 @@
+# Concept "logique" — quantificateurs ∀ ∃ et connecteurs.
+# Migration ForallBelongsTemplate legacy vers Engine v2.
+# Cf. brief v5 §6 (collisions déclarées future).
+
+concept: logique
+rules:
+  # ─── ∀ avec domaine d'appartenance ────────────────────────────────
+  # `V x R P(x)` = ∀x ∈ ℝ, P(x)
+  - id: forall-belongs
+    anchor: forall
+    shape: "forall {var} {set:expr} {body}"
+    emit:  "\\forall $var \\in $set, $body"
+    tests:
+      - "forall x R P(x) => \\forall x \\in \\mathbb{R}, P(x)"
+      - "forall n N n>0 => \\forall n \\in \\mathbb{N}, n>0"
+
+  # ─── ∀ sans body (= forme courte) ─────────────────────────────────
+  # `V x R` = ∀x ∈ ℝ
+  - id: forall-belongs-short
+    anchor: forall
+    shape: "forall {var} {set:expr}"
+    emit:  "\\forall $var \\in $set"
+    tests:
+      - "forall x R => \\forall x \\in \\mathbb{R}"
+
+  # ─── ∃ avec domaine ───────────────────────────────────────────────
+  - id: exists-belongs
+    anchor: exists
+    shape: "exists {var} {set:expr} {body}"
+    emit:  "\\exists $var \\in $set, $body"
+    tests:
+      - "exists x R x>0 => \\exists x \\in \\mathbb{R}, x>0"
+
+  - id: exists-belongs-short
+    anchor: exists
+    shape: "exists {var} {set:expr}"
+    emit:  "\\exists $var \\in $set"
+    tests:
+      - "exists y N => \\exists y \\in \\mathbb{N}"

@@ -1,0 +1,274 @@
+{
+  "version": "1.0",
+  "lang": "en",
+  "title": "MathCursor — Getting started",
+  "intro": "For each prompt, try it out in the box on the right. Type, look, try again. Whitespace matters in MathCursor: it separates what is grouped.",
+  "sections": [
+    {
+      "id": "popup",
+      "title": "How the popup works",
+      "intro": "As soon as MathCursor recognises a notation, a small grey popup appears above the caret with the main conversion (preselected) and the possible alternatives. `Enter` accepts the selected suggestion. `Down arrow` then `Enter` picks an alternative. `Esc` dismisses the popup without inserting anything. If nothing appears (because you're in silent mode, or MathCursor didn't catch your intent), `Ctrl + Space` forces the popup.",
+      "items": []
+    },
+    {
+      "id": "fractions",
+      "title": "Fractions",
+      "intro": "Type the `/` operator. Numerator and denominator are built automatically.",
+      "items": [
+        {
+          "instruction": "Plain fraction — type `1/x`.",
+          "input": "1/x",
+          "expectedLatex": "\\frac{1}{x}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "With a space, the fraction stops at `/`. Type `1/x +1` (space before `+`).",
+          "input": "1/x +1",
+          "expectedLatex": "\\frac{1}{x}+1",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Without a space, MathCursor keeps standard math precedence but offers the extension in the popup. Type `1/x+1` (no space).",
+          "input": "1/x+1",
+          "expectedLatex": "\\frac{1}{x}+1",
+          "showsPopup": true,
+          "popupAlt": "\\frac{1}{x+1}"
+        },
+        {
+          "instruction": "Two letters stuck together count as a single unit. Type `AB/BC` — the fraction forms. The popup also offers a vector variant for `BC` (the rightmost match, closest to the caret).",
+          "input": "AB/BC",
+          "expectedLatex": "\\frac{AB}{BC}",
+          "showsPopup": true,
+          "popupAlt": "\\vec{BC}"
+        }
+      ]
+    },
+    {
+      "id": "superscripts-subscripts",
+      "title": "Superscripts & subscripts",
+      "intro": "Type a digit after a letter: MathCursor proposes the superscript; the popup proposes the subscript. To force either explicitly, use `^` (superscript) or `_` (subscript).",
+      "items": [
+        {
+          "instruction": "Type `x2`. MathCursor proposes `x²`; the popup proposes `x₂`.",
+          "input": "x2",
+          "expectedLatex": "x^{2}",
+          "showsPopup": true,
+          "popupAlt": "x_{2}"
+        },
+        {
+          "instruction": "To force the superscript, type `x^2`. No popup — explicit choice.",
+          "input": "x^2",
+          "expectedLatex": "x^{2}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Simple subscript — type `u_n`.",
+          "input": "u_n",
+          "expectedLatex": "u_{n}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Extended subscript — type `u_n+1` (no space). Default = `uₙ + 1`, popup = `uₙ₊₁`.",
+          "input": "u_n+1",
+          "expectedLatex": "u_{n}+1",
+          "showsPopup": true,
+          "popupAlt": "u_{n+1}"
+        },
+        {
+          "instruction": "Same idea for superscripts — type `x^a+b` (no space).",
+          "input": "x^a+b",
+          "expectedLatex": "x^{a}+b",
+          "showsPopup": true,
+          "popupAlt": "x^{a+b}"
+        }
+      ]
+    },
+    {
+      "id": "vectors",
+      "title": "Vectors",
+      "intro": "Two adjacent capital letters are ambiguous (vector, segment, length). MathCursor offers the options in the popup; you pick.",
+      "items": [
+        {
+          "instruction": "Explicit `vec` notation — type `vec u`.",
+          "input": "vec u",
+          "expectedLatex": "\\vec{u}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Type `AB`. The popup offers `→AB` (vector), `(AB)` (line), `[AB]` (segment).",
+          "input": "AB",
+          "expectedLatex": "AB",
+          "showsPopup": true,
+          "popupAlt": "\\vec{AB}"
+        },
+        {
+          "instruction": "Column coordinates — type `u (1 2)` (spaces between values).",
+          "input": "u (1 2)",
+          "expectedLatex": "\\vec{u} \\begin{pmatrix} 1 \\\\ 2 \\end{pmatrix}",
+          "showsPopup": true,
+          "popupAlt": "\\vec{u}(1 ; 2)"
+        },
+        {
+          "instruction": "Row coordinates — type `u(1, 2)` (commas).",
+          "input": "u(1, 2)",
+          "expectedLatex": "\\vec{u}(1 ; 2)",
+          "showsPopup": true,
+          "popupAlt": "\\vec{u} \\begin{pmatrix} 1 \\\\ 2 \\end{pmatrix}"
+        }
+      ]
+    },
+    {
+      "id": "canonical-sets",
+      "title": "Canonical sets",
+      "intro": "The sets `R`, `N`, `Z`, `Q`, `C` show a popup to switch between the plain letter and the set form `ℝ`, `ℕ`, etc. Prefix with `bb` to force the set rendering.",
+      "items": [
+        {
+          "instruction": "Type `bbR` to force `ℝ`.",
+          "input": "bbR",
+          "expectedLatex": "\\mathbb{R}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Type `bbR*` for `ℝ*`.",
+          "input": "bbR*",
+          "expectedLatex": "\\mathbb{R}^*",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Type `forall x in bbR` for `∀x ∈ ℝ`.",
+          "input": "forall x in bbR",
+          "expectedLatex": "\\forall x \\in \\mathbb{R}",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "intervals",
+      "title": "Intervals",
+      "intro": "Type the brackets directly, open or closed. Combine with `union`, `inter`, or the contextual `U`.",
+      "items": [
+        {
+          "instruction": "Closed interval — type `[0,1]`.",
+          "input": "[0,1]",
+          "expectedLatex": "[0,1]",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Open on the right — type `[0,1[`.",
+          "input": "[0,1[",
+          "expectedLatex": "[0,1[",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Union — type `[0,1] U [3,5]` (`U` is recognised between intervals).",
+          "input": "[0,1] U [3,5]",
+          "expectedLatex": "[0,1] \\cup [3,5]",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Intersection — type `[0,1] inter [1,2]`.",
+          "input": "[0,1] inter [1,2]",
+          "expectedLatex": "[0,1] \\cap [1,2]",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "roots-functions",
+      "title": "Roots & functions",
+      "intro": "Keywords in English. No need for parentheses if the argument is short; add them for compound expressions.",
+      "items": [
+        {
+          "instruction": "Square root — type `sqrt x`.",
+          "input": "sqrt x",
+          "expectedLatex": "\\sqrt{x}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Short cosine — type `cos x`.",
+          "input": "cos x",
+          "expectedLatex": "\\cos x",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Compound cosine — type `cos(x+y)`.",
+          "input": "cos(x+y)",
+          "expectedLatex": "\\cos\\left(x+y\\right)",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Fraction of functions — type `frac sin x x` for `sin(x)/x`.",
+          "input": "frac sin x x",
+          "expectedLatex": "\\frac{\\sin x}{x}",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "sums-limits-integrals",
+      "title": "Sums, limits, integrals",
+      "intro": "Keyword followed by arguments separated by spaces. No `_{...}^{...}` to type — it's positional.",
+      "items": [
+        {
+          "instruction": "Limit — type `lim x 0 f(x)` for `lim x→0 f(x)`.",
+          "input": "lim x 0 f(x)",
+          "expectedLatex": "\\lim_{x \\to 0} f\\left(x\\right)",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Sum — type `sum k 1 n k` for `Σ k=1..n k`.",
+          "input": "sum k 1 n k",
+          "expectedLatex": "\\sum_{k=1}^{n} k",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Integral — type `int 0 1 x`.",
+          "input": "int 0 1 x",
+          "expectedLatex": "\\int_{0}^{1} x",
+          "showsPopup": false
+        },
+        {
+          "instruction": "With a compound expression — type `sum k 1 n f(k) + g(k)` (spaces around `+`).",
+          "input": "sum k 1 n f(k) + g(k)",
+          "expectedLatex": "\\sum_{k=1}^{n} f\\left(k\\right)+g\\left(k\\right)",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "disambig-popup",
+      "title": "The disambiguation popup",
+      "intro": "When several readings are possible, MathCursor picks the most likely one and offers the others in the popup. You can switch at any time with Down arrow + Enter.",
+      "items": [
+        {
+          "instruction": "Decimal vs product — type `3.4`. Default = `3·4` (product), popup = `3,4` (decimal).",
+          "input": "3.4",
+          "expectedLatex": "3\\cdot 4",
+          "showsPopup": true,
+          "popupAlt": "3{,}4"
+        },
+        {
+          "instruction": "Dot product — type `u*v`. Default = `u·v`, popup = `→u · →v`.",
+          "input": "u*v",
+          "expectedLatex": "u\\cdot v",
+          "showsPopup": true,
+          "popupAlt": "\\vec{u} \\cdot \\vec{v}"
+        },
+        {
+          "instruction": "Call vs vector — type `f(1, 2)`. Default = call `f(1,2)`, popup = `→f(1 ; 2)`.",
+          "input": "f(1, 2)",
+          "expectedLatex": "f\\left(1,2\\right)",
+          "showsPopup": true,
+          "popupAlt": "\\vec{f}(1 ; 2)"
+        },
+        {
+          "instruction": "Two-point angle — type `^AB`. The 3rd point is pending.",
+          "input": "^AB",
+          "expectedLatex": "\\widehat{AB\\square }",
+          "showsPopup": true,
+          "popupAlt": "\\widehat{AB}"
+        }
+      ]
+    }
+  ]
+}

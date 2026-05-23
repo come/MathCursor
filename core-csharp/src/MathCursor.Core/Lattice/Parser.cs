@@ -23,6 +23,8 @@ namespace MathCursor.Core.Lattice
     /// d'entrer dans le parser (ils servent uniquement à calculer le drapeau
     /// Tight au lexer).
     /// </summary>
+    [System.Obsolete("DEPRECATED P32 — replaced by MathCursor.Engine.Parsing.StackParser " +
+        "(passe-pile O(n) déterministe brief v5). Kept as fallback. Do not extend.")]
     public sealed class Parser
     {
         private readonly IReadOnlyList<LatticeEdge> _toks;

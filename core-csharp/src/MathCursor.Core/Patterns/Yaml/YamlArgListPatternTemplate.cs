@@ -101,7 +101,9 @@ namespace MathCursor.Core.Patterns.Yaml
                 previewLatex: preview,
                 hintLatex: hint,
                 mutation: mutation,
-                completenessScore: score) };
+                completenessScore: score,
+                sourceStart: state.SourceStart,
+                sourceEnd: sourceEnd) };
         }
 
         /// <summary>

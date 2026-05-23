@@ -127,7 +127,9 @@ namespace MathCursor.Core.Patterns.Templates
                 previewLatex: previewLatex,
                 hintLatex: previewLatex, // pas de slot vide → hint identique au preview
                 mutation: new SourceMutation(state.SourceStart, len, replacement),
-                completenessScore: 100);
+                completenessScore: 100,
+                sourceStart: state.SourceStart,
+                sourceEnd: state.SourceEnd);
 
             return new[] { completion };
         }

@@ -58,6 +58,27 @@ namespace MathCursor.Core.Tests.Patterns.Templates
             Assert.Null(New().TryMatchHead(Ctx("2(0,1)")));
         }
 
+        // Bug 2026-05-21 : pour `F'(x)=1/x`, IntervalUnion matchait `(x` car
+        // boundary `IsLetterOrDigit('\'')` est false. Les apostrophes et
+        // primes (= primed derivative notation) doivent invalider le boundary
+        // comme le font les lettres. Cas pratiques : `f'(x)`, `f"(x)`,
+        // `f’(x)` (Word auto-correct U+2019), `f′(x)` (Unicode math prime).
+        [Theory]
+        [InlineData("f'(x)")]      // apostrophe ASCII U+0027
+        [InlineData("f''(x)")]     // 2 apostrophes ASCII
+        [InlineData("f\"(x)")]    // guillemet ASCII U+0022
+        [InlineData("f’(x)")]      // U+2019 (Word auto-correct)
+        [InlineData("f’’(x)")]    // 2× U+2019
+        [InlineData("f′(x)")]      // U+2032 math prime
+        [InlineData("f″(x)")]      // U+2033 math double prime
+        [InlineData("f”(x)")]      // U+201D (auto-correct double quote)
+        public void Rejects_paren_after_apostrophe_or_prime_variant(string source)
+        {
+            // L'apostrophe/prime indique un primed derivative function call
+            // `f'(x)`, pas un intervalle ouvert. Le boundary doit rejeter.
+            Assert.Null(New().TryMatchHead(Ctx(source)));
+        }
+
         [Fact]
         public void Accepts_bracket_after_letter_for_left_bracket()
         {

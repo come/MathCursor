@@ -5,17 +5,17 @@ using MathCursor.Core.Lattice.Ast;
 namespace MathCursor.Core
 {
     /// <summary>
-    /// Façade du moteur lattice : enchaîne Lex → TopK → Parse → Render et
-    /// expose une API conforme à <see cref="ILatexEngine"/> pour que l'adapter
-    /// VSTO reste inchangé.
+    /// <para><b>⚠ DEPRECATED P32 (2026-05-23)</b> — remplacé par
+    /// <c>MathCursor.Engine.MathEngine</c>. Maintenu uniquement comme
+    /// fallback pour les ~10% de cas non couverts par Engine v2. Sera
+    /// retiré une fois la couverture complète atteinte. Ne pas étendre
+    /// (= toute nouvelle règle math passe par <c>data-v2/concepts/*.yml</c>).</para>
     ///
-    /// Phase 5a : retourne plusieurs suggestions quand le top-K Dijkstra
-    /// produit des chemins de coût comparable (ratio relatif). Le top-1 est
-    /// toujours en première position de la liste — l'adapter VSTO peut
-    /// l'utiliser comme suggestion par défaut. Les alternatives sémantiques
-    /// (vec(AB), racine V(...), …) viendront en phase 5b via un module
-    /// AlternativeGenerator distinct, branché sur l'AST top-1.
+    /// <para>Façade du moteur lattice legacy : enchaîne Lex → TopK → Parse → Render.</para>
     /// </summary>
+    [System.Obsolete("DEPRECATED P32 — replaced by MathCursor.Engine.MathEngine. " +
+        "Kept as fallback for legacy cases not yet covered by Engine v2. " +
+        "Will be removed when migration complete. Do not extend.")]
     public sealed class LatticeEngine : ILatexEngine
     {
         // Delta absolu max entre coût top-1 et coût d'une alternative. 5 =
