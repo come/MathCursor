@@ -91,4 +91,31 @@ namespace MathCursor.Engine.Ast
         public UnaryPrefixNode(string op, AstNode operand)
         { Op = op; Operand = operand; }
     }
+
+    /// <summary>
+    /// Bloc multi-ligne : système d'équations (<c>\begin{cases}</c>) ou chaîne
+    /// d'équivalences/égalités (<c>\begin{align*}</c>). Construit par le
+    /// pre-pass de <see cref="MathEngine"/> quand le source contient des
+    /// boundaries <c>\n</c> (= <c>Sep("\n")</c> tokens) avec le pattern
+    /// adéquat. Cf. ADR <c>2026-05-23-Feat-engine-v2-multiline-port</c>.
+    ///
+    /// <para><c>Mode</c> = <c>"align"</c> ou <c>"cases"</c>.
+    /// <c>LinePrefix[i]</c> = préfixe LaTeX ajouté avant la ligne <c>i</c>
+    /// (typiquement <c>\Leftrightarrow </c>, <c>\Rightarrow </c>,
+    /// <c>\Leftarrow </c>, ou <c>""</c> pour la 1re ligne et la chaîne
+    /// d'égalités). Pour <c>"cases"</c>, toujours <c>""</c>.</para>
+    /// </summary>
+    public sealed class MultiLineBlockNode : AstNode
+    {
+        public override string Kind => "multiLineBlock";
+        public string Mode { get; }
+        public IReadOnlyList<AstNode> Lines { get; }
+        public IReadOnlyList<string> LinePrefix { get; }
+        public MultiLineBlockNode(string mode, IReadOnlyList<AstNode> lines, IReadOnlyList<string> linePrefix)
+        {
+            Mode = mode;
+            Lines = lines;
+            LinePrefix = linePrefix;
+        }
+    }
 }

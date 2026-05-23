@@ -72,6 +72,22 @@ namespace MathCursor.Engine
             var tokens = _tokenizer.Tokenize(source);
             if (tokens.Count == 0) return EngineResult.Empty;
 
+            // Pre-pass multi-line (= align*/cases) : si le source contient
+            // des boundaries `\n` (= Sep("\n") tokens) et un pattern align
+            // ou cases reconnaissable → construit un MultiLineBlockNode et
+            // emit directement. Sinon → loop top-level normal pour single-line.
+            // Cf. ADR 2026-05-23-Feat-engine-v2-multiline-port.
+            var multiLineBlock = TryBuildMultiLineBlock(tokens);
+            if (multiLineBlock != null)
+            {
+                var multiLineLatex = _flatEmitter.Emit(multiLineBlock);
+                return new EngineResult(
+                    topLatex: multiLineLatex,
+                    isComplete: !multiLineLatex.Contains(@"\square"),
+                    collisions: System.Array.Empty<EngineCandidate>(),
+                    ruleId: multiLineBlock.Mode == "cases" ? "multiline-cases" : "multiline-align");
+            }
+
             // P30 (2026-05-22) : la détection angle `^<word>` est faite au
             // tokenizer (= MergeLeadingCaretAngle). Plus de hardcoded ici.
 
@@ -323,6 +339,150 @@ namespace MathCursor.Engine
                    && tokens[ti].Kind == TokenKind.Sep
                    && tokens[ti].Text == " ")
                 ti++;
+        }
+
+        // ─── Multi-line block (align*/cases) ──────────────────────────
+        // Cf. ADR 2026-05-23-Feat-engine-v2-multiline-port. Port direct du
+        // legacy Parser.TryParseMultiLineBlock.
+
+        /// <summary>
+        /// Détecte un bloc multi-ligne (align* ou cases) à partir du flux de
+        /// tokens et construit un <see cref="MultiLineBlockNode"/>. Retourne
+        /// <c>null</c> si pas de pattern multi-ligne (= fallback single-line).
+        /// </summary>
+        private MultiLineBlockNode? TryBuildMultiLineBlock(IReadOnlyList<Token> tokens)
+        {
+            // Identifier les indices où Sep("\n") apparaît → boundaries de ligne.
+            var lineStarts = new List<int> { 0 };
+            for (int i = 0; i < tokens.Count; i++)
+            {
+                if (tokens[i].Kind == TokenKind.Sep && tokens[i].Text == "\n")
+                {
+                    int next = i + 1;
+                    if (next < tokens.Count) lineStarts.Add(next);
+                }
+            }
+            if (lineStarts.Count < 2) return null; // single-line
+
+            // Cases en priorité : si line[0] commence par `{ ` (open delim non
+            // refermé dans la ligne) ET toutes les lignes commencent par `{ ` aussi.
+            int firstLineEnd = lineStarts[1] - 1; // exclut le Sep("\n")
+            if (IsCasesLineStart(tokens, lineStarts[0], firstLineEnd))
+            {
+                return TryBuildCasesBlock(tokens, lineStarts);
+            }
+
+            return TryBuildAlignBlock(tokens, lineStarts);
+        }
+
+        /// <summary>Cases : toutes les lignes doivent commencer par `{` non
+        /// refermé. Skip le `{` initial de chaque ligne (porté implicitement
+        /// dans <c>\begin{cases}</c>).</summary>
+        private MultiLineBlockNode? TryBuildCasesBlock(IReadOnlyList<Token> tokens, List<int> lineStarts)
+        {
+            for (int li = 0; li < lineStarts.Count; li++)
+            {
+                int lineEnd = (li + 1 < lineStarts.Count) ? lineStarts[li + 1] - 1 : tokens.Count;
+                if (!IsCasesLineStart(tokens, lineStarts[li], lineEnd)) return null;
+            }
+
+            var lines = new List<AstNode>();
+            var prefixes = new List<string>();
+            for (int li = 0; li < lineStarts.Count; li++)
+            {
+                int s = lineStarts[li] + 1; // skip `{`
+                int e = (li + 1 < lineStarts.Count) ? lineStarts[li + 1] - 1 : tokens.Count;
+                var lineAst = ParseTokenRange(tokens, s, e);
+                lines.Add(lineAst ?? PlaceholderNode.Instance);
+                prefixes.Add("");
+            }
+            return new MultiLineBlockNode("cases", lines, prefixes);
+        }
+
+        /// <summary>Align : ligne 0 quelconque, lignes 1+ doivent commencer
+        /// par un marker align (= <c>=</c>, <c>&lt;=&gt;</c>, <c>=&gt;</c>,
+        /// <c>&lt;=</c> et variants). Skip le marker initial de chaque ligne
+        /// 2+ (porté dans <c>LinePrefix</c>).</summary>
+        private MultiLineBlockNode? TryBuildAlignBlock(IReadOnlyList<Token> tokens, List<int> lineStarts)
+        {
+            var prefixes = new List<string> { "" };
+            for (int li = 1; li < lineStarts.Count; li++)
+            {
+                int s = lineStarts[li];
+                if (s >= tokens.Count) return null;
+                var first = tokens[s];
+                // Sauter un éventuel Sep(" ") interne en début de ligne
+                if (first.Kind == TokenKind.Sep && first.Text == " " && s + 1 < tokens.Count)
+                {
+                    s++;
+                    first = tokens[s];
+                }
+                var prefix = MapAlignMarkerToLatex(first);
+                if (prefix == null) return null; // pas un align block
+                prefixes.Add(prefix);
+            }
+
+            var lines = new List<AstNode>();
+            for (int li = 0; li < lineStarts.Count; li++)
+            {
+                int s = lineStarts[li];
+                int e = (li + 1 < lineStarts.Count) ? lineStarts[li + 1] - 1 : tokens.Count;
+                if (li > 0)
+                {
+                    // skip Sep(" ") puis marker
+                    while (s < e && tokens[s].Kind == TokenKind.Sep && tokens[s].Text == " ") s++;
+                    s++; // skip marker
+                }
+                var lineAst = ParseTokenRange(tokens, s, e);
+                lines.Add(lineAst ?? PlaceholderNode.Instance);
+            }
+            return new MultiLineBlockNode("align", lines, prefixes);
+        }
+
+        /// <summary>True si le 1er token (modulo Sep) à <paramref name="lineStart"/>
+        /// est un <c>{</c> qui n'est PAS refermé par un <c>}</c> dans la
+        /// même ligne (= marker système cases, vs. délimiteur de set).</summary>
+        private static bool IsCasesLineStart(IReadOnlyList<Token> tokens, int lineStart, int lineEndExcl)
+        {
+            int s = lineStart;
+            while (s < lineEndExcl && tokens[s].Kind == TokenKind.Sep && tokens[s].Text == " ") s++;
+            if (s >= lineEndExcl) return false;
+            if (tokens[s].Kind != TokenKind.OpenDelim || tokens[s].Text != "{") return false;
+            // Vérifier qu'aucun `}` ne ferme le set sur cette ligne.
+            for (int i = s + 1; i < lineEndExcl; i++)
+            {
+                if (tokens[i].Kind == TokenKind.CloseDelim && tokens[i].Text == "}") return false;
+            }
+            return true;
+        }
+
+        /// <summary>Mappe un token de marker align vers son préfixe LaTeX.
+        /// Retourne <c>null</c> si pas un marker reconnu.</summary>
+        private static string? MapAlignMarkerToLatex(Token tok)
+        {
+            if (tok.Kind != TokenKind.Symbol && tok.Kind != TokenKind.Glue) return null;
+            switch (tok.Text)
+            {
+                case "=": return ""; // chaîne d'égalités, aligné via &
+                case "<=>": case "<==>": case "⇔": case "↔": case "⟺":
+                    return "\\Leftrightarrow ";
+                case "=>": case "==>": case "⇒": case "⟹":
+                    return "\\Rightarrow ";
+                case "<=": case "<==": case "⇐": case "⟸":
+                    return "\\Leftarrow ";
+                default: return null;
+            }
+        }
+
+        /// <summary>Parse une sous-séquence de tokens via StackParser. Utilisé
+        /// par les helpers multi-line pour parser chaque ligne indépendamment.</summary>
+        private AstNode? ParseTokenRange(IReadOnlyList<Token> tokens, int start, int endExcl)
+        {
+            if (start >= endExcl) return null;
+            var slice = new List<Token>(endExcl - start);
+            for (int i = start; i < endExcl; i++) slice.Add(tokens[i]);
+            var ast = _parser.Parse(slice);
+            return ListCombinator.Promote(ast);
         }
 
         // ─── Factory ──────────────────────────────────────────────────

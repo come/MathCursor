@@ -40,9 +40,16 @@ namespace MathCursor.Engine.Tokenization
                 if (i > 0)
                 {
                     var prev = rawTokens[i - 1];
-                    if (t.Start > prev.End)
+                    // Insère Sep(" ") boundary si gap réel. Skip uniquement
+                    // quand un des deux voisins est déjà un Sep("\n") (= éviter
+                    // doublons Sep+Sep("\n") quand un `\n` côtoie un espace,
+                    // ex. "a \n b"). Pour les autres Sep (`;`, `,`), continuer
+                    // à insérer le Sep(" ") boundary autour (= comportement
+                    // historique nécessaire au test Matrix_source_tokenizes_with_semi).
+                    bool nextToNewline = (t.Kind == TokenKind.Sep && t.Text == "\n")
+                                       || (prev.Kind == TokenKind.Sep && prev.Text == "\n");
+                    if (t.Start > prev.End && !nextToNewline)
                     {
-                        // Whitespace entre prev et t → Sep boundary.
                         refined.Add(new Token(" ", TokenKind.Sep, prev.End, t.Start));
                     }
                 }
@@ -93,6 +100,27 @@ namespace MathCursor.Engine.Tokenization
             while (i < source.Length)
             {
                 char c = source[i];
+
+                // Newline = boundary multi-ligne (= align*/cases) — émet un
+                // Sep dédié avec Text="\n" pour que MathEngine.Resolve puisse
+                // détecter les frontières de ligne dans son pre-pass. Les
+                // autres whitespaces restent skipped (le post-process
+                // refined insère Sep(" ") entre tokens si besoin).
+                // Cf. ADR 2026-05-23-Feat-engine-v2-multiline-port.
+                if (c == '\n')
+                {
+                    tokens.Add(new Token("\n", TokenKind.Sep, i, i + 1));
+                    i++;
+                    continue;
+                }
+                if (c == '\r')
+                {
+                    // \r\n collapse en 1 Sep("\n"), \r seul aussi traité comme newline.
+                    int len = (i + 1 < source.Length && source[i + 1] == '\n') ? 2 : 1;
+                    tokens.Add(new Token("\n", TokenKind.Sep, i, i + len));
+                    i += len;
+                    continue;
+                }
 
                 if (char.IsWhiteSpace(c)) { i++; continue; }
 

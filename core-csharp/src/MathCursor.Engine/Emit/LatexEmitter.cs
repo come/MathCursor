@@ -71,6 +71,42 @@ namespace MathCursor.Engine.Emit
                     sb.Append(unary.Op);
                     Render(unary.Operand, sb);
                     break;
+                case MultiLineBlockNode mb:
+                    RenderMultiLineBlock(mb, sb);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Rend un bloc multi-ligne : <c>\begin{align*}</c> avec préfixes
+        /// par ligne, ou <c>\begin{cases}</c> avec lignes juxtaposées. Port
+        /// direct du legacy <c>LatexRenderingVisitor.Visit(MultiLineBlock)</c>.
+        /// Cf. ADR 2026-05-23-Feat-engine-v2-multiline-port.
+        /// </summary>
+        private void RenderMultiLineBlock(MultiLineBlockNode mb, StringBuilder sb)
+        {
+            if (mb.Mode == "align")
+            {
+                sb.Append("\\begin{align*} ");
+                for (int i = 0; i < mb.Lines.Count; i++)
+                {
+                    if (i > 0) sb.Append(" \\\\ ");
+                    string prefix = (i < mb.LinePrefix.Count) ? mb.LinePrefix[i] : "";
+                    if (!string.IsNullOrEmpty(prefix)) sb.Append(prefix);
+                    Render(mb.Lines[i], sb);
+                }
+                sb.Append(" \\end{align*}");
+                return;
+            }
+            if (mb.Mode == "cases")
+            {
+                sb.Append("\\begin{cases} ");
+                for (int i = 0; i < mb.Lines.Count; i++)
+                {
+                    if (i > 0) sb.Append(" \\\\ ");
+                    Render(mb.Lines[i], sb);
+                }
+                sb.Append(" \\end{cases}");
             }
         }
 
