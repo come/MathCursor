@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using MathCursor.Core;
 using MathCursor.Core.Resolution;
+using MathCursor.Host.Detection;
 using Word = Microsoft.Office.Interop.Word;
 
 namespace MathCursor.Host.ManualTrigger
@@ -42,17 +43,14 @@ namespace MathCursor.Host.ManualTrigger
         private readonly Action _passThroughToPolling;
         private readonly Func<bool> _isSuggestionPopupVisible;
         private readonly Action _closeEditMode;
-        private readonly Action<string> _setLastZoneSource;
-        private readonly Action<ResolvedZone, int, int, int, string> _showPopupAndEnterNavMode;
+        private readonly Action<ResolvedZone, ZoneSpan, int, string> _showPopupAndEnterNavMode;
         private readonly Action<string> _log;
 
         // État d'extension itérative — chaque Ctrl+Espace suivant tant que
         // la popup est ouverte étend la zone d'un cran (ADR 29-04).
-        private string _iterativeParagraph;
-        private int _iterativeParaAbsStart = -1;
-        private int _iterativeSpanStart = -1;
-        private int _iterativeSpanEnd = -1;
-        private IReadOnlyList<(int start, int end)> _iterativeOMaths;
+        // Cf. ADR 2026-05-23-Refactor-zonespan-popup-commit-coords pour
+        // le passage de 5 fields séparés à un seul ZoneSpan.
+        private ZoneSpan _iterativeSpan;
 
         public ManualTriggerController(
             Word.Application app,
@@ -62,8 +60,7 @@ namespace MathCursor.Host.ManualTrigger
             Action passThroughToPolling,
             Func<bool> isSuggestionPopupVisible,
             Action closeEditMode,
-            Action<string> setLastZoneSource,
-            Action<ResolvedZone, int, int, int, string> showPopupAndEnterNavMode,
+            Action<ResolvedZone, ZoneSpan, int, string> showPopupAndEnterNavMode,
             Action<string> log)
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
@@ -73,12 +70,11 @@ namespace MathCursor.Host.ManualTrigger
             _passThroughToPolling = passThroughToPolling ?? (() => { });
             _isSuggestionPopupVisible = isSuggestionPopupVisible ?? (() => false);
             _closeEditMode = closeEditMode ?? (() => { });
-            _setLastZoneSource = setLastZoneSource ?? (s => { });
-            _showPopupAndEnterNavMode = showPopupAndEnterNavMode ?? ((_, __, ___, ____, _____) => { });
+            _showPopupAndEnterNavMode = showPopupAndEnterNavMode ?? ((_, __, ___, ____) => { });
             _log = log ?? (s => { });
         }
 
-        public bool HasIterativeState => _iterativeSpanStart >= 0;
+        public bool HasIterativeState => _iterativeSpan != null;
 
         /// <summary>
         /// Trigger explicite : entrée du flow.
@@ -88,13 +84,23 @@ namespace MathCursor.Host.ManualTrigger
         /// </summary>
         public void Trigger()
         {
+            _log("[CTRL+SPACE] Trigger() called");
             try
             {
-                if (_app.Documents.Count == 0) return;
-                if (_isCaretInOurOMath()) { _passThroughToPolling(); return; }
-
-                if (_isSuggestionPopupVisible() && _iterativeSpanStart >= 0)
+                if (_app.Documents.Count == 0)
                 {
+                    _log("[CTRL+SPACE] ABORT: Documents.Count==0");
+                    return;
+                }
+                bool inOMath = _isCaretInOurOMath();
+                _log($"[CTRL+SPACE] isCaretInOurOMath={inOMath}");
+                if (inOMath) { _passThroughToPolling(); return; }
+
+                bool popupVisible = _isSuggestionPopupVisible();
+                _log($"[CTRL+SPACE] popupVisible={popupVisible} hasIterative={HasIterativeState}");
+                if (popupVisible && HasIterativeState)
+                {
+                    _log("[CTRL+SPACE] → ExtendOneStop");
                     ExtendOneStop();
                     return;
                 }
@@ -103,37 +109,57 @@ namespace MathCursor.Host.ManualTrigger
                 int caretInParagraph = paragraph.CaretOffset;
                 int paragraphAbsStart = paragraph.ParagraphAbsStart;
                 string text = paragraph.Text ?? "";
-                if (string.IsNullOrEmpty(text) || caretInParagraph <= 0) return;
+                _log($"[CTRL+SPACE] paragraph text=\"{Preview(text)}\" caret={caretInParagraph} omaths={paragraph.OMathRegions?.Count ?? 0}");
+                if (string.IsNullOrEmpty(text) || caretInParagraph <= 0)
+                {
+                    _log("[CTRL+SPACE] ABORT: empty text OR caret<=0");
+                    return;
+                }
 
-                int spanStart = ComputeSpanStart(text, caretInParagraph, paragraph.OMathRegions);
-                // Trim ws aux bords (mais pas les opérateurs unaires +/-).
-                while (spanStart < caretInParagraph && char.IsWhiteSpace(text[spanStart])) spanStart++;
-                int spanEnd = caretInParagraph;
+                // Skip \r/\n en fin (= la fin de para Word inclut un \r
+                // virtuel qui sinon est traité comme délimiteur et fait
+                // que ComputeSpanStart retourne caret directement → span vide).
+                int effectiveCaret = caretInParagraph;
+                while (effectiveCaret > 0
+                    && (text[effectiveCaret - 1] == '\r' || text[effectiveCaret - 1] == '\n'))
+                    effectiveCaret--;
+                if (effectiveCaret != caretInParagraph)
+                    _log($"[CTRL+SPACE] effectiveCaret adjusted {caretInParagraph}→{effectiveCaret} (skip \\r\\n)");
+
+                int spanStart = ComputeSpanStart(text, effectiveCaret, paragraph.OMathRegions);
+                _log($"[CTRL+SPACE] ComputeSpanStart raw spanStart={spanStart}");
+                while (spanStart < effectiveCaret && char.IsWhiteSpace(text[spanStart])) spanStart++;
+                int spanEnd = effectiveCaret;
                 while (spanEnd > spanStart && char.IsWhiteSpace(text[spanEnd - 1])) spanEnd--;
-                if (spanEnd <= spanStart) return;
+                _log($"[CTRL+SPACE] after trim span=[{spanStart},{spanEnd}]");
+                if (spanEnd <= spanStart)
+                {
+                    _log("[CTRL+SPACE] ABORT: spanEnd<=spanStart (empty after trim)");
+                    return;
+                }
 
-                string span = text.Substring(spanStart, spanEnd - spanStart);
-                _log($"manual trigger span=[{spanStart},{spanEnd}] → \"{Preview(span)}\"");
+                var zone = new ZoneSpan(paragraphAbsStart, spanStart, spanEnd, text, paragraph.OMathRegions);
+                _log($"manual trigger span=[{spanStart},{spanEnd}] → \"{Preview(zone.Text)}\"");
 
                 ResolvedZone resolved;
-                try { resolved = _resolveWithContext(span); }
+                try { resolved = _resolveWithContext(zone.Text); }
                 catch (Exception ex) { _log("manual_engine_error: " + ex.Message); return; }
 
-                int absStart = paragraphAbsStart + spanStart;
-                int absEnd = paragraphAbsStart + spanEnd;
-
-                _setLastZoneSource(span);
                 _closeEditMode();
 
-                if (string.IsNullOrEmpty(resolved.TopLatex)) return;
-                _showPopupAndEnterNavMode(resolved, absStart, absEnd, span.Length, "manuel: " + span);
+                bool hasPatterns = resolved.PatternCompletions != null
+                    && resolved.PatternCompletions.Count > 0;
+                _log($"[CTRL+SPACE] resolved top=\"{Preview(resolved.TopLatex)}\" hasPatterns={hasPatterns}");
+                if (string.IsNullOrEmpty(resolved.TopLatex) && !hasPatterns)
+                {
+                    _log("[CTRL+SPACE] ABORT: top empty AND no patterns");
+                    return;
+                }
+                _log("[CTRL+SPACE] → ShowPopupAndEnterNavMode");
+                _showPopupAndEnterNavMode(resolved, zone, zone.Text.Length, "manuel: " + zone.Text);
 
                 // Initialise l'état d'extension itérative.
-                _iterativeParagraph = text;
-                _iterativeParaAbsStart = paragraphAbsStart;
-                _iterativeSpanStart = spanStart;
-                _iterativeSpanEnd = spanEnd;
-                _iterativeOMaths = paragraph.OMathRegions;
+                _iterativeSpan = zone;
             }
             catch (Exception ex) { _log("manual_trigger_error: " + ex.Message); }
         }
@@ -141,12 +167,7 @@ namespace MathCursor.Host.ManualTrigger
         /// <summary>Reset l'état d'extension itérative.</summary>
         public void Reset()
         {
-            if (_iterativeSpanStart < 0) return;
-            _iterativeParagraph = null;
-            _iterativeParaAbsStart = -1;
-            _iterativeSpanStart = -1;
-            _iterativeSpanEnd = -1;
-            _iterativeOMaths = null;
+            _iterativeSpan = null;
         }
 
         /// <summary>
@@ -155,14 +176,9 @@ namespace MathCursor.Host.ManualTrigger
         /// cette zone même si la popup vient du polling auto, pas du manual
         /// trigger. Cf. ADR 29-04 iterative-zone-expansion.
         /// </summary>
-        public void InitFromAutoZone(string paragraph, int paragraphAbsStart,
-            int spanStart, int spanEnd, IReadOnlyList<(int start, int end)> omathRegions)
+        public void InitFromAutoZone(ZoneSpan zone)
         {
-            _iterativeParagraph = paragraph ?? "";
-            _iterativeParaAbsStart = paragraphAbsStart;
-            _iterativeSpanStart = spanStart;
-            _iterativeSpanEnd = spanEnd;
-            _iterativeOMaths = omathRegions;
+            _iterativeSpan = zone;
         }
 
         // ── Internals ─────────────────────────────────────────────────
@@ -174,20 +190,21 @@ namespace MathCursor.Host.ManualTrigger
         /// </summary>
         private void ExtendOneStop()
         {
-            if (string.IsNullOrEmpty(_iterativeParagraph))
+            var iter = _iterativeSpan;
+            if (iter == null || string.IsNullOrEmpty(iter.ParagraphText))
             {
                 _log("iterative extend: empty paragraph, no-op");
                 return;
             }
-            if (_iterativeSpanStart <= 0)
+            if (iter.StringStart <= 0)
             {
                 _log("iterative extend: at paragraph start (spanStart=0), no-op");
                 return;
             }
 
             // Recule d'un cran au-delà de la borne courante.
-            int boundary = _iterativeSpanStart - 1;
-            while (boundary >= 0 && char.IsWhiteSpace(_iterativeParagraph[boundary])) boundary--;
+            int boundary = iter.StringStart - 1;
+            while (boundary >= 0 && char.IsWhiteSpace(iter.ParagraphText[boundary])) boundary--;
             if (boundary < 0)
             {
                 _log("iterative extend: at paragraph start, no-op");
@@ -195,41 +212,38 @@ namespace MathCursor.Host.ManualTrigger
             }
 
             // Borne dans un OMath = stop final.
-            if (_iterativeOMaths != null)
+            foreach (var (s, e) in iter.OMaths)
             {
-                foreach (var (s, e) in _iterativeOMaths)
+                if (s <= boundary && boundary < e)
                 {
-                    if (s <= boundary && boundary < e)
-                    {
-                        _log($"iterative extend: blocked by OMath at [{s},{e}], no-op (stop final)");
-                        return;
-                    }
+                    _log($"iterative extend: blocked by OMath at [{s},{e}], no-op (stop final)");
+                    return;
                 }
             }
 
-            int newStart = ComputeSpanStart(_iterativeParagraph, boundary, _iterativeOMaths);
-            while (newStart < _iterativeSpanEnd && char.IsWhiteSpace(_iterativeParagraph[newStart])) newStart++;
+            int newStart = ComputeSpanStart(iter.ParagraphText, boundary, iter.OMaths);
+            while (newStart < iter.StringEnd && char.IsWhiteSpace(iter.ParagraphText[newStart])) newStart++;
 
-            if (newStart >= _iterativeSpanStart)
+            if (newStart >= iter.StringStart)
             {
-                _log($"iterative extend no-op: spanStart={_iterativeSpanStart} unchanged (newStart={newStart}, boundary={boundary})");
+                _log($"iterative extend no-op: spanStart={iter.StringStart} unchanged (newStart={newStart}, boundary={boundary})");
                 return;
             }
 
-            _iterativeSpanStart = newStart;
-            string span = _iterativeParagraph.Substring(_iterativeSpanStart, _iterativeSpanEnd - _iterativeSpanStart);
-            _log($"iterative extend: span=[{_iterativeSpanStart},{_iterativeSpanEnd}] → \"{Preview(span)}\"");
+            var extended = new ZoneSpan(iter.ParagraphAbsStart, newStart, iter.StringEnd, iter.ParagraphText, iter.OMaths);
+            _log($"iterative extend: span=[{extended.StringStart},{extended.StringEnd}] → \"{Preview(extended.Text)}\"");
 
             ResolvedZone resolved;
-            try { resolved = _resolveWithContext(span); }
+            try { resolved = _resolveWithContext(extended.Text); }
             catch (Exception ex) { _log("iterative_extend_error: " + ex.Message); return; }
-            if (string.IsNullOrEmpty(resolved.TopLatex)) return;
+            // Guard P9g (2026-05-21) : voir SuggestionService.cs ligne 1062.
+            bool hasPatternsIter = resolved.PatternCompletions != null
+                && resolved.PatternCompletions.Count > 0;
+            if (string.IsNullOrEmpty(resolved.TopLatex) && !hasPatternsIter) return;
 
-            int absStart = _iterativeParaAbsStart + _iterativeSpanStart;
-            int absEnd = _iterativeParaAbsStart + _iterativeSpanEnd;
-            _setLastZoneSource(span);
+            _iterativeSpan = extended;
             _closeEditMode();
-            _showPopupAndEnterNavMode(resolved, absStart, absEnd, span.Length, "iterative: " + span);
+            _showPopupAndEnterNavMode(resolved, extended, extended.Text.Length, "iterative: " + extended.Text);
         }
 
         /// <summary>

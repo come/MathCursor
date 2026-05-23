@@ -143,6 +143,25 @@ namespace MathCursor
             catch { /* debug pane, jamais propager */ }
         }
 
+        /// <summary>
+        /// P11.14 (2026-05-22) — Pousse la trace du moteur v2
+        /// (<c>MathCursor.Engine</c>) à chaque résolution si le pane est ouvert.
+        /// Le user voit en temps réel : tokens, règle matchée, candidats sur
+        /// collision, fallback éventuel. Cf. ADR
+        /// <c>2026-05-22-Feat-engine-poc-isolation</c>.
+        /// </summary>
+        public void PushEngineV2Trace(string trace)
+        {
+            try
+            {
+                if (_inspectorHost?.WpfPane == null) return;
+                if (_inspectorTaskPane == null || !_inspectorTaskPane.Visible) return;
+                _inspectorHost.WpfPane.Dispatcher.BeginInvoke(
+                    new Action(() => _inspectorHost.WpfPane.SetEngineV2Trace(trace)));
+            }
+            catch { /* debug pane, jamais propager */ }
+        }
+
         private void OnSelectionChangeForCaretInspector(Microsoft.Office.Interop.Word.Selection sel)
         {
             try

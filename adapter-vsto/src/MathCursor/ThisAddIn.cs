@@ -12,7 +12,9 @@ using MathCursor.Cheatsheet;
 using MathCursor.Detection;
 using MathCursor.Host;
 // Moteur lattice : enchaîne Lex → TopK → Parse → Render (cf. Lattice/).
-using Engine = MathCursor.Core.LatticeEngine;
+// P11.14 (2026-05-22) : alias renommé en LatticeEng pour éviter conflit
+// avec le namespace MathCursor.Engine (= POC v2).
+using LatticeEng = MathCursor.Core.LatticeEngine;
 
 namespace MathCursor
 {
@@ -21,7 +23,7 @@ namespace MathCursor
         // VstoEquationStore retiré (Phase B 2026-05-18) — source/latex vivent
         // maintenant dans cc.Tag MCMeta de chaque OMath wrappée.
         private MathNerDetector _ner;
-        private Engine _engine;
+        private LatticeEng _engine;
         private SuggestionService _suggestions;
         private KeyboardInterceptor _keyboard;
 
@@ -92,7 +94,7 @@ namespace MathCursor
 
                 // Moteur lattice : convertit le texte détecté par le NER en
                 // suggestions LaTeX via Lex → top-K Dijkstra → Parse → Render.
-                _engine = Engine.LoadEmbedded("fr");
+                _engine = LatticeEng.LoadEmbedded("fr");
 
                 _suggestions = new SuggestionService(this.Application, _ner, _engine);
                 _suggestions.Install();

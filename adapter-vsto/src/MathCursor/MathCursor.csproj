@@ -152,6 +152,14 @@
       <Project>{B1000002-0000-0000-0000-000000000002}</Project>
       <Name>MathCursor.Core</Name>
     </ProjectReference>
+    <!-- P11 POC MathCursor.Engine v2 (feature flag MATHCURSOR_ENGINE_V2=1).
+         Cf. ADR 2026-05-22-Feat-engine-poc-isolation. -->
+    <ProjectReference Include="..\..\..\core-csharp\src\MathCursor.Engine\MathCursor.Engine.csproj">
+      <Name>MathCursor.Engine</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\core-csharp\src\MathCursor.Engine.Adapter\MathCursor.Engine.Adapter.csproj">
+      <Name>MathCursor.Engine.Adapter</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <!-- NER : ONNX Runtime pour l'inférence DistilBERT-multilingual quantizé
@@ -309,6 +317,7 @@
     <Compile Include="Host\Detection\NerInputWindow.cs" />
     <Compile Include="Host\Detection\ParagraphPositionTranslator.cs" />
     <Compile Include="Host\Detection\ZoneRefiner.cs" />
+    <Compile Include="Host\Detection\ZoneSpan.cs" />
     <Compile Include="Host\EditMode\EditModeController.cs" />
     <Compile Include="Host\Layout\PostCommitLayoutFinalizer.cs" />
     <Compile Include="Host\ManualTrigger\ManualTriggerController.cs" />

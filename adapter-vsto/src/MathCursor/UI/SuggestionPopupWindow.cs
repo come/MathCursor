@@ -77,6 +77,14 @@ namespace MathCursor.UI
         /// </summary>
         private const int AltIdxPatternBase = -1000;
 
+        /// <summary>
+        /// P24 (2026-05-22) : sentinel pour la ligne du top latex (= 1er
+        /// candidat dans la liste unifiée). Click sur cette ligne déclenche
+        /// <see cref="CommitRequested"/> (= équivalent Enter sur la finale).
+        /// Refonte popup "une ligne par candidat".
+        /// </summary>
+        private const int AltIdxTop = -2000;
+
         private readonly TextBlock _debugFooter;
         private readonly TextBlock _reportLink;
         private bool _navMode;
@@ -159,10 +167,12 @@ namespace MathCursor.UI
                 Background = Brushes.White,
             };
 
-            // Ligne d'alternatives en colonnes
+            // P22 (2026-05-22) : refonte popup IDE-style. Liste VERTICALE
+            // des alternatives (= une ligne par candidat). Cf. demande user
+            // « une ligne par candidat et c'est tout ».
             _altsRow = new StackPanel
             {
-                Orientation = Orientation.Horizontal,
+                Orientation = Orientation.Vertical,
                 Margin = new Thickness(4, 4, 4, 4),
             };
             _altsRowBorder = new Border
@@ -276,6 +286,8 @@ namespace MathCursor.UI
             // 2026-05-21-Feat-popup-pattern-completion-rendering (P7d).
             _patternCompletions = patternCompletions
                 ?? Array.Empty<MathCursor.Core.Patterns.PatternCompletion>();
+            // P15.2 : reset l'expand state à chaque Show (= nouvelle zone).
+            _altsExpanded = false;
             if (_patternCompletions.Count > 0)
             {
                 LogPopup($"Pattern completions: {_patternCompletions.Count}, first preview=\"{_patternCompletions[0].PreviewLatex}\" desc=\"{_patternCompletions[0].Description}\"");
@@ -362,9 +374,26 @@ namespace MathCursor.UI
             _spotEnd = newSpotEnd;
             _resolvedLatex = _topLatex;
             _focusOnFinal = true;
-            // Pré-sélection : si l'alt-revert est en index 0 (= une alt est
-            // active et splicée en finale), sauter à l'index 1 (= 1ʳᵉ vraie
-            // alt non-active). Sinon (cas vierge), index 0 = 1ʳᵉ vraie alt.
+
+            // P22+P24 (2026-05-22) : refonte popup "une ligne par candidat".
+            // Le top latex devient la 1ère entry de _alternatives (= sentinel
+            // AltIdxTop). Plus de _finalContainer séparé. Tout en colonne
+            // verticale (= _altsRow).
+            if (!string.IsNullOrEmpty(_topLatex))
+            {
+                var topEntry = new MathCursor.Core.Lattice.AmbiguityAlternative(_topLatex, null);
+                var combined = new System.Collections.Generic.List<MathCursor.Core.Lattice.AmbiguityAlternative>(_alternatives.Count + 1);
+                combined.Add(topEntry);
+                combined.AddRange(_alternatives);
+                _alternatives = combined;
+                var combinedMap = new System.Collections.Generic.List<int>(_altIdxMap.Count + 1);
+                combinedMap.Add(AltIdxTop);
+                combinedMap.AddRange(_altIdxMap);
+                _altIdxMap = combinedMap;
+            }
+
+            // Pré-sélection : index 0 (= top) sauf si on a un revert en 0
+            // (cas legacy avec splice actif).
             bool firstIsRevert = _altIdxMap.Count > 0
                 && _altIdxMap[0] == MathCursor.Core.Resolution.SpanOverride.AltIdxRevert;
             _altIndex = (firstIsRevert && _alternatives.Count > 1) ? 1 : 0;
@@ -373,9 +402,9 @@ namespace MathCursor.UI
 
             BuildAltCells();
 
-            // Zone formule finale
+            // P24 : _finalContainer collapsed définitivement — toute l'UI
+            // passe par _altsRow (colonne verticale unifiée).
             _finalContainer.Children.Clear();
-            _finalContainer.Children.Add(BuildFinalRow(_resolvedLatex));
 
             // Reset navMode AVANT UpdateHighlight, sinon une popup réouverte
             // après un commit garde l'ancien _navMode=true et apparaît déjà
@@ -452,6 +481,12 @@ namespace MathCursor.UI
             return combined;
         }
 
+        // P15.2 (2026-05-22) : popup IDE-style — max 2 candidats affichés
+        // par défaut, bouton "+ N autres" pour expand. Cf. brief v5 +
+        // ADR 2026-05-22-Feat-popup-ide-style.
+        private const int MaxAltsCollapsed = 2;
+        private bool _altsExpanded = false;
+
         private void BuildAltCells()
         {
             _altsRow.Children.Clear();
@@ -460,14 +495,21 @@ namespace MathCursor.UI
                 _altsRowBorder.Visibility = Visibility.Collapsed;
                 return;
             }
-            for (int i = 0; i < _alternatives.Count; i++)
+
+            int total = _alternatives.Count;
+            int visibleCount = (_altsExpanded || total <= MaxAltsCollapsed)
+                ? total
+                : MaxAltsCollapsed;
+
+            for (int i = 0; i < visibleCount; i++)
             {
                 var altLatex = _alternatives[i].Latex;
                 var cell = new Border
                 {
-                    BorderBrush = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
-                    BorderThickness = new Thickness(0, 0, 1, 0),
-                    Padding = new Thickness(2),
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(230, 230, 230)),
+                    // P22 : séparateur horizontal (= entre lignes verticales).
+                    BorderThickness = new Thickness(0, 0, 0, i < visibleCount - 1 ? 1 : 0),
+                    Padding = new Thickness(4, 3, 4, 3),
                 };
                 cell.Child = RenderMath(altLatex);
                 int idx = i;
@@ -484,6 +526,17 @@ namespace MathCursor.UI
                     string latexClicked = idx < _alternatives.Count ? _alternatives[idx].Latex : "<oob>";
                     LogPopup($"click display={idx} real={realFromMap} latex=\"{latexClicked}\"");
                     _altIndex = idx;
+                    // P24 (2026-05-22) : click sur AltIdxTop (= 1ère ligne =
+                    // top latex) = commit standard (équivalent ★ avant).
+                    if (realFromMap == AltIdxTop)
+                    {
+                        _focusOnFinal = true;
+                        _resolvedLatex = _topLatex;
+                        EnterNavMode();
+                        UpdateHighlight();
+                        CommitRequested?.Invoke();
+                        return;
+                    }
                     _focusOnFinal = false;
                     EnterNavMode();
                     UpdateHighlight();
@@ -491,6 +544,35 @@ namespace MathCursor.UI
                 };
                 _altsRow.Children.Add(cell);
             }
+
+            // Bouton "+ N autres" si collapsed et plus à afficher.
+            if (!_altsExpanded && total > MaxAltsCollapsed)
+            {
+                int hiddenCount = total - MaxAltsCollapsed;
+                var moreCell = new Border
+                {
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(230, 230, 230)),
+                    // P22 : séparateur horizontal (= vertical layout).
+                    BorderThickness = new Thickness(0, 1, 0, 0),
+                    Padding = new Thickness(6, 3, 6, 3),
+                    Background = new SolidColorBrush(Color.FromRgb(245, 245, 250)),
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                };
+                moreCell.Child = new TextBlock
+                {
+                    Text = $"+ {hiddenCount} autre" + (hiddenCount > 1 ? "s" : ""),
+                    FontSize = 11,
+                    Foreground = new SolidColorBrush(Color.FromRgb(80, 100, 180)),
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+                moreCell.MouseLeftButtonUp += (_, __) =>
+                {
+                    _altsExpanded = true;
+                    BuildAltCells();
+                };
+                _altsRow.Children.Add(moreCell);
+            }
+
             _altsRowBorder.Visibility = Visibility.Visible;
         }
 
@@ -502,15 +584,9 @@ namespace MathCursor.UI
                 Margin = new Thickness(0),
                 Background = Brushes.White,
             };
+            // P22+P24 (2026-05-22) : ★ retiré (= ergo "une ligne par candidat,
+            // sans distinction final/alts").
             panel.Children.Add(RenderMath(latex));
-            panel.Children.Add(new TextBlock
-            {
-                Text = "★",
-                FontSize = 11,
-                Foreground = new SolidColorBrush(Color.FromRgb(180, 180, 180)),
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(4, 0, 8, 0),
-            });
             panel.MouseEnter += (_, __) =>
             {
                 _focusOnFinal = true;
@@ -589,18 +665,10 @@ namespace MathCursor.UI
                     return false;
                 }
                 var pc = _patternCompletions[patternIndex];
-                LogPopup($"Resolved as PATTERN[{patternIndex}] preview=\"{pc.PreviewLatex}\" (hint was \"{pc.HintLatex}\")");
+                LogPopup($"Resolved as PATTERN[{patternIndex}] preview=\"{pc.PreviewLatex}\" → commit direct");
                 _resolvedLatex = pc.PreviewLatex;
-                // Refresh final container avec le PreviewLatex (commit-clean)
-                _finalContainer.Children.Clear();
-                _finalContainer.Children.Add(BuildFinalRow(_resolvedLatex));
-                // Fermer la zone d'ambig comme un identity pick
-                _alternatives = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
-                _altsRow.Children.Clear();
-                _altsRowBorder.Visibility = Visibility.Collapsed;
-                _spotStart = _spotEnd = -1;
-                _focusOnFinal = true;
-                UpdateHighlight();
+                // P24 (2026-05-22) : commit direct (= demande user).
+                CommitRequested?.Invoke();
                 return true;
             }
 
@@ -618,52 +686,36 @@ namespace MathCursor.UI
             // ADR refacto désambig 2026-05-20.
             if (isRevert)
             {
-                LogPopup($"Resolved as REVERT rule=\"{_currentRuleId}\" → fire SourceMutationRequested(AltIdxRevert)");
-                SourceMutationRequested?.Invoke(_currentRuleId, MathCursor.Core.Resolution.SpanOverride.AltIdxRevert, null);
-                // Ferme la zone d'ambig localement comme un identity pick.
-                // Évite le « rien ne se passe » quand l'user clique le default
-                // alors qu'aucune pref n'existait (= RemovePreference est no-op
-                // → re-resolve donne le même topLatex). Cf. UX 2026-05-21.
-                _alternatives = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
-                _altsRow.Children.Clear();
-                _altsRowBorder.Visibility = Visibility.Collapsed;
-                _spotStart = _spotEnd = -1;
-                _focusOnFinal = true;
-                UpdateHighlight();
+                // P24 : revert → commit direct du LaTeX courant (= top revertué).
+                LogPopup($"Resolved as REVERT rule=\"{_currentRuleId}\" → commit direct");
+                _resolvedLatex = _alternatives[_altIndex].Latex;
+                CommitRequested?.Invoke();
+                SourceMutationRequested?.Invoke(_currentRuleId,
+                    MathCursor.Core.Resolution.SpanOverride.AltIdxRevert, null);
                 return true;
             }
 
             var selectedAlt = _alternatives[_altIndex];
 
-            // Identity : alt.Latex == topLatex courant → pas de changement,
-            // on ferme juste la zone d'ambig (ex: V isolé garde V).
+            // P24 : Identity → commit direct du top (= reste pareil).
             if (string.Equals(selectedAlt.Latex, _topLatex, StringComparison.Ordinal))
             {
-                LogPopup($"Resolved as identity (alt[{realAltIdx}] = current) — no change");
-                _alternatives = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
-                _altsRow.Children.Clear();
-                _altsRowBorder.Visibility = Visibility.Collapsed;
-                _spotStart = _spotEnd = -1;
-                _focusOnFinal = true;
-                UpdateHighlight();
+                LogPopup($"Resolved as identity (alt[{realAltIdx}] = current) → commit direct");
+                _resolvedLatex = _topLatex;
+                CommitRequested?.Invoke();
                 return true;
             }
 
-            // Path unique pour tous les autres picks : SourceMutationRequested.
-            // Le service appelle AddPreference(ruleId, altIdx) qui REMPLACE
-            // l'ancien pin pour ce ruleId, puis re-resolve. ApplyPreferences
-            // part de la source ORIGINALE et applique l'alt.Mutation native
-            // → pas de Replace local, pas de nesting (ex \vec{(AB)}).
-            //
-            // mutation peut être null si l'alt courante (calculée sur la
-            // muted source) n'a pas de Mutation propre — le service ignore
-            // ce paramètre et utilise ruleId + altIdx pour la pref.
-            // Cf. ADR refacto désambig 2026-05-20.
-            LogPopup($"Resolved via SourceMutation rule=\"{_currentRuleId}\" altIdx={realAltIdx}"
-                + (selectedAlt.Mutation != null ? $" replacement=\"{selectedAlt.Mutation.Replacement}\"" : " (pref-only, no native mutation on muted)"));
-
-            // Le sidecar cross-paragraph est construit côté resolver via
-            // BuildSidecar(_preferences) — plus de span pin popup-local.
+            // P24 (2026-05-22) : commit DIRECT du LaTeX de l'alt sélectionnée
+            // (= demande user "Enter sur un choix doit commit direct").
+            // SourceMutationRequested est aussi tiré pour mémoriser la
+            // préférence cross-commit (= la prochaine fois cette même
+            // source rendra automatiquement ce choix).
+            LogPopup($"Resolved via SourceMutation rule=\"{_currentRuleId}\" altIdx={realAltIdx} → commit direct"
+                + (selectedAlt.Mutation != null ? $" replacement=\"{selectedAlt.Mutation.Replacement}\"" : ""));
+            _resolvedLatex = selectedAlt.Latex;
+            CommitRequested?.Invoke();
+            // Pref mémorisée APRÈS le commit (= effet de bord pour next time).
             SourceMutationRequested?.Invoke(_currentRuleId, realAltIdx, selectedAlt.Mutation);
             return true;
         }
@@ -698,32 +750,44 @@ namespace MathCursor.UI
         public bool MoveSelection(int delta)
         {
             if (_alternatives.Count == 0) return false;
-            if (delta > 0)
+
+            // P24 (2026-05-22) : refonte navigation pour popup verticale
+            // unifiée. Down/Up se déplacent dans _altIndex. Auto-expand
+            // sur "+ N autres" quand on dépasse. Hors-bornes = ExitNavMode +
+            // pass-through Word.
+            int next = _altIndex + delta;
+            if (next < 0)
             {
-                // Down
-                if (!_focusOnFinal)
-                {
-                    _focusOnFinal = true;
-                    UpdateHighlight();
-                    return true;
-                }
-                // Down depuis finale → pass-through Word
                 ExitNavMode();
                 return false;
             }
-            else
+            int visibleMax = (_altsExpanded || _alternatives.Count <= MaxAltsCollapsed)
+                ? _alternatives.Count - 1
+                : MaxAltsCollapsed - 1;
+            if (next > visibleMax)
             {
-                // Up
-                if (_focusOnFinal)
+                if (!_altsExpanded && _alternatives.Count > MaxAltsCollapsed)
                 {
-                    _focusOnFinal = false;
-                    UpdateHighlight();
-                    return true;
+                    _altsExpanded = true;
+                    BuildAltCells();
+                    visibleMax = _alternatives.Count - 1;
+                    if (next > visibleMax) next = visibleMax;
                 }
-                // Up depuis alts → sortir et pass-through Word
-                ExitNavMode();
-                return false;
+                else
+                {
+                    ExitNavMode();
+                    return false;
+                }
             }
+            _altIndex = next;
+            // _focusOnFinal = vrai uniquement si index 0 (= top latex
+            // = équivalent ex-finale ★).
+            _focusOnFinal = (_altIndex == 0
+                && _altIdxMap.Count > 0
+                && _altIdxMap[0] == AltIdxTop);
+            EnterNavMode();
+            UpdateHighlight();
+            return true;
         }
 
         private void ExitNavMode()

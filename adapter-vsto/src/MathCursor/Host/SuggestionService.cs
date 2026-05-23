@@ -14,7 +14,9 @@ using MathCursor.HostContract;
 using MathCursor.UI;
 // Moteur lattice : enchaîne Lex → TopK → Parse → Render. Façade côté core
 // qui expose ILatexEngine, donc l'adapter VSTO reste agnostique de l'algo.
-using Engine = MathCursor.Core.LatticeEngine;
+// P11.14 (2026-05-22) : alias renommé pour éviter conflit avec namespace
+// MathCursor.Engine (= POC v2). Cf. ADR 2026-05-22-Feat-engine-poc-isolation.
+using LatticeEng = MathCursor.Core.LatticeEngine;
 using Word = Microsoft.Office.Interop.Word;
 
 namespace MathCursor.Host
@@ -37,7 +39,7 @@ namespace MathCursor.Host
         private readonly Word.Application _app;
         private readonly WordContextReader _contextReader;
         private readonly MathNerDetector _ner;
-        private readonly Engine _engine;
+        private readonly LatticeEng _engine;
         private readonly ZoneResolver _resolver;
 
         // Contexte global de session pour le ranking contextuel multi-zoom.
@@ -81,25 +83,19 @@ namespace MathCursor.Host
         // natif. Plus de splice XML, plus de ghost doc, plus de stratégies
         // enchaînées, plus de caret custom.
 
-        // État de la dernière popup affichée — nécessaire pour commit sur Enter :
-        // on a besoin des positions absolues dans le document (pas juste offsets
-        // paragraphe), des choix présentés, et de la source brute pour la store.
-        // ⚠ Ces 2 fields stockent les positions de la zone NER en MIXED
-        // coords : paragraphAbsStart (Word interne) + target.Start (STRING
-        // pos dans paragraphText). C'est OK pour positionner la popup à
-        // l'écran (approximation suffisante) mais PAS pour SetRange au
-        // commit. Au commit on traduit via ParagraphPositionTranslator en
-        // utilisant les fields _lastZone(Paragraph|String)* ci-dessous.
+        // État de la dernière popup affichée — nécessaire pour commit sur Enter.
+        // Encapsulé dans un ZoneSpan unique (paraStart interne + string-pos
+        // bornes + snapshot text + OMaths regions) qui sert (a) à positionner
+        // la popup via TryToInternal, (b) à traduire les coords au commit
+        // sans dépendre de fields séparés à synchroniser. Cf. ADR
+        // 2026-05-23-Refactor-zonespan-popup-commit-coords.
+        private MathCursor.Host.Detection.ZoneSpan _currentZoneSpan;
+        // Positions absolues internes dérivées de _currentZoneSpan au show.
+        // Sert à l'anti-spam (= compare dismissed avec ces vraies positions),
+        // au check d'entrée en edit mode (l.1545), et au repositionnement
+        // popup. Re-calculées à chaque ShowPopup via ZoneSpan.TryToInternal.
         private int _lastZoneAbsStart = -1;
         private int _lastZoneAbsEnd = -1;
-        // Fields pour traduction string→interne au commit (2026-05-18).
-        // _lastZoneStringStart/End = offset dans paragraphText (= position
-        // string du NER). _lastZoneParaRangeStart = paragraph.Range.Start
-        // au moment du popup show (= paragraphAbsStart en Word interne).
-        private int _lastZoneStringStart = -1;
-        private int _lastZoneStringEnd = -1;
-        private int _lastZoneParaRangeStart = -1;
-        private string _lastZoneSource = "";
 
         // Snapshot de la dernière action user (popup + commit éventuel) pour
         // pré-remplir la fenêtre "Signaler une erreur". Mis à jour à chaque
@@ -180,7 +176,7 @@ namespace MathCursor.Host
         // le tracker — il disparaît quand Word est redémarré.
         private readonly string _sessionId = Guid.NewGuid().ToString("D");
 
-        public SuggestionService(Word.Application app, MathNerDetector ner, Engine engine)
+        public SuggestionService(Word.Application app, MathNerDetector ner, LatticeEng engine)
         {
             // CANARY LOG (Phase 4 + bug fixes 06-05) : log distinctif au
             // démarrage pour confirmer que la DLL chargée est la version
@@ -200,7 +196,34 @@ namespace MathCursor.Host
             // + 2026-05-21-Feat-suggestion-service-pattern-injection (P7b).
             var (patternPipeline, patternRegistry) =
                 MathCursor.Core.Patterns.DefaultPatternRegistry.BuildBoth();
-            _resolver = new ZoneResolver(_engine, patternPipeline, patternRegistry);
+
+            // P32 (2026-05-23) : MathCursor.Engine v2 est désormais le moteur
+            // PRINCIPAL. Le legacy MathCursor.Core (LatticeEngine + Patterns)
+            // reste comme fallback pour les ~10% de cas non couverts —
+            // marqué [Obsolete]. Kill-switch d'urgence : MATHCURSOR_ENGINE_V2=0.
+            // Cf. ADR 2026-05-23-Feat-engine-v2-promotion.
+            MathCursor.Core.IResolvedZoneSource? engineSource = null;
+            bool engineV2Off = string.Equals(
+                System.Environment.GetEnvironmentVariable("MATHCURSOR_ENGINE_V2"),
+                "0", System.StringComparison.Ordinal);
+            if (!engineV2Off)
+            {
+                try
+                {
+                    var engineV2 = MathCursor.Engine.MathEngine.BuildDefault("fr");
+                    engineSource = new MathCursor.Engine.Adapter.EngineZoneSource(engineV2);
+                    LogDiag("engine-v2 active (principal — legacy in fallback)");
+                }
+                catch (System.Exception ex)
+                {
+                    LogDiag("engine-v2 init failed (legacy will handle): " + ex.Message);
+                }
+            }
+            else
+            {
+                LogDiag("engine-v2 disabled by env MATHCURSOR_ENGINE_V2=0 — legacy only");
+            }
+            _resolver = new ZoneResolver(_engine, patternPipeline, patternRegistry, engineSource);
             // Contexte global de session : agrège SidecarSignal (L1, votes du
             // sidecar) + ParagraphResolutionsSignal (L2, pins du ¶ courant).
             // Alimenté par PropagateCommittedPinsToParagraphHistory au commit
@@ -223,10 +246,9 @@ namespace MathCursor.Host
                 passThroughToPolling: CheckAndUpdate,
                 isSuggestionPopupVisible: () => _popup?.IsVisible == true,
                 closeEditMode: () => _editController?.Close(),
-                setLastZoneSource: s => _lastZoneSource = s,
-                showPopupAndEnterNavMode: (resolved, s, e, rawLen, dbg) =>
+                showPopupAndEnterNavMode: (resolved, zone, rawLen, dbg) =>
                 {
-                    ShowPopup(resolved, s, e, rawLen, dbg);
+                    ShowPopup(resolved, zone, rawLen, dbg);
                     _popup?.EnterNavMode();
                 },
                 log: LogDiag);
@@ -666,6 +688,22 @@ namespace MathCursor.Host
         {
             var resolved = _resolver.Resolve(rawSource ?? "", _globalCtx, sidecar);
             EmitContextResolvedIfSubscribed(rawSource, sidecar, resolved);
+            // P11.14 : push la trace engine v2 dans l'inspecteur (= no-op si
+            // engine v2 OFF ou pane fermé).
+            try
+            {
+                var trace = _resolver.LastEngineDiagTrace;
+                if (!string.IsNullOrEmpty(trace))
+                    Globals.ThisAddIn?.PushEngineV2Trace(trace);
+            }
+            catch { /* inspecteur ne doit jamais propager */ }
+            // P32.1 : signale visiblement dans les logs si le legacy a été
+            // appelé. En condition normale ce path doit être muet.
+            if (_resolver.LastResolveUsedLegacy)
+            {
+                LogDiag($"[LEGACY-PATH] source=\"{rawSource ?? string.Empty}\" "
+                    + $"legacy-calls-total={_resolver.LegacyFallbackCalls}");
+            }
             return resolved;
         }
 
@@ -1049,53 +1087,57 @@ namespace MathCursor.Host
 
             LogDiag($"engine zone=\"{target.Text}\" muted=\"{resolved.MutedSource}\" top=\"{resolved.TopLatex}\" ambig={(resolved.Spot == null ? "no" : $"{resolved.Spot.Alternatives.Count} alts")}");
 
-            // Conversion offsets paragraphe → positions absolues document.
-            int absStart = paragraphAbsStart + target.Start;
-            int absEnd = paragraphAbsStart + target.End;
-
-            if (string.IsNullOrEmpty(resolved.TopLatex))
+            // Guard P9g (2026-05-21) : ne hide que si lattice ET patterns sont vides.
+            // Patterns postfix comme PrimedDerivative (f') produisent une completion
+            // sans que le lattice ne sache tokenizer le source brut. Cf. ADR
+            // 2026-05-21-Fix-popup-guard-pattern-completions.
+            bool hasPatterns = resolved.PatternCompletions != null
+                && resolved.PatternCompletions.Count > 0;
+            if (string.IsNullOrEmpty(resolved.TopLatex) && !hasPatterns)
             {
                 HidePopupTransient();
                 return;
             }
 
+            // Construit la zone unifiée (paraStart interne + bornes string-pos
+            // + snapshot text + OMaths regions). La traduction string→interne
+            // (= positions absolues Word incluant wrappers cachés) est faite
+            // dans ShowPopup et au commit via ZoneSpan.TryToInternal. Cf. ADR
+            // 2026-05-23-Refactor-zonespan-popup-commit-coords.
+            var zone = new MathCursor.Host.Detection.ZoneSpan(
+                paragraphAbsStart, target.Start, target.End,
+                _lastParagraph ?? "", omathRegions);
+
             // Anti-spam Esc : si l'utilisateur a déjà fermé la popup pour
-            // CETTE zone exacte, on ne re-spawn pas. Le flag est reset dès
-            // que la zone change (la condition ci-dessous tombe naturellement).
-            if (absStart == _dismissedZoneStart && absEnd == _dismissedZoneEnd)
+            // CETTE zone exacte, on ne re-spawn pas. La comparaison est en
+            // coords absolues internes (résolues par TryToInternal). Le flag
+            // est reset dès que la zone change.
+            int probeAbsStart, probeAbsEnd;
+            zone.TryToInternal(_app.ActiveDocument, out probeAbsStart, out probeAbsEnd);
+            if (probeAbsStart == _dismissedZoneStart && probeAbsEnd == _dismissedZoneEnd)
                 return;
-            // Nouvelle zone → on libère le flag dismissed
             _dismissedZoneStart = -1;
             _dismissedZoneEnd = -1;
 
             int rawLen = target.Text?.Length ?? 0;
-            // _lastZoneSource = source brute telle que dans Word (pas mutée).
-            // Les mutations sont gérées à la volée par le résolveur.
-            _lastZoneSource = target.Text ?? "";
-
-            // Pour traduction string→interne au commit : on mémorise les
-            // string-positions et le start du ¶ (Word interne). Pas de
-            // traduction maintenant pour ne pas itérer Range.Characters à
-            // chaque tick — c'est fait dans OnPopupCommitRequested.
-            _lastZoneStringStart = target.Start;
-            _lastZoneStringEnd = target.End;
-            _lastZoneParaRangeStart = paragraphAbsStart;
-
-            ShowPopup(resolved, absStart, absEnd, rawLen, target.Text ?? "");
+            ShowPopup(resolved, zone, rawLen, target.Text ?? "");
 
             // Initialise l'état d'extension itérative depuis la zone NER
             // courante. Permet à Ctrl+Espace suivants d'étendre cette zone
             // (cf. ADR 29-04 iterative-zone-expansion). Sans ce hook,
             // l'extension itérative ne marche que pour les popups venues
             // du manual trigger (TriggerManual), pas du polling NER.
-            _manualTrigger.InitFromAutoZone(_lastParagraph ?? "", paragraphAbsStart,
-                target.Start, target.End, omathRegions);
+            _manualTrigger.InitFromAutoZone(zone);
         }
 
         /// <summary>
         /// Trigger explicite (Ctrl+Espace). Délégué à <see cref="ManualTrigger.ManualTriggerController"/>.
         /// </summary>
-        public void TriggerManual() => _manualTrigger.Trigger();
+        public void TriggerManual()
+        {
+            LogDiag("[CTRL+SPACE] TriggerManual() entered from keyboard");
+            _manualTrigger.Trigger();
+        }
 
         // MathPrefixKeywords déplacé dans Host/Detection/ZoneRefiner.cs (P2.14).
 
@@ -1138,10 +1180,10 @@ namespace MathCursor.Host
             try
             {
                 if (_popup == null || !_popup.IsVisible) return;
-                if (_lastZoneAbsStart < 0 || _lastZoneAbsEnd <= _lastZoneAbsStart) return;
+                if (_currentZoneSpan == null || _currentZoneSpan.IsEmpty) return;
                 var latex = _popup.CurrentFinalLatex ?? "";
                 if (string.IsNullOrWhiteSpace(latex)) return;
-                CommitLatexAndOMath(latex, _lastZoneSource ?? "");
+                CommitLatexAndOMath(latex, _currentZoneSpan.Text);
             }
             catch (Exception ex) { LogDiag("popup_click_commit_error: " + ex.Message); }
         }
@@ -1216,7 +1258,7 @@ namespace MathCursor.Host
                 Timestamp = DateTimeOffset.UtcNow,
                 UserId = Feedback.UserIdStore.GetOrCreate(),
                 SessionId = _sessionId,
-                NerText = snap?.SourceText ?? (_lastZoneSource ?? ""),
+                NerText = snap?.SourceText ?? (_currentZoneSpan?.Text ?? ""),
                 RecognizedFormula = proposed,
                 CommittedLatex = committed,
                 ParagraphContext = snap?.ParagraphContext ?? "",
@@ -1228,7 +1270,7 @@ namespace MathCursor.Host
             };
         }
 
-        private void ShowPopup(ResolvedZone resolved, int absStart, int absEnd, int rawZoneLength, string debugText = "")
+        private void ShowPopup(ResolvedZone resolved, MathCursor.Host.Detection.ZoneSpan zone, int rawZoneLength, string debugText = "")
         {
             if (_popup == null)
             {
@@ -1237,6 +1279,15 @@ namespace MathCursor.Host
                 _popup.SourceMutationRequested += OnSourceMutationRequested;
                 _popup.CommitRequested += OnPopupCommitRequested;
             }
+
+            _currentZoneSpan = zone;
+
+            // Traduit string→interne pour le positioning popup + anti-spam +
+            // edit-mode-entry-check. Échec gracieux : fallback sur le mix
+            // (= ancien comportement, OK sur ¶ vierge d'OMath).
+            int absStart = -1, absEnd = -1;
+            if (zone != null)
+                zone.TryToInternal(_app.ActiveDocument, out absStart, out absEnd);
 
             // Repositionnement : seulement si nouvelle zone, sinon on garde la
             // position actuelle (clic dans la popup → Word perd focus, GetCaretPos
@@ -1267,7 +1318,7 @@ namespace MathCursor.Host
             // Snapshot pour la fenêtre "Signaler une erreur" : on capture la
             // saisie source + ce que MathCursor propose. Le CommittedLatex sera
             // rempli plus tard (avant InsertOMathAt) si l'user commit.
-            _lastActionTracker.RecordPopupOpen(_lastZoneSource, resolved?.TopLatex);
+            _lastActionTracker.RecordPopupOpen(zone?.Text ?? "", resolved?.TopLatex);
 
             var alts = resolved.Spot?.Alternatives
                 ?? (IReadOnlyList<MathCursor.Core.Lattice.AmbiguityAlternative>)Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
@@ -1322,7 +1373,7 @@ namespace MathCursor.Host
                 else
                     _resolver.AddPreference(ruleId, altIdx);
 
-                var src = _lastZoneSource ?? string.Empty;
+                var src = _currentZoneSpan?.Text ?? string.Empty;
                 var resolved = ResolveWithContext(src);
                 LogDiag($"pref applied rule=\"{ruleId}\" altIdx={altIdx} src=\"{src}\" → muted=\"{resolved.MutedSource}\" incomplete={resolved.IsIncomplete}");
 
@@ -1332,7 +1383,7 @@ namespace MathCursor.Host
                 // sémantiquement il manque var et ensemble. L'auto-commit
                 // "volait" la frappe de l'utilisateur. Désormais l'utilisateur
                 // commit toujours via flèche bas + Enter, comportement prévisible.
-                ShowPopup(resolved, _lastZoneAbsStart, _lastZoneAbsEnd, src.Length, debugText: resolved.MutedSource);
+                ShowPopup(resolved, _currentZoneSpan, src.Length, debugText: resolved.MutedSource);
             }
             catch (Exception ex)
             {
@@ -1494,7 +1545,7 @@ namespace MathCursor.Host
             // Mode édition : Enter passe à Word (édition math native). Le
             // revert se fait par click souris sur la popup edit, pas Enter.
             if (_popup == null || !_popup.IsVisible || !_popup.IsNavMode) return false;
-            if (_lastZoneAbsStart < 0 || _lastZoneAbsEnd <= _lastZoneAbsStart) return false;
+            if (_currentZoneSpan == null || _currentZoneSpan.IsEmpty) return false;
 
             // Si l'utilisateur a Enter sur une alternative (focus alts), on
             // résout localement et on garde la popup ouverte. Le commit Word
@@ -1509,7 +1560,7 @@ namespace MathCursor.Host
             var latex = _popup.CurrentFinalLatex ?? "";
             if (string.IsNullOrWhiteSpace(latex)) return false;
 
-            return CommitLatexAndOMath(latex, _lastZoneSource ?? "");
+            return CommitLatexAndOMath(latex, _currentZoneSpan?.Text ?? "");
         }
 
         /// <summary>
@@ -1569,40 +1620,6 @@ namespace MathCursor.Host
 
             public static MergeOutcome Identity(int absStart, int absEnd, string source, string latex)
                 => new MergeOutcome(absStart, absEnd, source, latex, false, null);
-        }
-
-        /// <summary>
-        /// Traduction string-pos NER → Word interne pour les bornes de la
-        /// zone courante. En mode édition, no-op (les <c>_lastZone*</c> sont
-        /// déjà en coords internes via TryEnterEditMode).
-        ///
-        /// <para>Le NER renvoie des offsets dans paragraphText (avec OMath
-        /// masquées) ; SetRange attend des positions internes (qui incluent
-        /// les wrappers cachés). On itère <c>paragraph.Range.Characters</c>
-        /// pour mapper proprement (cf. <see cref="Detection.ParagraphPositionTranslator"/>).</para>
-        /// </summary>
-        private (int absStart, int absEnd) TranslateNerToInternal(
-            bool isEditMode, int defaultAbsStart, int defaultAbsEnd)
-        {
-            if (isEditMode || _lastZoneStringStart < 0 || _lastZoneParaRangeStart < 0)
-                return (defaultAbsStart, defaultAbsEnd);
-            try
-            {
-                var doc = _app.ActiveDocument;
-                if (doc == null) return (defaultAbsStart, defaultAbsEnd);
-                var paraRange = doc.Range(_lastZoneParaRangeStart, _lastZoneParaRangeStart)
-                    .Paragraphs[1].Range;
-                int absStart = Detection.ParagraphPositionTranslator
-                    .StringPosToInternal(paraRange, _lastZoneStringStart);
-                int absEnd = Detection.ParagraphPositionTranslator
-                    .StringPosToInternal(paraRange, _lastZoneStringEnd);
-                return (absStart, absEnd);
-            }
-            catch (Exception ex)
-            {
-                LogDiag("commit_translate_error: " + ex.Message);
-                return (defaultAbsStart, defaultAbsEnd);
-            }
         }
 
         /// <summary>
@@ -1720,7 +1737,7 @@ namespace MathCursor.Host
         /// étapes :</para>
         /// <list type="number">
         /// <item>Initial sidecar (edit mode : merge stored + popup).</item>
-        /// <item>Traduction NER → Word interne via <see cref="TranslateNerToInternal"/>.</item>
+        /// <item>Traduction string-pos → Word interne via <see cref="Detection.ZoneSpan.TryToInternal"/>.</item>
         /// <item>Orchestration mergers via <see cref="ApplyMergers"/> (intra
         /// puis cross-line cascade).</item>
         /// <item><see cref="MathCursor.Host.Pipeline.CommitPipeline.Run"/> :
@@ -1746,11 +1763,27 @@ namespace MathCursor.Host
                     new[] { 0, 0 });
             }
 
-            // 2. Traduction NER → Word interne.
-            var (translatedStart, translatedEnd) = TranslateNerToInternal(
-                isEditMode: editingHandle != null,
-                defaultAbsStart: _lastZoneAbsStart,
-                defaultAbsEnd: _lastZoneAbsEnd);
+            // 2. Traduction string-pos → Word interne via ZoneSpan unifié.
+            //    En mode édition, on bypass la traduction (les bornes du
+            //    handle d'édition sont déjà internes via TryEnterEditMode).
+            //    Sinon, ZoneSpan.TryToInternal itère paragraph.Range.Characters
+            //    pour compter les wrappers structurels invisibles. Cf. ADR
+            //    2026-05-23-Refactor-zonespan-popup-commit-coords.
+            int translatedStart, translatedEnd;
+            if (editingHandle != null)
+            {
+                translatedStart = _lastZoneAbsStart;
+                translatedEnd = _lastZoneAbsEnd;
+            }
+            else if (_currentZoneSpan != null)
+            {
+                _currentZoneSpan.TryToInternal(_app.ActiveDocument, out translatedStart, out translatedEnd);
+            }
+            else
+            {
+                translatedStart = _lastZoneAbsStart;
+                translatedEnd = _lastZoneAbsEnd;
+            }
 
             // 3. Orchestration mergers (intra puis cross-line cascade).
             var outcome = ApplyMergers(translatedStart, translatedEnd, source, latex, editingHandle);
@@ -1777,7 +1810,10 @@ namespace MathCursor.Host
             _commitInternalStart = -1;
             _commitInternalEnd = -1;
             Log($"=== COMMIT @ {DateTime.Now:HH:mm:ss.fff} ===");
-            Log($"INPUT  stringPos=[{_lastZoneStringStart},{_lastZoneStringEnd}) paraStart={_lastZoneParaRangeStart} → internal=[{outcome.AbsStart},{outcome.AbsEnd}) source=\"{Preview(source)}\" latex=\"{Preview(latex)}\" editing={(editingHandle != null ? editingHandle.Id : "no")}");
+            string spanDebug = _currentZoneSpan == null
+                ? "stringPos=(no-span) paraStart=(no-span)"
+                : $"stringPos=[{_currentZoneSpan.StringStart},{_currentZoneSpan.StringEnd}) paraStart={_currentZoneSpan.ParagraphAbsStart}";
+            Log($"INPUT  {spanDebug} → internal=[{outcome.AbsStart},{outcome.AbsEnd}) source=\"{Preview(source)}\" latex=\"{Preview(latex)}\" editing={(editingHandle != null ? editingHandle.Id : "no")}");
 
             // UndoRecordScope conservé : sans, le BuildUp crée une entrée
             // undo séparée du TypeText (1 Ctrl+Z annule le BuildUp, 2e
@@ -1826,12 +1862,9 @@ namespace MathCursor.Host
             catch { }
 
             // Reset état
+            _currentZoneSpan = null;
             _lastZoneAbsStart = -1;
             _lastZoneAbsEnd = -1;
-            _lastZoneStringStart = -1;
-            _lastZoneStringEnd = -1;
-            _lastZoneParaRangeStart = -1;
-            _lastZoneSource = "";
             _editController?.Close();
             _revertedMultiLineZoneStart = -1;
             _revertedMultiLineZoneEnd = -1;

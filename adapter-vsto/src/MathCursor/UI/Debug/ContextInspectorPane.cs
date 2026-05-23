@@ -124,6 +124,23 @@ namespace MathCursor.UI.Debug
         }
 
         /// <summary>
+        /// DEBUG P11.14 (2026-05-22) — Engine v2 trace : push à chaque
+        /// résolution. Inclut tokens, rule matchée, candidats sur collision,
+        /// fallback éventuel. Cf. ADR 2026-05-22-Feat-engine-poc-isolation.
+        /// </summary>
+        public void SetEngineV2Trace(string trace)
+        {
+            if (string.IsNullOrEmpty(trace))
+            {
+                _content.Text = "(engine v2 inactive — pas branché ou pas tourné sur la dernière résolution)";
+                _status.Text = $"⟳ ENGINE V2  |  {DateTime.Now:HH:mm:ss.fff}  inactif";
+                return;
+            }
+            _status.Text = $"⟳ ENGINE V2  |  {DateTime.Now:HH:mm:ss.fff}  actif";
+            _content.Text = trace;
+        }
+
+        /// <summary>
         /// DESACTIVÉ 2026-05-15 — affichage caret state désactivé pendant la
         /// session de debug du chantier d'insertion. La méthode est conservée
         /// pour ne pas casser les call sites mais devient no-op.
