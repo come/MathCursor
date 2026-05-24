@@ -88,6 +88,20 @@ namespace MathCursor.Engine
                     ruleId: multiLineBlock.Mode == "cases" ? "multiline-cases" : "multiline-align");
             }
 
+            // Pre-pass FuncDef : `f: x -> body` ou `f: (x,y) -> body` →
+            // `f: x \mapsto body`. Port du legacy Parser.TryParseFuncDef.
+            // Cf. user-report 2026-05-23 `G :x->1/x`.
+            var funcDef = TryBuildFuncDef(tokens);
+            if (funcDef != null)
+            {
+                var funcDefLatex = _flatEmitter.Emit(funcDef);
+                return new EngineResult(
+                    topLatex: funcDefLatex,
+                    isComplete: !funcDefLatex.Contains(@"\square"),
+                    collisions: System.Array.Empty<EngineCandidate>(),
+                    ruleId: "funcdef");
+            }
+
             // P30 (2026-05-22) : la détection angle `^<word>` est faite au
             // tokenizer (= MergeLeadingCaretAngle). Plus de hardcoded ici.
 
@@ -498,6 +512,68 @@ namespace MathCursor.Engine
             for (int i = start; i < endExcl; i++) slice.Add(tokens[i]);
             var ast = _parser.Parse(slice);
             return ListCombinator.Promote(ast);
+        }
+
+        // ─── FuncDef (= `f: x -> body`) ──────────────────────────────
+        // Cf. ADR 2026-05-23 (port pattern legacy FuncDef).
+
+        /// <summary>
+        /// Détecte le pattern <c>Word(ident) ":" Word(ident) ("," Word(ident))*
+        /// "->" body</c> et construit un <see cref="FuncDefNode"/>. Retourne
+        /// <c>null</c> si le pattern ne matche pas (= fallback parse normal).
+        /// </summary>
+        private FuncDefNode? TryBuildFuncDef(IReadOnlyList<Token> tokens)
+        {
+            int i = 0;
+            // Name = Word identifiant unique (lettre, pas reclassé en function
+            // ou relation — sinon ce serait `\sin: ...` qui n'a aucun sens).
+            SkipSep(tokens, ref i);
+            if (i >= tokens.Count || tokens[i].Kind != TokenKind.Word) return null;
+            var nameTok = tokens[i];
+            if (nameTok.Text.StartsWith("\\")) return null; // function reclassed, pas FuncDef
+            i++;
+            SkipSep(tokens, ref i);
+
+            // `:` Symbol
+            if (i >= tokens.Count || tokens[i].Kind != TokenKind.Symbol || tokens[i].Text != ":") return null;
+            i++;
+            SkipSep(tokens, ref i);
+
+            // Vars : Word ident (, Word ident)*
+            var vars = new List<string>();
+            if (i >= tokens.Count || tokens[i].Kind != TokenKind.Word) return null;
+            vars.Add(tokens[i].Text);
+            i++;
+            while (true)
+            {
+                SkipSep(tokens, ref i);
+                if (i >= tokens.Count) break;
+                if (tokens[i].Kind == TokenKind.Sep && tokens[i].Text == ",")
+                {
+                    i++;
+                    SkipSep(tokens, ref i);
+                    if (i >= tokens.Count || tokens[i].Kind != TokenKind.Word) return null;
+                    vars.Add(tokens[i].Text);
+                    i++;
+                    continue;
+                }
+                break;
+            }
+            SkipSep(tokens, ref i);
+
+            // `->` Glue ou Symbol selon vocab. Variants : `->`, `→`, `↦`, `\to`.
+            if (i >= tokens.Count) return null;
+            var arrow = tokens[i];
+            bool isArrow = (arrow.Kind == TokenKind.Glue || arrow.Kind == TokenKind.Symbol)
+                && (arrow.Text == "->" || arrow.Text == "→" || arrow.Text == "↦"
+                    || arrow.Text == "\\to" || arrow.Text == "\\mapsto");
+            if (!isArrow) return null;
+            i++;
+            SkipSep(tokens, ref i);
+
+            // Body = reste des tokens
+            var body = ParseTokenRange(tokens, i, tokens.Count) ?? PlaceholderNode.Instance;
+            return new FuncDefNode(nameTok.Text, vars, body);
         }
 
         // ─── Factory ──────────────────────────────────────────────────

@@ -93,6 +93,27 @@ namespace MathCursor.Engine.Ast
     }
 
     /// <summary>
+    /// Définition de fonction au format lycée FR (<c>f: x -&gt; expr</c> ou
+    /// <c>f: (x,y) -&gt; expr</c>). Construit par le pre-pass de
+    /// <see cref="MathEngine"/> via le pattern <c>Ident : Ident (, Ident)*
+    /// -&gt; body</c>. Émis comme <c>f: x \mapsto expr</c> (n=1) ou
+    /// <c>f: (x,y) \mapsto expr</c> (n≥2).
+    /// </summary>
+    public sealed class FuncDefNode : AstNode
+    {
+        public override string Kind => "funcDef";
+        public string Name { get; }
+        public IReadOnlyList<string> Vars { get; }
+        public AstNode Body { get; }
+        public FuncDefNode(string name, IReadOnlyList<string> vars, AstNode body)
+        {
+            Name = name;
+            Vars = vars;
+            Body = body;
+        }
+    }
+
+    /// <summary>
     /// Bloc multi-ligne : système d'équations (<c>\begin{cases}</c>) ou chaîne
     /// d'équivalences/égalités (<c>\begin{align*}</c>). Construit par le
     /// pre-pass de <see cref="MathEngine"/> quand le source contient des

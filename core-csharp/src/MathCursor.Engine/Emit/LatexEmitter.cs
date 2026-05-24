@@ -74,7 +74,37 @@ namespace MathCursor.Engine.Emit
                 case MultiLineBlockNode mb:
                     RenderMultiLineBlock(mb, sb);
                     break;
+                case FuncDefNode fd:
+                    RenderFuncDef(fd, sb);
+                    break;
             }
+        }
+
+        /// <summary>
+        /// Rend une définition de fonction : <c>f: x \mapsto body</c> (1 var)
+        /// ou <c>f: (x,y) \mapsto body</c> (n vars). Port direct du legacy
+        /// <c>LatexRenderingVisitor.Visit(FuncDef)</c>. Cf. ADR
+        /// 2026-05-23 (port pattern legacy FuncDef).
+        /// </summary>
+        private void RenderFuncDef(FuncDefNode fd, StringBuilder sb)
+        {
+            sb.Append(fd.Name).Append(": ");
+            if (fd.Vars.Count == 1)
+            {
+                sb.Append(fd.Vars[0]);
+            }
+            else
+            {
+                sb.Append('(');
+                for (int i = 0; i < fd.Vars.Count; i++)
+                {
+                    if (i > 0) sb.Append(',');
+                    sb.Append(fd.Vars[i]);
+                }
+                sb.Append(')');
+            }
+            sb.Append(" \\mapsto ");
+            Render(fd.Body, sb);
         }
 
         /// <summary>
