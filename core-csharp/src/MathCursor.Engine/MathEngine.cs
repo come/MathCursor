@@ -301,6 +301,18 @@ namespace MathCursor.Engine
                         ti++;
                         continue;
                     }
+                    // Cas `cos x`, `sin t`, `\ln y` : si le bucket finit par
+                    // une function known (= Word avec text reclassed en LaTeX
+                    // cmd `\sin`/`\cos`/…), on traverse le Sep pour absorber
+                    // l'argument à droite. Cf. user-report 2026-05-23 « Cos x ».
+                    if (t.Text != "\n"
+                        && bucket.Count >= 1
+                        && bucket[bucket.Count - 1].Kind == TokenKind.Word
+                        && _vocab.FunctionLatexValues.Contains(bucket[bucket.Count - 1].Text))
+                    {
+                        ti++;
+                        continue;
+                    }
                     break;
                 }
                 if (t.Kind == TokenKind.CloseDelim) break;

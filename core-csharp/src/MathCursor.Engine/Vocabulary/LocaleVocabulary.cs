@@ -27,6 +27,12 @@ namespace MathCursor.Engine.Vocabulary
         public IReadOnlyList<string> RowSep { get; }
         public string Decimal { get; }
 
+        /// <summary>Set précompilé des valeurs LaTeX renvoyées par
+        /// <see cref="Functions"/> (= <c>\sin</c>, <c>\cos</c>, …). Utilisé par
+        /// le parser pour reconnaître qu'un token Word est une function known
+        /// reclassed (sans devoir reverse-lookup dans le dict à chaque check).</summary>
+        public HashSet<string> FunctionLatexValues { get; }
+
         public LocaleVocabulary(
             string code,
             IReadOnlyDictionary<string, IReadOnlyList<string>> classes,
@@ -47,6 +53,9 @@ namespace MathCursor.Engine.Vocabulary
             ColSep = colSep;
             RowSep = rowSep;
             Decimal = @decimal;
+            var funcSet = new HashSet<string>();
+            foreach (var v in functions.Values) funcSet.Add(v);
+            FunctionLatexValues = funcSet;
         }
 
         /// <summary>

@@ -125,18 +125,17 @@ namespace MathCursor.Engine.Emit
             if (infix.Op == @"\cdotIM")
             {
                 // Produit implicite (= juxtaposition `2x`, `ab`). Sans symbol.
-                // P26 : exception `<letter><number>` → exposant.
-                if (infix.Left is AtomNode left
-                    && left.AtomKind == "word"
-                    && left.Text.Length == 1
-                    && char.IsLetter(left.Text[0])
-                    && infix.Right is AtomNode right
-                    && right.AtomKind == "number")
+                // Convention math : `<base><number>` collé → `<base>^{number}`
+                // pour les bases exposables (= letter atom OU groupe). Couvre
+                // `x2`, `(x+1)2`, `cos(x)2` (= user-report 2026-05-23).
+                if (infix.Right is AtomNode rightAtom
+                    && rightAtom.AtomKind == "number"
+                    && MathCursor.Engine.Parsing.PrecedenceClimber.IsExponentBase(infix.Left))
                 {
                     // P31 : alt indice via _preferSubscript.
                     string op = _preferSubscript ? "_" : "^";
-                    sb.Append(left.Text).Append(op).Append('{')
-                      .Append(right.Text).Append('}');
+                    Render(infix.Left, sb);
+                    sb.Append(op).Append('{').Append(rightAtom.Text).Append('}');
                     return;
                 }
                 Render(infix.Left, sb);

@@ -58,10 +58,12 @@ namespace MathCursor.Engine.Tokenization
                     refined.Add(new Token(t.Text, TokenKind.Symbol, t.Start, t.End));
                 }
                 else if (t.Kind == TokenKind.Word
-                    && _vocab.Functions.TryGetValue(t.Text, out var funcLatex))
+                    && TryLookupFunction(t.Text, out var funcLatex))
                 {
                     // P16 : Word qui est une function known (sin, cos, ln…)
                     // est reclassé avec son rendu LaTeX (= \sin, \cos, \ln).
+                    // Tolérance casse (2026-05-23) : `Cos` → `\cos` aussi
+                    // (Word autocapitalize after `.` ou début de phrase).
                     refined.Add(new Token(funcLatex, TokenKind.Word, t.Start, t.End));
                 }
                 else
@@ -74,6 +76,19 @@ namespace MathCursor.Engine.Tokenization
             // dans MathEngine.Resolve. Brief : si on a un usage de `^` en
             // milieu de source, c'est un exposant (= traité par parser standard).
             return MergeLeadingCaretAngle(refined);
+        }
+
+        /// <summary>Lookup function avec tolérance casse : <c>Cos</c>, <c>COS</c>
+        /// matchent <c>cos</c>. Évite que Word autocapitalize ne mange le
+        /// reclasse function (= user-report 2026-05-23 « Cos x »).</summary>
+        private bool TryLookupFunction(string word, out string latex)
+        {
+            if (_vocab.Functions.TryGetValue(word, out latex)) return true;
+            // Tolérance casse : lowercase, alors retry.
+            var lower = word.ToLowerInvariant();
+            if (lower != word && _vocab.Functions.TryGetValue(lower, out latex)) return true;
+            latex = string.Empty;
+            return false;
         }
 
         private static IReadOnlyList<Token> MergeLeadingCaretAngle(List<Token> tokens)

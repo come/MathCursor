@@ -60,21 +60,35 @@ namespace MathCursor.Engine.Parsing
         /// le <see cref="Relation.Tier"/> nominal pour les cas où la convention
         /// math FR impose un binding différent.
         /// <list type="bullet">
-        ///   <item><c>\cdotIM</c> entre letter atom + number atom →
-        ///     <see cref="PrecedenceTier.Funcpow"/> (= bind comme exposant,
-        ///     plus fort que <c>/</c>).</item>
+        ///   <item><c>\cdotIM</c> dont le right est un number ET le left est
+        ///     un base exposable (= letter atom OU group parenthésé) →
+        ///     <see cref="PrecedenceTier.Funcpow"/> : <c>x2</c> = <c>x^{2}</c>,
+        ///     <c>1/x2</c> = <c>\frac{1}{x^{2}}</c>, <c>(x+1)2</c> = <c>(x+1)^{2}</c>,
+        ///     <c>cos(x)2</c> = <c>\cos(x)^{2}</c>.</item>
         /// </list>
         /// </summary>
         private static int EffectiveTier(Relation op, AstNode left, AstNode right)
         {
             if (op.Tex == @"\cdotIM"
-                && left is AtomNode la && la.AtomKind == "word"
-                && la.Text.Length == 1 && char.IsLetter(la.Text[0])
-                && right is AtomNode ra && ra.AtomKind == "number")
+                && right is AtomNode ra && ra.AtomKind == "number"
+                && IsExponentBase(left))
             {
                 return (int)PrecedenceTier.Funcpow;
             }
             return (int)op.Tier;
+        }
+
+        /// <summary>True si <paramref name="node"/> peut être base d'un
+        /// exposant implicite (= juxtaposition avec un number à sa droite).
+        /// Letter atom seul OU groupe parenthésé.</summary>
+        internal static bool IsExponentBase(AstNode node)
+        {
+            return node switch
+            {
+                AtomNode a => a.AtomKind == "word" && a.Text.Length == 1 && char.IsLetter(a.Text[0]),
+                GroupNode _ => true,
+                _ => false
+            };
         }
 
         private static IReadOnlyList<T> SubList<T>(IReadOnlyList<T> src, int start, int end)
