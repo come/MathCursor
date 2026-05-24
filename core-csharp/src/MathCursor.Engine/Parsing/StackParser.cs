@@ -277,22 +277,6 @@ namespace MathCursor.Engine.Parsing
         }
 
         /// <summary>
-        /// Whitelist des opérateurs valides en préfixe en début d'une
-        /// expression :
-        /// <list type="bullet">
-        ///   <item><c>+</c>, <c>-</c> : signe math compact ;</item>
-        ///   <item><c>=</c>, <c>&lt;=&gt;</c>, <c>=&gt;</c>, <c>&lt;=</c>
-        ///     (et variants Unicode <c>⇔ ⇒ ⇐</c>) : continuation de chaîne
-        ///     d'équivalences/égalités quand le source n'est PAS multi-line
-        ///     (= déjà couvert par le pre-pass multi-line). User-report
-        ///     « le = saute au commit » 2026-05-23.</item>
-        /// </list>
-        /// <para>Les opérateurs <c>*</c>, <c>/</c>, <c>&lt;</c>, <c>&gt;</c>
-        /// restent skipped en début (= sémantique unaire non définie).</para>
-        /// Cf. ADRs <c>2026-05-23-Fix-engine-leading-unary-prefix</c> +
-        /// <c>2026-05-23-Fix-engine-leading-relation-prefix</c>.
-        /// </summary>
-        /// <summary>
         /// True si <paramref name="tok"/> est un bracket char (`[` ou `]`) qui
         /// peut fermer un group ouvert par `[` (= intervalle FR half-open
         /// `[0,1[`). Le tokenizer ne distingue pas open/close pour `[`/`]`
@@ -303,19 +287,15 @@ namespace MathCursor.Engine.Parsing
                && (tok.Kind == TokenKind.OpenDelim || tok.Kind == TokenKind.CloseDelim)
                && (tok.Text == "[" || tok.Text == "]");
 
-        public static bool IsLeadingUnaryAllowed(string text)
+        /// <summary>
+        /// True si <paramref name="text"/> est une relation déclarée comme
+        /// préfixe unaire autorisé en début d'expression (= flag YAML
+        /// <c>allow_leading: true</c>). Data-driven, pas de whitelist
+        /// hardcoded. Cf. P2 migration 2026-05-24.
+        /// </summary>
+        public bool IsLeadingUnaryAllowed(string text)
         {
-            switch (text)
-            {
-                case "+": case "-":
-                case "=":
-                case "<=>": case "<==>": case "⇔": case "↔": case "⟺":
-                case "=>": case "==>": case "⇒": case "⟹":
-                case "<=": case "<==": case "⇐": case "⟸":
-                    return true;
-                default:
-                    return false;
-            }
+            return _vocab.Relations.TryGetValue(text, out var rel) && rel.AllowLeading;
         }
 
         /// <summary>

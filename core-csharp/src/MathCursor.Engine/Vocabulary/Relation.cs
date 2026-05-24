@@ -28,9 +28,38 @@ namespace MathCursor.Engine.Vocabulary
         /// </summary>
         public RelationContext Context { get; }
 
+        /// <summary>
+        /// Si <c>true</c>, l'opérateur peut apparaître en préfixe unaire en
+        /// début d'expression (ex. <c>+y2</c>, <c>=1/2</c>). Le parser
+        /// l'encapsule dans un <c>UnaryPrefixNode</c>. Source YAML
+        /// <c>allow_leading: true</c>. User-report 2026-05-23.
+        /// </summary>
+        public bool AllowLeading { get; }
+
+        /// <summary>
+        /// Si <c>true</c>, l'opérateur est rendu compact (= sans espace
+        /// autour : <c>a+b</c>, pas <c>a + b</c>). Conv math FR pour
+        /// <c>+</c>/<c>-</c> arithmétiques. Source YAML <c>compact: true</c>.
+        /// </summary>
+        public bool Compact { get; }
+
+        /// <summary>
+        /// Préfixe LaTeX utilisé en mode multi-line align quand l'opérateur
+        /// apparaît en début de ligne 2+. <c>null</c> = pas un marker align
+        /// (= ne peut pas démarrer une ligne en mode align*). Empty string
+        /// <c>""</c> = chaîne d'égalités (= aligné via <c>&amp;</c>, pas de
+        /// prefix visible). Sinon = la commande LaTeX (<c>\Leftrightarrow</c>,
+        /// <c>\Rightarrow</c>, <c>\Leftarrow</c>). Source YAML
+        /// <c>align_prefix: '\Leftrightarrow'</c>.
+        /// </summary>
+        public string? AlignPrefix { get; }
+
         public Relation(string token, string tex, PrecedenceTier tier,
             string? tail = null, bool wrap = false,
-            RelationContext context = RelationContext.None)
+            RelationContext context = RelationContext.None,
+            bool allowLeading = false,
+            bool compact = false,
+            string? alignPrefix = null)
         {
             Token = token ?? throw new System.ArgumentNullException(nameof(token));
             Tex = tex ?? throw new System.ArgumentNullException(nameof(tex));
@@ -38,6 +67,9 @@ namespace MathCursor.Engine.Vocabulary
             Tail = tail;
             Wrap = wrap;
             Context = context;
+            AllowLeading = allowLeading;
+            Compact = compact;
+            AlignPrefix = alignPrefix;
         }
     }
 }

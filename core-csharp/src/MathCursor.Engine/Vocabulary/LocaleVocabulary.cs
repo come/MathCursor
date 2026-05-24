@@ -118,8 +118,10 @@ namespace MathCursor.Engine.Vocabulary
 
         internal static LocaleVocabulary FromYaml(string code, string yaml)
         {
+            // UnderscoredNamingConvention : C# `AllowLeading` ↔ YAML `allow_leading`.
+            // Compatible avec les fields mono-mot existants (Wrap, Tail, Tex, ...).
             var deserializer = new DeserializerBuilder()
-                .WithNamingConvention(CamelCaseNamingConvention.Instance)
+                .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .IgnoreUnmatchedProperties()
                 .Build();
             var raw = deserializer.Deserialize<RawDoc>(yaml)
@@ -175,7 +177,10 @@ namespace MathCursor.Engine.Vocabulary
                     tier: tier,
                     tail: kv.Value.Tail,
                     wrap: kv.Value.Wrap,
-                    context: context);
+                    context: context,
+                    allowLeading: kv.Value.AllowLeading,
+                    compact: kv.Value.Compact,
+                    alignPrefix: kv.Value.AlignPrefix);
             }
             return dict;
         }
@@ -247,6 +252,11 @@ namespace MathCursor.Engine.Vocabulary
             public string? Tail { get; set; }
             public bool Wrap { get; set; }
             public string? Context { get; set; }
+            // P2 (2026-05-24) — data-driven flags. YAML utilise
+            // UnderscoredNamingConvention donc `AllowLeading` ↔ `allow_leading`.
+            public bool AllowLeading { get; set; }
+            public bool Compact { get; set; }
+            public string? AlignPrefix { get; set; }
         }
     }
 }

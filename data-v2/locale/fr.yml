@@ -94,8 +94,14 @@ functions:
 # Tiers (du plus fort au plus faible) :
 #   funcpow > muldiv > addsub > setop > comp > rel > and > or > implies > iff
 relations:
-  '+':      { tex: '+',           tier: addsub }
-  '-':      { tex: '-',           tier: addsub }
+  # P2 (2026-05-24) — flags YAML data-driven :
+  # - compact: true        → rendu sans espace autour (a+b vs a + b)
+  # - allow_leading: true  → autorisé en préfixe unaire en début d'expr
+  # - align_prefix: '...'  → préfixe LaTeX en mode multi-line align*
+  #   ('' vide = chaîne d'égalités via `&`, pas un prefix visible)
+  # - context: '...'       → condition d'activation au reclasse Word→Symbol
+  '+':      { tex: '+',           tier: addsub,  compact: true, allow_leading: true }
+  '-':      { tex: '-',           tier: addsub,  compact: true, allow_leading: true }
   # FR : `*` = `\times` (= ×, conv européenne). User-report 2026-05-24
   # « devrait chercher la locale de l'utilisateur pour faire mult (x)
   # en europe ». EN garde `\cdot`. Note : `\cdotIM` (produit implicite
@@ -115,11 +121,15 @@ relations:
   # `f(u)`, `2u`, etc.). User-report 2026-05-24 `[0,1[ u [0,1]`.
   'u':      { tex: '\cup',        tier: setop, context: isolated_between_brackets }
   'inter':  { tex: '\cap',        tier: setop }
-  '=':      { tex: '=',           tier: comp }
+  # P2 : `=` est align-able (= chaîne d'égalités via `&`, pas de prefix
+  # visible) + leading autorisé (= continuation de chaîne d'équivalences).
+  '=':      { tex: '=',           tier: comp, allow_leading: true, align_prefix: '' }
   '!=':     { tex: '\neq',        tier: comp }
   '<':      { tex: '<',           tier: comp }
   '>':      { tex: '>',           tier: comp }
-  '<=':     { tex: '\leq',        tier: comp }
+  # P2 : `<=` en début de ligne en mode align = `\Leftarrow` (= conv FR
+  # reverse implication multi-ligne). Tex normal = `\leq` (= leq inline).
+  '<=':     { tex: '\leq',        tier: comp, allow_leading: true, align_prefix: '\Leftarrow' }
   '>=':     { tex: '\geq',        tier: comp }
   '≤':      { tex: '\leq',        tier: comp }
   '≥':      { tex: '\geq',        tier: comp }
@@ -144,10 +154,20 @@ relations:
   '∧':      { tex: '\land',       tier: and }
   'ou':     { tex: '\lor',        tier: or }
   '∨':      { tex: '\lor',        tier: or }
-  '=>':     { tex: '\implies',    tier: implies }
-  '⇒':      { tex: '\implies',    tier: implies }
-  '<=>':    { tex: '\iff',        tier: iff }
-  '⇔':      { tex: '\iff',        tier: iff }
+  # P2 (2026-05-24) : markers align multi-line + leading autorisé.
+  '=>':     { tex: '\implies',    tier: implies, allow_leading: true, align_prefix: '\Rightarrow' }
+  '⇒':      { tex: '\implies',    tier: implies, allow_leading: true, align_prefix: '\Rightarrow' }
+  '<=>':    { tex: '\iff',        tier: iff,     allow_leading: true, align_prefix: '\Leftrightarrow' }
+  '⇔':      { tex: '\iff',        tier: iff,     allow_leading: true, align_prefix: '\Leftrightarrow' }
+  # Variants Unicode supplémentaires (legacy ADR).
+  '↔':      { tex: '\iff',        tier: iff,     allow_leading: true, align_prefix: '\Leftrightarrow' }
+  '⟺':      { tex: '\iff',        tier: iff,     allow_leading: true, align_prefix: '\Leftrightarrow' }
+  '⟹':      { tex: '\implies',    tier: implies, allow_leading: true, align_prefix: '\Rightarrow' }
+  '⇐':      { tex: '\Leftarrow',  tier: implies, allow_leading: true, align_prefix: '\Leftarrow' }
+  '⟸':      { tex: '\Leftarrow',  tier: implies, allow_leading: true, align_prefix: '\Leftarrow' }
+  '<==':    { tex: '\Leftarrow',  tier: implies, allow_leading: true, align_prefix: '\Leftarrow' }
+  '<==>':   { tex: '\iff',        tier: iff,     allow_leading: true, align_prefix: '\Leftrightarrow' }
+  '==>':    { tex: '\implies',    tier: implies, allow_leading: true, align_prefix: '\Rightarrow' }
 
 # Tokens "glue" qui ne séparent pas (brief §1.1) — appartiennent à un slot.
 glue:    ['->', '=', '→']

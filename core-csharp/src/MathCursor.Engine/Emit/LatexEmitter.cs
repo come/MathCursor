@@ -17,8 +17,9 @@ namespace MathCursor.Engine.Emit
     public sealed class LatexEmitter
     {
         private readonly bool _preferSubscript;
+        private readonly Vocabulary.LocaleVocabulary? _vocab;
 
-        public LatexEmitter() : this(false) { }
+        public LatexEmitter() : this(false, null) { }
 
         /// <summary>
         /// P31 (2026-05-22) : <paramref name="preferSubscript"/> = true rend
@@ -26,9 +27,17 @@ namespace MathCursor.Engine.Emit
         /// Utilisé par <see cref="Collision.Detectors.LetterSupSubDetector"/>
         /// pour générer l'alt indice sans scanner le LaTeX rendu (brief v5 §5).
         /// </summary>
-        public LatexEmitter(bool preferSubscript)
+        public LatexEmitter(bool preferSubscript) : this(preferSubscript, null) { }
+
+        /// <summary>
+        /// P2 (2026-05-24) : ctor vocab-aware pour lire <c>compact</c> et
+        /// autres flags YAML des relations sans hardcoder. Fallback sur les
+        /// règles hardcoded si vocab null (= backward compat).
+        /// </summary>
+        public LatexEmitter(bool preferSubscript, Vocabulary.LocaleVocabulary? vocab)
         {
             _preferSubscript = preferSubscript;
+            _vocab = vocab;
         }
 
         public string Emit(AstNode? node)
@@ -221,7 +230,26 @@ namespace MathCursor.Engine.Emit
             Render(infix.Right, sb);
         }
 
-        private static bool IsArithmeticOp(string op)
+        /// <summary>
+        /// True si l'opérateur doit être rendu compact (= sans espace
+        /// autour). Data-driven via le flag YAML <c>compact: true</c> sur
+        /// les relations. Fallback hardcoded (`+`/`-`) si vocab non
+        /// disponible.
+        /// </summary>
+        private bool IsArithmeticOp(string op)
+        {
+            if (_vocab != null)
+            {
+                // Lookup direct par tex (= ce qu'on a en main dans InfixNode.Op).
+                foreach (var rel in _vocab.Relations.Values)
+                {
+                    if (rel.Tex == op) return rel.Compact;
+                }
+            }
+            return IsArithmeticOpFallback(op);
+        }
+
+        private static bool IsArithmeticOpFallback(string op)
         {
             return op == "+" || op == "-";
         }

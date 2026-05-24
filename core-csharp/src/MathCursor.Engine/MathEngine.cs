@@ -49,7 +49,7 @@ namespace MathCursor.Engine
             _matcher = new ShapeMatcher(_vocab);
             _templateEmitter = new TemplateEmitter(_vocab);
             _parser = new StackParser(_vocab);
-            _flatEmitter = new LatexEmitter();
+            _flatEmitter = new LatexEmitter(preferSubscript: false, vocab: _vocab);
 
             // Inject l'anchor matcher dans StackParser pour que les ancres
             // (lim/sum/int/cos/…) soient reconnues PARTOUT dans l'AST, y
@@ -329,7 +329,7 @@ namespace MathCursor.Engine
                     if (t.Text != "\n"
                         && bucket.Count == 1
                         && (bucket[0].Kind == TokenKind.Symbol || bucket[0].Kind == TokenKind.Glue)
-                        && Parsing.StackParser.IsLeadingUnaryAllowed(bucket[0].Text))
+                        && _parser.IsLeadingUnaryAllowed(bucket[0].Text))
                     {
                         ti++;
                         continue;
@@ -505,21 +505,17 @@ namespace MathCursor.Engine
         }
 
         /// <summary>Mappe un token de marker align vers son préfixe LaTeX.
-        /// Retourne <c>null</c> si pas un marker reconnu.</summary>
-        private static string? MapAlignMarkerToLatex(Token tok)
+        /// Data-driven via le champ YAML <c>align_prefix</c> des relations.
+        /// Retourne <c>null</c> si le token n'est pas une relation ou si
+        /// elle n'a pas de <c>align_prefix</c> défini (= pas un marker align).
+        /// </summary>
+        private string? MapAlignMarkerToLatex(Token tok)
         {
             if (tok.Kind != TokenKind.Symbol && tok.Kind != TokenKind.Glue) return null;
-            switch (tok.Text)
-            {
-                case "=": return ""; // chaîne d'égalités, aligné via &
-                case "<=>": case "<==>": case "⇔": case "↔": case "⟺":
-                    return "\\Leftrightarrow ";
-                case "=>": case "==>": case "⇒": case "⟹":
-                    return "\\Rightarrow ";
-                case "<=": case "<==": case "⇐": case "⟸":
-                    return "\\Leftarrow ";
-                default: return null;
-            }
+            if (!_vocab.Relations.TryGetValue(tok.Text, out var rel)) return null;
+            if (rel.AlignPrefix == null) return null;
+            // Vide string (= chaîne d'égalités, aligné via &) OK distincte de null.
+            return rel.AlignPrefix.Length > 0 ? rel.AlignPrefix + " " : "";
         }
 
         /// <summary>Parse une sous-séquence de tokens via StackParser. Utilisé
