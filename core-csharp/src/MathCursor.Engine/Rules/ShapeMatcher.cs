@@ -39,10 +39,14 @@ namespace MathCursor.Engine.Rules
             int typedSlotIndex = 0;
             int ti = startIndex;
 
-            // Vérifie l'anchor (= 1er literal) AVANT toute tolérance partielle.
-            // Si l'anchor lui-même ne matche pas, la rule n'a pas vocation à
-            // produire de hint — on retourne null.
+            // Vérifie l'anchor (= 1er Literal) AVANT toute tolérance partielle.
+            // Partial match autorisé UNIQUEMENT si la rule a un literal en tête
+            // (= ancres `sum`, `lim`, `int`, …). Les rules commençant par un
+            // typed slot (= `{name:var}` dans funcdef) ne produisent JAMAIS de
+            // partial match : sinon tout Word standalone matcherait FuncDef
+            // partiellement (= `1/x`, `a+b`, etc. interceptés).
             bool anchorMatched = false;
+            bool hasLiteralAnchor = parts.Count > 0 && parts[0].Kind == ShapePartKind.Literal;
 
             for (int pi = 0; pi < parts.Count; pi++)
             {
@@ -68,7 +72,7 @@ namespace MathCursor.Engine.Rules
                     }
                     if (part.Quantifier == ShapeQuantifier.Plus && matchedCount == 0)
                     {
-                        if (allowPartial && anchorMatched)
+                        if (allowPartial && anchorMatched && hasLiteralAnchor)
                             return new ShapeMatch(rule, startIndex, ti, ToReadonlyTokens(slots), isPartial: true);
                         return null;
                     }
@@ -81,7 +85,7 @@ namespace MathCursor.Engine.Rules
                     // Partial match : si l'anchor a déjà matché (= au moins le
                     // 1er literal), on retourne un match incomplet. Les slots
                     // manquants seront émis comme `\square` par TemplateEmitter.
-                    if (allowPartial && anchorMatched)
+                    if (allowPartial && anchorMatched && hasLiteralAnchor)
                         return new ShapeMatch(rule, startIndex, ti, ToReadonlyTokens(slots), isPartial: true);
                     return null;
                 }

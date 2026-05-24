@@ -1,0 +1,23 @@
+# Concept "funcdef" — définition de fonction lycée FR.
+# Cf. user-report 2026-05-24 `G :x->1/x`, et ADR
+# 2026-05-23-Feat-engine-v2-multiline-port (port partiel, complété ici).
+#
+# V1 — 1 var uniquement (`f: x -> body`, `f: x → body`, etc.).
+# 2+ vars (`f: x,y -> body`) nécessite une extension de ShapeMatcher pour
+# supporter un slot `{varlist}` (= var (, var)*). À porter quand le besoin
+# est observé.
+
+concept: funcdef
+rules:
+  - id: funcdef-1var
+    # Shape : `<Word ident> : <Word ident> -> <body>`. Le name est variable
+    # (pas un anchor literal) → on utilise {name:var} qui matche un Word.
+    shape: "{name:var} : {arg:var} -> {body}"
+    emit:  "$name: $arg \\mapsto $body"
+    tests:
+      - "G:x->1/x => G: x \\mapsto \\frac{1}{x}"
+      - "f:x->x+1 => f: x \\mapsto x+1"
+      - "g:t->2t => g: t \\mapsto 2t"
+      # NBSP entre name et `:` est géré par le tokenizer (= IsWhiteSpace).
+      # Aussi : variants flèche `→` `↦` `\to` `\mapsto` à porter ici si besoin
+      # (= ajouter `to` au YAML classes ou enrichir la shape).

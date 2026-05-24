@@ -23,11 +23,24 @@ namespace MathCursor.Engine.Emit
     {
         private readonly LocaleVocabulary _vocab;
         private readonly LatexEmitter _emitter;
+        private StackParser? _parser;
 
         public TemplateEmitter(LocaleVocabulary vocab)
         {
             _vocab = vocab ?? throw new System.ArgumentNullException(nameof(vocab));
             _emitter = new LatexEmitter();
+        }
+
+        /// <summary>
+        /// Configure le StackParser à utiliser pour parser les slots d'expr
+        /// imbriqués (= sum dans body FuncDef, etc.). Injecté par MathEngine
+        /// pour propager le anchor matcher PARTOUT dans l'AST. Sans ça, le
+        /// slot body crée un parser local sans matching d'ancres → `sum k 0`
+        /// dans un body reste rendu en mots bruts.
+        /// </summary>
+        public void SetParser(StackParser parser)
+        {
+            _parser = parser;
         }
 
         public string Emit(ShapeMatch match)
@@ -72,7 +85,9 @@ namespace MathCursor.Engine.Emit
             //   - `^` / `_` → braces autour du droit non-atom (a^{b+c})
             if (NeedsLatexTransform(stripped))
             {
-                var parser = new StackParser(_vocab);
+                // Utilise le parser injecté (= avec anchor matcher) si dispo,
+                // sinon fallback parser local sans anchor matching.
+                var parser = _parser ?? new StackParser(_vocab);
                 var ast = parser.Parse(stripped);
                 ast = ListCombinator.Promote(ast);
                 return _emitter.Emit(ast);
