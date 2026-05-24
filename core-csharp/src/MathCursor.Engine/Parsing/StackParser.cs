@@ -45,12 +45,14 @@ namespace MathCursor.Engine.Parsing
             // Les ancres sont reconnues en amont (MathEngine.Resolve) — ici
             // on ne voit que des operands flat.
             int i = 0;
-            return ParseExpression(tokens, ref i, depth: 0);
+            return ParseExpression(tokens, ref i, depth: 0, parentOpen: null);
         }
 
         // Parse une expression jusqu'à un séparateur top-level ou EOF, sans
-        // dépasser un délimiteur fermant courant.
-        private AstNode? ParseExpression(IReadOnlyList<Token> tokens, ref int i, int depth)
+        // dépasser un délimiteur fermant courant. <paramref name="parentOpen"/>
+        // = open-char du group englobant (`[`/`(`/`{`/null). Sert à détecter
+        // les close-non-canoniques (= intervalle FR half-open `[0,1[`).
+        private AstNode? ParseExpression(IReadOnlyList<Token> tokens, ref int i, int depth, string? parentOpen)
         {
             var operands = new List<AstNode>();
             var ops = new List<Relation>();
@@ -60,6 +62,11 @@ namespace MathCursor.Engine.Parsing
                 var tok = tokens[i];
 
                 if (tok.Kind == TokenKind.CloseDelim) break;
+                // Intervalle FR half-open : si on est dans un group `[...` et
+                // qu'on rencontre `[` (OpenDelim) ou `]` (CloseDelim déjà géré
+                // au-dessus), c'est le close non-canonique. Break pour
+                // laisser ParseDelimitedGroup consommer le delim.
+                if (parentOpen != null && IsBracketCloseForInterval(parentOpen, tok)) break;
                 // P13 (2026-05-22) : Sep whitespace internes au sous-flux du
                 // ShapeMatcher ne sont pas des boundaries pour le parser AST
                 // (= le ShapeMatcher a déjà décidé du slot, on parse le contenu).
@@ -185,11 +192,16 @@ namespace MathCursor.Engine.Parsing
 
             while (i < tokens.Count)
             {
-                var item = ParseExpression(tokens, ref i, depth);
+                var item = ParseExpression(tokens, ref i, depth, parentOpen: openChar);
                 items.Add(item ?? PlaceholderNode.Instance);
 
                 if (i >= tokens.Count) break;
                 if (tokens[i].Kind == TokenKind.CloseDelim) break;
+                // Intervalle FR half-open : à l'intérieur d'un group `[`, un
+                // second `[` (= OpenDelim) en position de close est en fait
+                // la borne droite ouverte de l'intervalle (= `[0,1[`).
+                // Cf. user-report 2026-05-23 `[0,1[` rend `[0,1[]]`.
+                if (IsBracketCloseForInterval(openChar, tokens[i])) break;
 
                 if (tokens[i].Kind == TokenKind.Sep)
                 {
@@ -202,11 +214,21 @@ namespace MathCursor.Engine.Parsing
 
             // P20 (2026-05-22) : utilise le close réel tapé (= `]`, `)`, `}`)
             // pour préserver les intervalles half-open `[0,1)`.
+            // Generic 2026-05-23 : accepte aussi `[` comme close-non-canonique
+            // d'un group `[...` (= intervalle FR half-open `[0,1[`).
             string actualClose = expectedClose;
-            if (i < tokens.Count && tokens[i].Kind == TokenKind.CloseDelim)
+            if (i < tokens.Count)
             {
-                actualClose = tokens[i].Text;
-                i++;
+                if (tokens[i].Kind == TokenKind.CloseDelim)
+                {
+                    actualClose = tokens[i].Text;
+                    i++;
+                }
+                else if (IsBracketCloseForInterval(openChar, tokens[i]))
+                {
+                    actualClose = tokens[i].Text;
+                    i++;
+                }
             }
 
             // Résolution du construit : on enveloppe TOUJOURS dans un GroupNode
@@ -236,6 +258,17 @@ namespace MathCursor.Engine.Parsing
         /// Cf. ADRs <c>2026-05-23-Fix-engine-leading-unary-prefix</c> +
         /// <c>2026-05-23-Fix-engine-leading-relation-prefix</c>.
         /// </summary>
+        /// <summary>
+        /// True si <paramref name="tok"/> est un bracket char (`[` ou `]`) qui
+        /// peut fermer un group ouvert par `[` (= intervalle FR half-open
+        /// `[0,1[`). Le tokenizer ne distingue pas open/close pour `[`/`]`
+        /// dans ce cas — c'est au parser de reconnaître le pattern.
+        /// </summary>
+        private static bool IsBracketCloseForInterval(string openChar, Token tok)
+            => openChar == "["
+               && (tok.Kind == TokenKind.OpenDelim || tok.Kind == TokenKind.CloseDelim)
+               && (tok.Text == "[" || tok.Text == "]");
+
         public static bool IsLeadingUnaryAllowed(string text)
         {
             switch (text)
