@@ -54,12 +54,13 @@ namespace MathCursor.Engine.Tests.Parsing
         public void Mul_div_higher_than_add()
         {
             // a + b * c → a + (b * c)
+            // FR : `*` → `\times` (= conv européenne, user-report 2026-05-24).
             var ast = Parse("a+b*c");
             var root = Assert.IsType<InfixNode>(ast);
             Assert.Equal("+", root.Op);
             Assert.IsType<AtomNode>(root.Left);
             var rightInfix = Assert.IsType<InfixNode>(root.Right);
-            Assert.Equal(@"\cdot", rightInfix.Op);
+            Assert.Equal(@"\times", rightInfix.Op);
         }
 
         [Fact]

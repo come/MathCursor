@@ -10,13 +10,18 @@ classes:
 anchors:
   limite: lim
   somme:  sum
+  # Alias EN (= conv internationale courante, user-report 2026-05-24
+  # `F:x-> sum k 0 f(k)*x` n'était pas reconnu).
+  sum:    sum
   produit: prod
+  prod:   prod
   integrale: int
   int: int
   derivee: derive
   derive: derive
   iint: iint
   intint: iint
+  lim: lim
   # P17 — quantificateurs logiques.
   forall: forall
   V: forall
@@ -91,7 +96,11 @@ functions:
 relations:
   '+':      { tex: '+',           tier: addsub }
   '-':      { tex: '-',           tier: addsub }
-  '*':      { tex: '\cdot',       tier: muldiv }
+  # FR : `*` = `\times` (= ×, conv européenne). User-report 2026-05-24
+  # « devrait chercher la locale de l'utilisateur pour faire mult (x)
+  # en europe ». EN garde `\cdot`. Note : `\cdotIM` (produit implicite
+  # letter+number) reste indépendant, géré au parser.
+  '*':      { tex: '\times',      tier: muldiv }
   '·':      { tex: '\cdot',       tier: muldiv }
   '/':      { tex: '/',           tier: muldiv }
   '^':      { tex: '^',           tier: funcpow }
@@ -101,6 +110,11 @@ relations:
   # P28 (2026-05-22) : produit scalaire explicite `.` (= u.v → u \cdot v).
   '.':      { tex: '\cdot',       tier: muldiv }
   'U':      { tex: '\cup',        tier: setop }
+  # `u` minuscule = `\cup` UNIQUEMENT entre 2 intervalles (= context
+  # condition data-driven, évite le conflit avec la lettre `u` dans
+  # `f(u)`, `2u`, etc.). User-report 2026-05-24 `[0,1[ u [0,1]`.
+  'u':      { tex: '\cup',        tier: setop, context: isolated_between_brackets }
+  'inter':  { tex: '\cap',        tier: setop }
   '=':      { tex: '=',           tier: comp }
   '!=':     { tex: '\neq',        tier: comp }
   '<':      { tex: '<',           tier: comp }

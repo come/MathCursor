@@ -53,7 +53,9 @@ namespace MathCursor.Engine.Tokenization
                         refined.Add(new Token(" ", TokenKind.Sep, prev.End, t.Start));
                     }
                 }
-                if (t.Kind == TokenKind.Word && _vocab.Relations.ContainsKey(t.Text))
+                if (t.Kind == TokenKind.Word
+                    && _vocab.Relations.TryGetValue(t.Text, out var relForReclass)
+                    && MatchesRelationContext(relForReclass.Context, rawTokens, i))
                 {
                     refined.Add(new Token(t.Text, TokenKind.Symbol, t.Start, t.End));
                 }
@@ -77,6 +79,46 @@ namespace MathCursor.Engine.Tokenization
             // milieu de source, c'est un exposant (= traité par parser standard).
             return MergeLeadingCaretAngle(refined);
         }
+
+        /// <summary>
+        /// Vérifie qu'une relation peut être activée à la position
+        /// <paramref name="i"/> dans le flux <paramref name="rawTokens"/>
+        /// selon son <paramref name="context"/>. Utilisé au reclasse
+        /// Word→Symbol pour les relations conditionnelles déclarées en
+        /// YAML (= <c>context: 'isolated_between_brackets'</c> pour
+        /// <c>u</c> entre intervalles).
+        /// </summary>
+        private static bool MatchesRelationContext(RelationContext context, IReadOnlyList<Token> rawTokens, int i)
+        {
+            switch (context)
+            {
+                case RelationContext.None:
+                    return true;
+                case RelationContext.IsolatedBetweenBrackets:
+                {
+                    // Sep blanc immédiatement avant ET après + voisins
+                    // non-Sep sont des bracket chars. Note : rawTokens
+                    // n'a pas encore les Sep boundaries injectés, donc
+                    // « isolé » = positions Start/End espacées des voisins.
+                    if (i - 1 < 0 || i + 1 >= rawTokens.Count) return false;
+                    var prev = rawTokens[i - 1];
+                    var next = rawTokens[i + 1];
+                    var self = rawTokens[i];
+                    bool sepBefore = self.Start > prev.End;
+                    bool sepAfter = next.Start > self.End;
+                    if (!sepBefore || !sepAfter) return false;
+                    return IsBracketChar(prev) && IsBracketChar(next);
+                }
+                default:
+                    return true;
+            }
+        }
+
+        private static bool IsBracketChar(Token t)
+            => (t.Kind == TokenKind.OpenDelim || t.Kind == TokenKind.CloseDelim)
+               && (t.Text == "[" || t.Text == "]"
+                   || t.Text == "(" || t.Text == ")"
+                   || t.Text == "{" || t.Text == "}");
 
         /// <summary>Lookup function avec tolérance casse : <c>Cos</c>, <c>COS</c>
         /// matchent <c>cos</c>. Évite que Word autocapitalize ne mange le

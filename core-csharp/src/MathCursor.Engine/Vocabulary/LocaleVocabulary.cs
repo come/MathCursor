@@ -166,14 +166,32 @@ namespace MathCursor.Engine.Vocabulary
                 if (!TryParseTier(kv.Value.Tier, out var tier))
                     throw new InvalidDataException(
                         $"Unknown precedence tier '{kv.Value.Tier}' for token '{kv.Key}'.");
+                if (!TryParseContext(kv.Value.Context, out var context))
+                    throw new InvalidDataException(
+                        $"Unknown context '{kv.Value.Context}' for token '{kv.Key}'.");
                 dict[kv.Key] = new Relation(
                     token: kv.Key,
                     tex: kv.Value.Tex ?? kv.Key,
                     tier: tier,
                     tail: kv.Value.Tail,
-                    wrap: kv.Value.Wrap);
+                    wrap: kv.Value.Wrap,
+                    context: context);
             }
             return dict;
+        }
+
+        private static bool TryParseContext(string? raw, out RelationContext context)
+        {
+            switch ((raw ?? "").ToLowerInvariant())
+            {
+                case "":
+                case "none":
+                    context = RelationContext.None; return true;
+                case "isolated_between_brackets":
+                    context = RelationContext.IsolatedBetweenBrackets; return true;
+                default:
+                    context = RelationContext.None; return false;
+            }
         }
 
         private static bool TryParseTier(string? raw, out PrecedenceTier tier)
@@ -228,6 +246,7 @@ namespace MathCursor.Engine.Vocabulary
             public string? Tier { get; set; }
             public string? Tail { get; set; }
             public bool Wrap { get; set; }
+            public string? Context { get; set; }
         }
     }
 }

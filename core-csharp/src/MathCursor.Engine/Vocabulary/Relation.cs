@@ -19,14 +19,25 @@ namespace MathCursor.Engine.Vocabulary
         /// </summary>
         public bool Wrap { get; }
 
+        /// <summary>
+        /// Contexte d'activation (= condition pour reclasser un Word en
+        /// Symbol au tokenizer). Default <see cref="RelationContext.None"/>
+        /// = toujours actif. <see cref="RelationContext.IsolatedBetweenBrackets"/>
+        /// = uniquement quand le token est isolé entre 2 délimiteurs bracket
+        /// (cas <c>[0,1[ u [0,1]</c> où <c>u</c> = <c>\cup</c>).
+        /// </summary>
+        public RelationContext Context { get; }
+
         public Relation(string token, string tex, PrecedenceTier tier,
-            string? tail = null, bool wrap = false)
+            string? tail = null, bool wrap = false,
+            RelationContext context = RelationContext.None)
         {
             Token = token ?? throw new System.ArgumentNullException(nameof(token));
             Tex = tex ?? throw new System.ArgumentNullException(nameof(tex));
             Tier = tier;
             Tail = tail;
             Wrap = wrap;
+            Context = context;
         }
     }
 }
