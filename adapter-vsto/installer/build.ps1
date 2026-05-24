@@ -203,6 +203,27 @@ else {
     Write-Warning "Fichiers requis : model_quantized.onnx, vocab.txt, tokenizer.json, config.json, special_tokens_map.json, tokenizer_config.json, ort_config.json"
 }
 
+# 3b) Tutoriels .docx FR + EN — générés via tools/TutorialBuilder/ depuis
+# les specs tutorial-spec.{lang}.json. L'ISS copiera l'un OU l'autre selon
+# la langue choisie au wizard. Cf. ADR 2026-05-22-Feat-tutorial-docx-generated-onboarding.
+Write-Host "[3b] Tutoriels .docx (FR + EN)..." -ForegroundColor Yellow
+$TutorialBuilderProj = Join-Path $RepoRoot 'tools\TutorialBuilder\TutorialBuilder.csproj'
+foreach ($lang in @('fr', 'en')) {
+    $specPath = Join-Path $RepoRoot ("tools\TutorialBuilder\tutorial-spec.$lang.json")
+    $outPath  = Join-Path $PayloadDir ("MathCursor-Tutoriel-$lang.docx")
+    & dotnet run --project $TutorialBuilderProj --configuration Release --nologo -- --in $specPath --out $outPath
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Génération du tutoriel .docx ($lang) échouée (code $LASTEXITCODE)."
+        exit 1
+    }
+    if (-not (Test-Path $outPath)) {
+        Write-Error "Tutoriel .docx ($lang) introuvable après génération : $outPath"
+        exit 1
+    }
+    $sizeKb = [math]::Round((Get-Item $outPath).Length / 1KB, 1)
+    Write-Host "  tutoriel $lang : $outPath ($sizeKb Ko)"
+}
+
 # 4) Info fichier post-install
 $afterInstallFile = Join-Path $InstallerDir 'after-install.txt'
 if (-not (Test-Path $afterInstallFile)) {

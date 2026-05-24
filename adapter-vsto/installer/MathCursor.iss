@@ -89,12 +89,26 @@ Source: "feedback.url";                                   DestDir: "{userappdata
 ; une fois l'installation terminée.
 Source: "payload\mathcursor.cer";                         DestDir: "{tmp}"; Flags: deleteafterinstall
 
+; Tutoriels FR / EN de prise en main — copiés dans Documents\MathCursor\ (lieu
+; où l'utilisateur garde ses essais ; survit aux désinstall via uninsneveruninstall).
+; La langue est filtrée par Languages: french / english (= choix wizard ISS).
+; Le DestName est universel pour que [Run] ouvre le bon fichier sans condition.
+; Cf. ADR 2026-05-22-Feat-tutorial-docx-generated-onboarding.
+Source: "payload\MathCursor-Tutoriel-fr.docx"; DestDir: "{userdocs}\MathCursor"; DestName: "MathCursor-Tutorial.docx"; Flags: ignoreversion uninsneveruninstall; Languages: french
+Source: "payload\MathCursor-Tutoriel-en.docx"; DestDir: "{userdocs}\MathCursor"; DestName: "MathCursor-Tutorial.docx"; Flags: ignoreversion uninsneveruninstall; Languages: english
+
 ; Visual C++ Redistributables x86 + x64 — requis par les DLLs natives ONNX
 ; (1 par arch). Word 32-bit a besoin du x86 ; Word 64-bit a besoin du x64.
 ; `skipifsourcedoesntexist` : si build.ps1 n'a pas pu télécharger, on skippe
 ; sans casser le build (l'utilisateur devra avoir VC++ Redist installé).
 Source: "payload\vc_redist.x86.exe";                      DestDir: "{tmp}"; Flags: deleteafterinstall skipifsourcedoesntexist
 Source: "payload\vc_redist.x64.exe";                      DestDir: "{tmp}"; Flags: deleteafterinstall skipifsourcedoesntexist
+
+[Tasks]
+; Checkbox optionnelle proposée à l'utilisateur en fin d'installation.
+; "postinstall" dans le [Run] correspondant fait apparaître la checkbox sur
+; la dernière page du wizard — l'utilisateur décide.
+Name: "opentutorial"; Description: "Ouvrir le tutoriel maintenant"; GroupDescription: "Pour bien démarrer :"
 
 [Run]
 ; Installation conditionnelle du VC++ Redistributable. /install /quiet
@@ -124,6 +138,17 @@ Filename: "{sys}\certutil.exe"; \
     Parameters: "-user -addstore TrustedPublisher ""{tmp}\mathcursor.cer"""; \
     Flags: runhidden; \
     StatusMsg: "Importation du certificat..."
+
+; Ouverture optionnelle du tutoriel à la fin de l'install. La checkbox liée
+; à Tasks: opentutorial apparaît sur la dernière page du wizard.
+; - shellexec : laisse Word gérer l'ouverture (équivalent double-clic explorateur)
+; - postinstall : déplace l'action à la fin, après la fermeture des autres jobs
+; - nowait : l'installer rend la main sans attendre Word
+; - skipifsilent : pas d'ouverture en mode /SILENT (déploiement scripté)
+Filename: "{userdocs}\MathCursor\MathCursor-Tutorial.docx"; \
+    Description: "Ouvrir le tutoriel"; \
+    Flags: shellexec postinstall nowait skipifsilent; \
+    Tasks: opentutorial
 
 [UninstallRun]
 ; Nettoyage du certificat à la désinstallation. Non-bloquant si le cert n'est plus là.
