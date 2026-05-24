@@ -30,10 +30,26 @@ namespace MathCursor.Engine.Parsing
     public sealed class StackParser
     {
         private readonly LocaleVocabulary _vocab;
+        private System.Func<IReadOnlyList<Token>, int, (string? latex, int newEnd)>? _tryAnchor;
 
         public StackParser(LocaleVocabulary vocab)
         {
             _vocab = vocab ?? throw new System.ArgumentNullException(nameof(vocab));
+        }
+
+        /// <summary>
+        /// Injecte un callback de matching d'ancres (= règles YAML lim/sum/int/…)
+        /// utilisable PARTOUT dans l'AST (top-level + dans les groupes). Le
+        /// callback retourne <c>(latex pré-rendu, newEnd)</c> ou
+        /// <c>(null, startIdx)</c> si pas de match. Injecté par
+        /// <see cref="MathEngine"/> au ctor. Sans ce callback, les ancres ne
+        /// sont pas reconnues à l'intérieur des groupes (= bug F user-report
+        /// 2026-05-23 « somme dans matrice » = en réalité n'importe quelle
+        /// ancre dans un sous-contexte délimité).
+        /// </summary>
+        public void SetAnchorMatcher(System.Func<IReadOnlyList<Token>, int, (string? latex, int newEnd)> tryAnchor)
+        {
+            _tryAnchor = tryAnchor;
         }
 
         public AstNode? Parse(IReadOnlyList<Token> tokens)
@@ -67,6 +83,24 @@ namespace MathCursor.Engine.Parsing
                 // au-dessus), c'est le close non-canonique. Break pour
                 // laisser ParseDelimitedGroup consommer le delim.
                 if (parentOpen != null && IsBracketCloseForInterval(parentOpen, tok)) break;
+
+                // Anchor matching (= règles YAML lim/sum/int/cos/…). Tenté
+                // PARTOUT dans l'AST, y compris à l'intérieur des groupes —
+                // c'est le fix générique du bug F (user-report 2026-05-23
+                // « somme dans matrice »). Le callback est injecté par
+                // MathEngine ; null si pas configuré (= tests parser pur).
+                if (_tryAnchor != null)
+                {
+                    var (anchorLatex, newEnd) = _tryAnchor(tokens, i);
+                    if (anchorLatex != null && newEnd > i)
+                    {
+                        EnsureImplicitMulIfNeeded(operands, ops);
+                        operands.Add(new AtomNode(anchorLatex, "anchor"));
+                        i = newEnd;
+                        continue;
+                    }
+                }
+
                 // P13 (2026-05-22) : Sep whitespace internes au sous-flux du
                 // ShapeMatcher ne sont pas des boundaries pour le parser AST
                 // (= le ShapeMatcher a déjà décidé du slot, on parse le contenu).

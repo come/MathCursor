@@ -50,6 +50,25 @@ namespace MathCursor.Engine
             _templateEmitter = new TemplateEmitter(_vocab);
             _parser = new StackParser(_vocab);
             _flatEmitter = new LatexEmitter();
+
+            // Inject l'anchor matcher dans StackParser pour que les ancres
+            // (lim/sum/int/cos/…) soient reconnues PARTOUT dans l'AST, y
+            // compris à l'intérieur des groupes. Sans ça, `(somme k 0 1 k)`
+            // produit `(sommek01k)` au lieu de `(\sum_{k=0}^{1} k)`.
+            // Cf. user-report 2026-05-23 (bug F).
+            _parser.SetAnchorMatcher((tokens, startIdx) =>
+            {
+                var matches = TryAllAnchorMatches(tokens, startIdx);
+                if (matches.Count == 0) return ((string?)null, startIdx);
+                matches.Sort((a, b) =>
+                {
+                    int dSpan = (b.End - b.Start).CompareTo(a.End - a.Start);
+                    if (dSpan != 0) return dSpan;
+                    return b.Slots.Count.CompareTo(a.Slots.Count);
+                });
+                var best = matches[0];
+                return (_templateEmitter.Emit(best), best.End);
+            });
             _collisionScores = CollisionScores.LoadEmbedded();
             // P28 (2026-05-22) : pipeline collision déclarée via détecteurs
             // composables. Chaque détecteur scanne le contexte et émet 0+
