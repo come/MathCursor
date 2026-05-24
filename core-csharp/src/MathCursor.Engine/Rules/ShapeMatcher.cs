@@ -31,12 +31,18 @@ namespace MathCursor.Engine.Rules
             _vocab = vocab ?? throw new System.ArgumentNullException(nameof(vocab));
         }
 
-        public ShapeMatch? TryMatch(RuleSpec rule, IReadOnlyList<Token> tokens, int startIndex)
+        public ShapeMatch? TryMatch(RuleSpec rule, IReadOnlyList<Token> tokens, int startIndex,
+            bool allowPartial = false)
         {
             var parts = ParseShape(rule.Shape);
             var slots = new Dictionary<string, List<Token>>();
             int typedSlotIndex = 0;
             int ti = startIndex;
+
+            // Vérifie l'anchor (= 1er literal) AVANT toute tolérance partielle.
+            // Si l'anchor lui-même ne matche pas, la rule n'a pas vocation à
+            // produire de hint — on retourne null.
+            bool anchorMatched = false;
 
             for (int pi = 0; pi < parts.Count; pi++)
             {
@@ -61,15 +67,28 @@ namespace MathCursor.Engine.Rules
                         matchedCount++;
                     }
                     if (part.Quantifier == ShapeQuantifier.Plus && matchedCount == 0)
+                    {
+                        if (allowPartial && anchorMatched)
+                            return new ShapeMatch(rule, startIndex, ti, ToReadonlyTokens(slots), isPartial: true);
                         return null;
+                    }
                     continue;
                 }
 
                 if (!TryMatchOne(part, tokens, ref ti, slots, ref typedSlotIndex, isLast))
                 {
                     if (part.Optional || part.Quantifier == ShapeQuantifier.Optional) continue;
+                    // Partial match : si l'anchor a déjà matché (= au moins le
+                    // 1er literal), on retourne un match incomplet. Les slots
+                    // manquants seront émis comme `\square` par TemplateEmitter.
+                    if (allowPartial && anchorMatched)
+                        return new ShapeMatch(rule, startIndex, ti, ToReadonlyTokens(slots), isPartial: true);
                     return null;
                 }
+                // Le 1er part qui a matché est typiquement l'anchor literal.
+                // À partir de là, on peut produire un partial match si le user
+                // n'a pas encore tapé tous les args.
+                if (!anchorMatched) anchorMatched = true;
             }
             return new ShapeMatch(rule, startIndex, ti, ToReadonlyTokens(slots));
         }
@@ -592,10 +611,23 @@ namespace MathCursor.Engine.Rules
         public int End { get; }
         public IReadOnlyDictionary<string, IReadOnlyList<Token>> Slots { get; }
 
+        /// <summary>
+        /// True si le match est partiel (= certains slots non-optionnels
+        /// sont vides, à émettre comme <c>\square</c> pour guider la
+        /// saisie). User-request 2026-05-24 : « quand un truc comme somme
+        /// ou limite est reperé/reconnu, je veux la popup avec les carrés
+        /// jusqu'a la fin de la reconnaissance, pour aider et montrer les
+        /// arguments en cours de frappe ». L'utilisateur tape <c>sum k 0</c>
+        /// → popup affiche <c>\sum_{k=0}^{\square} \square</c>.
+        /// </summary>
+        public bool IsPartial { get; }
+
         public ShapeMatch(RuleSpec rule, int start, int end,
-            IReadOnlyDictionary<string, IReadOnlyList<Token>> slots)
+            IReadOnlyDictionary<string, IReadOnlyList<Token>> slots,
+            bool isPartial = false)
         {
             Rule = rule; Start = start; End = end; Slots = slots;
+            IsPartial = isPartial;
         }
     }
 }

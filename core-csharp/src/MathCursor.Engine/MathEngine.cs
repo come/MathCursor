@@ -58,10 +58,13 @@ namespace MathCursor.Engine
             // Cf. user-report 2026-05-23 (bug F).
             _parser.SetAnchorMatcher((tokens, startIdx) =>
             {
-                var matches = TryAllAnchorMatches(tokens, startIdx);
+                var matches = TryAllAnchorMatchesWithPartialFallback(tokens, startIdx);
                 if (matches.Count == 0) return ((string?)null, startIdx);
                 matches.Sort((a, b) =>
                 {
+                    // Prioritise full match (non-partial) avant partial.
+                    int dPartial = (a.IsPartial ? 1 : 0).CompareTo(b.IsPartial ? 1 : 0);
+                    if (dPartial != 0) return dPartial;
                     int dSpan = (b.End - b.Start).CompareTo(a.End - a.Start);
                     if (dSpan != 0) return dSpan;
                     return b.Slots.Count.CompareTo(a.Slots.Count);
@@ -140,12 +143,17 @@ namespace MathCursor.Engine
             SkipSep(tokens, ref ti);
             while (ti < tokens.Count)
             {
-                var allMatches = TryAllAnchorMatches(tokens, ti);
+                var allMatches = TryAllAnchorMatchesWithPartialFallback(tokens, ti);
                 if (allMatches.Count > 0)
                 {
-                    // Best = span le plus large, puis nb slots remplis.
+                    // Best = full match (non-partial), puis span le plus large,
+                    // puis nb slots remplis. User-request 2026-05-24 : popup
+                    // guidée avec \square sur slots manquants si pattern
+                    // partiellement reconnu.
                     allMatches.Sort((a, b) =>
                     {
+                        int dPartial = (a.IsPartial ? 1 : 0).CompareTo(b.IsPartial ? 1 : 0);
+                        if (dPartial != 0) return dPartial;
                         int dSpan = (b.End - b.Start).CompareTo(a.End - a.Start);
                         if (dSpan != 0) return dSpan;
                         return b.Slots.Count.CompareTo(a.Slots.Count);
@@ -293,17 +301,31 @@ namespace MathCursor.Engine
             return candidates;
         }
 
-        private List<ShapeMatch> TryAllAnchorMatches(IReadOnlyList<Token> tokens, int startIndex)
+        private List<ShapeMatch> TryAllAnchorMatches(IReadOnlyList<Token> tokens, int startIndex, bool allowPartial = false)
         {
             // Cherche toutes les règles qui matchent à startIndex. Retourne
             // brut (non trié) — le caller trie selon ses critères.
             var matches = new List<ShapeMatch>();
             foreach (var rule in _rules)
             {
-                var m = _matcher.TryMatch(rule, tokens, startIndex);
+                var m = _matcher.TryMatch(rule, tokens, startIndex, allowPartial: allowPartial);
                 if (m != null) matches.Add(m);
             }
             return matches;
+        }
+
+        /// <summary>
+        /// Tente un anchor match en priorité full, fallback partial (= pour
+        /// la popup guidée avec <c>\square</c> sur les slots manquants).
+        /// User-request 2026-05-24 « quand un truc comme somme ou limite est
+        /// reperé/reconnu, je veux la popup avec les carrés jusqu'a la fin
+        /// de la reconnaissance ».
+        /// </summary>
+        private List<ShapeMatch> TryAllAnchorMatchesWithPartialFallback(IReadOnlyList<Token> tokens, int startIndex)
+        {
+            var matches = TryAllAnchorMatches(tokens, startIndex);
+            if (matches.Count > 0) return matches;
+            return TryAllAnchorMatches(tokens, startIndex, allowPartial: true);
         }
 
         private (string Latex, int NewTi) ParseFlatOperand(IReadOnlyList<Token> tokens, int startIndex)
