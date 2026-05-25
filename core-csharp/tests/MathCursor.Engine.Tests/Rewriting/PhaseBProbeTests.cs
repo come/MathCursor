@@ -134,6 +134,41 @@ namespace MathCursor.Engine.Tests.Rewriting
             Assert.Equal(@"\frac{1}{2}", engine.Resolve("frac 1 2").TopLatex);
         }
 
+        // ─── ChB+ Validation hypothèse user : règles primitives suffisent ───
+
+        [Fact]
+        public void Phase_B_plus_paren_group_resolves_via_primitive_rule()
+        {
+            // Test hypothèse : `frac (x+1) (x-1)` se résout par composition.
+            // Passe 1 : paren-group + add → 2 Items Expr.
+            // Passe 2 : frac-explicit matche.
+            var engine = BuildEngine();
+            var result = engine.Resolve("frac (x+1) (x-1)");
+            Assert.Equal(@"\frac{x+1}{x-1}", result.TopLatex);
+        }
+
+        [Fact]
+        public void Phase_B_plus_body_with_addition_resolves_via_primitive()
+        {
+            // Test hypothèse : `somme k 1 n k+1` se résout par composition.
+            // Passe 1 : prim-add capture `k+1` → Item Expr.
+            // Passe 2 : somme-k-from-to consomme [Expr] comme body.
+            var engine = BuildEngine();
+            var result = engine.Resolve("somme k 1 n k+1");
+            Assert.Equal(@"\sum_{k=1}^{n}k+1", result.TopLatex);
+        }
+
+        [Fact]
+        public void Phase_B_plus_bound_with_addition_resolves_via_primitive()
+        {
+            // Test hypothèse : `int x 0 n+1 y` se résout par composition.
+            // Passe 1 : prim-add capture `n+1` → Item Expr.
+            // Passe 2 : integrale-def consomme [Expr] comme `to:bound`.
+            var engine = BuildEngine();
+            var result = engine.Resolve("int x 0 n+1 y");
+            Assert.Equal(@"\int_{0}^{n+1} y \, dx", result.TopLatex);
+        }
+
         private static void AssertEqual(string source, string expectedLatex)
         {
             var engine = BuildEngine();
@@ -143,11 +178,50 @@ namespace MathCursor.Engine.Tests.Rewriting
     }
 
     /// <summary>Règles probe Phase B — équivalents pilote des concepts YAML
-    /// existants, dans la limite de ce que le matcher actuel supporte.</summary>
+    /// existants, dans la limite de ce que le matcher actuel supporte.
+    ///
+    /// <para>Inclut maintenant des <b>règles primitives</b> (= addition,
+    /// soustraction, paren-group) qui démontrent que G1/G2/paren-group du
+    /// rapport d'audit se résolvent **par composition rewriting** sans
+    /// extension matcher. Démontré par les tests Phase_B_plus_*.</para>
+    /// </summary>
     internal static class PhaseBRules
     {
         public static IReadOnlyList<RewriteRule> All { get; } = new RewriteRule[]
         {
+            // ── Règles primitives (ChB+, 2026-05-25) ──────────────────────
+            // Démontrent la composition bottom-up : `n+1`, `(x+1)`,
+            // `k+1` deviennent des Items Expr en passe 1, consommés en
+            // passe 2 par les règles plus larges (somme/int/lim/frac).
+
+            new RewriteRule(
+                id: "prim-paren-group",
+                pattern: Pattern.Of(
+                    PatternElement.Lit("("),
+                    PatternElement.Slot("inner", Category.Expr),
+                    PatternElement.Lit(")")),
+                produces: Category.Expr,
+                emitTemplate: @"$inner"),
+
+            new RewriteRule(
+                id: "prim-add",
+                pattern: Pattern.Of(
+                    PatternElement.Slot("a", Category.Expr),
+                    PatternElement.Lit("+"),
+                    PatternElement.Slot("b", Category.Expr)),
+                produces: Category.Expr,
+                emitTemplate: @"$a+$b"),
+
+            new RewriteRule(
+                id: "prim-sub",
+                pattern: Pattern.Of(
+                    PatternElement.Slot("a", Category.Expr),
+                    PatternElement.Lit("-"),
+                    PatternElement.Slot("b", Category.Expr)),
+                produces: Category.Expr,
+                emitTemplate: @"$a-$b"),
+
+
             // ── fractions.yml ───
             new RewriteRule(
                 id: "frac-explicit",
