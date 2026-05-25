@@ -35,6 +35,11 @@ namespace MathCursor.Engine.Rewriting
             _rules = rules;
         }
 
+        /// <summary>Seuil Priority qui sépare les 2 phases. Règles &lt; ce
+        /// seuil = phase 1 (primitives). Règles &gt;= ce seuil = phase 2
+        /// (anchors). Phase D-3 (2026-05-25).</summary>
+        public const int PhaseSeparator = 100;
+
         public RewriteResult Resolve(string source)
         {
             if (string.IsNullOrEmpty(source)) return RewriteResult.Empty;
@@ -46,14 +51,49 @@ namespace MathCursor.Engine.Rewriting
 
             var alternatives = new List<RewriteMatch>();
             string? primaryRuleId = null;
-            int safety = 64; // garde-fou anti-boucle infinie POC
+
+            // Scheduling multi-phase (Phase D-3) :
+            // - Phase 1 : règles Priority < PhaseSeparator (= primitives).
+            //   Loop fixed-point. Résout les sous-expressions internes
+            //   (paren-group, add, sub, etc.) AVANT que les anchors aient
+            //   leur chance.
+            // - Phase 2 : toutes les règles. Loop fixed-point. Les anchors
+            //   matchent maintenant sur des Items déjà préparés.
+            //
+            // Permet à `frac n n+1` de devenir `frac n Expr(n+1)` en
+            // phase 1, puis `\frac{n}{n+1}` en phase 2.
+            RunPhase(items, _rules.Where(r => r.Priority < PhaseSeparator),
+                alternatives, ref primaryRuleId);
+            RunPhase(items, _rules,
+                alternatives, ref primaryRuleId);
+
+            // Emit final : concat des Latex restants.
+            var sb = new StringBuilder();
+            foreach (var item in items)
+                sb.Append(item.Latex);
+
+            return new RewriteResult(
+                topLatex: sb.ToString(),
+                items: items,
+                alternatives: alternatives,
+                ruleId: primaryRuleId ?? "");
+        }
+
+        /// <summary>Loop fixed-point d'une phase avec les règles données.
+        /// Modifie <paramref name="items"/> in-place.</summary>
+        private static void RunPhase(List<Item> items, IEnumerable<RewriteRule> phaseRules,
+            List<RewriteMatch> alternatives, ref string? primaryRuleId)
+        {
+            var phaseRulesList = phaseRules as IList<RewriteRule> ?? phaseRules.ToArray();
+            if (phaseRulesList.Count == 0) return;
+
+            int safety = 64;
             while (safety-- > 0)
             {
-                // Scan toutes les positions × toutes les règles.
                 var matches = new List<RewriteMatch>();
                 for (int p = 0; p < items.Count; p++)
                 {
-                    foreach (var rule in _rules)
+                    foreach (var rule in phaseRulesList)
                     {
                         var m = RewriteMatcher.TryMatch(rule, items, p);
                         if (m != null) matches.Add(m);
@@ -61,16 +101,7 @@ namespace MathCursor.Engine.Rewriting
                 }
                 if (matches.Count == 0) break;
 
-                // Scheduling V1 : leftmost-longest classique, avec Priority
-                // desc en cas de Span égal pour préférer les règles avec
-                // anchor literal (P100) aux primitives génériques (P50).
-                //
-                // Limitation connue (Phase D-2 audit) : ne résout pas
-                // correctement les cas comme `frac n n+1` où une sous-règle
-                // interne (prim-add à Start 2) devrait s'appliquer AVANT la
-                // règle englobante (frac-explicit à Start 0). Un scheduling
-                // bottom-up plus fin est en réflexion (= multi-phase ou
-                // contraintes catégorielles ResolvedExpr).
+                // Leftmost-longest avec Priority desc en tie.
                 matches.Sort((a, b) =>
                 {
                     int dStart = a.Start.CompareTo(b.Start);
@@ -81,14 +112,12 @@ namespace MathCursor.Engine.Rewriting
                 });
                 var best = matches[0];
 
-                // Alternatives au même starting point → collisions à exposer.
                 for (int k = 1; k < matches.Count; k++)
                 {
                     if (matches[k].Start == best.Start)
                         alternatives.Add(matches[k]);
                 }
 
-                // Applique le match : remplace items[Start..End] par 1 RewriteItem.
                 var latex = RewriteMatcher.ApplyTemplate(
                     best.Rule.EmitTemplate, best.Slots, best.Lists, best.Blocks);
                 var sourceText = ConcatSource(items, best.Start, best.End);
@@ -97,18 +126,6 @@ namespace MathCursor.Engine.Rewriting
                 items.Insert(best.Start, produced);
                 primaryRuleId ??= best.Rule.Id;
             }
-
-            // Emit final : concat des Latex restants, séparés par "" (TokenItem
-            // pour Sep produit " " naturellement via Token.Text).
-            var sb = new StringBuilder();
-            foreach (var item in items)
-                sb.Append(item.Latex);
-
-            return new RewriteResult(
-                topLatex: sb.ToString(),
-                items: items,
-                alternatives: alternatives,
-                ruleId: primaryRuleId ?? "");
         }
 
         private static string ConcatSource(IReadOnlyList<Item> items, int start, int endExcl)

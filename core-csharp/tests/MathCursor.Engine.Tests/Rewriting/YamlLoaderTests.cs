@@ -215,17 +215,73 @@ namespace MathCursor.Engine.Tests.Rewriting
             // Phase D-2 (2026-05-25) : règles primitives supplémentaires
             // pour fermer le gap audit (= 26 fails → ~0).
 
-            // Function-call / fraction implicite / exposant / indice :
-            // **DÉSACTIVÉ** en Phase D-2. Le scheduling actuel
-            // (leftmost-longest) ne permet pas d'éviter qu'elles capturent
-            // des sous-expressions avant que les règles englobantes (= int,
-            // sum, frac) aient leur chance. Cf. note d'analyse Phase D-3
-            // dans ADR pour discussion. Stratégies en option :
-            // - multi-phase scheduling (= primitives en phase 1, anchors
-            //   en phase 2)
-            // - catégorie ResolvedExpr qui exclut les Letter/Number bruts
-            // - approche `produces:` typage strict avec slot `f:resolved`
-            //   pour le function-call.
+            // Phase D-3 (2026-05-25) : réactivées avec scheduling multi-phase.
+            // Toutes en phase 1 (Priority < 100), donc résolvent les
+            // sous-expressions avant que les anchors aient leur chance.
+
+            // Restreint à `{f:letter}` (= 1-char) pour ne pas capturer les
+            // anchors literals multi-char (`frac`, `norm`, `sqrt`). Les
+            // fonctions LaTeX (`\sin`, `\cos`) seront couvertes par une règle
+            // séparée ciblée sur Function quand le tokenizer expose cette
+            // catégorie.
+            new RewriteRule(
+                id: "prim-function-call-1",
+                pattern: Pattern.Of(
+                    PatternElement.Slot("f", Category.Letter),
+                    PatternElement.Lit("("),
+                    PatternElement.Slot("a", Category.Expr),
+                    PatternElement.Lit(")")),
+                produces: Category.Expr,
+                emitTemplate: @"$f($a)",
+                priority: PrimPriority),
+
+            new RewriteRule(
+                id: "prim-function-call-2",
+                pattern: Pattern.Of(
+                    PatternElement.Slot("f", Category.Letter),
+                    PatternElement.Lit("("),
+                    PatternElement.Slot("a", Category.Expr),
+                    PatternElement.Lit(","),
+                    PatternElement.Slot("b", Category.Expr),
+                    PatternElement.Lit(")")),
+                produces: Category.Expr,
+                emitTemplate: @"$f($a,$b)",
+                priority: PrimPriority),
+
+            new RewriteRule(
+                id: "prim-frac-implicit",
+                pattern: Pattern.Of(
+                    PatternElement.Slot("a", Category.Expr),
+                    PatternElement.Lit("/"),
+                    PatternElement.Slot("b", Category.Expr)),
+                produces: Category.Expr,
+                emitTemplate: @"\frac{$a}{$b}",
+                priority: PrimPriority),
+
+            // Exposant : pour `x^2`, l'attendu YAML est `x^2` (sans
+            // accolades). Pour `x^{n+1}` (=multi-Item), il faudrait les
+            // accolades. Template `$a^$b` marche dans le 1er cas car $b est
+            // remplacé par Item.Latex qui est juste la valeur. À étendre
+            // (= flag « brace if multi-char ») quand le besoin se confirme.
+            new RewriteRule(
+                id: "prim-superscript",
+                pattern: Pattern.Of(
+                    PatternElement.Slot("a", Category.Expr),
+                    PatternElement.Lit("^"),
+                    PatternElement.Slot("b", Category.Expr)),
+                produces: Category.Expr,
+                emitTemplate: @"$a^$b",
+                priority: PrimPriority),
+
+            new RewriteRule(
+                id: "prim-subscript",
+                pattern: Pattern.Of(
+                    PatternElement.Slot("a", Category.Expr),
+                    PatternElement.Lit("_"),
+                    PatternElement.Slot("b", Category.Expr)),
+                produces: Category.Expr,
+                emitTemplate: @"$a_$b",
+                priority: PrimPriority),
 
             // Tuple 2 : (a,b) → (a,b) — utile pour `f(x,y)` via composition.
             // Optionnel : déjà couvert par prim-function-call-2 direct.
