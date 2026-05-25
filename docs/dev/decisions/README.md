@@ -20,6 +20,7 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-05-25
+- `[forte]` Refactor — [Chantier 2 — extraction module `Normalization/`](2026-05-25-Refactor-chantier2-normalizer-extract.md) — `Tokenizer` ne mélange plus char→Token avec normalisation de données. Extraction `PrimeNormalizer` (= primes Lagrange Unicode → ASCII `'`) + `CaseToleranceLookup` (= Cos→\cos, OMEGA→\Omega via stratégie d'essais successifs) + façade `Normalizer`. Tokenizer plus mince, helpers testables individuellement. 297/297 engine v2 verts (+31 nouveaux probes).
 - `[forte]` Refactor — [Chantier 1 — hardcoded FR (stopwords/delimiters/keywords) → YAML](2026-05-25-Refactor-chantier1-data-driven-fr-keywords.md) — Migration de 4 listes hardcodées en C# (= `ManualTriggerController.Stopwords` 29 mots, `Delimiters` 9 chars, `ZoneRefiner.MathPrefixKeywords` 19 mots, `Tokenizer.multiCharOps` 21 ops) vers `data-v2/locale/fr.yml` (= sections `stopwords:`, `span_delimiters:`, `math_prefix_keywords:`, multi-char ops dérivés de `relations:`). `LocaleVocabulary` expose 3 nouvelles propriétés ; `MathEngine.Vocab` accessor public pour adapter VSTO. Chantier 1/6 du plan de simplification du Resolve. 266/266 engine v2 + 393/393 adapter.
 
 ### 2026-05-23

@@ -120,30 +120,11 @@ namespace MathCursor.Engine.Tokenization
                    || t.Text == "(" || t.Text == ")"
                    || t.Text == "{" || t.Text == "}");
 
-        /// <summary>Lookup function avec tolérance casse intelligente :
-        /// <list type="bullet">
-        ///   <item><c>Cos</c>, <c>COS</c> → <c>\cos</c> (= via lowercase retry).</item>
-        ///   <item><c>OMEGA</c>, <c>Omega</c> → <c>\Omega</c> (= via Capitalized
-        ///     retry quand le mot est all-uppercase, distinct du <c>omega</c>
-        ///     minuscule). User-report 2026-05-25.</item>
-        /// </list></summary>
+        /// <summary>Lookup function avec tolérance casse intelligente.
+        /// Délègue à <see cref="Normalization.Normalizer.TryLookupCaseTolerant"/>
+        /// (= Chantier 2 — extraction du Tokenizer vers module Normalization).</summary>
         private bool TryLookupFunction(string word, out string latex)
-        {
-            // 1) Exact match (= conserve la casse pour distinguer omega vs Omega).
-            if (_vocab.Functions.TryGetValue(word, out latex)) return true;
-            // 2) Si all-upper, retry avec Capitalized (= 1er char haut, reste bas)
-            //    pour matcher les majuscules grecques `Omega`, `Sigma`, etc.
-            if (word.Length >= 2 && word == word.ToUpperInvariant())
-            {
-                var capitalized = char.ToUpperInvariant(word[0]) + word.Substring(1).ToLowerInvariant();
-                if (capitalized != word && _vocab.Functions.TryGetValue(capitalized, out latex)) return true;
-            }
-            // 3) Fallback lowercase (= tolérance Word autocapitalize Cos→cos).
-            var lower = word.ToLowerInvariant();
-            if (lower != word && _vocab.Functions.TryGetValue(lower, out latex)) return true;
-            latex = string.Empty;
-            return false;
-        }
+            => Normalization.Normalizer.TryLookupCaseTolerant(_vocab.Functions, word, out latex);
 
         private static IReadOnlyList<Token> MergeLeadingCaretAngle(List<Token> tokens)
         {
@@ -261,9 +242,11 @@ namespace MathCursor.Engine.Tokenization
                     // `"`, variants unicode) — c'est une notation Lagrange
                     // postfix `f'`, `f''`, `f"` (= dérivées primées).
                     int primesStart = i;
-                    while (i < source.Length && IsPrimeChar(source[i])) i++;
+                    while (i < source.Length && Normalization.Normalizer.IsPrimeChar(source[i])) i++;
                     string rawWord = source.Substring(s, i - s);
-                    string word = (i > primesStart) ? NormalizePrimes(rawWord) : rawWord;
+                    string word = (i > primesStart)
+                        ? Normalization.Normalizer.NormalizePrimes(rawWord)
+                        : rawWord;
 
                     // Multi-mot pour glue/classes : "tend vers" doit être 1 token.
                     if (TryAbsorbMultiWordGlueOrClass(source, i, word, out var absorbed, out var absorbedEnd))
@@ -382,43 +365,8 @@ namespace MathCursor.Engine.Tokenization
         private static bool IsWordContinuation(char c) =>
             char.IsLetter(c);
 
-        /// <summary>
-        /// P21 : caractères prime (= notation Lagrange dérivées). ASCII +
-        /// variants Unicode (Word auto-corrige <c>'</c> en <c>'</c>).
-        /// </summary>
-        private static bool IsPrimeChar(char c) =>
-            c == '\''     // U+0027 apostrophe ASCII
-            || c == '"'   // U+0022 quote ASCII (= '' = 2 primes)
-            || c == '’'   // U+2019 right single
-            || c == '‘'   // U+2018 left single
-            || c == '′'   // U+2032 math prime
-            || c == '”'   // U+201D right double
-            || c == '“'   // U+201C left double
-            || c == '″'   // U+2033 math double prime
-            || c == '‴'   // U+2034 triple prime
-            || c == '⁗';  // U+2057 quadruple prime
-
-        /// <summary>
-        /// Normalise les primes en ASCII LaTeX standard : <c>'</c> = 1 prime,
-        /// <c>"</c> ou variants double = <c>''</c>, etc.
-        /// </summary>
-        private static string NormalizePrimes(string raw)
-        {
-            var sb = new System.Text.StringBuilder();
-            foreach (var c in raw)
-            {
-                if (!IsPrimeChar(c)) { sb.Append(c); continue; }
-                int count = c switch
-                {
-                    '\'' => 1, '’' => 1, '‘' => 1, '′' => 1,
-                    '"' => 2, '”' => 2, '“' => 2, '″' => 2,
-                    '‴' => 3, '⁗' => 4,
-                    _ => 1,
-                };
-                for (int i = 0; i < count; i++) sb.Append('\'');
-            }
-            return sb.ToString();
-        }
+        // IsPrimeChar + NormalizePrimes migrés vers Normalization/
+        // PrimeNormalizer.cs (= Chantier 2 — 2026-05-25).
 
         /// <summary>
         /// Si <paramref name="firstWord"/> est le début d'une glue multi-mot
