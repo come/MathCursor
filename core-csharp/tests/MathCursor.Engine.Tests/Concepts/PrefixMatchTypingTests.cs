@@ -147,5 +147,59 @@ namespace MathCursor.Engine.Tests.Concepts
             _output.WriteLine($"top='{r.TopLatex}'");
             Assert.Equal("xyz", r.TopLatex.Trim());
         }
+
+        // ─── Prefix-aware anchor literal : `som k 0 n f(k)` full match ──
+
+        [Fact]
+        public void Som_with_full_args_matches_somme_rule_via_prefix()
+        {
+            // User-report 2026-05-25 : `som k 0 n f(k)` doit produire le
+            // full somme avec args remplis, pas carrés. Le prefix `som`
+            // matche l'anchor literal `sum` via l'alias `somme` (= prefix-aware
+            // ShapeMatcher.TryMatchOne case Literal).
+            var engine = MathEngine.BuildDefault("fr");
+            var r = engine.Resolve("som k 0 n f(k)");
+            _output.WriteLine($"top='{r.TopLatex}' complete={r.IsComplete}");
+            Assert.Equal("\\sum_{k=0}^{n} f(k)", r.TopLatex);
+            Assert.True(r.IsComplete);
+            Assert.DoesNotContain("\\square", r.TopLatex);
+        }
+
+        [Fact]
+        public void Som_with_partial_args_keeps_squares()
+        {
+            // `som k 0` (= 1 arg manquant) → partial avec carrés sur les
+            // slots manquants.
+            var engine = MathEngine.BuildDefault("fr");
+            var r = engine.Resolve("som k 0");
+            _output.WriteLine($"top='{r.TopLatex}' complete={r.IsComplete}");
+            Assert.Contains("\\sum_{k=0}", r.TopLatex);
+            Assert.Contains("\\square", r.TopLatex);
+            Assert.False(r.IsComplete);
+        }
+
+        [Fact]
+        public void Lim_with_full_args_matches_via_prefix()
+        {
+            // `lim x 0 f(x)` : `lim` est canonical anchor pour la rule
+            // `limite-...`. Direct match (= pas prefix). Sanity check.
+            var engine = MathEngine.BuildDefault("fr");
+            var r = engine.Resolve("lim x 0 f(x)");
+            _output.WriteLine($"top='{r.TopLatex}'");
+            Assert.Contains("\\lim", r.TopLatex);
+            Assert.DoesNotContain("\\square", r.TopLatex);
+        }
+
+        [Fact]
+        public void Limi_prefix_with_full_args()
+        {
+            // `limi x 0 f(x)` : prefix de `limite` (alias canonical `lim`).
+            // Doit matcher la rule lim.
+            var engine = MathEngine.BuildDefault("fr");
+            var r = engine.Resolve("limi x 0 f(x)");
+            _output.WriteLine($"top='{r.TopLatex}'");
+            Assert.Contains("\\lim", r.TopLatex);
+            Assert.DoesNotContain("\\square", r.TopLatex);
+        }
     }
 }

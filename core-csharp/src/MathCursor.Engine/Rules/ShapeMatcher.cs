@@ -266,6 +266,31 @@ namespace MathCursor.Engine.Rules
                         ti++;
                         return true;
                     }
+                    // 2026-05-25 : prefix-aware. Si user a tapé un préfixe (≥3
+                    // chars) d'un alias d'anchor dont canonical == part.Value,
+                    // on accepte. Permet à `som k 0 n f(k)` de matcher la
+                    // rule `somme-k-from-to` (anchor `sum`, alias `somme`).
+                    // Bloqué si le mot tapé EST déjà un alias connu d'un autre
+                    // anchor — évite que `int` (anchor lui-même) soit reinterpreté
+                    // comme préfixe de `intint` (= double intégrale).
+                    if (tokens[ti].Kind == TokenKind.Word
+                        && tokens[ti].Text.Length >= 3
+                        && !_vocab.Anchors.ContainsKey(tokens[ti].Text))
+                    {
+                        var userTextLower = tokens[ti].Text.ToLowerInvariant();
+                        foreach (var kv in _vocab.Anchors)
+                        {
+                            if (!string.Equals(kv.Value, part.Value, System.StringComparison.OrdinalIgnoreCase))
+                                continue;
+                            var aliasLower = kv.Key.ToLowerInvariant();
+                            if (aliasLower != userTextLower
+                                && aliasLower.StartsWith(userTextLower, System.StringComparison.Ordinal))
+                            {
+                                ti++;
+                                return true;
+                            }
+                        }
+                    }
                     return false;
 
                 case ShapePartKind.Class:
