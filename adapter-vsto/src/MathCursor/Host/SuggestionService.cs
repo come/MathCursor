@@ -41,6 +41,9 @@ namespace MathCursor.Host
         private readonly MathNerDetector _ner;
         private readonly LatticeEng _engine;
         private readonly ZoneResolver _resolver;
+        // Vocab locale (= stopwords, span_delimiters, math_prefix_keywords, …
+        // data-driven via YAML). Chantier 1 — 2026-05-25.
+        private MathCursor.Engine.Vocabulary.LocaleVocabulary _vocab;
 
         // Contexte global de session pour le ranking contextuel multi-zoom.
         // Cf. brief 2026-05-07. Initialisé dans le constructeur, alimenté
@@ -212,6 +215,7 @@ namespace MathCursor.Host
                 {
                     var engineV2 = MathCursor.Engine.MathEngine.BuildDefault("fr");
                     engineSource = new MathCursor.Engine.Adapter.EngineZoneSource(engineV2);
+                    _vocab = engineV2.Vocab;
                     LogDiag("engine-v2 active (principal — legacy in fallback)");
                 }
                 catch (System.Exception ex)
@@ -223,6 +227,10 @@ namespace MathCursor.Host
             {
                 LogDiag("engine-v2 disabled by env MATHCURSOR_ENGINE_V2=0 — legacy only");
             }
+            // Fallback : si engine v2 KO ou désactivé, charge le vocab quand
+            // même (= ManualTrigger/ZoneRefiner data-driven).
+            if (_vocab == null)
+                _vocab = MathCursor.Engine.Vocabulary.LocaleVocabulary.LoadEmbedded("fr");
             _resolver = new ZoneResolver(_engine, patternPipeline, patternRegistry, engineSource);
             // Contexte global de session : agrège SidecarSignal (L1, votes du
             // sidecar) + ParagraphResolutionsSignal (L2, pins du ¶ courant).
@@ -251,7 +259,8 @@ namespace MathCursor.Host
                     ShowPopup(resolved, zone, rawLen, dbg);
                     _popup?.EnterNavMode();
                 },
-                log: LogDiag);
+                log: LogDiag,
+                vocab: _vocab);
             _editController = new EditMode.EditModeController(
                 app: _app,
                 handleRegistry: _handleRegistry,
@@ -1063,7 +1072,7 @@ namespace MathCursor.Host
             // Le NER rate parfois des mots-clés math en début de zone (lim, sqrt, etc.)
             // On tente une extension arrière : si le mot immédiatement avant la zone est
             // un keyword math connu, on l'absorbe.
-            target = Detection.ZoneRefiner.ExtendBackwardWithKeyword(_lastParagraph, target);
+            target = Detection.ZoneRefiner.ExtendBackwardWithKeyword(_lastParagraph, target, _vocab);
             LogDiag($"backward_extended target={target}");
 
             // Pipeline lattice via le ZoneResolver : applique les prefs

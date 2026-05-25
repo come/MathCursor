@@ -33,6 +33,20 @@ namespace MathCursor.Engine.Vocabulary
         /// reclassed (sans devoir reverse-lookup dans le dict à chaque check).</summary>
         public HashSet<string> FunctionLatexValues { get; }
 
+        /// <summary>Mots-outils qui bornent la span (= remontée backward
+        /// depuis le caret s'arrête juste après un stopword). Cf. Ctrl+Espace.
+        /// Source YAML <c>stopwords:</c>. Migré 2026-05-25 (Chantier 1).</summary>
+        public HashSet<string> Stopwords { get; }
+
+        /// <summary>Caractères qui bornent la span (= ponctuation + relations
+        /// comp). Source YAML <c>span_delimiters:</c>.</summary>
+        public HashSet<char> SpanDelimiters { get; }
+
+        /// <summary>Mots dont la zone NER doit être étendue rétroactivement
+        /// pour les inclure (= ex. <c>limite</c> + <c>x→0 f(x)</c> → la zone
+        /// capture <c>limite</c>). Source YAML <c>math_prefix_keywords:</c>.</summary>
+        public HashSet<string> MathPrefixKeywords { get; }
+
         public LocaleVocabulary(
             string code,
             IReadOnlyDictionary<string, IReadOnlyList<string>> classes,
@@ -42,7 +56,10 @@ namespace MathCursor.Engine.Vocabulary
             IReadOnlyList<string> glue,
             IReadOnlyList<string> colSep,
             IReadOnlyList<string> rowSep,
-            string @decimal)
+            string @decimal,
+            IReadOnlyList<string>? stopwords = null,
+            IReadOnlyList<string>? spanDelimiters = null,
+            IReadOnlyList<string>? mathPrefixKeywords = null)
         {
             Code = code;
             Classes = classes;
@@ -56,6 +73,17 @@ namespace MathCursor.Engine.Vocabulary
             var funcSet = new HashSet<string>();
             foreach (var v in functions.Values) funcSet.Add(v);
             FunctionLatexValues = funcSet;
+            Stopwords = new HashSet<string>(
+                stopwords ?? (IEnumerable<string>)Array.Empty<string>(),
+                StringComparer.OrdinalIgnoreCase);
+            var delimSet = new HashSet<char>();
+            if (spanDelimiters != null)
+                foreach (var s in spanDelimiters)
+                    if (!string.IsNullOrEmpty(s)) delimSet.Add(s[0]);
+            SpanDelimiters = delimSet;
+            MathPrefixKeywords = new HashSet<string>(
+                mathPrefixKeywords ?? (IEnumerable<string>)Array.Empty<string>(),
+                StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -145,7 +173,10 @@ namespace MathCursor.Engine.Vocabulary
                 glue: glue,
                 colSep: colSep,
                 rowSep: rowSep,
-                @decimal: dec);
+                @decimal: dec,
+                stopwords: raw.Stopwords,
+                spanDelimiters: raw.SpanDelimiters,
+                mathPrefixKeywords: raw.MathPrefixKeywords);
         }
 
         private static IReadOnlyDictionary<string, IReadOnlyList<string>> ToReadonlyListDict(
@@ -243,6 +274,10 @@ namespace MathCursor.Engine.Vocabulary
             public List<string>? Colsep { get; set; }
             public List<string>? Rowsep { get; set; }
             public string? Decimal { get; set; }
+            // Chantier 1 (2026-05-25) — span detection FR data-driven.
+            public List<string>? Stopwords { get; set; }
+            public List<string>? SpanDelimiters { get; set; }
+            public List<string>? MathPrefixKeywords { get; set; }
         }
 
         internal sealed class RelationRaw

@@ -63,6 +63,10 @@
          (ResolutionSidecar, SidecarMerger). ProjectReference vers le core
          pour réutiliser ces types sans duplication. -->
     <ProjectReference Include="..\..\..\core-csharp\src\MathCursor.Core\MathCursor.Core.csproj" />
+    <!-- Chantier 1 (2026-05-25) : LocaleVocabulary directement utilisé dans
+         les tests adapter (= ZoneRefiner, ManualTriggerController prennent
+         vocab en ctor/param). -->
+    <ProjectReference Include="..\..\..\core-csharp\src\MathCursor.Engine\MathCursor.Engine.csproj" />
   </ItemGroup>
 
   <!-- Word interop pour les tests d'intégration `WordIntegration` :

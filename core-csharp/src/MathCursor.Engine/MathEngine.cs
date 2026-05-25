@@ -32,6 +32,12 @@ namespace MathCursor.Engine
     {
         private readonly LocaleVocabulary _vocab;
         private readonly IReadOnlyList<RuleSpec> _rules;
+
+        /// <summary>Vocab locale chargé (= stopwords, span_delimiters,
+        /// math_prefix_keywords, etc. côté data-driven). Exposé pour que
+        /// l'adapter VSTO accède aux mêmes listes que le moteur. Migration
+        /// Chantier 1 (2026-05-25).</summary>
+        public LocaleVocabulary Vocab => _vocab;
         private readonly Tokenizer _tokenizer;
         private readonly ShapeMatcher _matcher;
         private readonly TemplateEmitter _templateEmitter;

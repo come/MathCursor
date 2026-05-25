@@ -218,3 +218,81 @@ glue:    ['->', '=', '→']
 colsep:  [' ']
 rowsep:  [';']
 decimal: ','
+
+# ─── Span detection FR (= Ctrl+Espace backward scan) ─────────────
+# Migration 2026-05-25 : ces listes étaient hardcodées dans
+# ManualTriggerController + ZoneRefiner (= adapter VSTO). Maintenant
+# data-driven dans le vocab locale (= cohérent avec stopwords FR).
+#
+# stopwords : mots-outils qui bornent la span (= remontée backward
+# depuis le caret s'arrête juste après un stopword).
+stopwords:
+  - soit
+  - soient
+  - et
+  - ou
+  - donc
+  - alors
+  - avec
+  - si
+  - on
+  - car
+  - mais
+  - ainsi
+  - puis
+  - comme
+  - tout
+  - un
+  - une
+  - le
+  - la
+  - les
+  - des
+  - du
+  - de
+  - pour
+  - par
+  - sur
+  - dans
+  - au
+  - aux
+
+# span_delimiters : caractères qui bornent la span (= ponctuation +
+# relations comp). `,` et `:` exclus (= opérateurs math légitimes).
+# `\n` `\r` traités séparément (= multi-line block).
+span_delimiters:
+  - '.'
+  - ';'
+  - '!'
+  - '?'
+  - '='
+  - '<'
+  - '>'
+  - "\n"
+  - "\r"
+
+# math_prefix_keywords : mots dont la zone détectée juste à droite
+# doit être étendue rétroactivement pour les inclure (= zone extension
+# backward). Ex: "limite x→0 f(x)" → la zone capture "limite" pour
+# que l'engine produise `\lim`.
+math_prefix_keywords:
+  - lim
+  - limite
+  - lmt
+  - sqrt
+  - rac
+  - racine
+  - int
+  - integrale
+  - integ
+  - integral
+  - sum
+  - somme
+  - forall
+  - qq
+  - qqe
+  - exists
+  - existe
+  - vec
+  - vect
+  - vecteur

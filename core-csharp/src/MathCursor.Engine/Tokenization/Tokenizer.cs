@@ -244,7 +244,7 @@ namespace MathCursor.Engine.Tokenization
                 }
 
                 // Symbole maths self-séparateur (multi-char : <= >= != <=>, etc.).
-                if (TryReadSymbolAhead(source, i, out var symText, out var symLen))
+                if (TryReadSymbolAhead(source, i, _vocab, out var symText, out var symLen))
                 {
                     // Re-classer comme Glue si listé comme tel (= "=" "->").
                     var kind = _vocab.IsGlue(symText) ? TokenKind.Glue : TokenKind.Symbol;
@@ -306,23 +306,33 @@ namespace MathCursor.Engine.Tokenization
             text = ""; len = 0; return false;
         }
 
-        private static bool TryReadSymbolAhead(string src, int i, out string text, out int len)
+        /// <summary>
+        /// Lit un symbole math self-séparateur (single- ou multi-char). La
+        /// liste des opérateurs est dérivée des <see cref="LocaleVocabulary.Relations"/>
+        /// (= clés non-alphabétiques) plus une liste minimale de chars
+        /// structurels (<c>+ - * / ^ _ &lt; &gt; |</c>) qui doivent toujours
+        /// être tokenisés même s'ils ne sont pas dans Relations (= éviter
+        /// que le tokenizer manque un opérateur si vocab incomplet).
+        /// Migration Chantier 1 — 2026-05-25 : ex-hardcoded array.
+        /// </summary>
+        private static bool TryReadSymbolAhead(string src, int i,
+            Vocabulary.LocaleVocabulary vocab, out string text, out int len)
         {
-            // Multi-char d'abord (greedy).
-            string[] multiCharOps = new[]
+            // Multi-char d'abord (greedy). Les keys de Relations qui ne sont
+            // pas alphabétiques (= "<=>", "=>", "→", "∪", "·", etc.) sont
+            // candidates. On les trie par longueur décroissante pour le
+            // greedy match.
+            foreach (var key in MultiCharSymbolKeys(vocab))
             {
-                "<=>", "<=", ">=", "!=", "=>", "≤", "≥", "≠", "≡",
-                "//", "⊥", "∈", "⊂", "∪", "∩", "∧", "∨", "⇒", "⇔", "→", "·",
-            };
-            foreach (var op in multiCharOps)
-            {
-                if (i + op.Length > src.Length) continue;
-                if (string.CompareOrdinal(src, i, op, 0, op.Length) == 0)
+                if (i + key.Length > src.Length) continue;
+                if (string.CompareOrdinal(src, i, key, 0, key.Length) == 0)
                 {
-                    text = op; len = op.Length; return true;
+                    text = key; len = key.Length; return true;
                 }
             }
-            // Mono-char : symboles maths classiques.
+            // Mono-char : symboles structurels. Liste minimale qui DOIT
+            // toujours être reconnue indépendamment du vocab (= les
+            // opérateurs structurels arithmétiques + relations comp).
             char c = src[i];
             if (c == '+' || c == '-' || c == '*' || c == '/'
                 || c == '^' || c == '_'
@@ -333,6 +343,34 @@ namespace MathCursor.Engine.Tokenization
                 text = c.ToString(); len = 1; return true;
             }
             text = ""; len = 0; return false;
+        }
+
+        // Cache pour les keys multi-char (= calcul one-shot par vocab).
+        // Tri par longueur décroissante pour le greedy match.
+        private static readonly System.Collections.Generic.Dictionary<Vocabulary.LocaleVocabulary, string[]>
+            _multiCharCache = new System.Collections.Generic.Dictionary<Vocabulary.LocaleVocabulary, string[]>();
+
+        private static string[] MultiCharSymbolKeys(Vocabulary.LocaleVocabulary vocab)
+        {
+            if (_multiCharCache.TryGetValue(vocab, out var cached)) return cached;
+            var list = new System.Collections.Generic.List<string>();
+            foreach (var key in vocab.Relations.Keys)
+            {
+                // Keep non-alphabetic multi-char keys (= "<=>", "=>", "≤", "∪", …).
+                if (key.Length < 2) continue;
+                if (IsAlphabetic(key)) continue;
+                list.Add(key);
+            }
+            list.Sort((a, b) => b.Length.CompareTo(a.Length));
+            var arr = list.ToArray();
+            _multiCharCache[vocab] = arr;
+            return arr;
+        }
+
+        private static bool IsAlphabetic(string s)
+        {
+            foreach (var c in s) if (!char.IsLetter(c)) return false;
+            return true;
         }
 
         private static bool IsWordStart(char c) =>

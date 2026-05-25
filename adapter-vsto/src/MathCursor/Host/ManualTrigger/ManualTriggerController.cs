@@ -21,20 +21,9 @@ namespace MathCursor.Host.ManualTrigger
     /// </summary>
     internal sealed class ManualTriggerController
     {
-        // Stopwords courts FR qui bornent la span du trigger manuel.
-        // Mots-outils qui introduisent ou séparent des expressions math.
-        private static readonly HashSet<string> Stopwords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "soit", "soient", "et", "ou", "donc", "alors", "avec", "si",
-            "on", "car", "mais", "ainsi", "puis", "comme", "tout",
-            "un", "une", "le", "la", "les", "des", "du", "de",
-            "pour", "par", "sur", "dans", "au", "aux",
-        };
-
-        // Délimiteurs qui bornent la span. Inclut `=`/`<`/`>` pour couper
-        // les relations. `,` et `:` exclus (opérateurs math légitimes).
-        private static readonly char[] Delimiters =
-            { '.', ';', '!', '?', '=', '<', '>', '\n', '\r' };
+        // Stopwords + Delimiters : maintenant data-driven via LocaleVocabulary
+        // (= data-v2/locale/fr.yml `stopwords:` + `span_delimiters:`).
+        // Migration Chantier 1 — 2026-05-25.
 
         private readonly Word.Application _app;
         private readonly WordContextReader _contextReader;
@@ -45,6 +34,7 @@ namespace MathCursor.Host.ManualTrigger
         private readonly Action _closeEditMode;
         private readonly Action<ResolvedZone, ZoneSpan, int, string> _showPopupAndEnterNavMode;
         private readonly Action<string> _log;
+        private readonly MathCursor.Engine.Vocabulary.LocaleVocabulary _vocab;
 
         // État d'extension itérative — chaque Ctrl+Espace suivant tant que
         // la popup est ouverte étend la zone d'un cran (ADR 29-04).
@@ -61,7 +51,8 @@ namespace MathCursor.Host.ManualTrigger
             Func<bool> isSuggestionPopupVisible,
             Action closeEditMode,
             Action<ResolvedZone, ZoneSpan, int, string> showPopupAndEnterNavMode,
-            Action<string> log)
+            Action<string> log,
+            MathCursor.Engine.Vocabulary.LocaleVocabulary vocab)
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
             _contextReader = contextReader ?? throw new ArgumentNullException(nameof(contextReader));
@@ -72,6 +63,7 @@ namespace MathCursor.Host.ManualTrigger
             _closeEditMode = closeEditMode ?? (() => { });
             _showPopupAndEnterNavMode = showPopupAndEnterNavMode ?? ((_, __, ___, ____) => { });
             _log = log ?? (s => { });
+            _vocab = vocab ?? throw new ArgumentNullException(nameof(vocab));
         }
 
         public bool HasIterativeState => _iterativeSpan != null;
@@ -126,7 +118,7 @@ namespace MathCursor.Host.ManualTrigger
                 if (effectiveCaret != caretInParagraph)
                     _log($"[CTRL+SPACE] effectiveCaret adjusted {caretInParagraph}→{effectiveCaret} (skip \\r\\n)");
 
-                int spanStart = ComputeSpanStart(text, effectiveCaret, paragraph.OMathRegions);
+                int spanStart = ComputeSpanStart(text, effectiveCaret, paragraph.OMathRegions, _vocab);
                 _log($"[CTRL+SPACE] ComputeSpanStart raw spanStart={spanStart}");
                 while (spanStart < effectiveCaret && char.IsWhiteSpace(text[spanStart])) spanStart++;
                 int spanEnd = effectiveCaret;
@@ -221,7 +213,7 @@ namespace MathCursor.Host.ManualTrigger
                 }
             }
 
-            int newStart = ComputeSpanStart(iter.ParagraphText, boundary, iter.OMaths);
+            int newStart = ComputeSpanStart(iter.ParagraphText, boundary, iter.OMaths, _vocab);
             while (newStart < iter.StringEnd && char.IsWhiteSpace(iter.ParagraphText[newStart])) newStart++;
 
             if (newStart >= iter.StringStart)
@@ -252,8 +244,14 @@ namespace MathCursor.Host.ManualTrigger
         /// après le dernier délimiteur, position après le dernier stopword).
         /// Détail : `;` et `,` ne sont des délimiteurs QUE hors brackets/parens
         /// (sinon ce sont des séparateurs d'intervalle ou d'args de fonction).
+        ///
+        /// <para>Data-driven : stopwords + delimiters viennent de
+        /// <paramref name="vocab"/> (= YAML <c>data-v2/locale/fr.yml</c>),
+        /// pas de hardcoded. Migration Chantier 1 — 2026-05-25.</para>
         /// </summary>
-        public static int ComputeSpanStart(string text, int caret, IReadOnlyList<(int start, int end)> omathRegions)
+        public static int ComputeSpanStart(string text, int caret,
+            IReadOnlyList<(int start, int end)> omathRegions,
+            MathCursor.Engine.Vocabulary.LocaleVocabulary vocab)
         {
             int start = 0;
 
@@ -268,7 +266,7 @@ namespace MathCursor.Host.ManualTrigger
                 if (c == ')') { parenDepth++; continue; }
                 if (c == '(') { if (parenDepth > 0) parenDepth--; continue; }
 
-                if (Array.IndexOf(Delimiters, c) < 0) continue;
+                if (!vocab.SpanDelimiters.Contains(c)) continue;
                 if ((c == ';' || c == ',') && (bracketDepth > 0 || parenDepth > 0)) continue;
                 start = Math.Max(start, k + 1);
                 break;
@@ -294,7 +292,7 @@ namespace MathCursor.Host.ManualTrigger
                 int wordStart = i + 1;
                 if (wordEnd <= wordStart) { i--; continue; }
                 string w = text.Substring(wordStart, wordEnd - wordStart);
-                if (Stopwords.Contains(w))
+                if (vocab.Stopwords.Contains(w))
                 {
                     start = wordEnd;
                     break;

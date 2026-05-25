@@ -11,6 +11,11 @@ namespace MathCursor.Tests.Host.Detection
     /// </summary>
     public sealed class ZoneRefinerTests
     {
+        // Vocab fr.yml chargé une fois pour tous les tests (= source des
+        // math_prefix_keywords data-driven, migré 2026-05-25 Chantier 1).
+        private static readonly MathCursor.Engine.Vocabulary.LocaleVocabulary _vocab
+            = MathCursor.Engine.Vocabulary.LocaleVocabulary.LoadEmbedded("fr");
+
         private static DetectedZone Zone(int s, int e, string text)
             => new DetectedZone(s, e, text, 0.95f);
 
@@ -60,7 +65,7 @@ namespace MathCursor.Tests.Host.Detection
         {
             // "lim x" : zone = "x" → absorb "lim"
             var z = Zone(4, 5, "x");
-            var result = ZoneRefiner.ExtendBackwardWithKeyword("lim x", z);
+            var result = ZoneRefiner.ExtendBackwardWithKeyword("lim x", z, _vocab);
             Assert.Equal(0, result.Start);
             Assert.Equal("lim x", result.Text);
         }
@@ -69,7 +74,7 @@ namespace MathCursor.Tests.Host.Detection
         public void ExtendBackwardWithKeyword_with_unknown_word_returns_unchanged()
         {
             var z = Zone(4, 5, "x");
-            var result = ZoneRefiner.ExtendBackwardWithKeyword("bla x", z);
+            var result = ZoneRefiner.ExtendBackwardWithKeyword("bla x", z, _vocab);
             Assert.Same(z, result);
         }
 
@@ -77,7 +82,7 @@ namespace MathCursor.Tests.Host.Detection
         public void ExtendBackwardWithKeyword_case_insensitive()
         {
             var z = Zone(4, 5, "x");
-            var result = ZoneRefiner.ExtendBackwardWithKeyword("LIM x", z);
+            var result = ZoneRefiner.ExtendBackwardWithKeyword("LIM x", z, _vocab);
             Assert.Equal(0, result.Start);
         }
 
@@ -85,7 +90,7 @@ namespace MathCursor.Tests.Host.Detection
         public void ExtendBackwardWithKeyword_at_paragraph_start_no_keyword()
         {
             var z = Zone(0, 5, "hello");
-            var result = ZoneRefiner.ExtendBackwardWithKeyword("hello", z);
+            var result = ZoneRefiner.ExtendBackwardWithKeyword("hello", z, _vocab);
             Assert.Same(z, result);
         }
 
@@ -156,15 +161,17 @@ namespace MathCursor.Tests.Host.Detection
             Assert.Equal(20, best.Start);
         }
 
-        // ── MathPrefixKeywords ─────────────────────────────────────────
+        // ── MathPrefixKeywords data-driven ─────────────────────────────
+        // Migration Chantier 1 — 2026-05-25 : la liste est maintenant dans
+        // data-v2/locale/fr.yml `math_prefix_keywords:`.
 
         [Fact]
         public void MathPrefixKeywords_contains_common_terms()
         {
-            Assert.Contains("lim", ZoneRefiner.MathPrefixKeywords);
-            Assert.Contains("racine", ZoneRefiner.MathPrefixKeywords);
-            Assert.Contains("somme", ZoneRefiner.MathPrefixKeywords);
-            Assert.Contains("vec", ZoneRefiner.MathPrefixKeywords);
+            Assert.Contains("lim", _vocab.MathPrefixKeywords);
+            Assert.Contains("racine", _vocab.MathPrefixKeywords);
+            Assert.Contains("somme", _vocab.MathPrefixKeywords);
+            Assert.Contains("vec", _vocab.MathPrefixKeywords);
         }
     }
 }
