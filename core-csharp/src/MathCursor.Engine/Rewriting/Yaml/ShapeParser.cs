@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using MathCursor.Engine.Vocabulary;
 
 namespace MathCursor.Engine.Rewriting.Yaml
 {
@@ -22,7 +23,16 @@ namespace MathCursor.Engine.Rewriting.Yaml
     /// </summary>
     public static class ShapeParser
     {
+        /// <summary>Parse une shape sans résolution de classes
+        /// (= <c>&lt;classname&gt;?</c> ignoré). Pour résoudre les classes,
+        /// utiliser la surcharge avec <see cref="LocaleVocabulary"/>.</summary>
         public static IReadOnlyList<PatternElement> Parse(string shape)
+            => Parse(shape, vocab: null);
+
+        /// <summary>Parse une shape avec résolution de <c>&lt;classname&gt;?</c>
+        /// vers <see cref="AnyLiteral"/> via <paramref name="vocab"/>
+        /// <see cref="LocaleVocabulary.Classes"/>. Phase C-3 (2026-05-25).</summary>
+        public static IReadOnlyList<PatternElement> Parse(string shape, LocaleVocabulary? vocab)
         {
             var elements = new List<PatternElement>();
             if (string.IsNullOrWhiteSpace(shape)) return elements;
@@ -47,8 +57,19 @@ namespace MathCursor.Engine.Rewriting.Yaml
                     int end = shape.IndexOf('>', i + 1);
                     if (end < 0) break;
                     int after = end + 1;
-                    if (after < shape.Length && shape[after] == '?') after++;
-                    // V1 : on saute (= filler/to non implémentés).
+                    bool isOptional = after < shape.Length && shape[after] == '?';
+                    if (isOptional) after++;
+                    var className = shape.Substring(i + 1, end - i - 1).Trim();
+
+                    // Résout via vocab.Classes si disponible. Sinon skip
+                    // silencieusement (= retro-compat ChC-2).
+                    if (vocab != null && vocab.Classes.TryGetValue(className, out var alts) && alts.Count > 0)
+                    {
+                        if (isOptional)
+                            elements.Add(PatternElement.OptAnyLit(alts));
+                        // V1 : si pas optional, on ignore aussi (= peu utilisé,
+                        // à étendre quand un cas concret le réclame).
+                    }
                     i = after;
                     continue;
                 }

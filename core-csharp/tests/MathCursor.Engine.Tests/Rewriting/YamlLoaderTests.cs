@@ -14,14 +14,15 @@ namespace MathCursor.Engine.Tests.Rewriting
     /// </summary>
     public class YamlLoaderTests
     {
-        /// <summary>Engine = règles YAML chargées + primitives essentielles.</summary>
+        /// <summary>Engine = règles YAML chargées + primitives essentielles.
+        /// Phase C-3 : passe vocab au loader pour résoudre <c>&lt;classname&gt;?</c>.</summary>
         private static RewriteEngine BuildEngineForConcept(string conceptName)
         {
             var vocab = LocaleVocabulary.LoadEmbedded("fr");
             var rules = new List<RewriteRule>();
             // Primitives nécessaires pour la composition bottom-up (cf. Phase B+).
             rules.AddRange(PrimitiveRules.All);
-            rules.AddRange(RewriteRuleLoader.LoadConcept(conceptName));
+            rules.AddRange(RewriteRuleLoader.LoadConcept(conceptName, vocab));
             return new RewriteEngine(vocab, rules);
         }
 
@@ -97,6 +98,76 @@ namespace MathCursor.Engine.Tests.Rewriting
             // `forall x R` → \forall x \in \mathbb{R} (R reclassé par tokenizer FR).
             var engine = BuildEngineForConcept("logique");
             Assert.Equal(@"\forall x \in \mathbb{R}", engine.Resolve("forall x R").TopLatex);
+        }
+
+        // ─── Phase C-3 : concepts avec <filler>?, <to>?, =? ─────────────
+
+        [Fact]
+        public void Limites_lim_with_to_arrow()
+        {
+            // `lim x->0 f(x)` — `->` consommé par <to>?, paren-group + add
+            // composent f(x) (= si f est Word multi-char Var). Pour 1-char,
+            // le slot body matche directement.
+            var engine = BuildEngineForConcept("limites");
+            var result = engine.Resolve("lim x 0 y");
+            Assert.Equal(@"\lim_{x \to 0} y", result.TopLatex);
+        }
+
+        [Fact]
+        public void Limites_lim_with_to_word()
+        {
+            // `lim x tend vers 0 y` — `tend vers` est un seul token Glue.
+            var engine = BuildEngineForConcept("limites");
+            var result = engine.Resolve("lim x tend vers 0 y");
+            Assert.Equal(@"\lim_{x \to 0} y", result.TopLatex);
+        }
+
+        [Fact]
+        public void Limites_lim_with_filler()
+        {
+            // `lim quand x 0 y` — `quand` consommé par <filler>?.
+            var engine = BuildEngineForConcept("limites");
+            var result = engine.Resolve("lim quand x 0 y");
+            Assert.Equal(@"\lim_{x \to 0} y", result.TopLatex);
+        }
+
+        [Fact]
+        public void Sommes_with_equals_optional()
+        {
+            // shape: "sum {var} =? {from:bound} {to:bound} {body}"
+            // Le `sum` est dans fr.yml anchors → tokenizer reclasse en `sum`.
+            // En FR on écrit `somme`. Test des 2.
+            var engine = BuildEngineForConcept("sommes");
+            Assert.Equal(@"\sum_{k=1}^{n} k", engine.Resolve("sum k 1 n k").TopLatex);
+            Assert.Equal(@"\sum_{k=1}^{n} k", engine.Resolve("sum k=1 n k").TopLatex);
+        }
+
+        [Fact]
+        public void Funcdef_simple()
+        {
+            // Pas d'anchor literal — shape commence par `{name:var}`.
+            // V1 : `name` mappé sur Letter (= 1-char).
+            var engine = BuildEngineForConcept("funcdef");
+            var result = engine.Resolve("f:x->x");
+            Assert.Equal(@"f: x \mapsto x", result.TopLatex);
+        }
+
+        [Fact]
+        public void Analyse_int_def_simple()
+        {
+            // `int x 0 1 y` → \int_{0}^{1} y \, dx
+            var engine = BuildEngineForConcept("analyse");
+            var result = engine.Resolve("int x 0 1 y");
+            Assert.Equal(@"\int_{0}^{1} y \, dx", result.TopLatex);
+        }
+
+        [Fact]
+        public void Analyse_derive_simple()
+        {
+            // `derive x y` → \frac{d}{dx} y
+            var engine = BuildEngineForConcept("analyse");
+            var result = engine.Resolve("derive x y");
+            Assert.Equal(@"\frac{d}{dx} y", result.TopLatex);
         }
     }
 

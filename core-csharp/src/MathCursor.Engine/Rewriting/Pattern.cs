@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MathCursor.Engine.Rewriting
 {
@@ -35,6 +36,13 @@ namespace MathCursor.Engine.Rewriting
         /// après <c>sum k</c>) et les fillers simples (= mots de transition
         /// type <c>quand</c>, <c>tend</c>, <c>vers</c>). Phase C-1 (2026-05-25).</summary>
         public static PatternElement OptLit(string text) => new Literal(text, optional: true);
+        /// <summary>Literal optionnel multi-alternatives : match si l'Item
+        /// courant est dans l'une des <paramref name="alternatives"/>. Sinon
+        /// skip sans avancer. Utilisé pour résoudre <c>&lt;filler&gt;?</c>
+        /// (= <c>['quand','lorsque']</c>) et <c>&lt;to&gt;?</c> (= <c>['-&gt;','→','tend vers']</c>).
+        /// Phase C-3 (2026-05-25).</summary>
+        public static PatternElement OptAnyLit(IReadOnlyList<string> alternatives)
+            => new AnyLiteral(alternatives, optional: true);
         public static PatternElement Slot(string name, Category category)
             => new Slot(name, category);
         /// <summary>Slot répété N fois, séparé par <paramref name="separator"/>.
@@ -69,6 +77,23 @@ namespace MathCursor.Engine.Rewriting
             Optional = optional;
         }
         public override string ToString() => Optional ? $"'{Text}'?" : $"'{Text}'";
+    }
+
+    /// <summary>Liste d'alternatives literales — match si l'Item courant est
+    /// dans la liste. Si <see cref="Optional"/>, skip sans consommer en cas
+    /// d'absence. Utilisé pour <c>&lt;filler&gt;?</c>, <c>&lt;to&gt;?</c>, etc.</summary>
+    public sealed class AnyLiteral : PatternElement
+    {
+        public IReadOnlyList<string> Alternatives { get; }
+        public bool Optional { get; }
+        public AnyLiteral(IReadOnlyList<string> alternatives, bool optional = false)
+        {
+            Alternatives = alternatives ?? throw new ArgumentNullException(nameof(alternatives));
+            Optional = optional;
+        }
+        public override string ToString() => Optional
+            ? $"<{string.Join("|", Alternatives)}>?"
+            : $"<{string.Join("|", Alternatives)}>";
     }
 
     /// <summary>Slot typé : capture un Item d'une catégorie donnée.</summary>

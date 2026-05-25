@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using MathCursor.Engine.Rules;
+using MathCursor.Engine.Vocabulary;
 
 namespace MathCursor.Engine.Rewriting.Yaml
 {
@@ -16,32 +17,33 @@ namespace MathCursor.Engine.Rewriting.Yaml
     public static class RewriteRuleLoader
     {
         /// <summary>Charge tous les concepts embarqués + convertit en
-        /// <see cref="RewriteRule"/>.</summary>
-        public static IReadOnlyList<RewriteRule> LoadAllEmbedded()
+        /// <see cref="RewriteRule"/>. Le <paramref name="vocab"/> sert à
+        /// résoudre <c>&lt;classname&gt;?</c> dans les shapes.</summary>
+        public static IReadOnlyList<RewriteRule> LoadAllEmbedded(LocaleVocabulary? vocab = null)
         {
             var concepts = RuleLoader.LoadAllEmbedded();
             var rules = new List<RewriteRule>();
             foreach (var c in concepts)
             foreach (var r in c.Rules)
-                rules.Add(ConvertRule(r, c.Concept));
+                rules.Add(ConvertRule(r, c.Concept, vocab));
             return rules;
         }
 
         /// <summary>Charge un seul concept par nom + convertit.</summary>
-        public static IReadOnlyList<RewriteRule> LoadConcept(string conceptName)
+        public static IReadOnlyList<RewriteRule> LoadConcept(string conceptName, LocaleVocabulary? vocab = null)
         {
             var c = RuleLoader.LoadEmbedded(conceptName);
             var rules = new List<RewriteRule>();
             foreach (var r in c.Rules)
-                rules.Add(ConvertRule(r, c.Concept));
+                rules.Add(ConvertRule(r, c.Concept, vocab));
             return rules;
         }
 
         /// <summary>Convertit une <see cref="RuleSpec"/> en
         /// <see cref="RewriteRule"/>.</summary>
-        public static RewriteRule ConvertRule(RuleSpec spec, string conceptName)
+        public static RewriteRule ConvertRule(RuleSpec spec, string conceptName, LocaleVocabulary? vocab = null)
         {
-            var elements = ShapeParser.Parse(spec.Shape);
+            var elements = ShapeParser.Parse(spec.Shape, vocab);
             var pattern = new Pattern(elements);
             var produces = InferProduces(conceptName);
             return new RewriteRule(

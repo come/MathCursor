@@ -35,6 +35,22 @@ namespace MathCursor.Engine.Rewriting
                         i++;
                         break;
 
+                    case AnyLiteral any:
+                    {
+                        bool matched = false;
+                        foreach (var alt in any.Alternatives)
+                        {
+                            if (items[i].SourceText == alt) { matched = true; break; }
+                        }
+                        if (!matched)
+                        {
+                            if (any.Optional) break;
+                            return null;
+                        }
+                        i++;
+                        break;
+                    }
+
                     case Slot slot:
                         if (!CategoryMatches(items[i].Category, slot.Category)) return null;
                         slots[slot.Name] = items[i];
