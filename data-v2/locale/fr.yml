@@ -45,6 +45,47 @@ anchors:
   # P(A) est rendu par le parser : P + (A) → produit implicite → P(A).
 
 functions:
+  # ─── Lettres grecques minuscules (24) ────────────────────────
+  # 2026-05-25 : prefix-match popup + reclasse direct au tokenizer.
+  alpha:   '\alpha'
+  beta:    '\beta'
+  gamma:   '\gamma'
+  delta:   '\delta'
+  epsilon: '\epsilon'
+  zeta:    '\zeta'
+  eta:     '\eta'
+  theta:   '\theta'
+  iota:    '\iota'
+  kappa:   '\kappa'
+  lambda:  '\lambda'
+  mu:      '\mu'
+  nu:      '\nu'
+  xi:      '\xi'
+  omicron: 'o'
+  pi:      '\pi'
+  rho:     '\rho'
+  sigma:   '\sigma'
+  tau:     '\tau'
+  upsilon: '\upsilon'
+  phi:     '\phi'
+  chi:     '\chi'
+  psi:     '\psi'
+  omega:   '\omega'
+  # ─── Lettres grecques majuscules (11 distinctes du latin) ────
+  # Les autres (Alpha, Beta, Epsilon, ...) n'ont pas de cmd LaTeX
+  # dédiée — utiliser la lettre latine équivalente.
+  Gamma:   '\Gamma'
+  Delta:   '\Delta'
+  Theta:   '\Theta'
+  Lambda:  '\Lambda'
+  Xi:      '\Xi'
+  Pi:      '\Pi'
+  Sigma:   '\Sigma'
+  Upsilon: '\Upsilon'
+  Phi:     '\Phi'
+  Psi:     '\Psi'
+  Omega:   '\Omega'
+  # ─── Fonctions math standards ────────────────────────────────
   sin:  '\sin'
   cos:  '\cos'
   tan:  '\tan'

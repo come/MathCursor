@@ -120,13 +120,25 @@ namespace MathCursor.Engine.Tokenization
                    || t.Text == "(" || t.Text == ")"
                    || t.Text == "{" || t.Text == "}");
 
-        /// <summary>Lookup function avec tolérance casse : <c>Cos</c>, <c>COS</c>
-        /// matchent <c>cos</c>. Évite que Word autocapitalize ne mange le
-        /// reclasse function (= user-report 2026-05-23 « Cos x »).</summary>
+        /// <summary>Lookup function avec tolérance casse intelligente :
+        /// <list type="bullet">
+        ///   <item><c>Cos</c>, <c>COS</c> → <c>\cos</c> (= via lowercase retry).</item>
+        ///   <item><c>OMEGA</c>, <c>Omega</c> → <c>\Omega</c> (= via Capitalized
+        ///     retry quand le mot est all-uppercase, distinct du <c>omega</c>
+        ///     minuscule). User-report 2026-05-25.</item>
+        /// </list></summary>
         private bool TryLookupFunction(string word, out string latex)
         {
+            // 1) Exact match (= conserve la casse pour distinguer omega vs Omega).
             if (_vocab.Functions.TryGetValue(word, out latex)) return true;
-            // Tolérance casse : lowercase, alors retry.
+            // 2) Si all-upper, retry avec Capitalized (= 1er char haut, reste bas)
+            //    pour matcher les majuscules grecques `Omega`, `Sigma`, etc.
+            if (word.Length >= 2 && word == word.ToUpperInvariant())
+            {
+                var capitalized = char.ToUpperInvariant(word[0]) + word.Substring(1).ToLowerInvariant();
+                if (capitalized != word && _vocab.Functions.TryGetValue(capitalized, out latex)) return true;
+            }
+            // 3) Fallback lowercase (= tolérance Word autocapitalize Cos→cos).
             var lower = word.ToLowerInvariant();
             if (lower != word && _vocab.Functions.TryGetValue(lower, out latex)) return true;
             latex = string.Empty;

@@ -63,18 +63,35 @@ namespace MathCursor.Engine
             _parser.SetAnchorMatcher((tokens, startIdx) =>
             {
                 var matches = TryAllAnchorMatchesWithPartialFallback(tokens, startIdx);
-                if (matches.Count == 0) return ((string?)null, startIdx);
-                matches.Sort((a, b) =>
+                if (matches.Count > 0)
                 {
-                    // Prioritise full match (non-partial) avant partial.
-                    int dPartial = (a.IsPartial ? 1 : 0).CompareTo(b.IsPartial ? 1 : 0);
-                    if (dPartial != 0) return dPartial;
-                    int dSpan = (b.End - b.Start).CompareTo(a.End - a.Start);
-                    if (dSpan != 0) return dSpan;
-                    return b.Slots.Count.CompareTo(a.Slots.Count);
-                });
-                var best = matches[0];
-                return (_templateEmitter.Emit(best), best.End);
+                    matches.Sort((a, b) =>
+                    {
+                        // Prioritise full match (non-partial) avant partial.
+                        int dPartial = (a.IsPartial ? 1 : 0).CompareTo(b.IsPartial ? 1 : 0);
+                        if (dPartial != 0) return dPartial;
+                        int dSpan = (b.End - b.Start).CompareTo(a.End - a.Start);
+                        if (dSpan != 0) return dSpan;
+                        return b.Slots.Count.CompareTo(a.Slots.Count);
+                    });
+                    var best = matches[0];
+                    return (_templateEmitter.Emit(best), best.End);
+                }
+                // Prefix-match : dans un groupe, le sub-flux contient juste 1
+                // Word puis CloseDelim (= `f(som)`, `(somme dans groupe)`).
+                // Couvre aussi `som` seul au top-level si appelé là. User-request
+                // 2026-05-25 : « fais les DEUX », comportement uniforme.
+                if (startIdx < tokens.Count
+                    && tokens[startIdx].Kind == TokenKind.Word
+                    && tokens[startIdx].Text.Length >= 3
+                    && (startIdx + 1 == tokens.Count
+                        || tokens[startIdx + 1].Kind == TokenKind.CloseDelim))
+                {
+                    var pm = FindPrefixMatches(tokens[startIdx].Text);
+                    if (pm.Count == 1)
+                        return (pm[0].Latex, startIdx + 1);
+                }
+                return ((string?)null, startIdx);
             });
             _collisionScores = CollisionScores.LoadEmbedded();
             // P28 (2026-05-22) : pipeline collision déclarée via détecteurs
@@ -119,6 +136,41 @@ namespace MathCursor.Engine
             // Le pattern est matché en top-level via TryAllAnchorMatches —
             // pas besoin de pre-pass dédié. Cas 2-var (`f:x,y->body`) en attente
             // d'extension `{varlist}` du ShapeMatcher.
+
+            // Prefix-match en cours de frappe : si source = 1 seul Word de
+            // longueur ≥ 3, et que ce Word est un préfixe d'au moins un keyword
+            // (anchor, function, relation textuelle), suggérer via Collisions
+            // (= si N matches) ou TopLatex (= si 1 unique match avec carrés).
+            // User-request 2026-05-25 : « il tape inte la popup montre inter
+            // et c'est bon .. il tape ome la popup montre omega ».
+            if (IsSingleWordStandalone(tokens, out var word))
+            {
+                var prefixMatches = FindPrefixMatches(word);
+                if (prefixMatches.Count == 1)
+                {
+                    var only = prefixMatches[0];
+                    return new EngineResult(
+                        topLatex: only.Latex,
+                        isComplete: !only.Latex.Contains(@"\square"),
+                        collisions: System.Array.Empty<EngineCandidate>(),
+                        ruleId: "prefix-match:" + only.Source);
+                }
+                if (prefixMatches.Count >= 2)
+                {
+                    var candidates = new System.Collections.Generic.List<EngineCandidate>(prefixMatches.Count);
+                    foreach (var pm in prefixMatches)
+                        candidates.Add(new EngineCandidate(
+                            latex: pm.Latex,
+                            description: pm.Keyword,
+                            ruleId: "prefix-match:" + pm.Source,
+                            score: 100 - pm.Keyword.Length));
+                    return new EngineResult(
+                        topLatex: word,
+                        isComplete: false,
+                        collisions: candidates,
+                        ruleId: "prefix-match:multi");
+                }
+            }
 
             // P30 (2026-05-22) : la détection angle `^<word>` est faite au
             // tokenizer (= MergeLeadingCaretAngle). Plus de hardcoded ici.
@@ -297,6 +349,21 @@ namespace MathCursor.Engine
             return candidates;
         }
 
+        /// <summary>
+        /// True si <paramref name="tokens"/> est exactement 1 token Word (=
+        /// pas de Sep, pas de Symbol, pas d'autre token). Utilisé pour le
+        /// prefix-match : on ne déclenche que sur un mot standalone tapé en
+        /// cours de frappe, pas dans une expression complète.
+        /// </summary>
+        private static bool IsSingleWordStandalone(IReadOnlyList<Token> tokens, out string word)
+        {
+            word = string.Empty;
+            if (tokens.Count != 1) return false;
+            if (tokens[0].Kind != TokenKind.Word) return false;
+            word = tokens[0].Text;
+            return true;
+        }
+
         private List<ShapeMatch> TryAllAnchorMatches(IReadOnlyList<Token> tokens, int startIndex, bool allowPartial = false)
         {
             // Cherche toutes les règles qui matchent à startIndex. Retourne
@@ -322,6 +389,90 @@ namespace MathCursor.Engine
             var matches = TryAllAnchorMatches(tokens, startIndex);
             if (matches.Count > 0) return matches;
             return TryAllAnchorMatches(tokens, startIndex, allowPartial: true);
+        }
+
+        /// <summary>
+        /// Représentation d'un prefix-match : le user a tapé un préfixe d'un
+        /// keyword reconnu (anchor, function, relation textuelle), pas le
+        /// keyword complet. User-request 2026-05-25 : « le gars peut passer
+        /// à la suite, genre il tape inte la popup montre inter ».
+        /// </summary>
+        private readonly struct PrefixMatch
+        {
+            public PrefixMatch(string keyword, string latex, string source)
+            { Keyword = keyword; Latex = latex; Source = source; }
+            public string Keyword { get; }   // ex. "somme", "inter", "omega"
+            public string Latex { get; }     // ex. "\sum_{\square=…}…", "\cap", "\omega"
+            public string Source { get; }    // ex. "anchor", "function", "relation"
+        }
+
+        /// <summary>
+        /// Cherche tous les keywords (anchors, functions, relations textuelles)
+        /// dont <paramref name="word"/> est un préfixe strict (= longueur ≥ 3
+        /// pour éviter le spam, et le mot complet est exclu — laissé au full
+        /// match). Insensible à la casse. Utilisé pour la popup guidée en cours
+        /// de frappe (`som` → suggère `somme` avec carrés ; `inte` → `inter`).
+        /// </summary>
+        private List<PrefixMatch> FindPrefixMatches(string word)
+        {
+            var results = new List<PrefixMatch>();
+            if (word == null || word.Length < 3) return results;
+            var seen = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal);
+            var wordLower = word.ToLowerInvariant();
+
+            // Anchors aliases (`somme→sum`, `limite→lim`, `intégrale→int`, …).
+            // Pour chaque alias préfixé, on retrouve la rule et on émet via
+            // TemplateEmitter avec slots vides → LaTeX avec \square.
+            foreach (var kv in _vocab.Anchors)
+            {
+                var alias = kv.Key;
+                var aliasLower = alias.ToLowerInvariant();
+                if (aliasLower == wordLower) continue;
+                if (!aliasLower.StartsWith(wordLower, System.StringComparison.Ordinal)) continue;
+                foreach (var rule in _rules)
+                {
+                    if (rule.Anchor != kv.Value) continue;
+                    var synthetic = new ShapeMatch(rule, 0, 0,
+                        new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IReadOnlyList<Token>>(),
+                        isPartial: true);
+                    var emitted = _templateEmitter.Emit(synthetic);
+                    if (seen.Add(alias + "→" + emitted))
+                        results.Add(new PrefixMatch(alias, emitted, "anchor"));
+                }
+            }
+
+            // Functions (= `sin`, `cos`, `omega`, `Omega`, …). Préserve la casse
+            // pour distinguer `omega` (minuscule) vs `Omega` (majuscule).
+            foreach (var kv in _vocab.Functions)
+            {
+                var name = kv.Key;
+                var nameLower = name.ToLowerInvariant();
+                if (nameLower == wordLower) continue;
+                if (!nameLower.StartsWith(wordLower, System.StringComparison.Ordinal)) continue;
+                // Si l'user a tapé en majuscule (= `OME`), match les majuscules.
+                bool userIsUpper = word.Length >= 1 && char.IsUpper(word[0]);
+                bool keywordIsUpper = name.Length >= 1 && char.IsUpper(name[0]);
+                if (userIsUpper != keywordIsUpper) continue;
+                if (seen.Add(name + "→" + kv.Value))
+                    results.Add(new PrefixMatch(name, kv.Value, "function"));
+            }
+
+            // Relations textuelles (= `inter`, `in`, `et`, `ou`, `mod`, `perp`,
+            // `congru`, …). Skip les symboles (= `+`, `*`, `<=`, etc.).
+            foreach (var kv in _vocab.Relations)
+            {
+                var name = kv.Key;
+                if (name.Length < 2 || !char.IsLetter(name[0])) continue;
+                var nameLower = name.ToLowerInvariant();
+                if (nameLower == wordLower) continue;
+                if (!nameLower.StartsWith(wordLower, System.StringComparison.Ordinal)) continue;
+                if (seen.Add(name + "→" + kv.Value.Tex))
+                    results.Add(new PrefixMatch(name, kv.Value.Tex, "relation"));
+            }
+
+            // Tri stable par nom alphabétique pour reproductibilité.
+            results.Sort((a, b) => string.Compare(a.Keyword, b.Keyword, System.StringComparison.Ordinal));
+            return results;
         }
 
         private (string Latex, int NewTi) ParseFlatOperand(IReadOnlyList<Token> tokens, int startIndex)
