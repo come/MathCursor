@@ -6,6 +6,7 @@ using MathCursor.Engine.Collision.Detectors;
 using MathCursor.Engine.Emit;
 using MathCursor.Engine.Parsing;
 using MathCursor.Engine.Parsing.List;
+using MathCursor.Engine.Resolution;
 using MathCursor.Engine.Rules;
 using MathCursor.Engine.Tokenization;
 using MathCursor.Engine.Vocabulary;
@@ -47,6 +48,11 @@ namespace MathCursor.Engine
         private readonly IReadOnlyList<ICollisionDetector> _detectors;
         private readonly CollisionScores _collisionScores;
 
+        // Pre-resolvers (Chantier 3, 2026-05-25) : itérés en début de Resolve
+        // avant le main loop. Premier match wins. Cf. IPreResolver.
+        private readonly PrefixMatchResolver _prefixMatchResolver;
+        private readonly IReadOnlyList<IPreResolver> _preResolvers;
+
         public MathEngine(LocaleVocabulary vocab, IReadOnlyList<RuleSpec> rules)
         {
             _vocab = vocab ?? throw new System.ArgumentNullException(nameof(vocab));
@@ -56,6 +62,12 @@ namespace MathCursor.Engine
             _templateEmitter = new TemplateEmitter(_vocab);
             _parser = new StackParser(_vocab);
             _flatEmitter = new LatexEmitter(preferSubscript: false, vocab: _vocab);
+            _prefixMatchResolver = new PrefixMatchResolver(_vocab, _rules, _templateEmitter);
+            _preResolvers = new IPreResolver[]
+            {
+                new MultiLineBlockResolver(_vocab, _parser, _flatEmitter),
+                _prefixMatchResolver,
+            };
 
             // Inject l'anchor matcher dans StackParser pour que les ancres
             // (lim/sum/int/cos/…) soient reconnues PARTOUT dans l'AST, y
@@ -93,7 +105,7 @@ namespace MathCursor.Engine
                     && (startIdx + 1 == tokens.Count
                         || tokens[startIdx + 1].Kind == TokenKind.CloseDelim))
                 {
-                    var pm = FindPrefixMatches(tokens[startIdx].Text);
+                    var pm = _prefixMatchResolver.FindMatches(tokens[startIdx].Text);
                     if (pm.Count == 1)
                         return (pm[0].Latex, startIdx + 1);
                 }
@@ -121,65 +133,22 @@ namespace MathCursor.Engine
             var tokens = _tokenizer.Tokenize(source);
             if (tokens.Count == 0) return EngineResult.Empty;
 
-            // Pre-pass multi-line (= align*/cases) : si le source contient
-            // des boundaries `\n` (= Sep("\n") tokens) et un pattern align
-            // ou cases reconnaissable → construit un MultiLineBlockNode et
-            // emit directement. Sinon → loop top-level normal pour single-line.
-            // Cf. ADR 2026-05-23-Feat-engine-v2-multiline-port.
-            var multiLineBlock = TryBuildMultiLineBlock(tokens);
-            if (multiLineBlock != null)
-            {
-                var multiLineLatex = _flatEmitter.Emit(multiLineBlock);
-                return new EngineResult(
-                    topLatex: multiLineLatex,
-                    isComplete: !multiLineLatex.Contains(@"\square"),
-                    collisions: System.Array.Empty<EngineCandidate>(),
-                    ruleId: multiLineBlock.Mode == "cases" ? "multiline-cases" : "multiline-align");
-            }
-
+            // Pre-resolvers (Chantier 3, 2026-05-25) : multi-line align*/cases,
+            // prefix-match popup as-you-type. Premier match wins. Si tous null,
+            // fallback main loop ci-dessous.
+            //
             // FuncDef : maintenant data-driven via data-v2/concepts/funcdef.yml
             // (= rule `{name:var} : {arg:var} -> {body}`). Migré 2026-05-24 P3.
-            // Le pattern est matché en top-level via TryAllAnchorMatches —
-            // pas besoin de pre-pass dédié. Cas 2-var (`f:x,y->body`) en attente
-            // d'extension `{varlist}` du ShapeMatcher.
-
-            // Prefix-match en cours de frappe : si source = 1 seul Word de
-            // longueur ≥ 3, et que ce Word est un préfixe d'au moins un keyword
-            // (anchor, function, relation textuelle), suggérer via Collisions
-            // (= si N matches) ou TopLatex (= si 1 unique match avec carrés).
-            // User-request 2026-05-25 : « il tape inte la popup montre inter
-            // et c'est bon .. il tape ome la popup montre omega ».
-            if (IsSingleWordStandalone(tokens, out var word))
-            {
-                var prefixMatches = FindPrefixMatches(word);
-                if (prefixMatches.Count == 1)
-                {
-                    var only = prefixMatches[0];
-                    return new EngineResult(
-                        topLatex: only.Latex,
-                        isComplete: !only.Latex.Contains(@"\square"),
-                        collisions: System.Array.Empty<EngineCandidate>(),
-                        ruleId: "prefix-match:" + only.Source);
-                }
-                if (prefixMatches.Count >= 2)
-                {
-                    var candidates = new System.Collections.Generic.List<EngineCandidate>(prefixMatches.Count);
-                    foreach (var pm in prefixMatches)
-                        candidates.Add(new EngineCandidate(
-                            latex: pm.Latex,
-                            description: pm.Keyword,
-                            ruleId: "prefix-match:" + pm.Source,
-                            score: 100 - pm.Keyword.Length));
-                    return new EngineResult(
-                        topLatex: word,
-                        isComplete: false,
-                        collisions: candidates,
-                        ruleId: "prefix-match:multi");
-                }
-            }
-
-            // P30 (2026-05-22) : la détection angle `^<word>` est faite au
+            // Pattern matché en top-level via TryAllAnchorMatches — pas de
+            // pre-resolver dédié. Cas 2-var en attente d'extension `{varlist}`.
+            //
+            // P30 (2026-05-22) : détection angle `^<word>` est faite au
             // tokenizer (= MergeLeadingCaretAngle). Plus de hardcoded ici.
+            foreach (var preResolver in _preResolvers)
+            {
+                var pre = preResolver.TryResolve(tokens);
+                if (pre != null) return pre;
+            }
 
             int ti = 0;
             var operandLatex = new List<string>();
@@ -328,14 +297,6 @@ namespace MathCursor.Engine
         // P28 (2026-05-22) : helpers de détecteurs extraits dans
         // MathCursor.Engine.Collision.Detectors/. MathEngine reste maigre.
 
-        private string RenderTokens(IReadOnlyList<Token> tokens)
-        {
-            if (tokens == null || tokens.Count == 0) return string.Empty;
-            var ast = _parser.Parse(tokens);
-            ast = ListCombinator.Promote(ast);
-            return _flatEmitter.Emit(ast);
-        }
-
         private IReadOnlyList<EngineCandidate> BuildCandidates(IReadOnlyList<ShapeMatch> matches)
         {
             if (matches == null || matches.Count == 0)
@@ -353,21 +314,6 @@ namespace MathCursor.Engine
                     score: score));
             }
             return candidates;
-        }
-
-        /// <summary>
-        /// True si <paramref name="tokens"/> est exactement 1 token Word (=
-        /// pas de Sep, pas de Symbol, pas d'autre token). Utilisé pour le
-        /// prefix-match : on ne déclenche que sur un mot standalone tapé en
-        /// cours de frappe, pas dans une expression complète.
-        /// </summary>
-        private static bool IsSingleWordStandalone(IReadOnlyList<Token> tokens, out string word)
-        {
-            word = string.Empty;
-            if (tokens.Count != 1) return false;
-            if (tokens[0].Kind != TokenKind.Word) return false;
-            word = tokens[0].Text;
-            return true;
         }
 
         private List<ShapeMatch> TryAllAnchorMatches(IReadOnlyList<Token> tokens, int startIndex, bool allowPartial = false)
@@ -395,90 +341,6 @@ namespace MathCursor.Engine
             var matches = TryAllAnchorMatches(tokens, startIndex);
             if (matches.Count > 0) return matches;
             return TryAllAnchorMatches(tokens, startIndex, allowPartial: true);
-        }
-
-        /// <summary>
-        /// Représentation d'un prefix-match : le user a tapé un préfixe d'un
-        /// keyword reconnu (anchor, function, relation textuelle), pas le
-        /// keyword complet. User-request 2026-05-25 : « le gars peut passer
-        /// à la suite, genre il tape inte la popup montre inter ».
-        /// </summary>
-        private readonly struct PrefixMatch
-        {
-            public PrefixMatch(string keyword, string latex, string source)
-            { Keyword = keyword; Latex = latex; Source = source; }
-            public string Keyword { get; }   // ex. "somme", "inter", "omega"
-            public string Latex { get; }     // ex. "\sum_{\square=…}…", "\cap", "\omega"
-            public string Source { get; }    // ex. "anchor", "function", "relation"
-        }
-
-        /// <summary>
-        /// Cherche tous les keywords (anchors, functions, relations textuelles)
-        /// dont <paramref name="word"/> est un préfixe strict (= longueur ≥ 3
-        /// pour éviter le spam, et le mot complet est exclu — laissé au full
-        /// match). Insensible à la casse. Utilisé pour la popup guidée en cours
-        /// de frappe (`som` → suggère `somme` avec carrés ; `inte` → `inter`).
-        /// </summary>
-        private List<PrefixMatch> FindPrefixMatches(string word)
-        {
-            var results = new List<PrefixMatch>();
-            if (word == null || word.Length < 3) return results;
-            var seen = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal);
-            var wordLower = word.ToLowerInvariant();
-
-            // Anchors aliases (`somme→sum`, `limite→lim`, `intégrale→int`, …).
-            // Pour chaque alias préfixé, on retrouve la rule et on émet via
-            // TemplateEmitter avec slots vides → LaTeX avec \square.
-            foreach (var kv in _vocab.Anchors)
-            {
-                var alias = kv.Key;
-                var aliasLower = alias.ToLowerInvariant();
-                if (aliasLower == wordLower) continue;
-                if (!aliasLower.StartsWith(wordLower, System.StringComparison.Ordinal)) continue;
-                foreach (var rule in _rules)
-                {
-                    if (rule.Anchor != kv.Value) continue;
-                    var synthetic = new ShapeMatch(rule, 0, 0,
-                        new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IReadOnlyList<Token>>(),
-                        isPartial: true);
-                    var emitted = _templateEmitter.Emit(synthetic);
-                    if (seen.Add(alias + "→" + emitted))
-                        results.Add(new PrefixMatch(alias, emitted, "anchor"));
-                }
-            }
-
-            // Functions (= `sin`, `cos`, `omega`, `Omega`, …). Préserve la casse
-            // pour distinguer `omega` (minuscule) vs `Omega` (majuscule).
-            foreach (var kv in _vocab.Functions)
-            {
-                var name = kv.Key;
-                var nameLower = name.ToLowerInvariant();
-                if (nameLower == wordLower) continue;
-                if (!nameLower.StartsWith(wordLower, System.StringComparison.Ordinal)) continue;
-                // Si l'user a tapé en majuscule (= `OME`), match les majuscules.
-                bool userIsUpper = word.Length >= 1 && char.IsUpper(word[0]);
-                bool keywordIsUpper = name.Length >= 1 && char.IsUpper(name[0]);
-                if (userIsUpper != keywordIsUpper) continue;
-                if (seen.Add(name + "→" + kv.Value))
-                    results.Add(new PrefixMatch(name, kv.Value, "function"));
-            }
-
-            // Relations textuelles (= `inter`, `in`, `et`, `ou`, `mod`, `perp`,
-            // `congru`, …). Skip les symboles (= `+`, `*`, `<=`, etc.).
-            foreach (var kv in _vocab.Relations)
-            {
-                var name = kv.Key;
-                if (name.Length < 2 || !char.IsLetter(name[0])) continue;
-                var nameLower = name.ToLowerInvariant();
-                if (nameLower == wordLower) continue;
-                if (!nameLower.StartsWith(wordLower, System.StringComparison.Ordinal)) continue;
-                if (seen.Add(name + "→" + kv.Value.Tex))
-                    results.Add(new PrefixMatch(name, kv.Value.Tex, "relation"));
-            }
-
-            // Tri stable par nom alphabétique pour reproductibilité.
-            results.Sort((a, b) => string.Compare(a.Keyword, b.Keyword, System.StringComparison.Ordinal));
-            return results;
         }
 
         private (string Latex, int NewTi) ParseFlatOperand(IReadOnlyList<Token> tokens, int startIndex)
@@ -564,145 +426,9 @@ namespace MathCursor.Engine
                 ti++;
         }
 
-        // ─── Multi-line block (align*/cases) ──────────────────────────
-        // Cf. ADR 2026-05-23-Feat-engine-v2-multiline-port. Port direct du
-        // legacy Parser.TryParseMultiLineBlock.
-
-        /// <summary>
-        /// Détecte un bloc multi-ligne (align* ou cases) à partir du flux de
-        /// tokens et construit un <see cref="MultiLineBlockNode"/>. Retourne
-        /// <c>null</c> si pas de pattern multi-ligne (= fallback single-line).
-        /// </summary>
-        private MultiLineBlockNode? TryBuildMultiLineBlock(IReadOnlyList<Token> tokens)
-        {
-            // Identifier les indices où Sep("\n") apparaît → boundaries de ligne.
-            var lineStarts = new List<int> { 0 };
-            for (int i = 0; i < tokens.Count; i++)
-            {
-                if (tokens[i].Kind == TokenKind.Sep && tokens[i].Text == "\n")
-                {
-                    int next = i + 1;
-                    if (next < tokens.Count) lineStarts.Add(next);
-                }
-            }
-            if (lineStarts.Count < 2) return null; // single-line
-
-            // Cases en priorité : si line[0] commence par `{ ` (open delim non
-            // refermé dans la ligne) ET toutes les lignes commencent par `{ ` aussi.
-            int firstLineEnd = lineStarts[1] - 1; // exclut le Sep("\n")
-            if (IsCasesLineStart(tokens, lineStarts[0], firstLineEnd))
-            {
-                return TryBuildCasesBlock(tokens, lineStarts);
-            }
-
-            return TryBuildAlignBlock(tokens, lineStarts);
-        }
-
-        /// <summary>Cases : toutes les lignes doivent commencer par `{` non
-        /// refermé. Skip le `{` initial de chaque ligne (porté implicitement
-        /// dans <c>\begin{cases}</c>).</summary>
-        private MultiLineBlockNode? TryBuildCasesBlock(IReadOnlyList<Token> tokens, List<int> lineStarts)
-        {
-            for (int li = 0; li < lineStarts.Count; li++)
-            {
-                int lineEnd = (li + 1 < lineStarts.Count) ? lineStarts[li + 1] - 1 : tokens.Count;
-                if (!IsCasesLineStart(tokens, lineStarts[li], lineEnd)) return null;
-            }
-
-            var lines = new List<AstNode>();
-            var prefixes = new List<string>();
-            for (int li = 0; li < lineStarts.Count; li++)
-            {
-                int s = lineStarts[li] + 1; // skip `{`
-                int e = (li + 1 < lineStarts.Count) ? lineStarts[li + 1] - 1 : tokens.Count;
-                var lineAst = ParseTokenRange(tokens, s, e);
-                lines.Add(lineAst ?? PlaceholderNode.Instance);
-                prefixes.Add("");
-            }
-            return new MultiLineBlockNode("cases", lines, prefixes);
-        }
-
-        /// <summary>Align : ligne 0 quelconque, lignes 1+ doivent commencer
-        /// par un marker align (= <c>=</c>, <c>&lt;=&gt;</c>, <c>=&gt;</c>,
-        /// <c>&lt;=</c> et variants). Skip le marker initial de chaque ligne
-        /// 2+ (porté dans <c>LinePrefix</c>).</summary>
-        private MultiLineBlockNode? TryBuildAlignBlock(IReadOnlyList<Token> tokens, List<int> lineStarts)
-        {
-            var prefixes = new List<string> { "" };
-            for (int li = 1; li < lineStarts.Count; li++)
-            {
-                int s = lineStarts[li];
-                if (s >= tokens.Count) return null;
-                var first = tokens[s];
-                // Sauter un éventuel Sep(" ") interne en début de ligne
-                if (first.Kind == TokenKind.Sep && first.Text == " " && s + 1 < tokens.Count)
-                {
-                    s++;
-                    first = tokens[s];
-                }
-                var prefix = MapAlignMarkerToLatex(first);
-                if (prefix == null) return null; // pas un align block
-                prefixes.Add(prefix);
-            }
-
-            var lines = new List<AstNode>();
-            for (int li = 0; li < lineStarts.Count; li++)
-            {
-                int s = lineStarts[li];
-                int e = (li + 1 < lineStarts.Count) ? lineStarts[li + 1] - 1 : tokens.Count;
-                if (li > 0)
-                {
-                    // skip Sep(" ") puis marker
-                    while (s < e && tokens[s].Kind == TokenKind.Sep && tokens[s].Text == " ") s++;
-                    s++; // skip marker
-                }
-                var lineAst = ParseTokenRange(tokens, s, e);
-                lines.Add(lineAst ?? PlaceholderNode.Instance);
-            }
-            return new MultiLineBlockNode("align", lines, prefixes);
-        }
-
-        /// <summary>True si le 1er token (modulo Sep) à <paramref name="lineStart"/>
-        /// est un <c>{</c> qui n'est PAS refermé par un <c>}</c> dans la
-        /// même ligne (= marker système cases, vs. délimiteur de set).</summary>
-        private static bool IsCasesLineStart(IReadOnlyList<Token> tokens, int lineStart, int lineEndExcl)
-        {
-            int s = lineStart;
-            while (s < lineEndExcl && tokens[s].Kind == TokenKind.Sep && tokens[s].Text == " ") s++;
-            if (s >= lineEndExcl) return false;
-            if (tokens[s].Kind != TokenKind.OpenDelim || tokens[s].Text != "{") return false;
-            // Vérifier qu'aucun `}` ne ferme le set sur cette ligne.
-            for (int i = s + 1; i < lineEndExcl; i++)
-            {
-                if (tokens[i].Kind == TokenKind.CloseDelim && tokens[i].Text == "}") return false;
-            }
-            return true;
-        }
-
-        /// <summary>Mappe un token de marker align vers son préfixe LaTeX.
-        /// Data-driven via le champ YAML <c>align_prefix</c> des relations.
-        /// Retourne <c>null</c> si le token n'est pas une relation ou si
-        /// elle n'a pas de <c>align_prefix</c> défini (= pas un marker align).
-        /// </summary>
-        private string? MapAlignMarkerToLatex(Token tok)
-        {
-            if (tok.Kind != TokenKind.Symbol && tok.Kind != TokenKind.Glue) return null;
-            if (!_vocab.Relations.TryGetValue(tok.Text, out var rel)) return null;
-            if (rel.AlignPrefix == null) return null;
-            // Vide string (= chaîne d'égalités, aligné via &) OK distincte de null.
-            return rel.AlignPrefix.Length > 0 ? rel.AlignPrefix + " " : "";
-        }
-
-        /// <summary>Parse une sous-séquence de tokens via StackParser. Utilisé
-        /// par les helpers multi-line pour parser chaque ligne indépendamment.</summary>
-        private AstNode? ParseTokenRange(IReadOnlyList<Token> tokens, int start, int endExcl)
-        {
-            if (start >= endExcl) return null;
-            var slice = new List<Token>(endExcl - start);
-            for (int i = start; i < endExcl; i++) slice.Add(tokens[i]);
-            var ast = _parser.Parse(slice);
-            return ListCombinator.Promote(ast);
-        }
+        // Pre-passes multi-line (align*/cases) et prefix-match : extraits en
+        // Resolution/MultiLineBlockResolver et Resolution/PrefixMatchResolver
+        // (Chantier 3, 2026-05-25). Cf. ADR 2026-05-25-Refactor-chantier3-preresolvers.
 
         // ─── Factory ──────────────────────────────────────────────────
 
