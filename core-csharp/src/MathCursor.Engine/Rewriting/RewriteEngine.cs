@@ -78,7 +78,7 @@ namespace MathCursor.Engine.Rewriting
                 }
 
                 // Applique le match : remplace items[Start..End] par 1 RewriteItem.
-                var latex = RewriteMatcher.ApplyTemplate(best.Rule.EmitTemplate, best.Slots);
+                var latex = RewriteMatcher.ApplyTemplate(best.Rule.EmitTemplate, best.Slots, best.Lists);
                 var sourceText = ConcatSource(items, best.Start, best.End);
                 var produced = new RewriteItem(best.Rule.Id, best.Rule.Produces, sourceText, latex);
                 items.RemoveRange(best.Start, best.End - best.Start);

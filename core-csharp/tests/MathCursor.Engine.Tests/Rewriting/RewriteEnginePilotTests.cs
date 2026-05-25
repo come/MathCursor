@@ -99,5 +99,34 @@ namespace MathCursor.Engine.Tests.Rewriting
             var result = engine.Resolve("xyz");
             Assert.Equal("xyz", result.TopLatex);
         }
+
+        [Fact]
+        public void Matrix_row_2x1_with_repeat()
+        {
+            var engine = BuildEngine();
+            var result = engine.Resolve("a,b");
+            // matrix-row matche directement « a , b » en tant que Set.
+            Assert.Single(result.Items);
+            Assert.Equal(Category.Set, result.Items[0].Category);
+            Assert.Equal("a & b", result.Items[0].Latex);
+        }
+
+        [Fact]
+        public void Matrix_2x2_composes_via_matrix_row()
+        {
+            // Démontre la composition à 2 niveaux : matrix-row reconnaît
+            // chaque ligne en passe 1, matrix les compose en passe 2.
+            var engine = BuildEngine();
+            var result = engine.Resolve("{ a,b ; c,d }");
+            Assert.Equal(@"\begin{matrix}a & b \\ c & d\end{matrix}", result.TopLatex);
+        }
+
+        [Fact]
+        public void Matrix_3x3_composes_via_matrix_row()
+        {
+            var engine = BuildEngine();
+            var result = engine.Resolve("{ a,b,c ; d,e,f ; g,h,i }");
+            Assert.Equal(@"\begin{matrix}a & b & c \\ d & e & f \\ g & h & i\end{matrix}", result.TopLatex);
+        }
     }
 }

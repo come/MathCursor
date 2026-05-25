@@ -104,6 +104,29 @@ namespace MathCursor.Engine.Rewriting
                     PatternElement.Slot("body", Category.Expr)),
                 produces: Category.Function,
                 emitTemplate: @"$name : $arg \mapsto $body"),
+
+            // matrix-row : a , b , c → "a & b & c" avec catégorie Set
+            // (= utilisée comme catégorie « ligne de matrice » pour composition
+            // par la règle matrix ci-dessous). Sera renommée en `MatrixRow` quand
+            // on étendra le `Category` enum.
+            new RewriteRule(
+                id: "matrix-row",
+                pattern: Pattern.Of(
+                    PatternElement.Repeat("cells", Category.Expr, separator: ",", minCount: 2)),
+                produces: Category.Set,
+                emitTemplate: @"$cells | join: "" & """),
+
+            // matrix : { row ; row ; ... } → \begin{matrix} ... \end{matrix}.
+            // Composition bottom-up : matrix-row reconnaît chaque ligne en
+            // passe 1, matrix les compose en passe 2.
+            new RewriteRule(
+                id: "matrix",
+                pattern: Pattern.Of(
+                    PatternElement.Lit("{"),
+                    PatternElement.Repeat("rows", Category.Set, separator: ";", minCount: 1),
+                    PatternElement.Lit("}")),
+                produces: Category.Expr,
+                emitTemplate: @"\begin{matrix}$rows | join: "" \\ ""\end{matrix}"),
         };
     }
 }
