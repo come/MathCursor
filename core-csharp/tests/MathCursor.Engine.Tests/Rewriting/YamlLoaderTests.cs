@@ -176,6 +176,10 @@ namespace MathCursor.Engine.Tests.Rewriting
     /// concept <c>primitives</c> dans <c>data-v2/concepts/</c>).</summary>
     internal static class PrimitiveRules
     {
+        // Toutes les primitives à Priority 50 (= les règles YAML chargées
+        // sont à Priority 100 par défaut). À Start égal, les YAML gagnent.
+        private const int PrimPriority = 50;
+
         public static IReadOnlyList<RewriteRule> All { get; } = new RewriteRule[]
         {
             new RewriteRule(
@@ -185,7 +189,8 @@ namespace MathCursor.Engine.Tests.Rewriting
                     PatternElement.Slot("inner", Category.Expr),
                     PatternElement.Lit(")")),
                 produces: Category.Expr,
-                emitTemplate: @"$inner"),
+                emitTemplate: @"$inner",
+                priority: PrimPriority),
 
             new RewriteRule(
                 id: "prim-add",
@@ -194,7 +199,8 @@ namespace MathCursor.Engine.Tests.Rewriting
                     PatternElement.Lit("+"),
                     PatternElement.Slot("b", Category.Expr)),
                 produces: Category.Expr,
-                emitTemplate: @"$a+$b"),
+                emitTemplate: @"$a+$b",
+                priority: PrimPriority),
 
             new RewriteRule(
                 id: "prim-sub",
@@ -203,7 +209,31 @@ namespace MathCursor.Engine.Tests.Rewriting
                     PatternElement.Lit("-"),
                     PatternElement.Slot("b", Category.Expr)),
                 produces: Category.Expr,
-                emitTemplate: @"$a-$b"),
+                emitTemplate: @"$a-$b",
+                priority: PrimPriority),
+
+            // Phase D-2 (2026-05-25) : règles primitives supplémentaires
+            // pour fermer le gap audit (= 26 fails → ~0).
+
+            // Function-call / fraction implicite / exposant / indice :
+            // **DÉSACTIVÉ** en Phase D-2. Le scheduling actuel
+            // (leftmost-longest) ne permet pas d'éviter qu'elles capturent
+            // des sous-expressions avant que les règles englobantes (= int,
+            // sum, frac) aient leur chance. Cf. note d'analyse Phase D-3
+            // dans ADR pour discussion. Stratégies en option :
+            // - multi-phase scheduling (= primitives en phase 1, anchors
+            //   en phase 2)
+            // - catégorie ResolvedExpr qui exclut les Letter/Number bruts
+            // - approche `produces:` typage strict avec slot `f:resolved`
+            //   pour le function-call.
+
+            // Tuple 2 : (a,b) → (a,b) — utile pour `f(x,y)` via composition.
+            // Optionnel : déjà couvert par prim-function-call-2 direct.
+
+            // Signed expr : +x ou -x au début d'une borne (= unary).
+            // Risque de conflit avec prim-add/prim-sub binaires — le leftmost-
+            // longest scheduling devrait gérer (= pour `0 +inf`, prim-add
+            // matche `0 + \infty`).
         };
     }
 }

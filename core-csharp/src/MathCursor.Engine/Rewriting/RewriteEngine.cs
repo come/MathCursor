@@ -61,12 +61,23 @@ namespace MathCursor.Engine.Rewriting
                 }
                 if (matches.Count == 0) break;
 
-                // Best = leftmost-longest (= Start min, puis Span max).
+                // Scheduling V1 : leftmost-longest classique, avec Priority
+                // desc en cas de Span égal pour préférer les règles avec
+                // anchor literal (P100) aux primitives génériques (P50).
+                //
+                // Limitation connue (Phase D-2 audit) : ne résout pas
+                // correctement les cas comme `frac n n+1` où une sous-règle
+                // interne (prim-add à Start 2) devrait s'appliquer AVANT la
+                // règle englobante (frac-explicit à Start 0). Un scheduling
+                // bottom-up plus fin est en réflexion (= multi-phase ou
+                // contraintes catégorielles ResolvedExpr).
                 matches.Sort((a, b) =>
                 {
                     int dStart = a.Start.CompareTo(b.Start);
                     if (dStart != 0) return dStart;
-                    return b.Span.CompareTo(a.Span);
+                    int dSpan = b.Span.CompareTo(a.Span);
+                    if (dSpan != 0) return dSpan;
+                    return b.Rule.Priority.CompareTo(a.Rule.Priority);
                 });
                 var best = matches[0];
 

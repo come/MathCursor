@@ -22,5 +22,25 @@ namespace MathCursor.Engine.Tests.Rewriting
             foreach (var t in tokens) sb.AppendLine($"  {t.Kind}: '{t.Text}'");
             _output.WriteLine(sb.ToString());
         }
+
+        [Xunit.Theory]
+        [Xunit.InlineData("int t 0 +oo f(t)")]
+        [Xunit.InlineData("derive x sin(x)")]
+        [Xunit.InlineData("frac n n+1")]
+        [Xunit.InlineData("sqrt x^2+y^2")]
+        [Xunit.InlineData("G:x->1/x")]
+        [Xunit.InlineData("sum k 1 n (1/k)")]
+        [Xunit.InlineData("sum i 0 N (a_i)")]
+        [Xunit.InlineData("iint x y f(x,y)")]
+        public void Show_tokens_for_failures(string input)
+        {
+            var vocab = LocaleVocabulary.LoadEmbedded("fr");
+            var tokenizer = new Tokenizer(vocab);
+            var tokens = tokenizer.Tokenize(input);
+            var sb = new StringBuilder();
+            sb.AppendLine($"INPUT: {input}");
+            foreach (var t in tokens) sb.AppendLine($"  {t.Kind}: '{t.Text}'");
+            _output.WriteLine(sb.ToString());
+        }
     }
 }
