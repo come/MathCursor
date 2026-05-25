@@ -127,6 +127,27 @@ namespace MathCursor.Engine.Rewriting
                     PatternElement.Lit("}")),
                 produces: Category.Expr,
                 emitTemplate: @"\begin{matrix}$rows | join: "" \\ ""\end{matrix}"),
+
+            // frac-slurp-num : N paires `a/b` séparées par + → grande fraction
+            //   \frac{a1+a2+...+aN}{b1+b2+...+bN}
+            // Démontre le `RepeatBlock` (= inner composite) : chaque
+            // occurrence capture 2 slots `a` et `b`. Le template
+            // `$pairs.a | join: "+"` itère les occurrences et extrait `a`.
+            new RewriteRule(
+                id: "frac-slurp-num",
+                pattern: Pattern.Of(
+                    PatternElement.RepeatBlock(
+                        name: "pairs",
+                        innerElements: new PatternElement[]
+                        {
+                            PatternElement.Slot("a", Category.Expr),
+                            PatternElement.Lit("/"),
+                            PatternElement.Slot("b", Category.Expr),
+                        },
+                        separator: "+",
+                        minCount: 2)),
+                produces: Category.Expr,
+                emitTemplate: @"\frac{$pairs.a | join: ""+""}{$pairs.b | join: ""+""}"),
         };
     }
 }

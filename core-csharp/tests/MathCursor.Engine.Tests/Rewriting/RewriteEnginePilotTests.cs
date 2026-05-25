@@ -128,5 +128,25 @@ namespace MathCursor.Engine.Tests.Rewriting
             var result = engine.Resolve("{ a,b,c ; d,e,f ; g,h,i }");
             Assert.Equal(@"\begin{matrix}a & b & c \\ d & e & f \\ g & h & i\end{matrix}", result.TopLatex);
         }
+
+        [Fact]
+        public void Frac_slurp_num_2_pairs()
+        {
+            // Démontre le RepeatBlock (inner composite) : 2 paires a/b + a/b
+            // → \frac{a+a}{b+b}. C'est le mécanisme générique de slurp sur
+            // N termes.
+            var engine = BuildEngine();
+            var result = engine.Resolve("1/2 + 3/4");
+            Assert.Equal(@"\frac{1+3}{2+4}", result.TopLatex);
+        }
+
+        [Fact]
+        public void Frac_slurp_num_3_pairs()
+        {
+            // Slurp sur 3 termes via RepeatBlock min=2 max illimité.
+            var engine = BuildEngine();
+            var result = engine.Resolve("1/2 + 3/4 + 5/6");
+            Assert.Equal(@"\frac{1+3+5}{2+4+6}", result.TopLatex);
+        }
     }
 }

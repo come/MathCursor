@@ -17,10 +17,10 @@ namespace MathCursor.Engine.Rewriting
         {
             var slots = new Dictionary<string, Item>();
             var lists = new Dictionary<string, IReadOnlyList<Item>>();
+            var blocks = new Dictionary<string, IReadOnlyList<IReadOnlyDictionary<string, Item>>>();
             int i = startIndex;
             foreach (var elem in rule.Pattern.Elements)
             {
-                // Skip whitespace Sep entre éléments — pragmatique pour V1.
                 while (i < items.Count && IsWhitespaceSep(items[i])) i++;
                 if (i >= items.Count) return null;
 
@@ -37,44 +37,135 @@ namespace MathCursor.Engine.Rewriting
                         i++;
                         break;
 
+                    case RepeatGroup rep when rep.IsComposite:
+                    {
+                        // Mode inner composite : chaque occurrence matche toute
+                        // la sous-séquence d'inner-elements. Capture une list
+                        // de dicts (1 dict de sub-slots par occurrence).
+                        if (!TryMatchRepeatComposite(rep, items, i, out var occList, out int newI))
+                            return null;
+                        blocks[rep.Name] = occList;
+                        i = newI;
+                        break;
+                    }
+
                     case RepeatGroup rep:
                     {
-                        var captured = new List<Item>();
-                        // Première occurrence (= obligatoire si MinCount ≥ 1).
-                        while (i < items.Count && IsWhitespaceSep(items[i])) i++;
-                        if (i >= items.Count) return null;
-                        if (!CategoryMatches(items[i].Category, rep.InnerCategory)) return null;
-                        captured.Add(items[i]);
-                        i++;
-
-                        // Occurrences suivantes : sep + inner.
-                        while (true)
-                        {
-                            int probe = i;
-                            while (probe < items.Count && IsWhitespaceSep(items[probe])) probe++;
-                            if (probe >= items.Count) break;
-                            // Séparateur attendu : si défini, exiger ; sinon tenter
-                            // direct (= variantes sans séparateur écrites espacées).
-                            if (rep.Separator != null)
-                            {
-                                if (items[probe].SourceText != rep.Separator) break;
-                                probe++;
-                                while (probe < items.Count && IsWhitespaceSep(items[probe])) probe++;
-                                if (probe >= items.Count) break;
-                            }
-                            if (!CategoryMatches(items[probe].Category, rep.InnerCategory)) break;
-                            captured.Add(items[probe]);
-                            i = probe + 1;
-                            if (rep.MaxCount >= 0 && captured.Count >= rep.MaxCount) break;
-                        }
-
-                        if (captured.Count < rep.MinCount) return null;
+                        // Mode 1-slot : liste plate d'Items.
+                        if (!TryMatchRepeatSimple(rep, items, i, out var captured, out int newI))
+                            return null;
                         lists[rep.Name] = captured;
+                        i = newI;
                         break;
                     }
                 }
             }
-            return new RewriteMatch(rule, startIndex, i, slots, lists);
+            return new RewriteMatch(rule, startIndex, i, slots, lists, blocks);
+        }
+
+        private static bool TryMatchRepeatSimple(RepeatGroup rep, IReadOnlyList<Item> items,
+            int startI, out List<Item> captured, out int newI)
+        {
+            captured = new List<Item>();
+            int i = startI;
+            while (i < items.Count && IsWhitespaceSep(items[i])) i++;
+            if (i >= items.Count || !CategoryMatches(items[i].Category, rep.InnerCategory))
+            {
+                newI = startI;
+                return false;
+            }
+            captured.Add(items[i]);
+            i++;
+            while (true)
+            {
+                int probe = i;
+                while (probe < items.Count && IsWhitespaceSep(items[probe])) probe++;
+                if (probe >= items.Count) break;
+                if (rep.Separator != null)
+                {
+                    if (items[probe].SourceText != rep.Separator) break;
+                    probe++;
+                    while (probe < items.Count && IsWhitespaceSep(items[probe])) probe++;
+                    if (probe >= items.Count) break;
+                }
+                if (!CategoryMatches(items[probe].Category, rep.InnerCategory)) break;
+                captured.Add(items[probe]);
+                i = probe + 1;
+                if (rep.MaxCount >= 0 && captured.Count >= rep.MaxCount) break;
+            }
+            newI = i;
+            return captured.Count >= rep.MinCount;
+        }
+
+        private static bool TryMatchRepeatComposite(RepeatGroup rep, IReadOnlyList<Item> items,
+            int startI, out List<IReadOnlyDictionary<string, Item>> occurrences, out int newI)
+        {
+            occurrences = new List<IReadOnlyDictionary<string, Item>>();
+            int i = startI;
+            // 1ère occurrence (= obligatoire si MinCount ≥ 1).
+            if (!TryMatchInnerSequence(rep.InnerElements!, items, i, out var firstSlots, out int afterFirst))
+            {
+                newI = startI;
+                return false;
+            }
+            occurrences.Add(firstSlots);
+            i = afterFirst;
+
+            // Occurrences suivantes : sep + inner.
+            while (true)
+            {
+                int probe = i;
+                while (probe < items.Count && IsWhitespaceSep(items[probe])) probe++;
+                if (probe >= items.Count) break;
+                if (rep.Separator != null)
+                {
+                    if (items[probe].SourceText != rep.Separator) break;
+                    probe++;
+                }
+                if (!TryMatchInnerSequence(rep.InnerElements!, items, probe, out var occSlots, out int afterOcc))
+                    break;
+                occurrences.Add(occSlots);
+                i = afterOcc;
+                if (rep.MaxCount >= 0 && occurrences.Count >= rep.MaxCount) break;
+            }
+
+            newI = i;
+            return occurrences.Count >= rep.MinCount;
+        }
+
+        private static bool TryMatchInnerSequence(
+            IReadOnlyList<PatternElement> innerElements,
+            IReadOnlyList<Item> items, int startI,
+            out IReadOnlyDictionary<string, Item> slots, out int newI)
+        {
+            var dict = new Dictionary<string, Item>();
+            int i = startI;
+            foreach (var elem in innerElements)
+            {
+                while (i < items.Count && IsWhitespaceSep(items[i])) i++;
+                if (i >= items.Count) { slots = dict; newI = startI; return false; }
+
+                switch (elem)
+                {
+                    case Literal lit:
+                        if (items[i].SourceText != lit.Text) { slots = dict; newI = startI; return false; }
+                        i++;
+                        break;
+                    case Slot slot:
+                        if (!CategoryMatches(items[i].Category, slot.Category)) { slots = dict; newI = startI; return false; }
+                        dict[slot.Name] = items[i];
+                        i++;
+                        break;
+                    // Pas de RepeatGroup imbriqué pour V1 — composer 2 règles.
+                    default:
+                        slots = dict;
+                        newI = startI;
+                        return false;
+                }
+            }
+            slots = dict;
+            newI = i;
+            return true;
         }
 
         /// <summary>True si <paramref name="actual"/> satisfait une demande
@@ -108,13 +199,20 @@ namespace MathCursor.Engine.Rewriting
         }
 
         /// <summary>Substitue les <c>$name</c> du template par
-        /// <see cref="Item.Latex"/> du slot capturé. Supporte aussi le filtre
-        /// <c>$name | join: "STRING"</c> qui itère un slot capturé par
-        /// <see cref="RepeatGroup"/> et concatène les <see cref="Item.Latex"/>
-        /// séparés par <c>STRING</c>. Slot manquant → <c>\square</c>.</summary>
+        /// <see cref="Item.Latex"/> du slot capturé. Supporte aussi :
+        /// <list type="bullet">
+        ///   <item><c>$name | join: "STRING"</c> — itère une <see cref="RepeatGroup"/>
+        ///     simple (= 1 slot), concatène les <see cref="Item.Latex"/>.</item>
+        ///   <item><c>$listName.slotName | join: "STRING"</c> — itère une
+        ///     <see cref="RepeatGroup"/> composite, extrait <c>slotName</c>
+        ///     de chaque occurrence, joint avec <c>STRING</c>. Utilisé p.ex.
+        ///     pour slurp de fraction sur N termes.</item>
+        /// </list>
+        /// Slot manquant → <c>\square</c>.</summary>
         public static string ApplyTemplate(string template,
             IReadOnlyDictionary<string, Item> slots,
-            IReadOnlyDictionary<string, IReadOnlyList<Item>>? lists = null)
+            IReadOnlyDictionary<string, IReadOnlyList<Item>>? lists = null,
+            IReadOnlyDictionary<string, IReadOnlyList<IReadOnlyDictionary<string, Item>>>? blocks = null)
         {
             if (string.IsNullOrEmpty(template)) return string.Empty;
             var sb = new StringBuilder(template.Length * 2);
@@ -128,28 +226,58 @@ namespace MathCursor.Engine.Rewriting
                     while (j < template.Length && IsNameCont(template[j])) j++;
                     var name = template.Substring(i + 1, j - (i + 1));
 
+                    // Forme `$listName.slotName` (= accès à un sub-slot d'un
+                    // RepeatGroup composite).
+                    string? subName = null;
+                    if (j < template.Length && template[j] == '.' && j + 1 < template.Length
+                        && IsNameStart(template[j + 1]))
+                    {
+                        int s = j + 1;
+                        while (s < template.Length && IsNameCont(template[s])) s++;
+                        subName = template.Substring(j + 1, s - (j + 1));
+                        j = s;
+                    }
+
                     // Tente filtre `| join: "STRING"` si présent juste après.
                     int k = j;
                     while (k < template.Length && template[k] == ' ') k++;
                     if (k < template.Length && template[k] == '|')
                     {
                         var filter = TryParseJoinFilter(template, k, out int filterEnd);
-                        if (filter != null && lists != null && lists.TryGetValue(name, out var items))
+                        if (filter != null)
                         {
-                            for (int ii = 0; ii < items.Count; ii++)
+                            // Cas composite : $list.slot | join
+                            if (subName != null && blocks != null && blocks.TryGetValue(name, out var occList))
                             {
-                                if (ii > 0) sb.Append(filter);
-                                sb.Append(items[ii].Latex);
+                                for (int ii = 0; ii < occList.Count; ii++)
+                                {
+                                    if (ii > 0) sb.Append(filter);
+                                    if (occList[ii].TryGetValue(subName, out var subItem))
+                                        sb.Append(subItem.Latex);
+                                    else
+                                        sb.Append(@"\square");
+                                }
+                                i = filterEnd;
+                                continue;
                             }
-                            i = filterEnd;
-                            continue;
+                            // Cas simple : $list | join
+                            if (subName == null && lists != null && lists.TryGetValue(name, out var items))
+                            {
+                                for (int ii = 0; ii < items.Count; ii++)
+                                {
+                                    if (ii > 0) sb.Append(filter);
+                                    sb.Append(items[ii].Latex);
+                                }
+                                i = filterEnd;
+                                continue;
+                            }
                         }
                     }
 
                     if (slots.TryGetValue(name, out var item))
                         sb.Append(item.Latex);
                     else if (lists != null && lists.TryGetValue(name, out var rep))
-                        sb.Append(string.Concat(rep)); // fallback sans filtre
+                        sb.Append(string.Concat(rep));
                     else
                         sb.Append(@"\square");
                     i = j;
@@ -191,8 +319,12 @@ namespace MathCursor.Engine.Rewriting
         private static bool IsNameCont(char c) => char.IsLetterOrDigit(c) || c == '_';
     }
 
-    /// <summary>Résultat d'un match : règle + range + slots capturés (= dict
-    /// pour <see cref="Slot"/> simple, dict de listes pour <see cref="RepeatGroup"/>).</summary>
+    /// <summary>Résultat d'un match : règle + range + slots capturés.
+    /// <list type="bullet">
+    ///   <item><see cref="Slots"/> : Item simple par nom (<see cref="Slot"/>).</item>
+    ///   <item><see cref="Lists"/> : liste d'Items (<see cref="RepeatGroup"/> 1-slot).</item>
+    ///   <item><see cref="Blocks"/> : liste de dicts d'Items (<see cref="RepeatGroup"/> composite).</item>
+    /// </list></summary>
     public sealed class RewriteMatch
     {
         public RewriteRule Rule { get; }
@@ -200,19 +332,22 @@ namespace MathCursor.Engine.Rewriting
         public int End { get; }
         public IReadOnlyDictionary<string, Item> Slots { get; }
         public IReadOnlyDictionary<string, IReadOnlyList<Item>> Lists { get; }
+        public IReadOnlyDictionary<string, IReadOnlyList<IReadOnlyDictionary<string, Item>>> Blocks { get; }
 
         public RewriteMatch(RewriteRule rule, int start, int end,
             IReadOnlyDictionary<string, Item> slots,
-            IReadOnlyDictionary<string, IReadOnlyList<Item>>? lists = null)
+            IReadOnlyDictionary<string, IReadOnlyList<Item>>? lists = null,
+            IReadOnlyDictionary<string, IReadOnlyList<IReadOnlyDictionary<string, Item>>>? blocks = null)
         {
             Rule = rule;
             Start = start;
             End = end;
             Slots = slots;
             Lists = lists ?? new Dictionary<string, IReadOnlyList<Item>>();
+            Blocks = blocks ?? new Dictionary<string, IReadOnlyList<IReadOnlyDictionary<string, Item>>>();
         }
 
         public int Span => End - Start;
-        public override string ToString() => $"Match[{Rule.Id} @ {Start}..{End}, {Slots.Count} slots, {Lists.Count} lists]";
+        public override string ToString() => $"Match[{Rule.Id} @ {Start}..{End}, {Slots.Count} slots, {Lists.Count} lists, {Blocks.Count} blocks]";
     }
 }
