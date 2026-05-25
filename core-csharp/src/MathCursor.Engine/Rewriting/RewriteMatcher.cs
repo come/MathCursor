@@ -27,7 +27,11 @@ namespace MathCursor.Engine.Rewriting
                 switch (elem)
                 {
                     case Literal lit:
-                        if (items[i].SourceText != lit.Text) return null;
+                        if (items[i].SourceText != lit.Text)
+                        {
+                            if (lit.Optional) break;  // skip sans avancer
+                            return null;
+                        }
                         i++;
                         break;
 

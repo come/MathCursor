@@ -169,6 +169,45 @@ namespace MathCursor.Engine.Tests.Rewriting
             Assert.Equal(@"\int_{0}^{n+1} y \, dx", result.TopLatex);
         }
 
+        // ─── ChC.1 Optional Literal (G3 + G4) ──────────────────────────
+
+        [Fact]
+        public void Phase_C1_sum_with_equals_optional_present()
+        {
+            // `somme k = 1 n k` : optLit `=` est présent → matche.
+            var engine = BuildEngine();
+            var result = engine.Resolve("somme k = 1 n k");
+            Assert.Equal(@"\sum_{k=1}^{n}k", result.TopLatex);
+        }
+
+        [Fact]
+        public void Phase_C1_sum_with_equals_optional_absent()
+        {
+            // `somme k 1 n k` : optLit `=` est absent → skip + continue.
+            // Même règle, 2 syntaxes acceptées.
+            var engine = BuildEngine();
+            var result = engine.Resolve("somme k 1 n k");
+            Assert.Equal(@"\sum_{k=1}^{n}k", result.TopLatex);
+        }
+
+        [Fact]
+        public void Phase_C1_lim_with_filler_words()
+        {
+            // `lim quand x tend vers 0 y` : 3 fillers optionnels.
+            var engine = BuildEngine();
+            var result = engine.Resolve("lim quand x tend vers 0 y");
+            Assert.Equal(@"\lim_{x \to 0}y", result.TopLatex);
+        }
+
+        [Fact]
+        public void Phase_C1_lim_without_fillers_still_works()
+        {
+            // `lim x 0 y` : sans fillers → même règle matche.
+            var engine = BuildEngine();
+            var result = engine.Resolve("lim x 0 y");
+            Assert.Equal(@"\lim_{x \to 0}y", result.TopLatex);
+        }
+
         private static void AssertEqual(string source, string expectedLatex)
         {
             var engine = BuildEngine();
@@ -250,11 +289,13 @@ namespace MathCursor.Engine.Tests.Rewriting
                 emitTemplate: @"\sqrt{$body}"),
 
             // ── sommes.yml ───
+            // ChC.1 : `=?` optionnel matché par OptLit (= flag Optional).
             new RewriteRule(
                 id: "somme-k-from-to",
                 pattern: Pattern.Of(
                     PatternElement.Lit("somme"),
                     PatternElement.Slot("var", Category.Letter),
+                    PatternElement.OptLit("="),
                     PatternElement.Slot("from", Category.Expr),
                     PatternElement.Slot("to", Category.Expr),
                     PatternElement.Slot("body", Category.Expr)),
@@ -293,11 +334,17 @@ namespace MathCursor.Engine.Tests.Rewriting
                 emitTemplate: @"\iint $body \, d$var1 \, d$var2"),
 
             // ── limites.yml ───
+            // ChC.1 : fillers optionnels via OptLit. Le tokenizer FR fusionne
+            // `tend vers` en un seul token Glue (= défini dans fr.yml `to:`),
+            // donc on cible ce token littéral. `quand` reste un Word seul.
             new RewriteRule(
                 id: "lim-classic",
                 pattern: Pattern.Of(
                     PatternElement.Lit("lim"),
+                    PatternElement.OptLit("quand"),
                     PatternElement.Slot("v", Category.Letter),
+                    PatternElement.OptLit("tend vers"),
+                    PatternElement.OptLit("->"),
                     PatternElement.Slot("a", Category.Expr),
                     PatternElement.Slot("body", Category.Expr)),
                 produces: Category.Expr,

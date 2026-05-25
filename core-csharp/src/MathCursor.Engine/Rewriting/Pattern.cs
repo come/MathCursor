@@ -28,7 +28,13 @@ namespace MathCursor.Engine.Rewriting
     /// </summary>
     public abstract class PatternElement
     {
-        public static PatternElement Lit(string text) => new Literal(text);
+        public static PatternElement Lit(string text) => new Literal(text, optional: false);
+        /// <summary>Literal optionnel : le matcher ne fait pas échouer si
+        /// l'Item courant ne correspond pas — il passe à l'élément suivant
+        /// sans avancer. Couvre <c>=?</c> du brief YAML (= égal optionnel
+        /// après <c>sum k</c>) et les fillers simples (= mots de transition
+        /// type <c>quand</c>, <c>tend</c>, <c>vers</c>). Phase C-1 (2026-05-25).</summary>
+        public static PatternElement OptLit(string text) => new Literal(text, optional: true);
         public static PatternElement Slot(string name, Category category)
             => new Slot(name, category);
         /// <summary>Slot répété N fois, séparé par <paramref name="separator"/>.
@@ -50,12 +56,19 @@ namespace MathCursor.Engine.Rewriting
             => new RepeatGroup(name, Category.Any, innerElements, separator, minCount, maxCount);
     }
 
-    /// <summary>Texte littéral à matcher contre <see cref="Item.SourceText"/>.</summary>
+    /// <summary>Texte littéral à matcher contre <see cref="Item.SourceText"/>.
+    /// Si <see cref="Optional"/> est <c>true</c>, le matcher skip l'élément
+    /// si l'Item courant ne correspond pas (= sans le consommer).</summary>
     public sealed class Literal : PatternElement
     {
         public string Text { get; }
-        public Literal(string text) { Text = text ?? throw new ArgumentNullException(nameof(text)); }
-        public override string ToString() => $"'{Text}'";
+        public bool Optional { get; }
+        public Literal(string text, bool optional = false)
+        {
+            Text = text ?? throw new ArgumentNullException(nameof(text));
+            Optional = optional;
+        }
+        public override string ToString() => Optional ? $"'{Text}'?" : $"'{Text}'";
     }
 
     /// <summary>Slot typé : capture un Item d'une catégorie donnée.</summary>
