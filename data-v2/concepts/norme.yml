@@ -6,12 +6,14 @@ concept: norme
 rules:
   - id: norme
     anchor: norm
-    # {term} = expr arrêtée à muldiv (= stop sur +/-). Pour englober une
-    # somme : `norm (v+1)` avec parens.
-    shape: "norm {arg:term}"
+    # {arg} = expression composite. Comportement greedy uniforme avec sin/cos/
+    # log : `norm v+1` capture `v+1` comme arg (= cohérence avec `sin x+1`
+    # qui donnerait `\sin(x+1)`). Pour limiter, utiliser parens explicites :
+    # `norm(v)+1` rendra `\|v\|+1`.
+    shape: "norm {arg}"
     emit:  "\\|$arg\\|"
     tests:
       - "norm u => \\|u\\|"
       - "norm AB => \\|AB\\|"
       - "norm (x+y) => \\|x+y\\|"
-      - "norm v+1 => \\|v\\|+1"
+      - "norm v+1 => \\|v+1\\|"
