@@ -179,9 +179,26 @@ namespace MathCursor.Engine.Tests.Rewriting
         // Toutes les primitives à Priority 50 (= les règles YAML chargées
         // sont à Priority 100 par défaut). À Start égal, les YAML gagnent.
         private const int PrimPriority = 50;
+        // Phase 0 = token fusion : Priority < 50 pour tourner AVANT les
+        // primitives binaires (= prim-add capture `+\infty` à 2 tokens
+        // sinon).
+        private const int Phase0Priority = 20;
 
         public static IReadOnlyList<RewriteRule> All { get; } = new RewriteRule[]
         {
+            // Phase 0 : `+\infty` / `-\infty` → 1 Item Number. Tourne avant
+            // prim-add pour que `int x 0 +oo body` voit la borne `+\infty`
+            // comme une valeur unique, pas comme `0+\infty`.
+            new RewriteRule(
+                id: "prim-signed-infinity",
+                pattern: Pattern.Of(
+                    PatternElement.Slot("sign", Category.Symbol),
+                    PatternElement.Lit(@"\infty")),
+                produces: Category.Number,
+                emitTemplate: @"$sign\infty",
+                priority: Phase0Priority),
+
+
             new RewriteRule(
                 id: "prim-paren-group",
                 pattern: Pattern.Of(

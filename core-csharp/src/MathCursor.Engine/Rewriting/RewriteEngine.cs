@@ -35,9 +35,16 @@ namespace MathCursor.Engine.Rewriting
             _rules = rules;
         }
 
-        /// <summary>Seuil Priority qui sépare les 2 phases. Règles &lt; ce
-        /// seuil = phase 1 (primitives). Règles &gt;= ce seuil = phase 2
-        /// (anchors). Phase D-3 (2026-05-25).</summary>
+        /// <summary>Seuils Priority qui séparent les phases.
+        /// <list type="bullet">
+        ///   <item>Priority &lt; <see cref="Phase0Separator"/> (50) : phase 0
+        ///     = fusions token-level (= <c>+\infty</c>, etc.).</item>
+        ///   <item>Priority &lt; <see cref="PhaseSeparator"/> (100) : phase 1
+        ///     = primitives (= paren-group, add, sub, function-call).</item>
+        ///   <item>Priority &gt;= 100 : phase 2 = anchors.</item>
+        /// </list>
+        /// Phase D-3 + D-4+++ (2026-05-26).</summary>
+        public const int Phase0Separator = 50;
         public const int PhaseSeparator = 100;
 
         public RewriteResult Resolve(string source)
@@ -52,16 +59,16 @@ namespace MathCursor.Engine.Rewriting
             var alternatives = new List<RewriteMatch>();
             string? primaryRuleId = null;
 
-            // Scheduling multi-phase (Phase D-3) :
-            // - Phase 1 : règles Priority < PhaseSeparator (= primitives).
-            //   Loop fixed-point. Résout les sous-expressions internes
-            //   (paren-group, add, sub, etc.) AVANT que les anchors aient
-            //   leur chance.
-            // - Phase 2 : toutes les règles. Loop fixed-point. Les anchors
-            //   matchent maintenant sur des Items déjà préparés.
-            //
-            // Permet à `frac n n+1` de devenir `frac n Expr(n+1)` en
-            // phase 1, puis `\frac{n}{n+1}` en phase 2.
+            // Scheduling multi-phase :
+            // - Phase 0 (P<50) : fusions token-level. Tourne en premier
+            //   pour produire des Items composites (= `+\infty` → 1 Item)
+            //   avant que les opérateurs binaires aient leur chance.
+            // - Phase 1 (P<100) : primitives. paren-group, add, sub,
+            //   function-call, etc.
+            // - Phase 2 (toutes) : anchors. Matchent sur Items déjà
+            //   préparés en phase 1.
+            RunPhase(items, _rules.Where(r => r.Priority < Phase0Separator),
+                alternatives, ref primaryRuleId);
             RunPhase(items, _rules.Where(r => r.Priority < PhaseSeparator),
                 alternatives, ref primaryRuleId);
             RunPhase(items, _rules,
