@@ -41,9 +41,7 @@ namespace MathCursor.Engine.Rewriting
 
         public override Category Category => Token.Kind switch
         {
-            TokenKind.Word => Token.Text.Length == 1 && char.IsLetter(Token.Text[0])
-                ? Category.Letter
-                : Category.Var,
+            TokenKind.Word => ClassifyWord(Token.Text),
             TokenKind.Number => Category.Number,
             TokenKind.Symbol => Category.Symbol,
             TokenKind.Glue => Category.Symbol,
@@ -52,6 +50,27 @@ namespace MathCursor.Engine.Rewriting
             TokenKind.Sep => Category.Sep,
             _ => Category.Any,
         };
+
+        /// <summary>Classifie un Word en catégorie sémantique. Phase D-4 :
+        /// les Words LaTeX <b>simples</b> commençant par <c>\</c> sans
+        /// accolade (= <c>\sin</c>, <c>\cos</c>, <c>\log</c>, <c>\ln</c>)
+        /// sont <see cref="Category.Function"/>. Les Words structurels avec
+        /// accolades (= <c>\mathbb{N}</c>, <c>\text{...}</c>) restent
+        /// <see cref="Category.Var"/> pour ne pas être traités comme
+        /// des fonctions applicables.</summary>
+        private static Category ClassifyWord(string text)
+        {
+            if (text.Length == 0) return Category.Var;
+            if (text[0] == '\\')
+            {
+                // LaTeX command simple (sans `{`) → Function. Avec `{` → Var
+                // (= constructeur structurel comme \mathbb{N}, \text{...}).
+                if (text.IndexOf('{') < 0) return Category.Function;
+                return Category.Var;
+            }
+            if (text.Length == 1 && char.IsLetter(text[0])) return Category.Letter;
+            return Category.Var;
+        }
 
         public override string SourceText => Token.Text;
         public override string Latex => Token.Text;

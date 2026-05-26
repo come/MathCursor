@@ -248,6 +248,21 @@ namespace MathCursor.Engine.Tests.Rewriting
                 emitTemplate: @"$f($a,$b)",
                 priority: PrimPriority),
 
+            // Function-call pour LaTeX commands (`\sin(x)`, `\cos(x)`, etc.).
+            // Phase D-4 : ciblé sur Category.Function (= Word commençant
+            // par `\` selon `TokenItem.ClassifyWord`). Ne capture pas les
+            // autres Var multi-char comme `frac`, `norm`.
+            new RewriteRule(
+                id: "prim-function-call-fn-1",
+                pattern: Pattern.Of(
+                    PatternElement.Slot("f", Category.Function),
+                    PatternElement.Lit("("),
+                    PatternElement.Slot("a", Category.Expr),
+                    PatternElement.Lit(")")),
+                produces: Category.Expr,
+                emitTemplate: @"$f($a)",
+                priority: PrimPriority),
+
             new RewriteRule(
                 id: "prim-frac-implicit",
                 pattern: Pattern.Of(
