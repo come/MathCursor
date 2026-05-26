@@ -478,10 +478,22 @@ namespace MathCursor.Engine
 
         public static MathEngine BuildDefault(string localeCode = "fr")
         {
-            // Phase D-6 (2026-05-26) : reste sur legacy par défaut pour
-            // préserver les ~250 tests engine qui dépendent du comportement
-            // détecteurs collision/mergers. La bascule s'active EXPLICITEMENT
-            // via BuildDefaultWithRewriteEngine.
+            // Phase D-6 (2026-05-26) — BASCULE FRANCHE : le RewriteEngine
+            // est désormais le moteur par défaut. User-feedback :
+            // « le legacy n'était pas stable sinon j'aurais pas migré .. donc
+            // j'ai pas envie que ça traîne ».
+            //
+            // Le legacy main loop reste accessible via BuildDefaultLegacy
+            // pour comparaison / regression tests temporaires.
+            return BuildDefaultWithRewriteEngine(localeCode);
+        }
+
+        /// <summary>Construit un MathEngine qui utilise le legacy main
+        /// loop (= ancien comportement Phase D-5). Conservé pour comparaison
+        /// et pour les tests legacy non encore migrés vers la convention
+        /// rewriting. À supprimer après stabilisation Phase D-6.</summary>
+        public static MathEngine BuildDefaultLegacy(string localeCode = "fr")
+        {
             var vocab = LocaleVocabulary.LoadEmbedded(localeCode);
             var concepts = RuleLoader.LoadAllEmbedded();
             var rules = new List<RuleSpec>();

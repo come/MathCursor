@@ -131,7 +131,9 @@ namespace MathCursor.Engine.Rewriting
                 var produced = new RewriteItem(best.Rule.Id, best.Rule.Produces, sourceText, latex);
                 items.RemoveRange(best.Start, best.End - best.Start);
                 items.Insert(best.Start, produced);
-                primaryRuleId ??= best.Rule.Id;
+                // Phase D-6 : LAST WINS. Le dernier match englobe les
+                // précédents (= règle "top" dans la composition bottom-up).
+                primaryRuleId = best.Rule.Id;
             }
         }
 
