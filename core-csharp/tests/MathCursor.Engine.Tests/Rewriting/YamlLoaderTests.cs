@@ -21,7 +21,7 @@ namespace MathCursor.Engine.Tests.Rewriting
             var vocab = LocaleVocabulary.LoadEmbedded("fr");
             var rules = new List<RewriteRule>();
             // Primitives nécessaires pour la composition bottom-up (cf. Phase B+).
-            rules.AddRange(PrimitiveRules.All);
+            rules.AddRange(MathCursor.Engine.Rewriting.PrimitiveRules.All);
             rules.AddRange(RewriteRuleLoader.LoadConcept(conceptName, vocab));
             return new RewriteEngine(vocab, rules);
         }
@@ -171,10 +171,11 @@ namespace MathCursor.Engine.Tests.Rewriting
         }
     }
 
-    /// <summary>Règles primitives essentielles pour la composition bottom-up.
-    /// Sera intégré aux YAML quand on stabilise le format (= ajout d'un
-    /// concept <c>primitives</c> dans <c>data-v2/concepts/</c>).</summary>
-    internal static class PrimitiveRules
+    /// <summary>Doublon obsolète des PrimitiveRules — promu en source
+    /// (= <c>MathCursor.Engine.Rewriting.PrimitiveRules</c>) en Phase D-6.
+    /// Gardé internal pour compat tests existants ; à supprimer dans une
+    /// itération suivante.</summary>
+    internal static class PrimitiveRulesTestLocal
     {
         // Toutes les primitives à Priority 50 (= les règles YAML chargées
         // sont à Priority 100 par défaut). À Start égal, les YAML gagnent.

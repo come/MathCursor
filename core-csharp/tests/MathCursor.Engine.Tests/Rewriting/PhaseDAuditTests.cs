@@ -26,7 +26,7 @@ namespace MathCursor.Engine.Tests.Rewriting
         {
             var vocab = LocaleVocabulary.LoadEmbedded("fr");
             var rules = new List<RewriteRule>();
-            rules.AddRange(PrimitiveRules.All);
+            rules.AddRange(MathCursor.Engine.Rewriting.PrimitiveRules.All);
             rules.AddRange(RewriteRuleLoader.LoadAllEmbedded(vocab));
             var engine = new RewriteEngine(vocab, rules);
 
