@@ -52,20 +52,28 @@ namespace MathCursor.Engine.Rewriting
         };
 
         /// <summary>Classifie un Word en catégorie sémantique. Phase D-4 :
-        /// les Words LaTeX <b>simples</b> commençant par <c>\</c> sans
-        /// accolade (= <c>\sin</c>, <c>\cos</c>, <c>\log</c>, <c>\ln</c>)
-        /// sont <see cref="Category.Function"/>. Les Words structurels avec
-        /// accolades (= <c>\mathbb{N}</c>, <c>\text{...}</c>) restent
-        /// <see cref="Category.Var"/> pour ne pas être traités comme
-        /// des fonctions applicables.</summary>
+        /// <list type="bullet">
+        ///   <item><c>\mathbb{N}</c>, <c>\mathbb{R}</c>, <c>\mathbb{Z}</c>,
+        ///     etc. → <see cref="Category.Set"/> (= ensembles classiques,
+        ///     éligibles aux unions/intersections).</item>
+        ///   <item>Autres LaTeX cmd simples (<c>\sin</c>, <c>\cos</c>,
+        ///     <c>\log</c>) → <see cref="Category.Function"/>.</item>
+        ///   <item>LaTeX cmd structurels (<c>\text{...}</c>, autres
+        ///     <c>\xxx{...}</c>) → <see cref="Category.Var"/>.</item>
+        ///   <item>Lettre seule → <see cref="Category.Letter"/>.</item>
+        ///   <item>Reste → <see cref="Category.Var"/>.</item>
+        /// </list></summary>
         private static Category ClassifyWord(string text)
         {
             if (text.Length == 0) return Category.Var;
             if (text[0] == '\\')
             {
-                // LaTeX command simple (sans `{`) → Function. Avec `{` → Var
-                // (= constructeur structurel comme \mathbb{N}, \text{...}).
+                // Ensembles \mathbb{...} → Set.
+                if (text.StartsWith("\\mathbb{", System.StringComparison.Ordinal))
+                    return Category.Set;
+                // LaTeX cmd simple sans `{` → Function (= \sin, \cos, etc.).
                 if (text.IndexOf('{') < 0) return Category.Function;
+                // Autre cmd structurel avec `{` → Var.
                 return Category.Var;
             }
             if (text.Length == 1 && char.IsLetter(text[0])) return Category.Letter;

@@ -208,6 +208,11 @@ namespace MathCursor.Engine.Rewriting
                     || actual == Category.Function
                     || actual == Category.Vector;
             }
+            // Set ⊃ Interval — un intervalle est un ensemble. Permet à une
+            // règle `{a:set} union {b:set}` de matcher aussi des intervalles
+            // (= la même règle gère `\mathbb{N} \cup \mathbb{R}` et
+            // `[0;1] \cup [2;3]`).
+            if (requested == Category.Set && actual == Category.Interval) return true;
             return false;
         }
 

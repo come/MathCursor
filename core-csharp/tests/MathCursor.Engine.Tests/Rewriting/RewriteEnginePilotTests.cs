@@ -148,5 +148,35 @@ namespace MathCursor.Engine.Tests.Rewriting
             var result = engine.Resolve("1/2 + 3/4 + 5/6");
             Assert.Equal(@"\frac{1+3+5}{2+4+6}", result.TopLatex);
         }
+
+        [Fact]
+        public void Mathbb_classified_as_Set_for_union_composition()
+        {
+            // Démontre Phase D-4 : `\mathbb{N}` reclassé Set. Avec la
+            // subsumption Set ⊃ Interval, une règle `{a:set} union {b:set}`
+            // matche aussi bien `\mathbb{N} union \mathbb{R}` que
+            // `[0;1] union [2;3]`. Habilitation pour unions futures.
+            var vocab = MathCursor.Engine.Vocabulary.LocaleVocabulary.LoadEmbedded("fr");
+            var unionRule = new RewriteRule(
+                id: "set-union",
+                pattern: Pattern.Of(
+                    PatternElement.Slot("a", Category.Set),
+                    PatternElement.Lit("union"),
+                    PatternElement.Slot("b", Category.Set)),
+                produces: Category.Set,
+                emitTemplate: @"$a \cup $b");
+            var rules = new System.Collections.Generic.List<RewriteRule>(PilotRules.All);
+            rules.Add(unionRule);
+            var engine = new RewriteEngine(vocab, rules);
+
+            // 2 ensembles tokenisés en Word `\mathbb{N}` et `\mathbb{R}`,
+            // classifiés Set par TokenItem.ClassifyWord.
+            var result = engine.Resolve("N union R");
+            Assert.Equal(@"\mathbb{N} \cup \mathbb{R}", result.TopLatex);
+
+            // La même règle matche aussi des Intervals (= Set ⊃ Interval).
+            var result2 = engine.Resolve("[0;1] union [2;3]");
+            Assert.Equal(@"[0;1] \cup [2;3]", result2.TopLatex);
+        }
     }
 }
