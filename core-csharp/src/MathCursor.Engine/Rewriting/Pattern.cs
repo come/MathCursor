@@ -49,6 +49,11 @@ namespace MathCursor.Engine.Rewriting
             => new AnyLiteral(alternatives, optional: true);
         public static PatternElement Slot(string name, Category category)
             => new Slot(name, category);
+        /// <summary>Slot collé : exige absence de Sep avant (= pas
+        /// d'espace entre cet Item et le précédent). Pour produit
+        /// implicite <c>2x</c>. Phase D-4++++ (2026-05-26).</summary>
+        public static PatternElement GluedSlot(string name, Category category)
+            => new Slot(name, category, noSepBefore: true);
         /// <summary>Slot répété N fois, séparé par <paramref name="separator"/>.
         /// Mode <b>1-slot</b> : capture une liste d'<see cref="Item"/> exposée
         /// comme <c>$name | join: "STRING"</c>.</summary>
@@ -107,15 +112,20 @@ namespace MathCursor.Engine.Rewriting
             : $"<{string.Join("|", Alternatives)}>";
     }
 
-    /// <summary>Slot typé : capture un Item d'une catégorie donnée.</summary>
+    /// <summary>Slot typé : capture un Item d'une catégorie donnée. Si
+    /// <see cref="NoSepBefore"/>, exige absence de Sep avant (= collé à
+    /// l'élément précédent du pattern). Utilisé pour produit implicite
+    /// <c>2x</c> où <c>x</c> doit être collé à <c>2</c>.</summary>
     public sealed class Slot : PatternElement
     {
         public string Name { get; }
         public Category Category { get; }
-        public Slot(string name, Category category)
+        public bool NoSepBefore { get; }
+        public Slot(string name, Category category, bool noSepBefore = false)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Category = category;
+            NoSepBefore = noSepBefore;
         }
         public override string ToString() => $"{{{Name}:{Category}}}";
     }

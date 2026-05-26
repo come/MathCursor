@@ -198,6 +198,19 @@ namespace MathCursor.Engine.Tests.Rewriting
                 emitTemplate: @"$sign\infty",
                 priority: Phase0Priority),
 
+            // Phase 0 : produit implicite `2x`, `2n` collés → 1 Item Expr.
+            // `b` doit être COLLÉ à `a` (= pas de Sep entre) pour ne pas
+            // capturer accidentellement `0 1 x` comme `0 (1x)`. Le tokenizer
+            // émet un Sep " " entre Number et Letter quand espacés.
+            new RewriteRule(
+                id: "prim-implicit-product",
+                pattern: Pattern.Of(
+                    PatternElement.Slot("a", Category.Number),
+                    PatternElement.GluedSlot("b", Category.Letter)),
+                produces: Category.Expr,
+                emitTemplate: @"$a$b",
+                priority: Phase0Priority),
+
 
             new RewriteRule(
                 id: "prim-paren-group",

@@ -21,9 +21,11 @@ namespace MathCursor.Engine.Rewriting
             int i = startIndex;
             foreach (var elem in rule.Pattern.Elements)
             {
-                // Si l'élément est Literal avec NoSepBefore, on VÉRIFIE
+                // Si l'élément est Literal/Slot avec NoSepBefore, on VÉRIFIE
                 // qu'il n'y a pas de Sep avant (= avant le skip).
-                if (elem is Literal litCheck && litCheck.NoSepBefore
+                bool gluedExpected = (elem is Literal litCheck && litCheck.NoSepBefore)
+                    || (elem is Slot slotCheck && slotCheck.NoSepBefore);
+                if (gluedExpected
                     && i < items.Count && IsWhitespaceSep(items[i]))
                 {
                     return null;  // attendu collé, mais Sep présent
