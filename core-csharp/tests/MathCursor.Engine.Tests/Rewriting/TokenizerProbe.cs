@@ -32,6 +32,7 @@ namespace MathCursor.Engine.Tests.Rewriting
         [Xunit.InlineData("sum k 1 n (1/k)")]
         [Xunit.InlineData("sum i 0 N (a_i)")]
         [Xunit.InlineData("iint x y f(x,y)")]
+        [Xunit.InlineData("sum k 0 2n+3 g(k)")]
         public void Show_tokens_for_failures(string input)
         {
             var vocab = LocaleVocabulary.LoadEmbedded("fr");

@@ -21,6 +21,13 @@ namespace MathCursor.Engine.Rewriting
             int i = startIndex;
             foreach (var elem in rule.Pattern.Elements)
             {
+                // Si l'élément est Literal avec NoSepBefore, on VÉRIFIE
+                // qu'il n'y a pas de Sep avant (= avant le skip).
+                if (elem is Literal litCheck && litCheck.NoSepBefore
+                    && i < items.Count && IsWhitespaceSep(items[i]))
+                {
+                    return null;  // attendu collé, mais Sep présent
+                }
                 while (i < items.Count && IsWhitespaceSep(items[i])) i++;
                 if (i >= items.Count) return null;
 
@@ -340,8 +347,15 @@ namespace MathCursor.Engine.Rewriting
             return sep;
         }
 
-        private static bool IsNameStart(char c) => char.IsLetter(c) || c == '_';
-        private static bool IsNameCont(char c) => char.IsLetterOrDigit(c) || c == '_';
+        // Bug Phase D-4+ : `_` retiré de IsNameCont. Sinon le template
+        // `$a_$b` (= prim-subscript) parse `$a_` comme une variable nommée
+        // `a_` au lieu de `$a` + literal `_`. Conséquence : slot `a_` non
+        // trouvé → `\square` émis → output `\squarei` au lieu de `a_i`.
+        // Les noms de variables sont désormais alphanumériques only ; pour
+        // un nom avec `_`, utiliser `${name_with_underscore}` (non
+        // implémenté V1).
+        private static bool IsNameStart(char c) => char.IsLetter(c);
+        private static bool IsNameCont(char c) => char.IsLetterOrDigit(c);
     }
 
     /// <summary>Résultat d'un match : règle + range + slots capturés.

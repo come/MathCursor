@@ -36,6 +36,10 @@ namespace MathCursor.Engine.Rewriting
         /// après <c>sum k</c>) et les fillers simples (= mots de transition
         /// type <c>quand</c>, <c>tend</c>, <c>vers</c>). Phase C-1 (2026-05-25).</summary>
         public static PatternElement OptLit(string text) => new Literal(text, optional: true);
+        /// <summary>Literal collé : exige absence de Sep avant. Utilisé pour
+        /// <c>f(x)</c> (= function-call collé) vs <c>n (expr)</c> (= var +
+        /// parens espacé). Phase D-4+ (2026-05-26).</summary>
+        public static PatternElement GluedLit(string text) => new Literal(text, optional: false, noSepBefore: true);
         /// <summary>Literal optionnel multi-alternatives : match si l'Item
         /// courant est dans l'une des <paramref name="alternatives"/>. Sinon
         /// skip sans avancer. Utilisé pour résoudre <c>&lt;filler&gt;?</c>
@@ -66,15 +70,22 @@ namespace MathCursor.Engine.Rewriting
 
     /// <summary>Texte littéral à matcher contre <see cref="Item.SourceText"/>.
     /// Si <see cref="Optional"/> est <c>true</c>, le matcher skip l'élément
-    /// si l'Item courant ne correspond pas (= sans le consommer).</summary>
+    /// si l'Item courant ne correspond pas (= sans le consommer). Si
+    /// <see cref="NoSepBefore"/> est <c>true</c>, le matcher exige que
+    /// l'Item soit IMMÉDIATEMENT collé à l'élément précédent (= aucun Sep
+    /// whitespace entre les deux). Utilisé pour distinguer <c>f(x)</c>
+    /// (= function-call, collé) de <c>n (expr)</c> (= variable + parens
+    /// indépendant, espacé).</summary>
     public sealed class Literal : PatternElement
     {
         public string Text { get; }
         public bool Optional { get; }
-        public Literal(string text, bool optional = false)
+        public bool NoSepBefore { get; }
+        public Literal(string text, bool optional = false, bool noSepBefore = false)
         {
             Text = text ?? throw new ArgumentNullException(nameof(text));
             Optional = optional;
+            NoSepBefore = noSepBefore;
         }
         public override string ToString() => Optional ? $"'{Text}'?" : $"'{Text}'";
     }

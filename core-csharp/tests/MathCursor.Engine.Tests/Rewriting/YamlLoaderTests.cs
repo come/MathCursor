@@ -219,16 +219,14 @@ namespace MathCursor.Engine.Tests.Rewriting
             // Toutes en phase 1 (Priority < 100), donc résolvent les
             // sous-expressions avant que les anchors aient leur chance.
 
-            // Restreint à `{f:letter}` (= 1-char) pour ne pas capturer les
-            // anchors literals multi-char (`frac`, `norm`, `sqrt`). Les
-            // fonctions LaTeX (`\sin`, `\cos`) seront couvertes par une règle
-            // séparée ciblée sur Function quand le tokenizer expose cette
-            // catégorie.
+            // Phase D-4+ : `(` collé à `f` (= GluedLit) pour distinguer
+            // `f(x)` (= function-call) de `n (expr)` (= var + parens
+            // indépendant). Le 2ème cas reste à paren-group.
             new RewriteRule(
                 id: "prim-function-call-1",
                 pattern: Pattern.Of(
                     PatternElement.Slot("f", Category.Letter),
-                    PatternElement.Lit("("),
+                    PatternElement.GluedLit("("),
                     PatternElement.Slot("a", Category.Expr),
                     PatternElement.Lit(")")),
                 produces: Category.Expr,
@@ -239,7 +237,7 @@ namespace MathCursor.Engine.Tests.Rewriting
                 id: "prim-function-call-2",
                 pattern: Pattern.Of(
                     PatternElement.Slot("f", Category.Letter),
-                    PatternElement.Lit("("),
+                    PatternElement.GluedLit("("),
                     PatternElement.Slot("a", Category.Expr),
                     PatternElement.Lit(","),
                     PatternElement.Slot("b", Category.Expr),
@@ -248,15 +246,11 @@ namespace MathCursor.Engine.Tests.Rewriting
                 emitTemplate: @"$f($a,$b)",
                 priority: PrimPriority),
 
-            // Function-call pour LaTeX commands (`\sin(x)`, `\cos(x)`, etc.).
-            // Phase D-4 : ciblé sur Category.Function (= Word commençant
-            // par `\` selon `TokenItem.ClassifyWord`). Ne capture pas les
-            // autres Var multi-char comme `frac`, `norm`.
             new RewriteRule(
                 id: "prim-function-call-fn-1",
                 pattern: Pattern.Of(
                     PatternElement.Slot("f", Category.Function),
-                    PatternElement.Lit("("),
+                    PatternElement.GluedLit("("),
                     PatternElement.Slot("a", Category.Expr),
                     PatternElement.Lit(")")),
                 produces: Category.Expr,
