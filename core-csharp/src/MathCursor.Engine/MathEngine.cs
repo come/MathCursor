@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using MathCursor.Engine.Ast;
 using MathCursor.Engine.Collision;
@@ -7,6 +8,8 @@ using MathCursor.Engine.Emit;
 using MathCursor.Engine.Parsing;
 using MathCursor.Engine.Parsing.List;
 using MathCursor.Engine.Resolution;
+using MathCursor.Engine.Rewriting;
+using MathCursor.Engine.Rewriting.Yaml;
 using MathCursor.Engine.Rules;
 using MathCursor.Engine.Tokenization;
 using MathCursor.Engine.Vocabulary;
@@ -53,10 +56,23 @@ namespace MathCursor.Engine
         private readonly PrefixMatchResolver _prefixMatchResolver;
         private readonly IReadOnlyList<IPreResolver> _preResolvers;
 
+        // Phase D-6 (2026-05-26) : RewriteEngine optionnel pour la bascule
+        // prod. Si non null, Resolve délègue ; sinon legacy main loop.
+        private readonly RewriteEngine? _rewriteEngine;
+
+        /// <summary>True si ce MathEngine a été construit avec le
+        /// RewriteEngine (= bascule prod activée).</summary>
+        public bool UsesRewriteEngine => _rewriteEngine != null;
+
         public MathEngine(LocaleVocabulary vocab, IReadOnlyList<RuleSpec> rules)
+            : this(vocab, rules, rewriteEngine: null) { }
+
+        public MathEngine(LocaleVocabulary vocab, IReadOnlyList<RuleSpec> rules,
+            RewriteEngine? rewriteEngine)
         {
             _vocab = vocab ?? throw new System.ArgumentNullException(nameof(vocab));
             _rules = rules ?? throw new System.ArgumentNullException(nameof(rules));
+            _rewriteEngine = rewriteEngine;
             _tokenizer = new Tokenizer(_vocab);
             _matcher = new ShapeMatcher(_vocab);
             _templateEmitter = new TemplateEmitter(_vocab);
@@ -129,6 +145,10 @@ namespace MathCursor.Engine
 
         public EngineResult Resolve(string source)
         {
+            // Phase D-6 : si bascule activée, délègue au RewriteEngine.
+            if (_rewriteEngine != null)
+                return AdaptRewriteResult(_rewriteEngine.Resolve(source));
+
             if (string.IsNullOrEmpty(source)) return EngineResult.Empty;
             var tokens = _tokenizer.Tokenize(source);
             if (tokens.Count == 0) return EngineResult.Empty;
@@ -430,16 +450,62 @@ namespace MathCursor.Engine
         // Resolution/MultiLineBlockResolver et Resolution/PrefixMatchResolver
         // (Chantier 3, 2026-05-25). Cf. ADR 2026-05-25-Refactor-chantier3-preresolvers.
 
+        /// <summary>Adapte un <see cref="RewriteResult"/> en
+        /// <see cref="EngineResult"/> (= Phase D-6 bascule). Mapping :
+        /// TopLatex direct, IsComplete = !Contains(\square), Alternatives
+        /// → Collisions via emit du template.</summary>
+        private EngineResult AdaptRewriteResult(RewriteResult r)
+        {
+            var collisions = new List<EngineCandidate>();
+            foreach (var alt in r.Alternatives)
+            {
+                var altLatex = RewriteMatcher.ApplyTemplate(
+                    alt.Rule.EmitTemplate, alt.Slots, alt.Lists, alt.Blocks);
+                collisions.Add(new EngineCandidate(
+                    latex: altLatex,
+                    description: alt.Rule.Id,
+                    ruleId: alt.Rule.Id,
+                    score: alt.Span * 10));
+            }
+            return new EngineResult(
+                topLatex: r.TopLatex,
+                isComplete: !r.TopLatex.Contains(@"\square"),
+                collisions: collisions,
+                ruleId: r.RuleId);
+        }
+
         // ─── Factory ──────────────────────────────────────────────────
 
         public static MathEngine BuildDefault(string localeCode = "fr")
         {
+            // Phase D-6 (2026-05-26) : reste sur legacy par défaut pour
+            // préserver les ~250 tests engine qui dépendent du comportement
+            // détecteurs collision/mergers. La bascule s'active EXPLICITEMENT
+            // via BuildDefaultWithRewriteEngine.
             var vocab = LocaleVocabulary.LoadEmbedded(localeCode);
             var concepts = RuleLoader.LoadAllEmbedded();
             var rules = new List<RuleSpec>();
             foreach (var c in concepts)
                 rules.AddRange(c.Rules);
             return new MathEngine(vocab, rules);
+        }
+
+        /// <summary>Construit un MathEngine qui délègue au RewriteEngine
+        /// (= bascule prod Phase D-6).</summary>
+        public static MathEngine BuildDefaultWithRewriteEngine(string localeCode = "fr")
+        {
+            var vocab = LocaleVocabulary.LoadEmbedded(localeCode);
+            var concepts = RuleLoader.LoadAllEmbedded();
+            var ruleSpecs = new List<RuleSpec>();
+            foreach (var c in concepts)
+                ruleSpecs.AddRange(c.Rules);
+
+            var rewriteRules = new List<RewriteRule>();
+            rewriteRules.AddRange(PrimitiveRules.All);
+            rewriteRules.AddRange(RewriteRuleLoader.LoadAllEmbedded(vocab));
+            var rewriteEngine = new RewriteEngine(vocab, rewriteRules);
+
+            return new MathEngine(vocab, ruleSpecs, rewriteEngine);
         }
     }
 }

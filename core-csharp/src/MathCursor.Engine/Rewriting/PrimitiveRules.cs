@@ -52,6 +52,19 @@ namespace MathCursor.Engine.Rewriting
                 emitTemplate: @"$a$b",
                 priority: Phase0Priority),
 
+            // Phase 0 : Letter+Number collés → exposant. `x2` → `x^{2}`,
+            // `e3` → `e^{3}`, `y12` → `y^{12}`. Symétrique à prim-implicit-
+            // product (qui est Number+Letter → produit). Couvre la convention
+            // LetterSupSubNum du moteur legacy. Phase D-6 (2026-05-26).
+            new RewriteRule(
+                id: "prim-letter-num-superscript",
+                pattern: Pattern.Of(
+                    PatternElement.Slot("a", Category.Letter),
+                    PatternElement.GluedSlot("b", Category.Number)),
+                produces: Category.Expr,
+                emitTemplate: @"$a^{$b}",
+                priority: Phase0Priority),
+
             // ─── Phase 1 ─────────────────────────────────────────────
 
             new RewriteRule(
