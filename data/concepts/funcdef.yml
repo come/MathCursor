@@ -1,0 +1,17 @@
+# Concept : définition de fonction (= `f: x -> body`).
+#
+# Pas d'anchor literal — le pattern commence par un slot variable.
+# V1 limité à 1 var. Pour 2+ vars (`f: x,y -> body`), il faudra un
+# slot `{varlist}` (= var (, var)*).
+
+concept: funcdef
+rules:
+
+  - id: funcdef-1var
+    pattern: "{name:letter} : {arg:letter} -> {body}"
+    produces: function
+    emit:    "$name: $arg \\mapsto $body"
+    tests:
+      - "G:x->1/x => G: x \\mapsto \\frac{1}{x}"
+      - "f:x->x+1 => f: x \\mapsto x+1"
+      - "g:t->2t => g: t \\mapsto 2t"

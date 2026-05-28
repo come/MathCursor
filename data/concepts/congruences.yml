@@ -1,0 +1,12 @@
+# Concept : congruences — `congru a b n` → a ≡ b (mod n).
+
+concept: congruences
+rules:
+
+  - id: congruence-explicit
+    pattern: "congru {a} {b} {n}"
+    produces: expr
+    emit:    "$a \\equiv $b \\pmod{$n}"
+    tests:
+      - "congru a b n => a \\equiv b \\pmod{n}"
+      - "congru x y 7 => x \\equiv y \\pmod{7}"

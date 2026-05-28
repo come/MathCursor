@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using MathCursor.Engine.Rules;
 using MathCursor.Engine.Vocabulary;
@@ -5,63 +6,77 @@ using MathCursor.Engine.Vocabulary;
 namespace MathCursor.Engine.Rewriting.Yaml
 {
     /// <summary>
-    /// Adapter qui transforme les <see cref="ConceptFile"/> chargés par
-    /// <see cref="RuleLoader"/> (= format YAML actuel <c>data-v2/concepts/*.yml</c>)
-    /// en <see cref="RewriteRule"/> consommables par <see cref="RewriteEngine"/>.
+    /// Charge les règles YAML <c>data/concepts/*.yml</c> en
+    /// <see cref="RewriteRule"/> directement consommables par
+    /// <see cref="RewriteEngine"/>.
     ///
-    /// <para>Phase C-2 (2026-05-25) : permet de réutiliser le YAML existant
-    /// sans le réécrire. La catégorie <c>produces:</c> n'étant pas encore
-    /// dans le format, on infère <see cref="Category.Expr"/> par défaut +
-    /// quelques cas spéciaux par <c>concept</c>.</para>
+    /// <para>Format YAML natif (= pas de conversion legacy) :</para>
+    /// <code>
+    /// concept: fractions
+    /// rules:
+    ///   - id:       frac-explicit
+    ///     pattern:  "frac {num} {den}"
+    ///     produces: expr
+    ///     emit:     "\frac{$num}{$den}"
+    ///     tests:
+    ///       - "frac a b => \frac{a}{b}"
+    /// </code>
     /// </summary>
     public static class RewriteRuleLoader
     {
-        /// <summary>Charge tous les concepts embarqués + convertit en
-        /// <see cref="RewriteRule"/>. Le <paramref name="vocab"/> sert à
-        /// résoudre <c>&lt;classname&gt;?</c> dans les shapes.</summary>
         public static IReadOnlyList<RewriteRule> LoadAllEmbedded(LocaleVocabulary? vocab = null)
         {
             var concepts = RuleLoader.LoadAllEmbedded();
             var rules = new List<RewriteRule>();
             foreach (var c in concepts)
             foreach (var r in c.Rules)
-                rules.Add(ConvertRule(r, c.Concept, vocab));
+                rules.Add(BuildRule(r, vocab));
             return rules;
         }
 
-        /// <summary>Charge un seul concept par nom + convertit.</summary>
         public static IReadOnlyList<RewriteRule> LoadConcept(string conceptName, LocaleVocabulary? vocab = null)
         {
             var c = RuleLoader.LoadEmbedded(conceptName);
             var rules = new List<RewriteRule>();
             foreach (var r in c.Rules)
-                rules.Add(ConvertRule(r, c.Concept, vocab));
+                rules.Add(BuildRule(r, vocab));
             return rules;
         }
 
-        /// <summary>Convertit une <see cref="RuleSpec"/> en
-        /// <see cref="RewriteRule"/>.</summary>
-        public static RewriteRule ConvertRule(RuleSpec spec, string conceptName, LocaleVocabulary? vocab = null)
+        public static RewriteRule BuildRule(RuleSpec spec, LocaleVocabulary? vocab = null)
         {
-            var elements = ShapeParser.Parse(spec.Shape, vocab);
+            var elements = ShapeParser.Parse(spec.Pattern, vocab);
             var pattern = new Pattern(elements);
-            var produces = InferProduces(conceptName);
+            var produces = ParseCategory(spec.Produces);
             return new RewriteRule(
                 id: spec.Id,
                 pattern: pattern,
                 produces: produces,
-                emitTemplate: spec.Emit);
+                emitTemplate: spec.Emit,
+                priority: spec.Priority);
         }
 
-        /// <summary>Heuristique V1 : infère la catégorie produite d'après
-        /// le nom du concept. À remplacer par un champ <c>produces:</c>
-        /// dans le YAML quand on stabilise le format.</summary>
-        private static Category InferProduces(string conceptName)
+        private static Category ParseCategory(string? value)
         {
-            return conceptName switch
+            if (string.IsNullOrEmpty(value)) return Category.Expr;
+            return value!.ToLowerInvariant() switch
             {
-                "vecteurs" => Category.Vector,
-                _ => Category.Expr,
+                "any" => Category.Any,
+                "letter" => Category.Letter,
+                "number" => Category.Number,
+                "symbol" => Category.Symbol,
+                "delim" => Category.Delim,
+                "sep" => Category.Sep,
+                "var" => Category.Var,
+                "expr" => Category.Expr,
+                "interval" => Category.Interval,
+                "set" => Category.Set,
+                "function" => Category.Function,
+                "vector" => Category.Vector,
+                _ => throw new ArgumentException(
+                    $"Unknown produces category: '{value}'. Expected one of: " +
+                    "any, letter, number, symbol, delim, sep, var, expr, " +
+                    "interval, set, function, vector."),
             };
         }
     }

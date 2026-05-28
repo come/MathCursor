@@ -135,7 +135,7 @@ namespace MathCursor.Engine.Vocabulary
         {
             if (string.IsNullOrEmpty(code)) throw new ArgumentNullException(nameof(code));
             var asm = typeof(LocaleVocabulary).Assembly;
-            var resName = ResolveResourceName(asm, $"data-v2.locale.{code}.yml");
+            var resName = ResolveResourceName(asm, $"data.locale.{code}.yml");
             if (resName == null)
                 throw new FileNotFoundException(
                     $"Locale '{code}' not found in embedded resources of MathCursor.Engine.");

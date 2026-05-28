@@ -1,12 +1,12 @@
-# Concept "vecteurs" — notation \vec.
-# `vec u` → \vec{u}, `vec AB` → \vec{AB}.
+# Concept : vecteurs.
 
 concept: vecteurs
 rules:
+
   - id: vec-explicit
-    anchor: vec
-    shape: "vec {body}"
-    emit:  "\\vec{$body}"
+    pattern: "vec {body}"
+    produces: vector
+    emit:    "\\vec{$body}"
     tests:
       - "vec u => \\vec{u}"
       - "vec v => \\vec{v}"

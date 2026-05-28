@@ -1,0 +1,30 @@
+# Concept : sommes et produits indexés.
+#
+# Pattern : KEYWORD var =? from to body
+#   `var:letter` — variable d'indexation (1-char).
+#   `=?` — égal optionnel (sum k=1 n k ≡ sum k 1 n k).
+#   `from`, `to`, `body` — expressions composables.
+
+concept: sommes
+rules:
+
+  - id: somme-k-from-to
+    pattern: "sum {var:letter} =? {from} {to} {body}"
+    produces: expr
+    emit:    "\\sum_{$var=$from}^{$to} $body"
+    tests:
+      - "sum k 1 n k => \\sum_{k=1}^{n} k"
+      - "sum k=1 n k => \\sum_{k=1}^{n} k"
+      - "sum k 1 n (1/k) => \\sum_{k=1}^{n} \\frac{1}{k}"
+      - "sum i 0 N (a_i) => \\sum_{i=0}^{\\mathbb{N}} a_i"
+      - "sum k 1 n+1 f(k) => \\sum_{k=1}^{n+1} f(k)"
+      - "sum k 0 2n+3 g(k) => \\sum_{k=0}^{2n+3} g(k)"
+
+  - id: produit-k-from-to
+    pattern: "prod {var:letter} =? {from} {to} {body}"
+    produces: expr
+    emit:    "\\prod_{$var=$from}^{$to} $body"
+    tests:
+      - "prod k 1 n k => \\prod_{k=1}^{n} k"
+      - "prod k 1 n+1 f(k) => \\prod_{k=1}^{n+1} f(k)"
+      - "prod i 0 N (1-x_i) => \\prod_{i=0}^{\\mathbb{N}} 1-x_i"

@@ -20,11 +20,11 @@
   <ItemGroup>
     <!-- Vocabulaire + concepts YAML embarqués. data-v2/ racine projet, séparé
          du wildcard MSBuild legacy data/. -->
-    <EmbeddedResource Include="..\..\..\data-v2\locale\*.yml">
-      <Link>data-v2\locale\%(Filename)%(Extension)</Link>
+    <EmbeddedResource Include="..\..\..\data\locale\*.yml">
+      <Link>data\locale\%(Filename)%(Extension)</Link>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\..\..\data-v2\concepts\*.yml">
-      <Link>data-v2\concepts\%(Filename)%(Extension)</Link>
+    <EmbeddedResource Include="..\..\..\data\concepts\*.yml">
+      <Link>data\concepts\%(Filename)%(Extension)</Link>
     </EmbeddedResource>
     <!-- collision-scores.yml archivé 2026-05-28 (Phase D-6) :
          les détecteurs ICollisionDetector ont été supprimés au profit
