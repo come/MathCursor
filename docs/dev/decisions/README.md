@@ -19,6 +19,13 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-05-28
+- `[forte]` Refactor — [Moteur rewriting V2 from scratch (architecture cible)](2026-05-28-Refactor-rewriting-engine-v2-clean.md) — Consolidation de toutes les discussions session 26-28 mai. Refonte from-scratch du moteur avec 6 principes : YAML déclaratif, catégories typées + subsumption (Set⊃Interval), scan-keywords + scoping top-down, partial match obligatoire en typing flow, multi-chains beam search + scoring, anchor unifié 3-formes + prefix-match 3-chars. Sprint dédié de 3-4 jours. Tests cibles : `1/sum k 0 n f(k)`, `forall x R U [0;1]`, etc.
+
+### 2026-05-26
+- `[forte]` Refactor — [Anchor unifié `KEYWORD args` ≡ `KEYWORD(args)` ≡ `KEYWORD(args,...)`](2026-05-26-Refactor-anchor-callable-unified.md) — Liberté de style utilisateur, 3 formes équivalentes au matching pour les règles avec anchor literal. ~30 LOC matcher.
+- `[provisoire]` Refactor — [Règles trig (sin/cos/...) différées](2026-05-26-Refactor-trig-rules-deferred.md) — `sin x+1` format `lim` reporté à après bascule prod (= cohabitation MathEngine/RewriteEngine bloque sinon).
+
 ### 2026-05-25
 - `[forte]` Refactor — [Chantier 4 Phase B — audit des gaps RewriteEngine vs concepts YAML](2026-05-25-Refactor-chantier4-phaseB-gaps-audit.md) — 15 probes sur les 9 concepts existants : 10 passent tels quels, 4 gaps structurels identifiés (greedy slot, bound précédence, élément optionnel, filler optionnel) + 1 bonus (paren-group → règle YAML). ~95 LOC d'extensions matcher à prévoir pour Phase C. 331/331 engine verts.
 - `[forte]` Refactor — [Chantier 4 Phase A — POC RewriteEngine isolé](2026-05-25-Refactor-chantier4-phaseA-rewriting-poc.md) — Nouveau dossier `Rewriting/` parallèle au moteur actuel : Item typé (TokenItem/RewriteItem), Category enum, Pattern+RewriteRule, RewriteMatcher (subsumption Expr), RewriteEngine (loop fixed-point leftmost-longest). 7 règles pilote. Test `interval-union` démontre composition bottom-up. 311/311 engine verts (= 302 préservés + 9 POC). Zéro touche au `MathEngine`.
