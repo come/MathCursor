@@ -26,10 +26,9 @@
     <EmbeddedResource Include="..\..\..\data-v2\concepts\*.yml">
       <Link>data-v2\concepts\%(Filename)%(Extension)</Link>
     </EmbeddedResource>
-    <!-- P31 : scores de collision déclarés en YAML. -->
-    <EmbeddedResource Include="..\..\..\data-v2\collision-scores.yml">
-      <Link>data-v2\collision-scores.yml</Link>
-    </EmbeddedResource>
+    <!-- collision-scores.yml archivé 2026-05-28 (Phase D-6) :
+         les détecteurs ICollisionDetector ont été supprimés au profit
+         du RewriteEngine. Voir archive/legacy-data-2026-05-28/. -->
   </ItemGroup>
 
   <!-- Phase D-6: Exclude legacy directories - now using RewriteEngine only -->
