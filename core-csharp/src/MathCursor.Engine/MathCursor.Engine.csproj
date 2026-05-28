@@ -32,4 +32,12 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <!-- Phase D-6: Exclude legacy directories - now using RewriteEngine only -->
+  <ItemGroup>
+    <Compile Remove="Collision\**\*.cs" />
+    <Compile Remove="Emit\**\*.cs" />
+    <Compile Remove="Parsing\**\*.cs" />
+    <Compile Remove="Resolution\**\*.cs" />
+  </ItemGroup>
+
 </Project>
