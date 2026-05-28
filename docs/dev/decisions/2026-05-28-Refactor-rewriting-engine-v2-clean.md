@@ -141,6 +141,37 @@ return new RewriteResult(
 
 **Conséquence** : les lectures slurp/strict pour `1/2 + 3/4` apparaissent toutes comme alternatives dans la popup. L'utilisateur tranche.
 
+### Principe transversal — tolérance aux espaces
+
+**Règle implicite unique** : entre chaque élément d'un pattern, le matcher
+skip les `Sep " "` automatiquement. **Aucune règle ne doit déclarer ses
+espaces.**
+
+Exemple : `[0;1] U [0;4]` ≡ `[0;1]U[0;4]` — les 2 inputs matchent le même
+pattern `{a:set} U {b:set}` sans aucune adaptation. Le matcher se contente
+de skipper les Sep en début d'élément.
+
+**Exceptions (= `glued`)** : 2 cas explicites où la cohérence sémantique
+exige absence de Sep :
+- `prim-implicit-product` : `{a:number}{b:letter glued}` (= `2x` collé,
+  pas `2 x`).
+- `prim-function-call` : `{f}({a:expr})` (= `f(x)` collé, pas `f (x)`).
+
+Le flag `glued` est minoritaire et toujours explicite dans le YAML. C'est
+**l'unique source de complexité d'espacement** — pas d'usine à gaz.
+
+**Cas d'usage révélateur** — `cos2(x)` vs `cos 2x` vs `cos(x)2` :
+
+| Input | Tokens | Result |
+|---|---|---|
+| `cos2(x)` | `\cos·2·(·x·)` (collé) | `\cos^{2}(x)` (= via `prim-function-superscript`) |
+| `cos 2x` | `\cos· ·2·x` (espacé+collé) | `\cos 2x` (= via `function-implicit` + `prim-implicit-product`) |
+| `cos(x)2` | `\cos·(·x·)·2` (collé partout) | `\cos(x)^{2}` (= via `prim-function-call` + `prim-expr-num-superscript`) |
+
+Les 3 inputs **se distinguent par le glued only**. Le reste du moteur
+est neutre aux espaces. **3 règles primitives** suffisent à couvrir
+ces 3 patterns + leurs variants.
+
 ### Principe 6 — Anchor unifié 3-formes + prefix-match dynamique
 
 Tout anchor accepte 3 formes d'appel équivalentes :
