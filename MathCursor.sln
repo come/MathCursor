@@ -29,6 +29,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{8E8FF5EA
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MathCursor.Engine.Tests", "core-csharp\tests\MathCursor.Engine.Tests\MathCursor.Engine.Tests.csproj", "{1886295C-F719-4DA9-8E1F-81BAAA32BA91}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MathCursor.Engine.Adapter.Tests", "core-csharp\tests\MathCursor.Engine.Adapter.Tests\MathCursor.Engine.Adapter.Tests.csproj", "{41DABC5E-8C06-4BC8-861C-E32F70D9F8CB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -159,6 +161,18 @@ Global
 		{1886295C-F719-4DA9-8E1F-81BAAA32BA91}.Release|x64.Build.0 = Release|Any CPU
 		{1886295C-F719-4DA9-8E1F-81BAAA32BA91}.Release|x86.ActiveCfg = Release|Any CPU
 		{1886295C-F719-4DA9-8E1F-81BAAA32BA91}.Release|x86.Build.0 = Release|Any CPU
+		{41DABC5E-8C06-4BC8-861C-E32F70D9F8CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{41DABC5E-8C06-4BC8-861C-E32F70D9F8CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{41DABC5E-8C06-4BC8-861C-E32F70D9F8CB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{41DABC5E-8C06-4BC8-861C-E32F70D9F8CB}.Debug|x64.Build.0 = Debug|Any CPU
+		{41DABC5E-8C06-4BC8-861C-E32F70D9F8CB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{41DABC5E-8C06-4BC8-861C-E32F70D9F8CB}.Debug|x86.Build.0 = Debug|Any CPU
+		{41DABC5E-8C06-4BC8-861C-E32F70D9F8CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{41DABC5E-8C06-4BC8-861C-E32F70D9F8CB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{41DABC5E-8C06-4BC8-861C-E32F70D9F8CB}.Release|x64.ActiveCfg = Release|Any CPU
+		{41DABC5E-8C06-4BC8-861C-E32F70D9F8CB}.Release|x64.Build.0 = Release|Any CPU
+		{41DABC5E-8C06-4BC8-861C-E32F70D9F8CB}.Release|x86.ActiveCfg = Release|Any CPU
+		{41DABC5E-8C06-4BC8-861C-E32F70D9F8CB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -169,5 +183,6 @@ Global
 		{B2F7CC59-C00D-4045-91FB-7113D5D97372} = {52811EC0-8914-FC29-92C3-A0355B0321AC}
 		{8E8FF5EA-F629-80CF-5B31-A4F86A095465} = {266E09EB-A9C6-62B5-6746-5D943D2DE296}
 		{1886295C-F719-4DA9-8E1F-81BAAA32BA91} = {8E8FF5EA-F629-80CF-5B31-A4F86A095465}
+		{41DABC5E-8C06-4BC8-861C-E32F70D9F8CB} = {8E8FF5EA-F629-80CF-5B31-A4F86A095465}
 	EndGlobalSection
 EndGlobal

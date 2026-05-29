@@ -19,6 +19,9 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-05-29
+- `[molle]` Test — [Harnais e2e headless moteur V2 → UnicodeMath (sans Word)](2026-05-29-Test-engine-adapter-e2e-headless.md) — Nouveau projet `MathCursor.Engine.Adapter.Tests` qui exerce `texte → EngineZoneSource → ResolvedZone.TopLatex → LatexToUnicodeMath` et asserte l'UnicodeMath final (= ce que Word reçoit). Attrape un éventuel écart de vocabulaire entre le LaTeX émis par V2 (intervalles/ensembles/matrices/setminus) et `LatexToUnicodeMath` AVANT d'ouvrir Word. ~15 cas.
+
 ### 2026-05-28
 - `[forte]` Refactor — [Moteur rewriting V2 from scratch (architecture cible)](2026-05-28-Refactor-rewriting-engine-v2-clean.md) — Consolidation de toutes les discussions session 26-28 mai. Refonte from-scratch du moteur avec 6 principes : YAML déclaratif, catégories typées + subsumption (Set⊃Interval), scan-keywords + scoping top-down, partial match obligatoire en typing flow, multi-chains beam search + scoring, anchor unifié 3-formes + prefix-match 3-chars. Sprint dédié de 3-4 jours. Tests cibles : `1/sum k 0 n f(k)`, `forall x R U [0;1]`, etc.
 
