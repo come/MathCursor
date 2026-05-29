@@ -147,6 +147,18 @@ namespace MathCursor.Engine.Rewriting
             bool anySlotMissing = false;
             int i = start;
 
+            // Forme « appel » : KEYWORD(args) ≡ KEYWORD(args,...) ≡ KEYWORD args.
+            // Activée si, juste après l'anchor literal, vient un '('. Dans ce
+            // mode, les args sont aussi séparables par ',' et la parenthèse
+            // finale est consommée. Cf. ADR anchor unifié.
+            bool parenMode = false;
+            // Mode appel réservé aux anchors mot-clé (= 1er élément literal
+            // alphabétique : sum, frac, lim…). Exclut function-call/paren-group
+            // dont le pattern contient déjà ses propres parenthèses.
+            bool keywordAnchor = rule.Pattern.Elements.Count > 0
+                && rule.Pattern.Elements[0] is Literal fl && !fl.Optional
+                && fl.Text.Length > 0 && char.IsLetter(fl.Text[0]);
+
             var elements = rule.Pattern.Elements;
             for (int ei = 0; ei < elements.Count; ei++)
             {
@@ -154,6 +166,16 @@ namespace MathCursor.Engine.Rewriting
                 bool glued = elem.Glued;
                 if (glued && i < items.Count && IsWsSep(items[i])) return null;
                 if (!glued) while (i < items.Count && IsWsSep(items[i])) i++;
+
+                // Après l'anchor literal (ei==0), détecte le '(' d'appel.
+                if (ei == 1 && keywordAnchor && !parenMode && i < items.Count
+                    && items[i] is TokenItem pt && pt.Token.Kind == Tokenization.TokenKind.OpenDelim
+                    && pt.Token.Text == "(")
+                {
+                    parenMode = true;
+                    i++; // consomme '('
+                    while (i < items.Count && IsWsSep(items[i])) i++;
+                }
 
                 switch (elem)
                 {
@@ -183,7 +205,7 @@ namespace MathCursor.Engine.Rewriting
                         var nextLit = NextLiteralText(elements, ei);
                         int slotEnd = nextLit != null
                             ? CaptureUntilLiteral(items, i, nextLit)
-                            : CaptureChunkEnd(items, i);
+                            : CaptureChunkEnd(items, i, parenMode);
                         if (slotEnd > i)
                         {
                             var chunk = new List<Item>(slotEnd - i);
@@ -196,6 +218,7 @@ namespace MathCursor.Engine.Rewriting
                         }
                         else if (rule.AllowPartial) anySlotMissing = true;
                         else return null;
+                        SkipArgSeparator(items, ref i, parenMode);
                         break;
                     }
 
@@ -204,6 +227,7 @@ namespace MathCursor.Engine.Rewriting
                         { slots[slot.Name] = items[i]; i++; }
                         else if (rule.AllowPartial) anySlotMissing = true;
                         else return null;
+                        SkipArgSeparator(items, ref i, parenMode);
                         break;
 
                     case GridSlot grid:
@@ -239,9 +263,33 @@ namespace MathCursor.Engine.Rewriting
                 }
             }
 
+            // Forme appel : consomme la parenthèse fermante finale.
+            if (parenMode)
+            {
+                while (i < items.Count && IsWsSep(items[i])) i++;
+                if (i < items.Count && items[i] is TokenItem ct
+                    && ct.Token.Kind == Tokenization.TokenKind.CloseDelim
+                    && ct.Token.Text == ")")
+                    i++;
+                else if (!rule.AllowPartial) return null;
+            }
+
             bool isPartial = anySlotMissing;
             if (isPartial && !anyLiteralMatched) return null;
             return new RewriteMatch(rule, start, i, slots, isPartial);
+        }
+
+        /// <summary>En parenMode, skip un ',' séparateur d'argument (+ seps).</summary>
+        private static void SkipArgSeparator(IReadOnlyList<Item> items, ref int i, bool parenMode)
+        {
+            if (!parenMode) return;
+            int j = i;
+            while (j < items.Count && IsWsSep(items[j])) j++;
+            if (j < items.Count && items[j].SourceText == ",")
+            {
+                i = j + 1;
+                while (i < items.Count && IsWsSep(items[i])) i++;
+            }
         }
 
         /// <summary>Rend une grille : découpe par séparateur de ligne
@@ -350,7 +398,7 @@ namespace MathCursor.Engine.Rewriting
         /// run de tokens non-séparateurs, en respectant l'équilibre des
         /// délimiteurs (= <c>f(k)</c>, <c>(x+1)</c> = un seul chunk). S'arrête
         /// au 1er séparateur de niveau 0.</summary>
-        private static int CaptureChunkEnd(IReadOnlyList<Item> items, int start)
+        private static int CaptureChunkEnd(IReadOnlyList<Item> items, int start, bool parenMode = false)
         {
             int depth = 0;
             int i = start;
@@ -364,6 +412,7 @@ namespace MathCursor.Engine.Rewriting
                     depth--;
                 }
                 else if (depth == 0 && IsWsSep(it)) break; // sep top-level = fin de chunk
+                else if (parenMode && depth == 0 && it.SourceText == ",") break; // ',' = fin d'arg
                 i++;
             }
             return i;

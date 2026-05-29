@@ -27,6 +27,15 @@ namespace MathCursor.Engine.Tests.Rewriting
         [InlineData("lim x 0 f + lim x 1 g", "\\lim_{x \\to 0} f+\\lim_{x \\to 1} g")]
         [InlineData("frac (sum k 0 n k) 2", "\\frac{\\sum_{k=0}^{n} k}{2}")]
         [InlineData("vec u + vec v", "\\vec{u}+\\vec{v}")]
+        // ── Phase 6 : anchor 3-formes ──
+        [InlineData("frac(1 2)", "\\frac{1}{2}")]
+        [InlineData("frac(1, 2)", "\\frac{1}{2}")]
+        [InlineData("sum(k, 1, n, k)", "\\sum_{k=1}^{n} k")]
+        [InlineData("sqrt(2)", "\\sqrt{2}")]
+        // ── Phase 7 : prefix-match + alias ──
+        [InlineData("somme k 1 n k", "\\sum_{k=1}^{n} k")]
+        [InlineData("som k 1 n k", "\\sum_{k=1}^{n} k")]
+        [InlineData("limite x 0 f(x)", "\\lim_{x \\to 0} f(x)")]
         public void Resolves(string input, string expected)
         {
             var engine = MathEngine.BuildDefault("fr");

@@ -30,6 +30,7 @@ namespace MathCursor.Engine.Rewriting
         private const int Phase0Max = 50;    // token-fusion (priority < 50)
         private const int SafetyMax = 256;
 
+        private readonly LocaleVocabulary _vocab;
         private readonly Tokenizer _tokenizer;
         private readonly IReadOnlyList<RewriteRule> _structuralRules;
         private readonly IReadOnlyList<RewriteRule> _phase0Rules;
@@ -37,6 +38,7 @@ namespace MathCursor.Engine.Rewriting
 
         public RewriteEngine(LocaleVocabulary vocab, IReadOnlyList<RewriteRule> rules)
         {
+            _vocab = vocab;
             _tokenizer = new Tokenizer(vocab);
             _structuralRules = rules.Where(IsStructural).ToList();
             var others = rules.Where(r => !IsStructural(r)).ToList();
@@ -71,6 +73,9 @@ namespace MathCursor.Engine.Rewriting
             if (string.IsNullOrEmpty(source)) return RewriteResult.Empty;
             var tokens = _tokenizer.Tokenize(source);
             if (tokens.Count == 0) return RewriteResult.Empty;
+
+            // Pré-pass : expansion des anchors (alias exact + préfixe ≥3 chars).
+            tokens = AnchorExpander.Expand(tokens, _vocab);
 
             var items = new List<Item>(tokens.Count);
             foreach (var t in tokens) items.Add(new TokenItem(t));
