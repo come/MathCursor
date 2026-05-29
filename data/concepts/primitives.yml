@@ -21,11 +21,19 @@ rules:
     emit:     "$a$b"
     priority: 20
 
+  # Lettre+chiffre collés : exposant par défaut, indice en alternative
+  # (= collision math typique x² vs x₂, exposée dans la popup).
   - id: prim-letter-num-superscript
     pattern:  "{a:letter}{b:number}"
     produces: expr
     emit:     "$a^{$b}"
     priority: 20
+
+  - id: prim-letter-num-subscript
+    pattern:  "{a:letter}{b:number}"
+    produces: expr
+    emit:     "$a_{$b}"
+    priority: 19
 
   # ── Phase 1 : binaires + groupes ──────────────────────────────
   - id: prim-paren-group
