@@ -147,8 +147,10 @@ namespace MathCursor.Engine.Rewriting
             bool anySlotMissing = false;
             int i = start;
 
-            foreach (var elem in rule.Pattern.Elements)
+            var elements = rule.Pattern.Elements;
+            for (int ei = 0; ei < elements.Count; ei++)
             {
+                var elem = elements[ei];
                 bool glued = elem.Glued;
                 if (glued && i < items.Count && IsWsSep(items[i])) return null;
                 if (!glued) while (i < items.Count && IsWsSep(items[i])) i++;
@@ -173,15 +175,22 @@ namespace MathCursor.Engine.Rewriting
 
                     case Slot slot when IsComposite(slot.Category):
                     {
-                        // Capture un chunk (= run non-sep, délimiteurs équilibrés).
-                        int chunkEnd = CaptureChunkEnd(items, i);
-                        if (chunkEnd > i)
+                        // Si le prochain élément du pattern est un Literal,
+                        // ce slot capture GREEDY jusqu'à ce literal (balancé) :
+                        // ex. paren-group `( {inner} )` → inner prend tout
+                        // jusqu'à `)`. Sinon (slot suivi d'un slot) → 1 chunk
+                        // délimité par espace : ex. sum `{from} {to} {body}`.
+                        var nextLit = NextLiteralText(elements, ei);
+                        int slotEnd = nextLit != null
+                            ? CaptureUntilLiteral(items, i, nextLit)
+                            : CaptureChunkEnd(items, i);
+                        if (slotEnd > i)
                         {
-                            var chunk = new List<Item>(chunkEnd - i);
-                            for (int k = i; k < chunkEnd; k++) chunk.Add(items[k]);
+                            var chunk = new List<Item>(slotEnd - i);
+                            for (int k = i; k < slotEnd; k++) chunk.Add(items[k]);
                             var resolved = resolveChunk(chunk);
                             if (Categories.Subsumes(slot.Category, resolved.Category))
-                            { slots[slot.Name] = resolved; i = chunkEnd; }
+                            { slots[slot.Name] = resolved; i = slotEnd; }
                             else if (rule.AllowPartial) anySlotMissing = true;
                             else return null;
                         }
@@ -197,15 +206,144 @@ namespace MathCursor.Engine.Rewriting
                         else return null;
                         break;
 
-                    case GridSlot:
+                    case GridSlot grid:
+                    {
+                        // Capture jusqu'au délim fermant de niveau 0 (= le `)`
+                        // que le prochain Literal de la règle consommera).
+                        int gs = i;
+                        int depth = 0;
+                        while (i < items.Count)
+                        {
+                            if (items[i] is TokenItem ot && ot.Token.Kind == Tokenization.TokenKind.OpenDelim)
+                                depth++;
+                            else if (items[i] is TokenItem ct && ct.Token.Kind == Tokenization.TokenKind.CloseDelim)
+                            {
+                                if (depth == 0) break;
+                                depth--;
+                            }
+                            i++;
+                        }
+                        var gridItems = new List<Item>(i - gs);
+                        for (int k = gs; k < i; k++) gridItems.Add(items[k]);
+                        // Une matrice exige ≥1 séparateur de ligne (= ≥2 lignes).
+                        // Sinon `(sum k 0 n k)`, `(x+1)` = groupement, pas matrice.
+                        if (SplitTopLevel(gridItems, grid.RowSeparator).Count < 2) return null;
+                        var gridLatex = RenderGrid(gridItems, grid, resolveChunk);
+                        slots[grid.Name] = new RewriteItem(
+                            "grid", Category.Matrix, "", gridLatex, false);
+                        break;
+                    }
+
                     case RepeatGroup:
-                        return null; // Phase 5
+                        return null; // non implémenté
                 }
             }
 
             bool isPartial = anySlotMissing;
             if (isPartial && !anyLiteralMatched) return null;
             return new RewriteMatch(rule, start, i, slots, isPartial);
+        }
+
+        /// <summary>Rend une grille : découpe par séparateur de ligne
+        /// (niveau 0), puis chaque ligne par séparateur de cellule, résout
+        /// chaque cellule, joint <c>cell &amp; cell \\ row \\ row</c>.</summary>
+        private static string RenderGrid(IReadOnlyList<Item> items, GridSlot grid,
+            System.Func<List<Item>, Item> resolveChunk)
+        {
+            var rows = SplitTopLevel(items, grid.RowSeparator);
+            var renderedRows = new List<string>(rows.Count);
+            foreach (var row in rows)
+            {
+                var cells = SplitCells(row, grid.CellSeparator);
+                var renderedCells = new List<string>(cells.Count);
+                foreach (var cell in cells)
+                {
+                    if (cell.Count == 0) continue;
+                    renderedCells.Add(resolveChunk(cell).Latex);
+                }
+                renderedRows.Add(string.Join(" & ", renderedCells));
+            }
+            return string.Join(@" \\ ", renderedRows);
+        }
+
+        /// <summary>Découpe par séparateur literal au niveau 0 (= délim
+        /// équilibrés). Sépare aussi sur les Sep si <paramref name="sep"/>
+        /// est " ".</summary>
+        private static List<List<Item>> SplitTopLevel(IReadOnlyList<Item> items, string sep)
+        {
+            var result = new List<List<Item>>();
+            var current = new List<Item>();
+            int depth = 0;
+            foreach (var it in items)
+            {
+                if (it is TokenItem ot && ot.Token.Kind == Tokenization.TokenKind.OpenDelim) depth++;
+                else if (it is TokenItem ct && ct.Token.Kind == Tokenization.TokenKind.CloseDelim) depth--;
+                if (depth == 0 && it.SourceText == sep)
+                {
+                    result.Add(current);
+                    current = new List<Item>();
+                    continue;
+                }
+                current.Add(it);
+            }
+            result.Add(current);
+            return result;
+        }
+
+        /// <summary>Découpe une ligne en cellules sur le séparateur de cellule
+        /// (= espace par défaut → split sur les Sep ; ou virgule).</summary>
+        private static List<List<Item>> SplitCells(IReadOnlyList<Item> row, string cellSep)
+        {
+            var result = new List<List<Item>>();
+            var current = new List<Item>();
+            int depth = 0;
+            bool spaceSep = cellSep == " ";
+            foreach (var it in row)
+            {
+                if (it is TokenItem ot && ot.Token.Kind == Tokenization.TokenKind.OpenDelim) depth++;
+                else if (it is TokenItem ct && ct.Token.Kind == Tokenization.TokenKind.CloseDelim) depth--;
+                bool isBoundary = depth == 0 && (
+                    (spaceSep && IsWsSep(it)) || (!spaceSep && it.SourceText == cellSep));
+                if (isBoundary)
+                {
+                    if (current.Count > 0) { result.Add(current); current = new List<Item>(); }
+                    continue;
+                }
+                current.Add(it);
+            }
+            if (current.Count > 0) result.Add(current);
+            return result;
+        }
+
+        /// <summary>Texte du prochain Literal (non-optionnel) dans le pattern
+        /// après l'index <paramref name="ei"/>, ou null si le prochain élément
+        /// significatif n'est pas un Literal.</summary>
+        private static string? NextLiteralText(IReadOnlyList<PatternElement> elements, int ei)
+        {
+            if (ei + 1 < elements.Count && elements[ei + 1] is Literal lit && !lit.Optional)
+                return lit.Text;
+            return null;
+        }
+
+        /// <summary>Capture jusqu'au literal <paramref name="stop"/> (exclu),
+        /// délimiteurs équilibrés (= un `)` interne n'arrête pas si déséquilibré).</summary>
+        private static int CaptureUntilLiteral(IReadOnlyList<Item> items, int start, string stop)
+        {
+            int depth = 0;
+            int i = start;
+            while (i < items.Count)
+            {
+                var it = items[i];
+                if (it is TokenItem t && t.Token.Kind == Tokenization.TokenKind.OpenDelim) depth++;
+                else if (it is TokenItem t2 && t2.Token.Kind == Tokenization.TokenKind.CloseDelim)
+                {
+                    if (depth == 0 && it.SourceText == stop) break;
+                    if (depth > 0) depth--;
+                }
+                else if (depth == 0 && it.SourceText == stop) break;
+                i++;
+            }
+            return i;
         }
 
         /// <summary>Fin (exclusive) du chunk démarrant à <paramref name="start"/> :
