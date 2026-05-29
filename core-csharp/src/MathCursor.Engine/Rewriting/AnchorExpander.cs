@@ -1,23 +1,25 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using MathCursor.Engine.Tokenization;
 using MathCursor.Engine.Vocabulary;
 
 namespace MathCursor.Engine.Rewriting
 {
     /// <summary>
-    /// Pré-pass d'expansion des anchors : remplace un token Word qui est
+    /// Pré-pass d'expansion des alias (vocab-driven, pas de hardcoded). Pour
+    /// chaque token Word :
     /// <list type="bullet">
-    ///   <item>un <b>alias exact</b> (= <c>somme</c> → <c>sum</c>), OU</item>
-    ///   <item>un <b>préfixe ≥3 chars unique</b> (= <c>som</c> → <c>sum</c>,
-    ///     <c>inte</c> → <c>int</c>),</item>
+    ///   <item><b>Anchor</b> : alias exact (<c>somme</c> → <c>sum</c>) ou
+    ///     préfixe ≥3 chars unique (<c>som</c> → <c>sum</c>, <c>inte</c> →
+    ///     <c>int</c>).</item>
+    ///   <item><b>Fonction</b> : lookup case-tolérant (<c>cos</c> / <c>Cos</c>
+    ///     → <c>\cos</c>), qui devient catégorie Function.</item>
     /// </list>
-    /// par le mot-clé canonique. Vocab-driven (= <c>vocab.Anchors</c>), pas de
-    /// hardcoded. Si le préfixe est ambigu (≥2 canoniques distincts), on
-    /// laisse le token tel quel (= sera départagé par le multi-chains à venir).
+    /// Centralise tout l'aliasing en un seul endroit (= le tokenizer ne fait
+    /// plus QUE du découpage char→Token). Préfixe ambigu (≥2 canoniques) →
+    /// laissé tel quel (départagé par le multi-chains à venir).
     ///
-    /// <para>Cf. ADR anchor unifié + prefix-match 3-chars (Phase 6-7).</para>
+    /// <para>Phase 6-7 + cleanup tokenizer (2026-05-29).</para>
     /// </summary>
     public static class AnchorExpander
     {
@@ -30,10 +32,18 @@ namespace MathCursor.Engine.Rewriting
             {
                 if (t.Kind == TokenKind.Word)
                 {
+                    // 1. Anchor (alias exact ou préfixe).
                     var canon = ResolveAnchor(t.Text, vocab.Anchors);
                     if (canon != null && canon != t.Text)
                     {
                         result.Add(new Token(canon, TokenKind.Word, t.Start, t.End));
+                        continue;
+                    }
+                    // 2. Fonction (case-tolérant) : cos/Cos → \cos.
+                    if (Normalization.Normalizer.TryLookupCaseTolerant(vocab.Functions, t.Text, out var fn)
+                        && fn != t.Text)
+                    {
+                        result.Add(new Token(fn, TokenKind.Word, t.Start, t.End));
                         continue;
                     }
                 }
@@ -44,10 +54,8 @@ namespace MathCursor.Engine.Rewriting
 
         private static string? ResolveAnchor(string word, IReadOnlyDictionary<string, string> anchors)
         {
-            // 1. Alias exact.
             if (anchors.TryGetValue(word, out var exact)) return exact;
 
-            // 2. Préfixe ≥3 chars. Collecte les canoniques des alias préfixés.
             if (word.Length < MinPrefix) return null;
             string? found = null;
             foreach (var kv in anchors)
@@ -55,7 +63,7 @@ namespace MathCursor.Engine.Rewriting
                 if (kv.Key.Length <= word.Length) continue;
                 if (!kv.Key.StartsWith(word, StringComparison.OrdinalIgnoreCase)) continue;
                 if (found == null) found = kv.Value;
-                else if (found != kv.Value) return null; // ambigu → laisse tel quel
+                else if (found != kv.Value) return null; // ambigu
             }
             return found;
         }

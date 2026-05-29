@@ -29,10 +29,10 @@ namespace MathCursor.Engine.Tokenization
         public IReadOnlyList<Token> Tokenize(string source)
         {
             var rawTokens = TokenizeRaw(source);
-            // Brief v5 §1 (2026-05-22) : l'espace est une frontière réelle.
-            // On émet un token Sep(" ") entre chaque pair de tokens séparés
-            // par du whitespace dans la source. Reclassement post-tokenize :
-            // Word ↔ Symbol pour les relations connues (= "U", "in", …).
+            // L'espace est une frontière réelle : on insère un Sep(" ") entre
+            // deux tokens séparés par du whitespace dans la source. Le
+            // tokenizer ne fait QUE du découpage — l'aliasing (anchors,
+            // fonctions) est centralisé dans AnchorExpander (= pré-pass moteur).
             var refined = new List<Token>(rawTokens.Count * 2);
             for (int i = 0; i < rawTokens.Count; i++)
             {
@@ -40,105 +40,16 @@ namespace MathCursor.Engine.Tokenization
                 if (i > 0)
                 {
                     var prev = rawTokens[i - 1];
-                    // Insère Sep(" ") boundary si gap réel. Skip uniquement
-                    // quand un des deux voisins est déjà un Sep("\n") (= éviter
-                    // doublons Sep+Sep("\n") quand un `\n` côtoie un espace,
-                    // ex. "a \n b"). Pour les autres Sep (`;`, `,`), continuer
-                    // à insérer le Sep(" ") boundary autour (= comportement
-                    // historique nécessaire au test Matrix_source_tokenizes_with_semi).
+                    // Skip le Sep(" ") boundary si un voisin est déjà Sep("\n")
+                    // (= éviter doublons quand `\n` côtoie un espace).
                     bool nextToNewline = (t.Kind == TokenKind.Sep && t.Text == "\n")
                                        || (prev.Kind == TokenKind.Sep && prev.Text == "\n");
                     if (t.Start > prev.End && !nextToNewline)
-                    {
                         refined.Add(new Token(" ", TokenKind.Sep, prev.End, t.Start));
-                    }
                 }
-                if (t.Kind == TokenKind.Word
-                    && _vocab.Relations.TryGetValue(t.Text, out var relForReclass)
-                    && MatchesRelationContext(relForReclass.Context, rawTokens, i))
-                {
-                    refined.Add(new Token(t.Text, TokenKind.Symbol, t.Start, t.End));
-                }
-                else if (t.Kind == TokenKind.Word
-                    && TryLookupFunction(t.Text, out var funcLatex))
-                {
-                    // P16 : Word qui est une function known (sin, cos, ln…)
-                    // est reclassé avec son rendu LaTeX (= \sin, \cos, \ln).
-                    // Tolérance casse (2026-05-23) : `Cos` → `\cos` aussi
-                    // (Word autocapitalize after `.` ou début de phrase).
-                    refined.Add(new Token(funcLatex, TokenKind.Word, t.Start, t.End));
-                }
-                else
-                {
-                    refined.Add(t);
-                }
+                refined.Add(t);
             }
-            // P30 (2026-05-22) : post-process angle `^<word>` au tout début
-            // → token unique Word("\widehat{<word>}"). Évite un `if` hardcoded
-            // dans MathEngine.Resolve. Brief : si on a un usage de `^` en
-            // milieu de source, c'est un exposant (= traité par parser standard).
-            return MergeLeadingCaretAngle(refined);
-        }
-
-        /// <summary>
-        /// Vérifie qu'une relation peut être activée à la position
-        /// <paramref name="i"/> dans le flux <paramref name="rawTokens"/>
-        /// selon son <paramref name="context"/>. Utilisé au reclasse
-        /// Word→Symbol pour les relations conditionnelles déclarées en
-        /// YAML (= <c>context: 'isolated_between_brackets'</c> pour
-        /// <c>u</c> entre intervalles).
-        /// </summary>
-        private static bool MatchesRelationContext(RelationContext context, IReadOnlyList<Token> rawTokens, int i)
-        {
-            switch (context)
-            {
-                case RelationContext.None:
-                    return true;
-                case RelationContext.IsolatedBetweenBrackets:
-                {
-                    // Sep blanc immédiatement avant ET après + voisins
-                    // non-Sep sont des bracket chars. Note : rawTokens
-                    // n'a pas encore les Sep boundaries injectés, donc
-                    // « isolé » = positions Start/End espacées des voisins.
-                    if (i - 1 < 0 || i + 1 >= rawTokens.Count) return false;
-                    var prev = rawTokens[i - 1];
-                    var next = rawTokens[i + 1];
-                    var self = rawTokens[i];
-                    bool sepBefore = self.Start > prev.End;
-                    bool sepAfter = next.Start > self.End;
-                    if (!sepBefore || !sepAfter) return false;
-                    return IsBracketChar(prev) && IsBracketChar(next);
-                }
-                default:
-                    return true;
-            }
-        }
-
-        private static bool IsBracketChar(Token t)
-            => (t.Kind == TokenKind.OpenDelim || t.Kind == TokenKind.CloseDelim)
-               && (t.Text == "[" || t.Text == "]"
-                   || t.Text == "(" || t.Text == ")"
-                   || t.Text == "{" || t.Text == "}");
-
-        /// <summary>Lookup function avec tolérance casse intelligente.
-        /// Délègue à <see cref="Normalization.Normalizer.TryLookupCaseTolerant"/>
-        /// (= Chantier 2 — extraction du Tokenizer vers module Normalization).</summary>
-        private bool TryLookupFunction(string word, out string latex)
-            => Normalization.Normalizer.TryLookupCaseTolerant(_vocab.Functions, word, out latex);
-
-        private static IReadOnlyList<Token> MergeLeadingCaretAngle(List<Token> tokens)
-        {
-            if (tokens.Count < 2) return tokens;
-            if (tokens[0].Kind != TokenKind.Symbol || tokens[0].Text != "^") return tokens;
-            if (tokens[1].Kind != TokenKind.Word) return tokens;
-            if (tokens[0].End != tokens[1].Start) return tokens; // doit être collé
-            var merged = new Token(
-                "\\widehat{" + tokens[1].Text + "}",
-                TokenKind.Word, tokens[0].Start, tokens[1].End);
-            var newList = new List<Token>(tokens.Count - 1);
-            newList.Add(merged);
-            for (int i = 2; i < tokens.Count; i++) newList.Add(tokens[i]);
-            return newList;
+            return refined;
         }
 
         private IReadOnlyList<Token> TokenizeRaw(string source)
