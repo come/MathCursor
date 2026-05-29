@@ -1,0 +1,71 @@
+# Primitives — règles de composition de base.
+#
+# Priorité < 50 = phase 0 (fusion token-level, avant les binaires).
+# Priorité 50   = phase 1 (binaires : +, -, /, ^, _, parens, function-call).
+# Le glued (= absence d'espace) est exprimé par l'adjacence dans le pattern :
+#   "{a:number}{b:letter}" (collé) vs "{a} + {b}" (espacé).
+
+concept: primitives
+rules:
+
+  # ── Phase 0 : fusion token-level ──────────────────────────────
+  - id: prim-signed-infinity
+    pattern:  "{s:symbol}\\infty"
+    produces: number
+    emit:     "$s\\infty"
+    priority: 20
+
+  - id: prim-implicit-product
+    pattern:  "{a:number}{b:letter}"
+    produces: expr
+    emit:     "$a$b"
+    priority: 20
+
+  - id: prim-letter-num-superscript
+    pattern:  "{a:letter}{b:number}"
+    produces: expr
+    emit:     "$a^{$b}"
+    priority: 20
+
+  # ── Phase 1 : binaires + groupes ──────────────────────────────
+  - id: prim-paren-group
+    pattern:  "( {inner} )"
+    produces: expr
+    emit:     "$inner"
+    priority: 50
+
+  - id: prim-add
+    pattern:  "{a} + {b}"
+    produces: expr
+    emit:     "$a+$b"
+    priority: 50
+
+  - id: prim-sub
+    pattern:  "{a} - {b}"
+    produces: expr
+    emit:     "$a-$b"
+    priority: 50
+
+  - id: prim-frac-implicit
+    pattern:  "{a} / {b}"
+    produces: expr
+    emit:     "\\frac{$a}{$b}"
+    priority: 50
+
+  - id: prim-superscript
+    pattern:  "{a} ^ {b}"
+    produces: expr
+    emit:     "$a^$b"
+    priority: 50
+
+  - id: prim-subscript
+    pattern:  "{a} _ {b}"
+    produces: expr
+    emit:     "$a_$b"
+    priority: 50
+
+  - id: prim-function-call
+    pattern:  "{f:function}( {a} )"
+    produces: expr
+    emit:     "$f($a)"
+    priority: 50

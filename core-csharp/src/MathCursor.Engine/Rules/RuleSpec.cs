@@ -53,6 +53,11 @@ namespace MathCursor.Engine.Rules
 
         /// <summary>Priorité de match (= défaut 100). Cf. <see cref="MathCursor.Engine.Rewriting.RewriteRule.Priority"/>.</summary>
         public int Priority { get; set; } = 100;
+
+        /// <summary>Autorise le match partiel (= slots manquants en
+        /// <c>\square</c>). Réservé aux anchors mot-clé (sum, lim, …).
+        /// YAML : <c>allow_partial: true</c>.</summary>
+        public bool AllowPartial { get; set; } = false;
     }
 
     /// <summary>

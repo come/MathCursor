@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using MathCursor.Engine.Rewriting;
-using MathCursor.Engine.Rewriting.Yaml;
-using MathCursor.Engine.Rules;
 using MathCursor.Engine.Vocabulary;
 
 namespace MathCursor.Engine
@@ -11,43 +8,40 @@ namespace MathCursor.Engine
     /// <summary>
     /// Implémentation par défaut de <see cref="IEngineFrontend"/>.
     ///
-    /// <para>Utilise exclusivement le <see cref="RewriteEngine"/> depuis
-    /// Phase D-6 (2026-05-26) — bascule franche.</para>
+    /// <para>Délègue au <see cref="RewriteEngine"/> V2 (2026-05-29). Cf. ADR
+    /// 2026-05-28-rewriting-engine-v2.</para>
     /// </summary>
     public sealed class MathEngine : IEngineFrontend
     {
         private readonly LocaleVocabulary _vocab;
-        private readonly RewriteEngine _rewriteEngine;
+        private readonly RewriteEngine _engine;
 
-        /// <summary>Vocab locale chargé (= stopwords, span_delimiters, etc.).
-        /// Exposé pour que l'adapter VSTO accède aux mêmes listes que le moteur.</summary>
+        /// <summary>Vocab locale chargé. Exposé pour que l'adapter VSTO
+        /// accède aux mêmes listes que le moteur.</summary>
         public LocaleVocabulary Vocab => _vocab;
 
-        public MathEngine(LocaleVocabulary vocab, RewriteEngine rewriteEngine)
+        public MathEngine(LocaleVocabulary vocab, RewriteEngine engine)
         {
             _vocab = vocab ?? throw new ArgumentNullException(nameof(vocab));
-            _rewriteEngine = rewriteEngine ?? throw new ArgumentNullException(nameof(rewriteEngine));
+            _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         }
 
         public EngineResult Resolve(string source)
         {
             if (string.IsNullOrEmpty(source)) return EngineResult.Empty;
-            var result = _rewriteEngine.Resolve(source);
-            return AdaptRewriteResult(result);
+            return Adapt(_engine.Resolve(source));
         }
 
-        /// <summary>Adapte un <see cref="RewriteResult"/> en <see cref="EngineResult"/>
-        /// (= Phase D-6 bascule). Mapping : TopLatex direct, IsComplete = !Contains(\square),
-        /// Alternatives → Collisions via emit du template.</summary>
-        private EngineResult AdaptRewriteResult(RewriteResult r)
+        /// <summary>Adapte un <see cref="RewriteResult"/> en
+        /// <see cref="EngineResult"/> (= contrat public stable pour l'adapter).</summary>
+        private static EngineResult Adapt(RewriteResult r)
         {
             var collisions = new List<EngineCandidate>();
             foreach (var alt in r.Alternatives)
             {
-                var altLatex = RewriteMatcher.ApplyTemplate(
-                    alt.Rule.EmitTemplate, alt.Slots, alt.Lists, alt.Blocks);
+                var latex = RewriteMatcher.ApplyTemplate(alt.Rule.EmitTemplate, alt.Slots);
                 collisions.Add(new EngineCandidate(
-                    latex: altLatex,
+                    latex: latex,
                     description: alt.Rule.Id,
                     ruleId: alt.Rule.Id,
                     score: alt.Span * 10));
@@ -63,25 +57,9 @@ namespace MathCursor.Engine
 
         public static MathEngine BuildDefault(string localeCode = "fr")
         {
-            return BuildDefaultWithRewriteEngine(localeCode);
-        }
-
-        /// <summary>Construit un MathEngine qui délègue au RewriteEngine
-        /// (= moteur principal depuis Phase D-6).</summary>
-        public static MathEngine BuildDefaultWithRewriteEngine(string localeCode = "fr")
-        {
             var vocab = LocaleVocabulary.LoadEmbedded(localeCode);
-            var concepts = RuleLoader.LoadAllEmbedded();
-            var ruleSpecs = new List<RuleSpec>();
-            foreach (var c in concepts)
-                ruleSpecs.AddRange(c.Rules);
-
-            var rewriteRules = new List<RewriteRule>();
-            rewriteRules.AddRange(PrimitiveRules.All);
-            rewriteRules.AddRange(RewriteRuleLoader.LoadAllEmbedded(vocab));
-            var rewriteEngine = new RewriteEngine(vocab, rewriteRules);
-
-            return new MathEngine(vocab, rewriteEngine);
+            var rules = RuleSetLoader.LoadAllEmbedded(vocab);
+            return new MathEngine(vocab, new RewriteEngine(vocab, rules));
         }
     }
 }

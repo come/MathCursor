@@ -7,45 +7,32 @@ using MathCursor.Engine.Vocabulary;
 namespace MathCursor.Engine.Rewriting
 {
     /// <summary>
-    /// Moteur de rewriting à point fixe (Phase A POC).
+    /// Moteur de rewriting V2 (2026-05-29).
     ///
-    /// <para>Algo :</para>
-    /// <list type="number">
-    ///   <item>Tokenize → liste d'<see cref="Item"/> (= <see cref="TokenItem"/>
-    ///     pour chaque token).</item>
-    ///   <item>Loop : scan chaque position × chaque règle. Si ≥ 1 match →
-    ///     applique le meilleur (= leftmost-longest), stash les autres comme
-    ///     <see cref="Collisions"/>. Sinon → break.</item>
-    ///   <item>Emit : concat des <see cref="Item.Latex"/> restants.</item>
-    /// </list>
+    /// <para><b>Phase 1 (= cette version)</b> : fixed-point multi-phase
+    /// single-chain. Tokenize → Items → applique les règles par phases de
+    /// priorité (0 token-fusion, 1 primitives, 2 anchors), leftmost-longest
+    /// à chaque tour.</para>
     ///
-    /// <para>Migration Chantier 4 Phase A (2026-05-25) — POC isolé, ne touche
-    /// pas au <c>MathEngine</c> en prod.</para>
+    /// <para><b>À venir</b> (ADR 2026-05-28, phases 2-4) : scan-keywords +
+    /// scoping top-down + multi-chains beam search. Cette version pose la
+    /// base fonctionnelle ; les cas de composition récursive avancés
+    /// (= <c>1/sum k 0 n f(k)</c>) seront couverts par le scan-keywords.</para>
     /// </summary>
     public sealed class RewriteEngine
     {
-        private readonly LocaleVocabulary _vocab;
+        private const int Phase0Max = 50;    // token-fusion (priority < 50)
+        private const int Phase1Max = 100;   // primitives  (priority < 100)
+        private const int SafetyMax = 64;
+
         private readonly Tokenizer _tokenizer;
         private readonly IReadOnlyList<RewriteRule> _rules;
 
         public RewriteEngine(LocaleVocabulary vocab, IReadOnlyList<RewriteRule> rules)
         {
-            _vocab = vocab;
             _tokenizer = new Tokenizer(vocab);
             _rules = rules;
         }
-
-        /// <summary>Seuils Priority qui séparent les phases.
-        /// <list type="bullet">
-        ///   <item>Priority &lt; <see cref="Phase0Separator"/> (50) : phase 0
-        ///     = fusions token-level (= <c>+\infty</c>, etc.).</item>
-        ///   <item>Priority &lt; <see cref="PhaseSeparator"/> (100) : phase 1
-        ///     = primitives (= paren-group, add, sub, function-call).</item>
-        ///   <item>Priority &gt;= 100 : phase 2 = anchors.</item>
-        /// </list>
-        /// Phase D-3 + D-4+++ (2026-05-26).</summary>
-        public const int Phase0Separator = 50;
-        public const int PhaseSeparator = 100;
 
         public RewriteResult Resolve(string source)
         {
@@ -57,83 +44,62 @@ namespace MathCursor.Engine.Rewriting
             foreach (var t in tokens) items.Add(new TokenItem(t));
 
             var alternatives = new List<RewriteMatch>();
-            string? primaryRuleId = null;
+            string ruleId = "";
 
-            // Scheduling multi-phase :
-            // - Phase 0 (P<50) : fusions token-level. Tourne en premier
-            //   pour produire des Items composites (= `+\infty` → 1 Item)
-            //   avant que les opérateurs binaires aient leur chance.
-            // - Phase 1 (P<100) : primitives. paren-group, add, sub,
-            //   function-call, etc.
-            // - Phase 2 (toutes) : anchors. Matchent sur Items déjà
-            //   préparés en phase 1.
-            RunPhase(items, _rules.Where(r => r.Priority < Phase0Separator),
-                alternatives, ref primaryRuleId);
-            RunPhase(items, _rules.Where(r => r.Priority < PhaseSeparator),
-                alternatives, ref primaryRuleId);
-            RunPhase(items, _rules,
-                alternatives, ref primaryRuleId);
+            var phase0 = _rules.Where(r => r.Priority < Phase0Max).ToList();
+            var phase1 = _rules.Where(r => r.Priority < Phase1Max).ToList();
 
-            // Emit final : concat des Latex restants.
+            RunPhase(items, phase0, alternatives, ref ruleId);
+            RunPhase(items, phase1, alternatives, ref ruleId);
+            RunPhase(items, _rules, alternatives, ref ruleId);
+
             var sb = new StringBuilder();
-            foreach (var item in items)
-                sb.Append(item.Latex);
+            foreach (var item in items) sb.Append(item.Latex);
 
-            return new RewriteResult(
-                topLatex: sb.ToString(),
-                items: items,
-                alternatives: alternatives,
-                ruleId: primaryRuleId ?? "");
+            return new RewriteResult(sb.ToString(), items, alternatives, ruleId);
         }
 
-        /// <summary>Loop fixed-point d'une phase avec les règles données.
-        /// Modifie <paramref name="items"/> in-place.</summary>
-        private static void RunPhase(List<Item> items, IEnumerable<RewriteRule> phaseRules,
-            List<RewriteMatch> alternatives, ref string? primaryRuleId)
+        private static void RunPhase(List<Item> items, IReadOnlyList<RewriteRule> rules,
+            List<RewriteMatch> alternatives, ref string ruleId)
         {
-            var phaseRulesList = phaseRules as IList<RewriteRule> ?? phaseRules.ToArray();
-            if (phaseRulesList.Count == 0) return;
-
-            int safety = 64;
+            if (rules.Count == 0) return;
+            int safety = SafetyMax;
             while (safety-- > 0)
             {
                 var matches = new List<RewriteMatch>();
                 for (int p = 0; p < items.Count; p++)
-                {
-                    foreach (var rule in phaseRulesList)
+                    foreach (var rule in rules)
                     {
                         var m = RewriteMatcher.TryMatch(rule, items, p);
-                        if (m != null) matches.Add(m);
+                        if (m != null && m.Span > 0) matches.Add(m);
                     }
-                }
                 if (matches.Count == 0) break;
 
-                // Leftmost-longest avec Priority desc en tie.
+                // leftmost-longest : Start asc, puis Span desc, puis full>partial,
+                // puis Priority desc.
                 matches.Sort((a, b) =>
                 {
-                    int dStart = a.Start.CompareTo(b.Start);
-                    if (dStart != 0) return dStart;
-                    int dSpan = b.Span.CompareTo(a.Span);
-                    if (dSpan != 0) return dSpan;
+                    int d = a.Start.CompareTo(b.Start);
+                    if (d != 0) return d;
+                    d = b.Span.CompareTo(a.Span);
+                    if (d != 0) return d;
+                    d = (a.IsPartial ? 1 : 0).CompareTo(b.IsPartial ? 1 : 0);
+                    if (d != 0) return d;
                     return b.Rule.Priority.CompareTo(a.Rule.Priority);
                 });
+
                 var best = matches[0];
-
                 for (int k = 1; k < matches.Count; k++)
-                {
-                    if (matches[k].Start == best.Start)
+                    if (matches[k].Start == best.Start && matches[k].Span == best.Span)
                         alternatives.Add(matches[k]);
-                }
 
-                var latex = RewriteMatcher.ApplyTemplate(
-                    best.Rule.EmitTemplate, best.Slots, best.Lists, best.Blocks);
-                var sourceText = ConcatSource(items, best.Start, best.End);
-                var produced = new RewriteItem(best.Rule.Id, best.Rule.Produces, sourceText, latex);
+                var latex = RewriteMatcher.ApplyTemplate(best.Rule.EmitTemplate, best.Slots);
+                var src = ConcatSource(items, best.Start, best.End);
+                var produced = new RewriteItem(
+                    best.Rule.Id, best.Rule.Produces, src, latex, best.IsPartial);
                 items.RemoveRange(best.Start, best.End - best.Start);
                 items.Insert(best.Start, produced);
-                // Phase D-6 : LAST WINS. Le dernier match englobe les
-                // précédents (= règle "top" dans la composition bottom-up).
-                primaryRuleId = best.Rule.Id;
+                ruleId = best.Rule.Id; // last wins (= règle englobante)
             }
         }
 
@@ -143,26 +109,5 @@ namespace MathCursor.Engine.Rewriting
             for (int i = start; i < endExcl; i++) sb.Append(items[i].SourceText);
             return sb.ToString();
         }
-    }
-
-    /// <summary>Résultat d'une résolution rewriting (Phase A).</summary>
-    public sealed class RewriteResult
-    {
-        public string TopLatex { get; }
-        public IReadOnlyList<Item> Items { get; }
-        public IReadOnlyList<RewriteMatch> Alternatives { get; }
-        public string RuleId { get; }
-
-        public RewriteResult(string topLatex, IReadOnlyList<Item> items,
-            IReadOnlyList<RewriteMatch> alternatives, string ruleId)
-        {
-            TopLatex = topLatex ?? string.Empty;
-            Items = items;
-            Alternatives = alternatives;
-            RuleId = ruleId ?? "";
-        }
-
-        public static RewriteResult Empty { get; } = new RewriteResult(
-            "", new List<Item>(), new List<RewriteMatch>(), "");
     }
 }
