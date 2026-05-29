@@ -308,22 +308,80 @@ Rejetée. C'était l'engine v1 dont on s'est explicitement débarrassé en Phase
 - `EngineResult` inchangée (= TopLatex, Collisions, IsComplete, RuleId).
 - Pas de breaking change pour l'adapter VSTO.
 
+## Décisions sur les 14 angles morts (2026-05-29)
+
+Analyse exhaustive des angles morts avant implémentation. Chaque décision est actée.
+
+### 1 — Scope du body greedy
+Le moteur génère **toutes les lectures** via multi-chains, l'utilisateur tranche (= collision). Le plus grand match (= moins d'items résiduels) gagne par défaut. `sum k 0 n f(k) + g(k)` → 2 lectures proposées. `forall x R, P(x) => Q(x)` → la virgule sépare 2 propositions, chacune matchée indépendamment.
+
+### 2 — Reclassement ambigu (`U`, `V`, `E`)
+**Supprimer le reclassement statique des opérateurs/anchors ambigus** au tokenizer. `U`, `u`, `V`, `E` redeviennent des Letter/Var normaux. Ils sont matchés via `<classname>` dans les patterns YAML (= `<union_op>`, `<forall_kw>`). Le moteur explore les lectures via multi-chains, le scoring tranche. Distinction clé :
+- **Renommage visuel** (`R→\mathbb{R}`, `cos→\cos`, `pi→\pi`) = règle YAML d'alias (`aliases.yml`), produit une chaîne candidate. La lecture brute reste aussi candidate.
+- **Catégorisation/opérateur** = jamais statique, toujours via règle contextuelle.
+
+### 3 — Décimal `,` FR
+Le tokenizer **ne fusionne plus** `0,5`. Règle YAML `decimal-fr` (phase 0, `{a:number},{b:number glued}`). Les intervalles utilisent `,` ou `;` comme literal. Multi-chains gère l'ambiguïté `5 + 0,5` vs `5 + 0 ,5`. Retirer `decimal: ','` de `fr.yml`.
+
+### 4 — Anchor multi-arity (`int` 2 vs 5 slots)
+Index `anchor → [règles]` construit au load. Le scan-keywords explore **toutes** les règles partageant le literal. Scoring **« max slots non-`\square` »** tranche (= full match préféré au partial). En typing flow, les arités concurrentes sont des alternatives popup.
+
+### 5 — Combinatoire beam search
+Garde-fous **hardcodés simples** (= pas de config sophistiquée, jugée overkill) : beam K=4, max 200 tokens, dedup chaînes par Latex, safety counter. Valeurs en dur dans le moteur, ajustables si besoin réel.
+
+### 6 — Récursion infinie
+Safety counter **64 itérations** hardcodé. Pas de détection statique des règles identité (= sur-ingénierie). Si règle pathologique introduite, output sub-optimal mais pas de freeze ; les tests YAML inline révèlent l'anomalie.
+
+### 7 / 11 — Partial match
+Flag YAML explicite **`allow_partial: true`** sur la règle. Défaut `false`. Réservé aux **anchors mot-clé** (`sum`, `lim`, `int`, `vec`, `sqrt`, `forall`, `exists`, `derive`). Les primitives binaires (`+`, `/`, `_`, `=`) et délimiteurs (`(`, `[`) restent `false` (= trop polysémiques pour guider). Note : `frac` keyword est vestigial (= personne ne tape `frac`, on tape `/` → `prim-frac-implicit`).
+
+### 8 — Slots greedy
+**Un slot = 1 Item, toujours.** L'effet greedy provient de la composition bottom-up des primitives (`+`, `-`, `/`, `^`, `_`, `( )`). Pas de slot multi-Item. Les listes répétées utilisent `RepeatGroup` (= mécanisme distinct).
+
+### 9 / 14 — Structures 2D (matrices, multi-line) : slot `grid`
+**Slot `grid` paramétrable**, borné par les délimiteurs de la règle (= résout le firing parasite). Déclaratif, composable, lignes/colonnes variables :
+```yaml
+- id: matrix-paren
+  pattern: "( {g:grid cell=' '} )"
+  produces: matrix
+  emit:    "\\begin{pmatrix}$g\\end{pmatrix}"
+```
+Le slot `grid` capture entre les délimiteurs, découpe par séparateur de ligne (`;`) puis de cellule (param `cell=' '` ou `cell=','`), délègue chaque cellule au RewriteEngine, et `$g` rend `cell & cell \\ cell & cell`. Variantes (`[ ]`→bmatrix, `| |`→vmatrix, virgule vs espace) = **règles YAML gratuites**. Align/cases = variante `align-grid` (= lignes `\n` + préfixe `&` sur marqueur de relation), reportable selon priorité. `RepeatGroup` 1D reste pour les listes à séparateur explicite (= args de fonction, tuples).
+
+### 10 — Indices/exposants composites
+Via parenthèses : `a_(i+1)` → `a_{i+1}`. Sans parens, `a_i+1` = `(a_i)+1` (= lecture standard). Compositions phase 0 (`x^2n`) marchent automatiquement. Le template `$a_{$b}` enveloppe correctement le contenu composite.
+
+### 12 — Opt-out reclassement
+**Automatique** via multi-chains : la lecture brute (= sans reclassement) est toujours une chaîne candidate (= 0 règle sur ce token). Accessible par popup quand scores proches. **Zéro config**, pas de fichier user d'override.
+
+### 13 — Localisation FR/EN
+**Concepts partagés** (= 1 jeu, jamais dupliqué par locale) utilisant anchors canoniques (`sum`, `forall`) + classes (`<union_op>`, `<and_op>`). **Vocab localisé** (`fr.yml`, `en.yml`) mappe mots user → canoniques + classes localisées. L'`emit:` produit du LaTeX universel (= non localisé). Étendre les classes pour les opérateurs textuels au lieu de les hardcoder dans `relations:`.
+
+### Frontière transversale `\n`
+`\n` est une **frontière de scope dure** : aucun anchor body-greedy ne la traverse. Cohérent avec #1 (séparation de propositions) et nécessaire pour les structures 2D align.
+
+### Validation YAML au load
+Passe `RuleValidator.Validate(rules, vocab)` au boot (~60 LOC). Lève une exception explicite listant **toutes** les erreurs : `produces` inconnu, `emit` référençant un slot inexistant, `<classname>` introuvable, `id` dupliqué, `pattern` mal formé. Filet de sécurité indispensable pour un système data-driven.
+
 ## Plan d'implémentation suggéré
 
 | Phase | Livrable | LOC |
 |---|---|---|
 | **0** | ADR (= ce document) + audit final POC actuel | 0 |
-| **1** | Squelette du nouveau RewriteEngine + Items typés + Match basique | ~150 |
-| **2** | Scan-keywords + scoping inside-out | ~150 |
-| **3** | Partial match avec slots `\square` | ~50 |
-| **4** | Multi-chains beam search + scoring | ~100 |
-| **5** | Anchor unifié 3-formes | ~50 |
-| **6** | Prefix-match 3-chars dynamique | ~80 |
-| **7** | Migration YAML existants + nouveaux concepts ensembles/intervalles | ~80 lignes YAML |
-| **8** | Bascule MathEngine.BuildDefault + suppression POC actuel | ~30 LOC |
-| **9** | Tests cibles + validation usage Word réel | — |
+| **1** | Squelette RewriteEngine + Items typés + Match basique + `RuleValidator` au load | ~200 |
+| **2** | Scan-keywords + scoping inside-out + frontière `\n` dure | ~150 |
+| **3** | Partial match `allow_partial` + slots `\square` | ~50 |
+| **4** | Multi-chains beam search + scoring (garde-fous hardcodés) | ~120 |
+| **5** | Slot `grid` paramétrable (matrices) + variante `align-grid` | ~80 |
+| **6** | Anchor unifié 3-formes | ~50 |
+| **7** | Prefix-match 3-chars dynamique | ~80 |
+| **8** | Migration YAML (concepts au format natif + aliases + intervalles + ensembles + relations) | ~150 lignes YAML |
+| **9** | Bascule MathEngine.BuildDefault + suppression POC actuel | ~30 LOC |
+| **10** | Tests cibles + validation usage Word réel | — |
 
-**Total estimé** : ~600 LOC moteur + 80 lignes YAML. Sprint dédié de 3-4 jours concentrés.
+**Total estimé** : ~750 LOC moteur + 150 lignes YAML. Sprint dédié de 3-4 jours concentrés.
+
+**Note tokenizer** : ce sprint retire du tokenizer le reclassement statique des ambigus (`U`, `u`, `V`, `E`) et la fusion décimale `0,5` (= décisions #2, #3). Ces transformations passent en règles YAML. Le tokenizer redevient un découpeur char→Token quasi pur.
 
 ## Validation post-implémentation
 
