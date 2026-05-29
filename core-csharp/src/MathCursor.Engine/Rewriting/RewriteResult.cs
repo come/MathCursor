@@ -17,13 +17,18 @@ namespace MathCursor.Engine.Rewriting
         /// <summary>Id de la règle « top » (= dernière appliquée englobante).</summary>
         public string RuleId { get; }
 
+        /// <summary>Trace debug : règles appliquées dans l'ordre (= diag).</summary>
+        public IReadOnlyList<string> Trace { get; }
+
         public RewriteResult(string topLatex, IReadOnlyList<Item> items,
-            IReadOnlyList<RewriteMatch> alternatives, string ruleId)
+            IReadOnlyList<RewriteMatch> alternatives, string ruleId,
+            IReadOnlyList<string>? trace = null)
         {
             TopLatex = topLatex ?? string.Empty;
             Items = items;
             Alternatives = alternatives;
             RuleId = ruleId ?? string.Empty;
+            Trace = trace ?? System.Array.Empty<string>();
         }
 
         public static RewriteResult Empty { get; } = new RewriteResult(

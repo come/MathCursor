@@ -44,23 +44,24 @@ namespace MathCursor.Engine.Rewriting
             foreach (var t in tokens) items.Add(new TokenItem(t));
 
             var alternatives = new List<RewriteMatch>();
+            var trace = new List<string>();
             string ruleId = "";
 
             var phase0 = _rules.Where(r => r.Priority < Phase0Max).ToList();
             var phase1 = _rules.Where(r => r.Priority < Phase1Max).ToList();
 
-            RunPhase(items, phase0, alternatives, ref ruleId);
-            RunPhase(items, phase1, alternatives, ref ruleId);
-            RunPhase(items, _rules, alternatives, ref ruleId);
+            RunPhase(items, phase0, alternatives, trace, ref ruleId);
+            RunPhase(items, phase1, alternatives, trace, ref ruleId);
+            RunPhase(items, _rules, alternatives, trace, ref ruleId);
 
             var sb = new StringBuilder();
             foreach (var item in items) sb.Append(item.Latex);
 
-            return new RewriteResult(sb.ToString(), items, alternatives, ruleId);
+            return new RewriteResult(sb.ToString(), items, alternatives, ruleId, trace);
         }
 
         private static void RunPhase(List<Item> items, IReadOnlyList<RewriteRule> rules,
-            List<RewriteMatch> alternatives, ref string ruleId)
+            List<RewriteMatch> alternatives, List<string> trace, ref string ruleId)
         {
             if (rules.Count == 0) return;
             int safety = SafetyMax;
@@ -68,11 +69,18 @@ namespace MathCursor.Engine.Rewriting
             {
                 var matches = new List<RewriteMatch>();
                 for (int p = 0; p < items.Count; p++)
+                {
+                    // Ne pas démarrer un match sur un séparateur : sinon le
+                    // skip de seps en tête l'absorberait dans [Start, End),
+                    // collant à tort les voisins (= bug `lim x +oo` → la règle
+                    // signed-infinity mangeait le sep entre x et +oo).
+                    if (items[p].Category == Category.Sep) continue;
                     foreach (var rule in rules)
                     {
                         var m = RewriteMatcher.TryMatch(rule, items, p);
                         if (m != null && m.Span > 0) matches.Add(m);
                     }
+                }
                 if (matches.Count == 0) break;
 
                 // leftmost-longest : Start asc, puis Span desc, puis full>partial,
@@ -99,6 +107,7 @@ namespace MathCursor.Engine.Rewriting
                     best.Rule.Id, best.Rule.Produces, src, latex, best.IsPartial);
                 items.RemoveRange(best.Start, best.End - best.Start);
                 items.Insert(best.Start, produced);
+                trace.Add($"{best.Rule.Id}@{best.Start} → {latex}");
                 ruleId = best.Rule.Id; // last wins (= règle englobante)
             }
         }

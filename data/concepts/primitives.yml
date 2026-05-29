@@ -64,8 +64,23 @@ rules:
     emit:     "$a_$b"
     priority: 50
 
-  - id: prim-function-call
+  # Function-call LaTeX (\sin, \cos) : {f:function}.
+  - id: prim-function-call-fn
     pattern:  "{f:function}( {a} )"
     produces: expr
     emit:     "$f($a)"
+    priority: 50
+
+  # Function-call utilisateur 1 arg (f(x), g(k), P(A)) : {f:letter}.
+  - id: prim-function-call-1
+    pattern:  "{f:letter}( {a} )"
+    produces: expr
+    emit:     "$f($a)"
+    priority: 50
+
+  # Function-call 2 args (f(x,y)).
+  - id: prim-function-call-2
+    pattern:  "{f:letter}( {a} , {b} )"
+    produces: expr
+    emit:     "$f($a,$b)"
     priority: 50

@@ -37,22 +37,24 @@ rules:
     emit:     "$a \\neq $b"
     priority: 50
 
+  # Comparaisons à symbole littéral (= , < , >) : rendu tight (= sans
+  # espace), conforme à la convention math FR `n>0`, `x=1`.
   - id: rel-eq
     pattern:  "{a} = {b}"
     produces: expr
-    emit:     "$a = $b"
+    emit:     "$a=$b"
     priority: 50
 
   - id: rel-lt
     pattern:  "{a} < {b}"
     produces: expr
-    emit:     "$a < $b"
+    emit:     "$a<$b"
     priority: 50
 
   - id: rel-gt
     pattern:  "{a} > {b}"
     produces: expr
-    emit:     "$a > $b"
+    emit:     "$a>$b"
     priority: 50
 
   - id: rel-in
