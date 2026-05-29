@@ -86,3 +86,4 @@ reports-local/
 # Python cache
 __pycache__/
 *.pyc
+docs/dev/decisions/GladiatorSurvivor/

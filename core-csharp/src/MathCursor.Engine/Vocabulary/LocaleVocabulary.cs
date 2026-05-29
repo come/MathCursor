@@ -27,12 +27,6 @@ namespace MathCursor.Engine.Vocabulary
         public IReadOnlyList<string> RowSep { get; }
         public string Decimal { get; }
 
-        /// <summary>Set précompilé des valeurs LaTeX renvoyées par
-        /// <see cref="Functions"/> (= <c>\sin</c>, <c>\cos</c>, …). Utilisé par
-        /// le parser pour reconnaître qu'un token Word est une function known
-        /// reclassed (sans devoir reverse-lookup dans le dict à chaque check).</summary>
-        public HashSet<string> FunctionLatexValues { get; }
-
         /// <summary>Mots-outils qui bornent la span (= remontée backward
         /// depuis le caret s'arrête juste après un stopword). Cf. Ctrl+Espace.
         /// Source YAML <c>stopwords:</c>. Migré 2026-05-25 (Chantier 1).</summary>
@@ -70,9 +64,6 @@ namespace MathCursor.Engine.Vocabulary
             ColSep = colSep;
             RowSep = rowSep;
             Decimal = @decimal;
-            var funcSet = new HashSet<string>();
-            foreach (var v in functions.Values) funcSet.Add(v);
-            FunctionLatexValues = funcSet;
             Stopwords = new HashSet<string>(
                 stopwords ?? (IEnumerable<string>)Array.Empty<string>(),
                 StringComparer.OrdinalIgnoreCase);
@@ -196,22 +187,15 @@ namespace MathCursor.Engine.Vocabulary
             foreach (var kv in src)
             {
                 if (kv.Value == null) continue;
-                if (!TryParseTier(kv.Value.Tier, out var tier))
-                    throw new InvalidDataException(
-                        $"Unknown precedence tier '{kv.Value.Tier}' for token '{kv.Key}'.");
                 if (!TryParseContext(kv.Value.Context, out var context))
                     throw new InvalidDataException(
                         $"Unknown context '{kv.Value.Context}' for token '{kv.Key}'.");
+                // tier/wrap/align/compact/allow_leading du YAML sont ignorés
+                // (= machinerie de précédence du moteur legacy, supprimée V2).
                 dict[kv.Key] = new Relation(
                     token: kv.Key,
                     tex: kv.Value.Tex ?? kv.Key,
-                    tier: tier,
-                    tail: kv.Value.Tail,
-                    wrap: kv.Value.Wrap,
-                    context: context,
-                    allowLeading: kv.Value.AllowLeading,
-                    compact: kv.Value.Compact,
-                    alignPrefix: kv.Value.AlignPrefix);
+                    context: context);
             }
             return dict;
         }
@@ -227,24 +211,6 @@ namespace MathCursor.Engine.Vocabulary
                     context = RelationContext.IsolatedBetweenBrackets; return true;
                 default:
                     context = RelationContext.None; return false;
-            }
-        }
-
-        private static bool TryParseTier(string? raw, out PrecedenceTier tier)
-        {
-            switch ((raw ?? "").ToLowerInvariant())
-            {
-                case "funcpow": tier = PrecedenceTier.Funcpow; return true;
-                case "muldiv":  tier = PrecedenceTier.Muldiv;  return true;
-                case "addsub":  tier = PrecedenceTier.Addsub;  return true;
-                case "setop":   tier = PrecedenceTier.Setop;   return true;
-                case "comp":    tier = PrecedenceTier.Comp;    return true;
-                case "rel":     tier = PrecedenceTier.Rel;     return true;
-                case "and":     tier = PrecedenceTier.And;     return true;
-                case "or":      tier = PrecedenceTier.Or;      return true;
-                case "implies": tier = PrecedenceTier.Implies; return true;
-                case "iff":     tier = PrecedenceTier.Iff;     return true;
-                default:        tier = PrecedenceTier.Addsub;  return false;
             }
         }
 
@@ -283,15 +249,11 @@ namespace MathCursor.Engine.Vocabulary
         internal sealed class RelationRaw
         {
             public string? Tex { get; set; }
-            public string? Tier { get; set; }
-            public string? Tail { get; set; }
-            public bool Wrap { get; set; }
             public string? Context { get; set; }
-            // P2 (2026-05-24) — data-driven flags. YAML utilise
-            // UnderscoredNamingConvention donc `AllowLeading` ↔ `allow_leading`.
-            public bool AllowLeading { get; set; }
-            public bool Compact { get; set; }
-            public string? AlignPrefix { get; set; }
+            // Les autres clés YAML (tier, wrap, tail, compact, allow_leading,
+            // align_prefix) sont tolérées mais ignorées (= IgnoreUnmatched +
+            // machinerie de précédence supprimée V2). À nettoyer du fr.yml
+            // lors de la migration des relations en règles YAML.
         }
     }
 }

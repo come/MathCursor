@@ -69,26 +69,16 @@ namespace MathCursor.Engine.Tests.Vocabulary
             Assert.Equal("prod", v.FindAnchor("produit"));
         }
 
-        // ─── Relations multi-tier ─────────────────────────────────────
+        // ─── Relations : Tex (= rendu LaTeX pour reclassement tokenizer) ──
 
         [Fact]
-        public void Fr_relations_have_tiers()
+        public void Fr_relations_expose_tex()
         {
             var v = LocaleVocabulary.LoadEmbedded("fr");
-            Assert.Equal(PrecedenceTier.Addsub, v.Relations["+"].Tier);
-            Assert.Equal(PrecedenceTier.Muldiv, v.Relations["/"].Tier);
-            Assert.Equal(PrecedenceTier.Comp,   v.Relations["="].Tier);
-            Assert.Equal(PrecedenceTier.Rel,    v.Relations["in"].Tier);
-            Assert.Equal(PrecedenceTier.Setop,  v.Relations["∪"].Tier);
-            Assert.Equal(PrecedenceTier.Implies, v.Relations["=>"].Tier);
-            Assert.Equal(PrecedenceTier.Iff,    v.Relations["<=>"].Tier);
-        }
-
-        [Fact]
-        public void Fr_relation_congru_has_tail_mod()
-        {
-            var v = LocaleVocabulary.LoadEmbedded("fr");
-            Assert.Equal("mod", v.Relations["congru"].Tail);
+            Assert.Equal("+", v.Relations["+"].Tex);
+            Assert.Equal(@"\in", v.Relations["in"].Tex);
+            Assert.Equal(@"\cup", v.Relations["∪"].Tex);
+            Assert.Equal(@"\iff", v.Relations["<=>"].Tex);
             Assert.Equal(@"\equiv", v.Relations["congru"].Tex);
         }
 
@@ -116,17 +106,9 @@ namespace MathCursor.Engine.Tests.Vocabulary
             Assert.Contains(";", v.RowSep);
         }
 
-        // ─── Précédence ordering ──────────────────────────────────────
-
-        [Fact]
-        public void Precedence_tier_ordering_funcpow_strongest()
-        {
-            // Plus petit (int) = plus fort.
-            Assert.True((int)PrecedenceTier.Funcpow < (int)PrecedenceTier.Muldiv);
-            Assert.True((int)PrecedenceTier.Muldiv < (int)PrecedenceTier.Addsub);
-            Assert.True((int)PrecedenceTier.Addsub < (int)PrecedenceTier.Comp);
-            Assert.True((int)PrecedenceTier.Comp < (int)PrecedenceTier.Implies);
-            Assert.True((int)PrecedenceTier.Implies < (int)PrecedenceTier.Iff);
-        }
+        // Le test Precedence_tier_ordering a été retiré (2026-05-29) :
+        // la machinerie PrecedenceTier appartenait au moteur legacy
+        // (StackParser/PrecedenceClimber). Le moteur V2 compose par règles
+        // YAML, sans climbing de tiers.
     }
 }
