@@ -22,6 +22,7 @@ rules:
     pattern: "sqrt {body}"
     produces: expr
     emit:    "\\sqrt{$body}"
+    allow_partial: true
     tests:
       - "sqrt 2 => \\sqrt{2}"
       - "sqrt x => \\sqrt{x}"
@@ -34,6 +35,7 @@ rules:
     pattern: "sqrt {n:number} {body}"
     produces: expr
     emit:    "\\sqrt[$n]{$body}"
+    allow_partial: true
     tests:
       - "sqrt 3 8 => \\sqrt[3]{8}"
       - "sqrt 4 16 => \\sqrt[4]{16}"

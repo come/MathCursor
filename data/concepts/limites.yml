@@ -12,6 +12,7 @@ rules:
     pattern: "lim <filler>? {var:letter} <to>? {a} {body}"
     produces: expr
     emit:    "\\lim_{$var \\to $a} $body"
+    allow_partial: true
     tests:
       - "lim x->0 f(x) => \\lim_{x \\to 0} f(x)"
       - "lim x 0 f(x) => \\lim_{x \\to 0} f(x)"

@@ -180,10 +180,18 @@ namespace MathCursor.Engine.Rewriting
                 switch (elem)
                 {
                     case Literal lit:
-                        if (i < items.Count && items[i].SourceText == lit.Text)
+                        // Un literal (mot-clé/opérateur/délim) ne matche qu'un
+                        // TOKEN BRUT, jamais un Item déjà résolu : sinon un
+                        // anchor partiel (SourceText="sum") se re-matcherait
+                        // lui-même → récursion. Cf. ADR partial-match-anchors.
+                        if (i < items.Count && items[i] is TokenItem && items[i].SourceText == lit.Text)
                         { i++; anyLiteralMatched = true; }
                         else if (lit.Optional) { }
-                        else if (rule.AllowPartial) anySlotMissing = true;
+                        // Partial autorisé SEULEMENT après que l'anchor (mot-clé)
+                        // a matché. Sinon une règle tentée là où son mot-clé est
+                        // absent capturerait quand même ses chunks → resolveChunk
+                        // sur le fragment entier → récursion. Cf. ADR partial-match.
+                        else if (rule.AllowPartial && anyLiteralMatched) anySlotMissing = true;
                         else return null;
                         break;
 
@@ -191,7 +199,11 @@ namespace MathCursor.Engine.Rewriting
                         if (i < items.Count && Contains(any.Alternatives, items[i].SourceText))
                         { i++; anyLiteralMatched = true; }
                         else if (any.Optional) { }
-                        else if (rule.AllowPartial) anySlotMissing = true;
+                        // Partial autorisé SEULEMENT après que l'anchor (mot-clé)
+                        // a matché. Sinon une règle tentée là où son mot-clé est
+                        // absent capturerait quand même ses chunks → resolveChunk
+                        // sur le fragment entier → récursion. Cf. ADR partial-match.
+                        else if (rule.AllowPartial && anyLiteralMatched) anySlotMissing = true;
                         else return null;
                         break;
 
@@ -217,7 +229,11 @@ namespace MathCursor.Engine.Rewriting
                             else if (rule.AllowPartial) anySlotMissing = true;
                             else return null;
                         }
-                        else if (rule.AllowPartial) anySlotMissing = true;
+                        // Partial autorisé SEULEMENT après que l'anchor (mot-clé)
+                        // a matché. Sinon une règle tentée là où son mot-clé est
+                        // absent capturerait quand même ses chunks → resolveChunk
+                        // sur le fragment entier → récursion. Cf. ADR partial-match.
+                        else if (rule.AllowPartial && anyLiteralMatched) anySlotMissing = true;
                         else return null;
                         SkipArgSeparator(items, ref i, parenMode);
                         break;
@@ -226,7 +242,11 @@ namespace MathCursor.Engine.Rewriting
                     case Slot slot: // atomique (letter/number/function/…)
                         if (i < items.Count && Categories.Subsumes(slot.Category, items[i].Category))
                         { slots[slot.Name] = items[i]; i++; }
-                        else if (rule.AllowPartial) anySlotMissing = true;
+                        // Partial autorisé SEULEMENT après que l'anchor (mot-clé)
+                        // a matché. Sinon une règle tentée là où son mot-clé est
+                        // absent capturerait quand même ses chunks → resolveChunk
+                        // sur le fragment entier → récursion. Cf. ADR partial-match.
+                        else if (rule.AllowPartial && anyLiteralMatched) anySlotMissing = true;
                         else return null;
                         SkipArgSeparator(items, ref i, parenMode);
                         break;

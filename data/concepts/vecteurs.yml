@@ -7,6 +7,7 @@ rules:
     pattern: "vec {body}"
     produces: vector
     emit:    "\\vec{$body}"
+    allow_partial: true
     tests:
       - "vec u => \\vec{u}"
       - "vec v => \\vec{v}"

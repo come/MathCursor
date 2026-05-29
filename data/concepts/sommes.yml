@@ -12,6 +12,7 @@ rules:
     pattern: "sum {var:letter} =? {from} {to} {body}"
     produces: expr
     emit:    "\\sum_{$var=$from}^{$to} $body"
+    allow_partial: true
     tests:
       - "sum k 1 n k => \\sum_{k=1}^{n} k"
       - "sum k=1 n k => \\sum_{k=1}^{n} k"
@@ -24,6 +25,7 @@ rules:
     pattern: "prod {var:letter} =? {from} {to} {body}"
     produces: expr
     emit:    "\\prod_{$var=$from}^{$to} $body"
+    allow_partial: true
     tests:
       - "prod k 1 n k => \\prod_{k=1}^{n} k"
       - "prod k 1 n+1 f(k) => \\prod_{k=1}^{n+1} f(k)"

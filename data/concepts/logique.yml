@@ -8,6 +8,7 @@ rules:
     pattern: "forall {var:letter} {set} {body}"
     produces: expr
     emit:    "\\forall $var \\in $set, $body"
+    allow_partial: true
     tests:
       - "forall x R P(x) => \\forall x \\in \\mathbb{R}, P(x)"
       - "forall n N n>0 => \\forall n \\in \\mathbb{N}, n>0"
@@ -24,6 +25,7 @@ rules:
     pattern: "exists {var:letter} {set} {body}"
     produces: expr
     emit:    "\\exists $var \\in $set, $body"
+    allow_partial: true
     tests:
       - "exists x R x>0 => \\exists x \\in \\mathbb{R}, x>0"
 
