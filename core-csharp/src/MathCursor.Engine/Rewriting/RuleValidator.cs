@@ -54,6 +54,7 @@ namespace MathCursor.Engine.Rewriting
                     case Slot s: names.Add(s.Name); break;
                     case RepeatGroup r: names.Add(r.Name); break;
                     case GridSlot g: names.Add(g.Name); break;
+                    case ListSlot l: names.Add(l.Name); break;
                 }
             }
             return names;

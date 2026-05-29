@@ -17,15 +17,19 @@ namespace MathCursor.Engine.Tests.Tokenization
         private static string Dump(System.Collections.Generic.IReadOnlyList<Token> tokens)
             => string.Join(" ", tokens.Select(t => t.ToString()));
 
-        // ─── Virgule décimale FR ──────────────────────────────────────
+        // ─── Virgule FR : toujours Sep (décimale recombinée par règle) ──
+        // Le tokenizer ne fusionne plus "3,14" : c'est la règle moteur
+        // prim-decimal qui recombine Number Sep Number en décimale. La
+        // virgule reste donc contextuelle (séparateur d'intervalle, etc.).
 
         [Fact]
-        public void Fr_3point14_is_single_number_token()
+        public void Fr_decimal_comma_is_three_tokens()
         {
             var t = FrTokenizer().Tokenize("3,14");
-            Assert.Single(t);
+            Assert.Equal(3, t.Count);
             Assert.Equal(TokenKind.Number, t[0].Kind);
-            Assert.Equal("3,14", t[0].Text);
+            Assert.Equal(TokenKind.Sep, t[1].Kind);
+            Assert.Equal(TokenKind.Number, t[2].Kind);
         }
 
         [Fact]

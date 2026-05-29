@@ -3,9 +3,11 @@
 # Cf. ADR 2026-05-22-Feat-engine-poc-isolation.
 
 classes:
-  to:     ['->', '→', 'td', 'tend vers']
-  filler: ['quand', 'lorsque']
-  dir:    ['+', '-', '⁺', '⁻']
+  to:       ['->', '→', 'td', 'tend vers']
+  filler:   ['quand', 'lorsque']
+  dir:      ['+', '-', '⁺', '⁻']
+  union_op: ['union', 'U', '∪']
+  inter_op: ['inter', 'inter', '∩']
 
 anchors:
   limite: lim

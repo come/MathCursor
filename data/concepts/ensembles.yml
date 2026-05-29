@@ -1,0 +1,43 @@
+# Ensembles — extension { … }, union, intersection, différence.
+# Les opérateurs acceptent {x:set} : par subsumption Set ⊃ Interval, la
+# MÊME règle gère ℝ, [0;1], {0;1} et leurs combinaisons.
+# R/N/Z/Q/C → \mathbb{X} via l'AnchorExpander (functions).
+
+concept: ensembles
+rules:
+
+  # Ensemble en extension : { … } → \{ … \}. Éléments séparés par ',' ou
+  # ';', joints par ';' (slot list, espaces jetés).
+  - id: set-braces
+    pattern:  "{ {l:list} }"
+    produces: set
+    emit:     "\\{$l\\}"
+    tests:
+      - "{0} => \\{0\\}"
+      - "{0 ; 1} => \\{0;1\\}"
+      - "{0 ; 1 ; 2} => \\{0;1;2\\}"
+
+  # Union (accepte ensembles ET intervalles via subsumption Set ⊃ Interval).
+  - id: set-union
+    pattern:  "{a:set} <union_op> {b:set}"
+    produces: set
+    emit:     "$a \\cup $b"
+    tests:
+      - "R union [0 ; 1] => \\mathbb{R} \\cup [0;1]"
+      - "[0 ; 1] U [2 ; 3] => [0;1] \\cup [2;3]"
+
+  # Intersection.
+  - id: set-inter
+    pattern:  "{a:set} <inter_op> {b:set}"
+    produces: set
+    emit:     "$a \\cap $b"
+    tests:
+      - "R inter [0 ; 1] => \\mathbb{R} \\cap [0;1]"
+
+  # Différence : R \ {0}.
+  - id: set-minus
+    pattern:  "{a:set} \\ {b:set}"
+    produces: set
+    emit:     "$a \\setminus $b"
+    tests:
+      - "R \\ {0} => \\mathbb{R} \\setminus \\{0\\}"

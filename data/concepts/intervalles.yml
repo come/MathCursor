@@ -1,0 +1,41 @@
+# Intervalles — bornes ouvertes/fermées. Le slot {l:list} découpe sur
+# ',' OU ';' (= [0,1[ ≡ [0;1[, notation FR), jette les espaces de bord,
+# et rend les bornes jointes par ';'. Produisent `interval` (⊂ set),
+# donc composables avec union/intersection.
+
+concept: intervalles
+rules:
+
+  - id: interval-closed
+    pattern:  "[ {l:list} ]"
+    produces: interval
+    emit:     "[$l]"
+    tests:
+      - "[0 ; 1] => [0;1]"
+      - "[0,1] => [0;1]"
+      - "[a ; b] => [a;b]"
+      - "[-1 ; 2n+1] => [-1;2n+1]"
+
+  - id: interval-open
+    pattern:  "] {l:list} ["
+    produces: interval
+    emit:     "]$l["
+    tests:
+      - "]0 ; 1[ => ]0;1["
+      - "]0,1[ => ]0;1["
+
+  - id: interval-half-open-left
+    pattern:  "] {l:list} ]"
+    produces: interval
+    emit:     "]$l]"
+    tests:
+      - "]0 ; 1] => ]0;1]"
+      - "]1;4] => ]1;4]"
+
+  - id: interval-half-open-right
+    pattern:  "[ {l:list} ["
+    produces: interval
+    emit:     "[$l["
+    tests:
+      - "[0 ; 1[ => [0;1["
+      - "[0,1[ => [0;1["

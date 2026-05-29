@@ -52,7 +52,10 @@ namespace MathCursor.Engine.Rewriting
                 firstElement = false;
 
                 char c = pattern[i];
-                if (c == '{')
+                // '{' ouvre un slot SEULEMENT s'il est suivi d'une lettre
+                // (= nom de slot). Sinon (`{ ` espace, etc.) c'est une accolade
+                // littérale (= délimiteur d'ensemble `{ … }`).
+                if (c == '{' && i + 1 < pattern.Length && char.IsLetter(pattern[i + 1]))
                 {
                     int end = pattern.IndexOf('}', i + 1);
                     if (end < 0) throw new FormatException(
@@ -76,12 +79,16 @@ namespace MathCursor.Engine.Rewriting
                 }
                 else
                 {
-                    // Literal : lit jusqu'au prochain whitespace, '{', ou
-                    // '<' suivi d'une lettre (= début de classe).
+                    // Literal : lit jusqu'au prochain whitespace, début de slot
+                    // ('{' suivi d'une lettre), ou début de classe ('<' suivi
+                    // d'une lettre). Un '{'/'}' nu reste dans le literal
+                    // (= accolade d'ensemble). On lit au moins 1 char.
                     int start = i;
+                    i++; // consomme au moins le 1er char (= cas '{' ou '}' nu)
                     while (i < pattern.Length
                            && !char.IsWhiteSpace(pattern[i])
-                           && pattern[i] != '{'
+                           && !(pattern[i] == '{' && i + 1 < pattern.Length
+                                && char.IsLetter(pattern[i + 1]))
                            && !(pattern[i] == '<' && i + 1 < pattern.Length
                                 && char.IsLetter(pattern[i + 1])))
                         i++;
@@ -102,6 +109,8 @@ namespace MathCursor.Engine.Rewriting
 
             if (type == "grid")
                 return new GridSlot(name);
+            if (type == "list")
+                return new ListSlot(name);
 
             return new Slot(name, Categories.Parse(type), glued);
         }

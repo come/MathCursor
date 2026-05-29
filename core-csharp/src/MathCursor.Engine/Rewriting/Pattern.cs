@@ -115,6 +115,34 @@ namespace MathCursor.Engine.Rewriting
         public override string ToString() => $"{{{Name}:{InnerCategory}}}+";
     }
 
+    /// <summary>Slot liste 1D : capture jusqu'au délimiteur fermant, découpe
+    /// sur <see cref="Separator"/> (niveau 0), résout chaque élément (= en
+    /// jetant les espaces de bord, comme le <see cref="GridSlot"/>), et joint
+    /// avec <see cref="OutputSeparator"/>. Pour intervalles <c>[0;1]</c> et
+    /// ensembles <c>{0;1}</c>. Même mécanique de split propre que le grid,
+    /// en une dimension.</summary>
+    public sealed class ListSlot : PatternElement
+    {
+        public string Name { get; }
+        /// <summary>Séparateurs d'entrée acceptés (= `,` ET `;` : `[0,1[` ≡
+        /// `[0;1[`). Le `,` est ici un séparateur de bornes, pas un décimal
+        /// (= la règle structurelle tourne avant la règle décimale).</summary>
+        public IReadOnlyList<string> Separators { get; }
+        /// <summary>Séparateur de sortie (= `;` canonique, évite la confusion
+        /// décimale en sortie).</summary>
+        public string OutputSeparator { get; }
+
+        public ListSlot(string name, IReadOnlyList<string>? separators = null,
+            string outputSeparator = ";")
+        {
+            Name = name ?? throw new ArgumentNullException(nameof(name));
+            Separators = separators ?? new[] { ",", ";" };
+            OutputSeparator = outputSeparator;
+        }
+
+        public override string ToString() => $"{{{Name}:list}}";
+    }
+
     /// <summary>Slot 2D (= matrice). Capture tout jusqu'au délimiteur
     /// fermant qui suit dans le pattern, découpe par <see cref="RowSeparator"/>
     /// (lignes) puis <see cref="CellSeparator"/> (cellules), résout chaque

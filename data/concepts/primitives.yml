@@ -9,6 +9,19 @@ concept: primitives
 rules:
 
   # ── Phase 0 : fusion token-level ──────────────────────────────
+  # Décimale FR : `0,5` (collé) → un Number. Hors d'un contexte liste
+  # (= intervalle/ensemble) où le `,` est séparateur. L'ordre de
+  # réécriture tranche : la règle structurelle (intervalle) split le `,`
+  # avant que cette règle ne tourne.
+  - id: prim-decimal
+    pattern:  "{a:number},{b:number}"
+    produces: number
+    emit:     "$a,$b"
+    priority: 20
+    tests:
+      - "3,14 => 3,14"
+      - "5+0,5 => 5+0,5"
+
   - id: prim-signed-infinity
     pattern:  "{s:symbol}\\infty"
     produces: number

@@ -197,19 +197,20 @@ namespace MathCursor.Engine.Rewriting
 
                     case Slot slot when IsComposite(slot.Category):
                     {
-                        // Si le prochain élément du pattern est un Literal,
-                        // ce slot capture GREEDY jusqu'à ce literal (balancé) :
-                        // ex. paren-group `( {inner} )` → inner prend tout
-                        // jusqu'à `)`. Sinon (slot suivi d'un slot) → 1 chunk
-                        // délimité par espace : ex. sum `{from} {to} {body}`.
+                        // Capture GREEDY jusqu'au literal SEULEMENT si ce
+                        // literal est un délimiteur fermant ()]}) : ex.
+                        // paren-group `( {inner} )` → inner prend tout jusqu'à
+                        // `)`. Pour un literal séparateur (`;`) ou un slot
+                        // suivant → 1 chunk délimité par espace : ainsi
+                        // `[ {a} ; {b} ]` capture a=1 chunk (= `[1 2 ; 3 4]`
+                        // ne matche PAS un intervalle, laisse la matrice).
                         var nextLit = NextLiteralText(elements, ei);
-                        int slotEnd = nextLit != null
-                            ? CaptureUntilLiteral(items, i, nextLit)
+                        int slotEnd = IsClosingDelim(nextLit)
+                            ? CaptureUntilLiteral(items, i, nextLit!)
                             : CaptureChunkEnd(items, i, parenMode);
                         if (slotEnd > i)
                         {
-                            var chunk = new List<Item>(slotEnd - i);
-                            for (int k = i; k < slotEnd; k++) chunk.Add(items[k]);
+                            var chunk = TrimSeps(items, i, slotEnd);
                             var resolved = resolveChunk(chunk);
                             if (Categories.Subsumes(slot.Category, resolved.Category))
                             { slots[slot.Name] = resolved; i = slotEnd; }
@@ -258,6 +259,34 @@ namespace MathCursor.Engine.Rewriting
                         break;
                     }
 
+                    case ListSlot list:
+                    {
+                        // Capture jusqu'au prochain literal du pattern (= le
+                        // crochet/accolade fermant de la règle, qui peut être
+                        // `]`, `[`, `}` selon l'intervalle), puis découpe sur
+                        // les séparateurs (,/;), résout chaque élément (espaces
+                        // de bord jetés), joint en sortie.
+                        // La liste s'arrête au 1er délimiteur de niveau 0
+                        // (= `]`, `[`, `}` ou `)` qui borne l'intervalle/
+                        // ensemble), PAS au literal précis de la règle : ainsi
+                        // `[0;1] U [2;3]` → la 1ère liste stoppe à `]`, et
+                        // seule interval-closed (`]`) matche — half-open (`[`)
+                        // échoue au lieu d'attraper le `[` du 2e intervalle.
+                        int ls = i;
+                        int le = CaptureUntilDelim(items, i);
+                        // Un élément de liste (= borne d'intervalle / élément
+                        // d'ensemble) est une VALEUR UNIQUE : pas d'espace
+                        // interne de niveau 0. Si un élément en a (= `1 2`),
+                        // c'est une structure 2D (matrice) → on rejette pour
+                        // laisser la règle grid gagner.
+                        if (HasMultiCellElement(items, ls, le, list)) return null;
+                        var listLatex = RenderList(items, ls, le, list, resolveChunk);
+                        slots[list.Name] = new RewriteItem(
+                            "list", Category.Set, "", listLatex, false);
+                        i = le;
+                        break;
+                    }
+
                     case RepeatGroup:
                         return null; // non implémenté
                 }
@@ -290,6 +319,59 @@ namespace MathCursor.Engine.Rewriting
                 i = j + 1;
                 while (i < items.Count && IsWsSep(items[i])) i++;
             }
+        }
+
+        /// <summary>True si un élément de la liste (= entre 2 séparateurs)
+        /// contient un espace de niveau 0 (= `1 2` = 2 cellules → matrice,
+        /// pas un intervalle/ensemble).</summary>
+        private static bool HasMultiCellElement(IReadOnlyList<Item> items, int start, int end, ListSlot list)
+        {
+            int depth = 0;
+            bool sawContent = false, sawSpaceAfterContent = false;
+            for (int k = start; k < end; k++)
+            {
+                var it = items[k];
+                if (it is TokenItem o && o.Token.Kind == Tokenization.TokenKind.OpenDelim) { depth++; sawContent = true; continue; }
+                if (it is TokenItem c && c.Token.Kind == Tokenization.TokenKind.CloseDelim) { depth--; continue; }
+                if (depth != 0) continue;
+                if (Contains(list.Separators, it.SourceText))
+                { sawContent = false; sawSpaceAfterContent = false; continue; } // nouvel élément
+                if (IsWsSep(it)) { if (sawContent) sawSpaceAfterContent = true; continue; }
+                // token de contenu
+                if (sawSpaceAfterContent) return true; // contenu, espace, contenu = multi-cellule
+                sawContent = true;
+            }
+            return false;
+        }
+
+        /// <summary>Rend une liste 1D : découpe items[start..end) sur les
+        /// séparateurs (niveau 0), trim chaque élément, résout, joint.
+        /// Même mécanique de split propre que le grid (= espaces jetés).</summary>
+        private static string RenderList(IReadOnlyList<Item> items, int start, int end,
+            ListSlot list, System.Func<List<Item>, Item> resolveChunk)
+        {
+            var pieces = new List<List<Item>>();
+            var current = new List<Item>();
+            int depth = 0;
+            for (int k = start; k < end; k++)
+            {
+                var it = items[k];
+                if (it is TokenItem o && o.Token.Kind == Tokenization.TokenKind.OpenDelim) depth++;
+                else if (it is TokenItem c && c.Token.Kind == Tokenization.TokenKind.CloseDelim) depth--;
+                if (depth == 0 && Contains(list.Separators, it.SourceText))
+                { pieces.Add(current); current = new List<Item>(); continue; }
+                current.Add(it);
+            }
+            pieces.Add(current);
+
+            var rendered = new List<string>(pieces.Count);
+            foreach (var p in pieces)
+            {
+                var trimmed = TrimSeps(p, 0, p.Count);
+                if (trimmed.Count == 0) continue;
+                rendered.Add(resolveChunk(trimmed).Latex);
+            }
+            return string.Join(list.OutputSeparator, rendered);
         }
 
         /// <summary>Rend une grille : découpe par séparateur de ligne
@@ -363,6 +445,47 @@ namespace MathCursor.Engine.Rewriting
             return result;
         }
 
+        private static bool IsClosingDelim(string? text)
+            => text == ")" || text == "]" || text == "}";
+
+        /// <summary>Fin (exclusive) de la liste : 1er crochet/accolade
+        /// (<c>[ ] { }</c>) de niveau 0 — la borne de l'intervalle/ensemble,
+        /// quel qu'il soit (= French half-open <c>[a;b[</c> n'est pas
+        /// bracket-balancé). Les parenthèses <c>( )</c> sont des groupes
+        /// internes (= <c>f(x)</c>) et incrémentent la profondeur : elles
+        /// n'arrêtent pas la liste tant qu'elles sont équilibrées.</summary>
+        private static int CaptureUntilDelim(IReadOnlyList<Item> items, int start)
+        {
+            int paren = 0;
+            int i = start;
+            while (i < items.Count)
+            {
+                if (items[i] is TokenItem t)
+                {
+                    var txt = t.Token.Text;
+                    if (txt == "(") paren++;
+                    else if (txt == ")") { if (paren == 0) break; paren--; }
+                    else if (paren == 0 &&
+                             (txt == "[" || txt == "]" || txt == "{" || txt == "}"))
+                        break;
+                }
+                i++;
+            }
+            return i;
+        }
+
+        /// <summary>Extrait items[start..end) en retirant les séparateurs
+        /// blancs de bord (= évite que `0 ` capture le space avant `;`).</summary>
+        private static List<Item> TrimSeps(IReadOnlyList<Item> items, int start, int end)
+        {
+            int a = start, b = end;
+            while (a < b && IsWsSep(items[a])) a++;
+            while (b > a && IsWsSep(items[b - 1])) b--;
+            var list = new List<Item>(b - a);
+            for (int k = a; k < b; k++) list.Add(items[k]);
+            return list;
+        }
+
         /// <summary>Texte du prochain Literal (non-optionnel) dans le pattern
         /// après l'index <paramref name="ei"/>, ou null si le prochain élément
         /// significatif n'est pas un Literal.</summary>
@@ -382,13 +505,13 @@ namespace MathCursor.Engine.Rewriting
             while (i < items.Count)
             {
                 var it = items[i];
+                // Stop d'abord au niveau 0 (= avant la logique de profondeur,
+                // pour pouvoir s'arrêter sur un OpenDelim comme `[` qui ferme
+                // un intervalle ouvert `]0;1[`).
+                if (depth == 0 && it.SourceText == stop) break;
                 if (it is TokenItem t && t.Token.Kind == Tokenization.TokenKind.OpenDelim) depth++;
-                else if (it is TokenItem t2 && t2.Token.Kind == Tokenization.TokenKind.CloseDelim)
-                {
-                    if (depth == 0 && it.SourceText == stop) break;
-                    if (depth > 0) depth--;
-                }
-                else if (depth == 0 && it.SourceText == stop) break;
+                else if (it is TokenItem t2 && t2.Token.Kind == Tokenization.TokenKind.CloseDelim
+                         && depth > 0) depth--;
                 i++;
             }
             return i;

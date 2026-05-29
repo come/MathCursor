@@ -109,26 +109,20 @@ namespace MathCursor.Engine.Tokenization
                     i += glueLen; continue;
                 }
 
-                // Nombre (incluant virgule décimale FR).
+                // Nombre (chiffres seuls). La virgule décimale FR n'est PLUS
+                // fusionnée ici : `,` est toujours un Sep, et la recombinaison
+                // `0,5` → décimal se fait par la règle YAML `decimal` (= le `,`
+                // est alors un séparateur dans `[0,1]`, un décimal dans `0,5`,
+                // selon le contexte de réécriture, sans hack tokenizer).
                 if (char.IsDigit(c))
                 {
                     int s = i;
                     while (i < source.Length && char.IsDigit(source[i])) i++;
-                    // Virgule décimale FR : ',' bordée de chiffres des deux côtés.
-                    if (i < source.Length
-                        && source[i].ToString() == _vocab.Decimal
-                        && i + 1 < source.Length
-                        && char.IsDigit(source[i + 1]))
-                    {
-                        i++;
-                        while (i < source.Length && char.IsDigit(source[i])) i++;
-                    }
                     tokens.Add(new Token(source.Substring(s, i - s), TokenKind.Number, s, i));
                     continue;
                 }
 
-                // Virgule isolée FR (= pas bordée chiffres) → séparateur (= colsep
-                // dans une grille délimitée, résolu au parse cf. brief §1.1).
+                // Virgule FR → toujours séparateur.
                 if (c.ToString() == _vocab.Decimal)
                 {
                     tokens.Add(new Token(c.ToString(), TokenKind.Sep, i, i + 1));
@@ -148,6 +142,12 @@ namespace MathCursor.Engine.Tokenization
                 if (IsWordStart(c))
                 {
                     int s = i;
+                    // Consomme le char de départ inconditionnellement (lettre,
+                    // `\`, `∀`, `∃`), PUIS les continuations. Sinon un word-start
+                    // non-lettre (= `\` de `\infty` ou nu, `∀`) ne s'auto-consomme
+                    // pas — `IsWordContinuation` est false dessus — d'où mot vide
+                    // et i figé → boucle infinie (`R \ {0}`).
+                    i++;
                     while (i < source.Length && IsWordContinuation(source[i])) i++;
                     // P21 (2026-05-22) : absorber les primes collés (`'`, `''`,
                     // `"`, variants unicode) — c'est une notation Lagrange

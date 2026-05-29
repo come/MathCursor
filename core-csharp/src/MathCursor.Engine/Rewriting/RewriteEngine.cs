@@ -90,16 +90,23 @@ namespace MathCursor.Engine.Rewriting
             return new RewriteResult(sb.ToString(), items, alternatives, ruleId, trace);
         }
 
-        /// <summary>Résout une liste d'Items in-place. Anchors d'abord
-        /// (chunk-scoped récursif), puis primitives. Retourne le ruleId top.</summary>
+        /// <summary>Résout une liste d'Items in-place. Ordre :
+        /// <list type="number">
+        ///   <item><b>Structurels</b> (chunk-scoped) d'abord : ils claiment
+        ///     leurs régions (= un intervalle <c>[0,1]</c> split son `,`)
+        ///     AVANT que les fusions ne s'appliquent. Chaque chunk est résolu
+        ///     récursivement (= pipeline complet), donc les fusions et
+        ///     primitives internes au chunk fonctionnent.</item>
+        ///   <item><b>Fusions token-level</b> (phase 0 : décimale, ±∞, 2x,
+        ///     x²) sur le résiduel.</item>
+        ///   <item><b>Primitives binaires</b> (+, /, ^, =, …).</item>
+        /// </list>
+        /// Cet ordre rend le `,` contextuel sans hack tokenizer : séparateur
+        /// dans une liste structurelle, décimal sinon.</summary>
         private string ResolveItems(List<Item> items, List<RewriteMatch> alternatives, List<string> trace)
         {
             string ruleId = "";
 
-            // Phase 0 : fusions token-level (signed-infinity, 2x, x2).
-            RunPrimitivePhase(items, _phase0Rules, alternatives, trace, ref ruleId);
-
-            // Structurels (chunk-scoped, récursif), tant qu'il y en a.
             int safety = SafetyMax;
             while (safety-- > 0)
             {
@@ -108,7 +115,7 @@ namespace MathCursor.Engine.Rewriting
                 ApplyMatch(items, m, alternatives, trace, ref ruleId);
             }
 
-            // Primitives (single-item, fixed-point) sur le résiduel.
+            RunPrimitivePhase(items, _phase0Rules, alternatives, trace, ref ruleId);
             RunPrimitivePhase(items, _primitiveRules, alternatives, trace, ref ruleId);
             return ruleId;
         }
