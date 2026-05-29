@@ -1,0 +1,36 @@
+# Collisions — interprétations concurrentes d'une même saisie, remontées à
+# la popup via le tie-break (= règles de MÊME span, priorité décroissante :
+# la plus haute = top, les autres = alternatives proposées).
+#
+# Phase 1 (ADR 2026-05-29-Feat-collision-uppercase-seq) : séquences de 2-3
+# lettres MAJUSCULES (catégorie UpperSeq), ambiguës en géométrie lycée.
+#   AB → produit A·B (top) | vecteur AB⃗ | groupe (AB)
+
+concept: collisions
+rules:
+
+  # Top : produit implicite (re-émet la séquence telle quelle). Nécessaire
+  # pour que le produit soit le défaut ; sans lui le matcher élirait le
+  # vecteur comme top.
+  - id: coll-upper-product
+    pattern:  "{x:upperseq}"
+    produces: expr
+    emit:     "$x"
+    priority: 32
+    tests:
+      - "AB => AB"
+      - "ABC => ABC"
+
+  # Alternative : vecteur (notation géométrique AB⃗).
+  - id: coll-upper-vector
+    pattern:  "{x:upperseq}"
+    produces: vector
+    emit:     "\\vec{$x}"
+    priority: 31
+
+  # Alternative : groupe parenthésé.
+  - id: coll-upper-paren
+    pattern:  "{x:upperseq}"
+    produces: expr
+    emit:     "($x)"
+    priority: 30

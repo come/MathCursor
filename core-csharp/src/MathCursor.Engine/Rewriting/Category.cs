@@ -26,6 +26,10 @@ namespace MathCursor.Engine.Rewriting
         Sep,
         /// <summary>Identifiant multi-char non-fonction (= AB, frac brut).</summary>
         Var,
+        /// <summary>Séquence de 2-3 lettres MAJUSCULES (= AB, ABC) — ambiguë :
+        /// produit, vecteur ou groupe. Sous-catégorie de Var. Cf. ADR
+        /// 2026-05-29-Feat-collision-uppercase-seq.</summary>
+        UpperSeq,
 
         // ── Sémantiques (= produits par les règles) ──
         /// <summary>Expression composite — catégorie « valeur » la plus large.</summary>
@@ -72,6 +76,7 @@ namespace MathCursor.Engine.Rewriting
                     case Category.Letter:
                     case Category.Number:
                     case Category.Var:
+                    case Category.UpperSeq:
                     case Category.Interval:
                     case Category.Set:
                     case Category.Function:
@@ -85,6 +90,10 @@ namespace MathCursor.Engine.Rewriting
             }
 
             if (requested == Category.Set && actual == Category.Interval)
+                return true;
+
+            // Une séquence majuscule reste acceptée partout où un Var l'était.
+            if (requested == Category.Var && actual == Category.UpperSeq)
                 return true;
 
             return false;
@@ -104,6 +113,7 @@ namespace MathCursor.Engine.Rewriting
                 case "delim": return Category.Delim;
                 case "sep": return Category.Sep;
                 case "var": return Category.Var;
+                case "upperseq": return Category.UpperSeq;
                 case "expr": return Category.Expr;
                 case "interval": return Category.Interval;
                 case "set": return Category.Set;
@@ -113,8 +123,8 @@ namespace MathCursor.Engine.Rewriting
                 default:
                     throw new System.ArgumentException(
                         $"Catégorie inconnue : '{value}'. Attendu : any, letter, " +
-                        "number, symbol, delim, sep, var, expr, interval, set, " +
-                        "function, vector, matrix.");
+                        "number, symbol, delim, sep, var, upperseq, expr, interval, " +
+                        "set, function, vector, matrix.");
             }
         }
     }

@@ -20,6 +20,7 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-05-29
+- `[molle]` Feat — [Collision majuscules `AB` (produit / vecteur / paren) en V2](2026-05-29-Feat-collision-uppercase-seq.md) — Phase 1 du portage des collisions legacy. Nouvelle catégorie `UpperSeq` (token tout-majuscules 2-3 lettres) + 3 règles concurrentes même-span (produit top, vecteur, paren) dans `collisions.yml`. Remonte à la popup via le tie-break existant, zéro nouveau mécanisme. `ab`/`X` → aucune collision.
 - `[molle]` Test — [Harnais e2e headless moteur V2 → UnicodeMath (sans Word)](2026-05-29-Test-engine-adapter-e2e-headless.md) — Nouveau projet `MathCursor.Engine.Adapter.Tests` qui exerce `texte → EngineZoneSource → ResolvedZone.TopLatex → LatexToUnicodeMath` et asserte l'UnicodeMath final (= ce que Word reçoit). Attrape un éventuel écart de vocabulaire entre le LaTeX émis par V2 (intervalles/ensembles/matrices/setminus) et `LatexToUnicodeMath` AVANT d'ouvrir Word. ~15 cas.
 
 ### 2026-05-28

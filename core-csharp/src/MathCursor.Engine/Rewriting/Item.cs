@@ -80,9 +80,20 @@ namespace MathCursor.Engine.Rewriting
                     return Category.Set;
                 return text.IndexOf('{') < 0 ? Category.Function : Category.Var;
             }
-            return text.Length == 1 && char.IsLetter(text[0])
-                ? Category.Letter
-                : Category.Var;
+            if (text.Length == 1 && char.IsLetter(text[0]))
+                return Category.Letter;
+            // 2-3 lettres MAJUSCULES (= AB, ABC) : séquence ambiguë
+            // produit/vecteur/groupe. Cf. ADR collision-uppercase-seq.
+            if ((text.Length == 2 || text.Length == 3) && IsAllUpperLetters(text))
+                return Category.UpperSeq;
+            return Category.Var;
+        }
+
+        private static bool IsAllUpperLetters(string text)
+        {
+            foreach (var c in text)
+                if (!char.IsLetter(c) || !char.IsUpper(c)) return false;
+            return true;
         }
     }
 
