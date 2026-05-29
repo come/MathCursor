@@ -127,6 +127,116 @@ namespace MathCursor.Engine.Rewriting
             return new RewriteMatch(rule, start, i, slots, isPartial);
         }
 
+        /// <summary>
+        /// Match d'une règle ANCHOR (= scoping). Diffère de <see cref="TryMatch"/> :
+        /// les slots de catégorie composite (Expr/Set/Interval/Matrix) capturent
+        /// un <b>chunk délimité par les espaces</b> (= modèle de frappe
+        /// <c>sum k 0 n body</c>), récursivement résolu via
+        /// <paramref name="resolveChunk"/>. Les slots atomiques (Letter/Number/…)
+        /// prennent un seul token. Les literals/classes consomment un token.
+        ///
+        /// <para>Permet <c>1/sum k 0 n f(k)</c> (= sum capture ses chunks à
+        /// droite avant que <c>/</c> n'agisse) et <c>sum k=1 n k</c> (= <c>=?</c>
+        /// consomme le <c>=</c> avant rel-eq). Cf. ADR Phase 2.</para>
+        /// </summary>
+        public static RewriteMatch? TryMatchAnchor(RewriteRule rule, IReadOnlyList<Item> items,
+            int start, System.Func<List<Item>, Item> resolveChunk)
+        {
+            var slots = new Dictionary<string, Item>();
+            bool anyLiteralMatched = false;
+            bool anySlotMissing = false;
+            int i = start;
+
+            foreach (var elem in rule.Pattern.Elements)
+            {
+                bool glued = elem.Glued;
+                if (glued && i < items.Count && IsWsSep(items[i])) return null;
+                if (!glued) while (i < items.Count && IsWsSep(items[i])) i++;
+
+                switch (elem)
+                {
+                    case Literal lit:
+                        if (i < items.Count && items[i].SourceText == lit.Text)
+                        { i++; anyLiteralMatched = true; }
+                        else if (lit.Optional) { }
+                        else if (rule.AllowPartial) anySlotMissing = true;
+                        else return null;
+                        break;
+
+                    case AnyLiteral any:
+                        if (i < items.Count && Contains(any.Alternatives, items[i].SourceText))
+                        { i++; anyLiteralMatched = true; }
+                        else if (any.Optional) { }
+                        else if (rule.AllowPartial) anySlotMissing = true;
+                        else return null;
+                        break;
+
+                    case Slot slot when IsComposite(slot.Category):
+                    {
+                        // Capture un chunk (= run non-sep, délimiteurs équilibrés).
+                        int chunkEnd = CaptureChunkEnd(items, i);
+                        if (chunkEnd > i)
+                        {
+                            var chunk = new List<Item>(chunkEnd - i);
+                            for (int k = i; k < chunkEnd; k++) chunk.Add(items[k]);
+                            var resolved = resolveChunk(chunk);
+                            if (Categories.Subsumes(slot.Category, resolved.Category))
+                            { slots[slot.Name] = resolved; i = chunkEnd; }
+                            else if (rule.AllowPartial) anySlotMissing = true;
+                            else return null;
+                        }
+                        else if (rule.AllowPartial) anySlotMissing = true;
+                        else return null;
+                        break;
+                    }
+
+                    case Slot slot: // atomique (letter/number/function/…)
+                        if (i < items.Count && Categories.Subsumes(slot.Category, items[i].Category))
+                        { slots[slot.Name] = items[i]; i++; }
+                        else if (rule.AllowPartial) anySlotMissing = true;
+                        else return null;
+                        break;
+
+                    case GridSlot:
+                    case RepeatGroup:
+                        return null; // Phase 5
+                }
+            }
+
+            bool isPartial = anySlotMissing;
+            if (isPartial && !anyLiteralMatched) return null;
+            return new RewriteMatch(rule, start, i, slots, isPartial);
+        }
+
+        /// <summary>Fin (exclusive) du chunk démarrant à <paramref name="start"/> :
+        /// run de tokens non-séparateurs, en respectant l'équilibre des
+        /// délimiteurs (= <c>f(k)</c>, <c>(x+1)</c> = un seul chunk). S'arrête
+        /// au 1er séparateur de niveau 0.</summary>
+        private static int CaptureChunkEnd(IReadOnlyList<Item> items, int start)
+        {
+            int depth = 0;
+            int i = start;
+            while (i < items.Count)
+            {
+                var it = items[i];
+                if (it is TokenItem t && t.Token.Kind == Tokenization.TokenKind.OpenDelim) depth++;
+                else if (it is TokenItem t2 && t2.Token.Kind == Tokenization.TokenKind.CloseDelim)
+                {
+                    if (depth == 0) break; // ) fermant un scope parent
+                    depth--;
+                }
+                else if (depth == 0 && IsWsSep(it)) break; // sep top-level = fin de chunk
+                i++;
+            }
+            return i;
+        }
+
+        /// <summary>Catégories qui capturent un chunk (= valeurs composites)
+        /// vs atomiques (= 1 token).</summary>
+        private static bool IsComposite(Category c)
+            => c == Category.Expr || c == Category.Set
+            || c == Category.Interval || c == Category.Matrix;
+
         /// <summary>Applique le template emit : <c>$name</c> → Latex du slot,
         /// slot manquant → <c>\square</c>.</summary>
         public static string ApplyTemplate(string template, IReadOnlyDictionary<string, Item> slots)

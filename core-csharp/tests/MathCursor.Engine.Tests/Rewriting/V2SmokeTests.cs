@@ -21,6 +21,12 @@ namespace MathCursor.Engine.Tests.Rewriting
         [InlineData("sum k 1 n k", "\\sum_{k=1}^{n} k")]
         [InlineData("vec u", "\\vec{u}")]
         [InlineData("x2", "x^{2}")]
+        // ── Phase 2 : composition récursive profonde ──
+        [InlineData("1/sum k 0 n f(k)", "\\frac{1}{\\sum_{k=0}^{n} f(k)}")]
+        [InlineData("sum k=1 n k", "\\sum_{k=1}^{n} k")]
+        [InlineData("lim x 0 f + lim x 1 g", "\\lim_{x \\to 0} f+\\lim_{x \\to 1} g")]
+        [InlineData("frac (sum k 0 n k) 2", "\\frac{\\sum_{k=0}^{n} k}{2}")]
+        [InlineData("vec u + vec v", "\\vec{u}+\\vec{v}")]
         public void Resolves(string input, string expected)
         {
             var engine = MathEngine.BuildDefault("fr");

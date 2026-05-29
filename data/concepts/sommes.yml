@@ -14,9 +14,7 @@ rules:
     emit:    "\\sum_{$var=$from}^{$to} $body"
     tests:
       - "sum k 1 n k => \\sum_{k=1}^{n} k"
-      # GAP Phase 1 : "sum k=1 n k" — rel-eq (phase 1) capture `k=1` avant
-      # que sum (phase 2) utilise son `=?`. Résolu par le scan-keywords
-      # (Phase 2 ADR) qui scope les args de sum avant les binaires.
+      - "sum k=1 n k => \\sum_{k=1}^{n} k"
       - "sum k 1 n (1/k) => \\sum_{k=1}^{n} \\frac{1}{k}"
       - "sum i 0 N (a_i) => \\sum_{i=0}^{\\mathbb{N}} a_i"
       - "sum k 1 n+1 f(k) => \\sum_{k=1}^{n+1} f(k)"
