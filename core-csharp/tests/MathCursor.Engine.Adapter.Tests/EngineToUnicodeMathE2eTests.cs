@@ -56,7 +56,9 @@ namespace MathCursor.Engine.Adapter.Tests
         [InlineData("int x 0 1 x^2", "∫_0^1 x^2   dx")]
         [InlineData("int t 0 +oo f(t)", "∫_0^(+∞) f(t)   dt")]
         // ─── Limites, vecteurs, décimales ───────────────────────────────
-        [InlineData("lim x->0 f(x)", "lim_(x → 0) f(x)")]
+        // ▒ (U+2592) = opérande n-aire : force Word à prendre toute
+        // l'expression comme opérande de lim (sinon il happe le 1er token).
+        [InlineData("lim x->0 f(x)", "lim_(x → 0)▒f(x)")]
         [InlineData("vec AB", "(AB)⃗")]
         [InlineData("3,14", "3,14")]
         [InlineData("5+0,5", "5+0,5")]
