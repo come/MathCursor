@@ -5,7 +5,7 @@ rules:
 
   # ∀ avec domaine d'appartenance + body : forall x R P(x) → ∀x ∈ ℝ, P(x)
   - id: forall-belongs
-    pattern: "forall {var:letter} {set} {body}"
+    pattern: "forall {var:letter} {set} {body:statement}"
     produces: expr
     emit:    "\\forall $var \\in $set, $body"
     allow_partial: true
@@ -22,7 +22,7 @@ rules:
       - "forall x R => \\forall x \\in \\mathbb{R}"
 
   - id: exists-belongs
-    pattern: "exists {var:letter} {set} {body}"
+    pattern: "exists {var:letter} {set} {body:statement}"
     produces: expr
     emit:    "\\exists $var \\in $set, $body"
     allow_partial: true

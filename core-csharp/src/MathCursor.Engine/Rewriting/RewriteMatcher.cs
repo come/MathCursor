@@ -565,7 +565,10 @@ namespace MathCursor.Engine.Rewriting
         /// vs atomiques (= 1 token).</summary>
         private static bool IsComposite(Category c)
             => c == Category.Expr || c == Category.Set
-            || c == Category.Interval || c == Category.Matrix;
+            || c == Category.Interval || c == Category.Matrix
+            // Statement (= corps de quantificateur) capture un chunk (P(x),
+            // n>0…) résolu récursivement, comme Expr.
+            || c == Category.Statement;
 
         /// <summary>Applique le template emit : <c>$name</c> → Latex du slot,
         /// slot manquant → <c>\square</c>.</summary>

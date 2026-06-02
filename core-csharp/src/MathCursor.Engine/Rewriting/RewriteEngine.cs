@@ -35,13 +35,20 @@ namespace MathCursor.Engine.Rewriting
         private readonly IReadOnlyList<RewriteRule> _structuralRules;
         private readonly IReadOnlyList<RewriteRule> _phase0Rules;
         private readonly IReadOnlyList<RewriteRule> _primitiveRules;
+        private readonly IReadOnlyList<RewriteRule> _relationRules;
 
         public RewriteEngine(LocaleVocabulary vocab, IReadOnlyList<RewriteRule> rules)
         {
             _vocab = vocab;
             _tokenizer = new Tokenizer(vocab);
-            _structuralRules = rules.Where(IsStructural).ToList();
-            var others = rules.Where(r => !IsStructural(r)).ToList();
+            // Les relations (= proposition) sont extraites EN PREMIER : elles
+            // forment la phase la plus lâche, appliquée APRÈS l'arithmétique
+            // (cf. ADR 2026-06-02-Fix-relation-precedence). Un `=` ne doit
+            // jamais être absorbé par une fraction.
+            _relationRules = rules.Where(r => r.Produces == Category.Relation).ToList();
+            var rest = rules.Where(r => r.Produces != Category.Relation).ToList();
+            _structuralRules = rest.Where(IsStructural).ToList();
+            var others = rest.Where(r => !IsStructural(r)).ToList();
             _phase0Rules = others.Where(r => r.Priority < Phase0Max).ToList();
             _primitiveRules = others.Where(r => r.Priority >= Phase0Max).ToList();
         }
@@ -96,6 +103,9 @@ namespace MathCursor.Engine.Rewriting
             //    préservés.
             RunPrimitivePhase(items, _phase0Rules, trace, ref ruleId);
             RunPrimitivePhase(items, _primitiveRules, trace, ref ruleId);
+            // Relations (=, <, >, ⇔…) : phase la plus lâche, opérandes déjà
+            // résolus → `f(x) = <expr>` plutôt que `\frac{f(x)=1}{…}`.
+            RunPrimitivePhase(items, _relationRules, trace, ref ruleId);
 
             // 4) Lectures alternatives = fork des ordres de composition
             //    primitifs. Structures pures (List<Item>), AUCUN latex ici :
@@ -136,6 +146,7 @@ namespace MathCursor.Engine.Rewriting
             StructuralLoop(items, trace, ref ruleId);
             RunPrimitivePhase(items, _phase0Rules, trace, ref ruleId);
             RunPrimitivePhase(items, _primitiveRules, trace, ref ruleId);
+            RunPrimitivePhase(items, _relationRules, trace, ref ruleId);
         }
 
         /// <summary>Boucle structurelle (anchors) leftmost, point-fixe.</summary>
@@ -251,8 +262,11 @@ namespace MathCursor.Engine.Rewriting
             // respecte l'ordre des phases comme la résolution déterministe.
             var afterP0 = ForkPhase(new List<List<Item>> { baseItems }, _phase0Rules);
             var afterPrim = ForkPhase(afterP0, _primitiveRules);
-            var readings = new List<IReadOnlyList<Item>>(afterPrim.Count);
-            foreach (var r in afterPrim) readings.Add(r);
+            // Relations en dernier (= plus lâche) : appliquées sur chaque
+            // lecture arithmétique, jamais avant.
+            var afterRel = ForkPhase(afterPrim, _relationRules);
+            var readings = new List<IReadOnlyList<Item>>(afterRel.Count);
+            foreach (var r in afterRel) readings.Add(r);
             return readings;
         }
 

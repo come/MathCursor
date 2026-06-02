@@ -44,6 +44,14 @@ namespace MathCursor.Engine.Rewriting
         Vector,
         /// <summary>Matrice / structure 2D (= \begin{pmatrix}…).</summary>
         Matrix,
+        /// <summary>Relation / proposition (= a=b, n&gt;0, a⇔b). Niveau
+        /// sémantique AU-DESSUS de Expr : lie le plus lâche, et n'est PAS un
+        /// opérande arithmétique (une fraction ne peut pas l'absorber). Cf.
+        /// ADR 2026-06-02-Fix-relation-precedence.</summary>
+        Relation,
+        /// <summary>Énoncé = Expr ∪ Relation. Type des corps de quantificateur
+        /// (`forall x R P(x)` = expr, `forall n N n&gt;0` = relation).</summary>
+        Statement,
     }
 
     public static class Categories
@@ -96,6 +104,14 @@ namespace MathCursor.Engine.Rewriting
             if (requested == Category.Var && actual == Category.UpperSeq)
                 return true;
 
+            // Statement = Expr ∪ Relation : accepte une relation, un énoncé, ou
+            // toute valeur (= ce qu'Expr accepte). Expr, lui, n'accepte PAS une
+            // Relation → une fraction ne peut pas absorber `a=b`.
+            if (requested == Category.Statement)
+                return actual == Category.Relation
+                    || actual == Category.Statement
+                    || Subsumes(Category.Expr, actual);
+
             return false;
         }
 
@@ -120,11 +136,13 @@ namespace MathCursor.Engine.Rewriting
                 case "function": return Category.Function;
                 case "vector": return Category.Vector;
                 case "matrix": return Category.Matrix;
+                case "relation": return Category.Relation;
+                case "statement": return Category.Statement;
                 default:
                     throw new System.ArgumentException(
                         $"Catégorie inconnue : '{value}'. Attendu : any, letter, " +
                         "number, symbol, delim, sep, var, upperseq, expr, interval, " +
-                        "set, function, vector, matrix.");
+                        "set, function, vector, matrix, relation, statement.");
             }
         }
     }
