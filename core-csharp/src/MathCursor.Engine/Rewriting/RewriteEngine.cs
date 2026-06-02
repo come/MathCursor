@@ -80,14 +80,39 @@ namespace MathCursor.Engine.Rewriting
             var items = new List<Item>(tokens.Count);
             foreach (var t in tokens) items.Add(new TokenItem(t));
 
-            var alternatives = new List<RewriteMatch>();
             var trace = new List<string>();
-            string ruleId = ResolveItems(items, alternatives, trace);
+            string ruleId = "";
 
+            // 1) Phase structurelle (anchors) : mono-chaîne (chunk-scoped).
+            StructuralLoop(items, trace, ref ruleId);
+
+            // 2) Snapshot post-structurel : base du fork pour les lectures
+            //    alternatives (Principe 5). Les Items sont immuables, un
+            //    nouveau conteneur suffit.
+            var baseForFork = new List<Item>(items);
+
+            // 3) Meilleure lecture = phases primitives DÉTERMINISTES
+            //    (leftmost-longest) — identique à l'historique → tops golden
+            //    préservés.
+            RunPrimitivePhase(items, _phase0Rules, trace, ref ruleId);
+            RunPrimitivePhase(items, _primitiveRules, trace, ref ruleId);
+
+            // 4) Lectures alternatives = fork des ordres de composition
+            //    primitifs. Structures pures (List<Item>), AUCUN latex ici :
+            //    la sérialisation + dédup se font en dernière étape (adapter).
+            var alternatives = ForkReadings(baseForFork);
+
+            return new RewriteResult(Serialize(items), items, alternatives, ruleId, trace);
+        }
+
+        /// <summary>Sérialise une lecture en LaTeX (= concat des Items).
+        /// Utilisé pour le TopLatex (réponse finale) ; les alternatives, elles,
+        /// restent structurelles jusqu'à l'adapter.</summary>
+        private static string Serialize(IReadOnlyList<Item> items)
+        {
             var sb = new StringBuilder();
             foreach (var item in items) sb.Append(item.Latex);
-
-            return new RewriteResult(sb.ToString(), items, alternatives, ruleId, trace);
+            return sb.ToString();
         }
 
         /// <summary>Résout une liste d'Items in-place. Ordre :
@@ -103,21 +128,26 @@ namespace MathCursor.Engine.Rewriting
         /// </list>
         /// Cet ordre rend le `,` contextuel sans hack tokenizer : séparateur
         /// dans une liste structurelle, décimal sinon.</summary>
-        private string ResolveItems(List<Item> items, List<RewriteMatch> alternatives, List<string> trace)
+        /// <summary>Résolution mono-chaîne in-place (structurel + primitives
+        /// déterministes). Utilisée pour les chunks (args d'anchor) : pas de
+        /// fork à ce niveau (cf. ADR périmètre Principe 5).</summary>
+        private void ResolveItems(List<Item> items, List<string> trace, ref string ruleId)
         {
-            string ruleId = "";
+            StructuralLoop(items, trace, ref ruleId);
+            RunPrimitivePhase(items, _phase0Rules, trace, ref ruleId);
+            RunPrimitivePhase(items, _primitiveRules, trace, ref ruleId);
+        }
 
+        /// <summary>Boucle structurelle (anchors) leftmost, point-fixe.</summary>
+        private void StructuralLoop(List<Item> items, List<string> trace, ref string ruleId)
+        {
             int safety = SafetyMax;
             while (safety-- > 0)
             {
                 var m = FindStructuralMatch(items);
                 if (m == null) break;
-                ApplyMatch(items, m, alternatives, trace, ref ruleId);
+                ApplyMatch(items, m, trace, ref ruleId);
             }
-
-            RunPrimitivePhase(items, _phase0Rules, alternatives, trace, ref ruleId);
-            RunPrimitivePhase(items, _primitiveRules, alternatives, trace, ref ruleId);
-            return ruleId;
         }
 
         /// <summary>Cherche le meilleur match structurel : leftmost-start,
@@ -154,9 +184,9 @@ namespace MathCursor.Engine.Rewriting
         /// Si la résolution laisse plusieurs Items, les concatène en un Expr.</summary>
         private Item ResolveChunk(List<Item> chunk)
         {
-            var alts = new List<RewriteMatch>();
             var tr = new List<string>();
-            ResolveItems(chunk, alts, tr);
+            string rid = "";
+            ResolveItems(chunk, tr, ref rid);
             if (chunk.Count == 1) return chunk[0];
             var sb = new StringBuilder();
             var src = new StringBuilder();
@@ -164,8 +194,8 @@ namespace MathCursor.Engine.Rewriting
             return new RewriteItem("chunk", Category.Expr, src.ToString(), sb.ToString(), false);
         }
 
-        private void ApplyMatch(List<Item> items, RewriteMatch m,
-            List<RewriteMatch> alternatives, List<string> trace, ref string ruleId)
+        private static void ApplyMatch(List<Item> items, RewriteMatch m,
+            List<string> trace, ref string ruleId)
         {
             var latex = RewriteMatcher.ApplyTemplate(m.Rule.EmitTemplate, m.Slots);
             var src = ConcatSource(items, m.Start, m.End);
@@ -176,24 +206,18 @@ namespace MathCursor.Engine.Rewriting
             ruleId = m.Rule.Id;
         }
 
-        /// <summary>Fixed-point leftmost-longest des règles single-item.</summary>
+        /// <summary>Fixed-point leftmost-longest des règles single-item
+        /// (DÉTERMINISTE = lecture « best »). Les lectures concurrentes ne sont
+        /// PAS enregistrées ici : c'est le fork (<see cref="ForkReadings"/>) qui
+        /// les produit (Principe 5).</summary>
         private static void RunPrimitivePhase(List<Item> items, IReadOnlyList<RewriteRule> rules,
-            List<RewriteMatch> alternatives, List<string> trace, ref string ruleId)
+            List<string> trace, ref string ruleId)
         {
             if (rules.Count == 0) return;
             int safety = SafetyMax;
             while (safety-- > 0)
             {
-                var matches = new List<RewriteMatch>();
-                for (int p = 0; p < items.Count; p++)
-                {
-                    if (items[p].Category == Category.Sep) continue;
-                    foreach (var rule in rules)
-                    {
-                        var m = RewriteMatcher.TryMatch(rule, items, p);
-                        if (m != null && m.Span > 0) matches.Add(m);
-                    }
-                }
+                var matches = CollectMatches(items, rules);
                 if (matches.Count == 0) break;
 
                 matches.Sort((a, b) =>
@@ -208,18 +232,76 @@ namespace MathCursor.Engine.Rewriting
                 });
 
                 var best = matches[0];
-                for (int k = 1; k < matches.Count; k++)
-                    if (matches[k].Start == best.Start && matches[k].Span == best.Span)
-                        alternatives.Add(matches[k]);
-
-                var latex = RewriteMatcher.ApplyTemplate(best.Rule.EmitTemplate, best.Slots);
-                var src = ConcatSource(items, best.Start, best.End);
-                var produced = new RewriteItem(best.Rule.Id, best.Rule.Produces, src, latex, best.IsPartial);
-                items.RemoveRange(best.Start, best.End - best.Start);
-                items.Insert(best.Start, produced);
-                trace.Add($"{best.Rule.Id}@{best.Start} → {latex}");
-                ruleId = best.Rule.Id;
+                ApplyMatch(items, best, trace, ref ruleId);
             }
+        }
+
+        // ─── Fork multi-chaînes (Principe 5) ──────────────────────────────
+        // Explore les ORDRES d'application des règles primitives. Chaque
+        // ambiguïté (plusieurs matchs disponibles) fork un état par candidat.
+        // Les lectures terminales (= plus aucun match) sont des structures
+        // d'Items — jamais sérialisées ici. La dédup/sérialisation latex se
+        // fait en dernière étape (adapter). Borné par ForkMaxStates.
+
+        private const int ForkMaxStates = 2000;
+
+        private List<IReadOnlyList<Item>> ForkReadings(List<Item> baseItems)
+        {
+            // Phase 0 (fusions) d'abord, puis primitives sur chaque lecture :
+            // respecte l'ordre des phases comme la résolution déterministe.
+            var afterP0 = ForkPhase(new List<List<Item>> { baseItems }, _phase0Rules);
+            var afterPrim = ForkPhase(afterP0, _primitiveRules);
+            var readings = new List<IReadOnlyList<Item>>(afterPrim.Count);
+            foreach (var r in afterPrim) readings.Add(r);
+            return readings;
+        }
+
+        private static List<List<Item>> ForkPhase(List<List<Item>> states, IReadOnlyList<RewriteRule> rules)
+        {
+            if (rules.Count == 0) return states;
+            var terminals = new List<List<Item>>();
+            var stack = new Stack<List<Item>>();
+            foreach (var s in states) stack.Push(s);
+            int budget = ForkMaxStates;
+            while (stack.Count > 0 && budget-- > 0)
+            {
+                var state = stack.Pop();
+                var matches = CollectMatches(state, rules);
+                if (matches.Count == 0) { terminals.Add(state); continue; }
+                foreach (var m in matches)
+                {
+                    var next = new List<Item>(state);
+                    ApplyMatchInPlace(next, m);
+                    stack.Push(next);
+                }
+            }
+            // Budget épuisé : on retient les états restants tels quels.
+            while (stack.Count > 0) terminals.Add(stack.Pop());
+            return terminals;
+        }
+
+        private static List<RewriteMatch> CollectMatches(List<Item> items, IReadOnlyList<RewriteRule> rules)
+        {
+            var matches = new List<RewriteMatch>();
+            for (int p = 0; p < items.Count; p++)
+            {
+                if (items[p].Category == Category.Sep) continue;
+                foreach (var rule in rules)
+                {
+                    var m = RewriteMatcher.TryMatch(rule, items, p);
+                    if (m != null && m.Span > 0) matches.Add(m);
+                }
+            }
+            return matches;
+        }
+
+        private static void ApplyMatchInPlace(List<Item> items, RewriteMatch m)
+        {
+            var latex = RewriteMatcher.ApplyTemplate(m.Rule.EmitTemplate, m.Slots);
+            var src = ConcatSource(items, m.Start, m.End);
+            var produced = new RewriteItem(m.Rule.Id, m.Rule.Produces, src, latex, m.IsPartial);
+            items.RemoveRange(m.Start, m.End - m.Start);
+            items.Insert(m.Start, produced);
         }
 
         private static string ConcatSource(IReadOnlyList<Item> items, int start, int endExcl)

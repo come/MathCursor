@@ -20,6 +20,7 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-05-30
+- `[forte]` Feat — [Principe 5 : multi-chains (collisions par fork d'ordres de composition)](2026-05-30-Feat-beam-search-principe-5.md) — Le Principe 5 (beam search) n'était pas implémenté : moteur mono-chaîne glouton, collisions limitées au tie-break même-span. Ajout d'un fork borné qui explore les ordres de composition primitifs → lectures alternatives structurelles. `1/x+1` → collision `\frac{1}{x+1}` ; `x2`/`AB` préservés (mécanisme unifié). Best déterministe (tops golden intacts) ; latex sérialisé en dernière étape (adapter). 166 golden + 47 adapter verts.
 - `[forte]` Fix — [Partial-match des anchors (typing-flow à carrés) enfin réalisé](2026-05-30-Fix-partial-match-anchors.md) — Le Principe 4 de l'ADR moteur V2 était dormant : flag `allow_partial` absent de toutes les règles, ET le chemin partial des anchors récursait (stack overflow). 2 gardes moteur (un Literal ne matche qu'un token brut ; partial seulement après match de l'anchor) + activation `allow_partial` sur les anchors. `1/som` lève désormais `\frac{1}{\sum_{□=□}^{□}□}` et se remplit frappe par frappe. Flake concurrence (cache static Tokenizer) noté pour suivi.
 
 ### 2026-05-29

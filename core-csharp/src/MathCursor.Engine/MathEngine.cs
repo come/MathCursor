@@ -33,24 +33,38 @@ namespace MathCursor.Engine
         }
 
         /// <summary>Adapte un <see cref="RewriteResult"/> en
-        /// <see cref="EngineResult"/> (= contrat public stable pour l'adapter).</summary>
+        /// <see cref="EngineResult"/> (= contrat public stable pour l'adapter).
+        ///
+        /// <para><b>Dernière étape latex</b> : les lectures alternatives arrivent
+        /// du moteur comme des structures (<c>IReadOnlyList&lt;Item&gt;</c>). On
+        /// les sérialise ICI, on dédoublonne et on retire celle égale au top.
+        /// Le moteur, lui, ne manipule jamais de latex pour les collisions.</para></summary>
         private static EngineResult Adapt(RewriteResult r)
         {
+            var seen = new HashSet<string> { r.TopLatex };
             var collisions = new List<EngineCandidate>();
-            foreach (var alt in r.Alternatives)
+            foreach (var reading in r.Alternatives)
             {
-                var latex = RewriteMatcher.ApplyTemplate(alt.Rule.EmitTemplate, alt.Slots);
+                var latex = SerializeReading(reading);
+                if (string.IsNullOrEmpty(latex) || !seen.Add(latex)) continue;
                 collisions.Add(new EngineCandidate(
                     latex: latex,
-                    description: alt.Rule.Id,
-                    ruleId: alt.Rule.Id,
-                    score: alt.Span * 10));
+                    description: latex,
+                    ruleId: "",
+                    score: 0));
             }
             return new EngineResult(
                 topLatex: r.TopLatex,
                 isComplete: !r.TopLatex.Contains(@"\square"),
                 collisions: collisions,
                 ruleId: r.RuleId);
+        }
+
+        private static string SerializeReading(IReadOnlyList<Item> items)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var it in items) sb.Append(it.Latex);
+            return sb.ToString();
         }
 
         // ─── Factory ──────────────────────────────────────────────────

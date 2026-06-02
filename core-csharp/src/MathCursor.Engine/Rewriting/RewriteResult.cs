@@ -11,8 +11,11 @@ namespace MathCursor.Engine.Rewriting
         /// <summary>Items finaux restants (= 1 si tout absorbé).</summary>
         public IReadOnlyList<Item> Items { get; }
 
-        /// <summary>Lectures alternatives (= collisions à exposer en popup).</summary>
-        public IReadOnlyList<RewriteMatch> Alternatives { get; }
+        /// <summary>Lectures alternatives (= collisions). Chaque lecture est la
+        /// liste d'Items RÉSOLUE d'un ordre de composition concurrent (Principe 5).
+        /// Structures pures — la sérialisation LaTeX se fait en dernière étape
+        /// (adapter), jamais ici. Cf. ADR 2026-05-30-Feat-beam-search-principe-5.</summary>
+        public IReadOnlyList<IReadOnlyList<Item>> Alternatives { get; }
 
         /// <summary>Id de la règle « top » (= dernière appliquée englobante).</summary>
         public string RuleId { get; }
@@ -21,7 +24,7 @@ namespace MathCursor.Engine.Rewriting
         public IReadOnlyList<string> Trace { get; }
 
         public RewriteResult(string topLatex, IReadOnlyList<Item> items,
-            IReadOnlyList<RewriteMatch> alternatives, string ruleId,
+            IReadOnlyList<IReadOnlyList<Item>> alternatives, string ruleId,
             IReadOnlyList<string>? trace = null)
         {
             TopLatex = topLatex ?? string.Empty;
@@ -32,6 +35,6 @@ namespace MathCursor.Engine.Rewriting
         }
 
         public static RewriteResult Empty { get; } = new RewriteResult(
-            "", new List<Item>(), new List<RewriteMatch>(), "");
+            "", new List<Item>(), new List<IReadOnlyList<Item>>(), "");
     }
 }
