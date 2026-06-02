@@ -264,28 +264,6 @@ namespace MathCursor.Core
                             continue;
                         }
                     }
-                    else if (LimitOperators.Contains(cmd))
-                    {
-                        // lim/sup/inf/max/min : opérateurs n-aires rendus en
-                        // lettres. Sans marqueur, Word happe le SEUL token qui
-                        // suit comme opérande (lim_(x→0) 1/(x+1) →
-                        // \frac{lim 1}{x+1}). On émet l'opérateur, son indice
-                        // _{...}, puis le n-aryand U+2592 (▒) qui force Word à
-                        // prendre TOUTE l'expression suivante comme opérande.
-                        // Cf. UnicodeMath TN28 + ADR 2026-06-02-Fix-lim-naryand.
-                        sb.Append(cmd);
-                        int j = after;
-                        if (j + 1 < src.Length && src[j] == '_' && src[j + 1] == '{'
-                            && TryReadBracedArg(src, j + 1, out string sub, out int afterSub))
-                        {
-                            sb.Append('_').Append(EmitArg(ConvertArg(sub)));
-                            j = afterSub;
-                        }
-                        while (j < src.Length && src[j] == ' ') j++;
-                        if (j < src.Length) sb.Append('▒'); // U+2592, opérande n-aire
-                        i = j;
-                        continue;
-                    }
                     // Commande non dispatchée : on recopie telle quelle, les
                     // remplacements littéraux feront le travail (lettres
                     // grecques, ensembles, relations, fonctions trig…).
@@ -559,13 +537,6 @@ namespace MathCursor.Core
                 // \in* aient déjà été remplacés.
                 new KeyValuePair<string, string>("\\in", "∈"),
             };
-
-        // Opérateurs « limite » rendus en lettres (pas un glyphe n-aire comme
-        // ∑/∫) : nécessitent le n-aryand ▒ pour ne pas happer un seul token.
-        private static readonly HashSet<string> LimitOperators = new HashSet<string>
-        {
-            "lim", "limsup", "liminf", "sup", "inf", "max", "min",
-        };
 
         private static readonly Dictionary<string, string> SetLetterMap =
             new Dictionary<string, string>

@@ -27,9 +27,7 @@ namespace MathCursor.Core.Tests
         [InlineData("\\alpha + \\beta", "α + β")]
         [InlineData("\\lim_{x \\to 0}", "lim_(x → 0)")]
         // Single-char num (1) → nu, denom multi-char → parens. Cas mixte.
-        // ▒ (U+2592) = opérande n-aire après lim : évite que Word happe le 1er
-        // token (lim … 1/… → \frac{lim …}{…}). Cf. ADR 2026-06-02-Fix-lim-naryand.
-        [InlineData("\\lim_{x \\to 0^+} f(x) = \\frac{1}{(x+2)^2}", "lim_(x → 0^+)▒f(x) = 1/((x+2)^2)")]
+        [InlineData("\\lim_{x \\to 0^+} f(x) = \\frac{1}{(x+2)^2}", "lim_(x → 0^+) f(x) = 1/((x+2)^2)")]
         [InlineData("\\binom{n}{k}", "(n¦k)")]
         [InlineData("\\operatorname{tr}(A)", "tr(A)")]
         [InlineData("\\mathrm{mod}", "mod")]
