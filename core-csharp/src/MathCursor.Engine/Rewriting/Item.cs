@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using MathCursor.Engine.Tokenization;
 
 namespace MathCursor.Engine.Rewriting
@@ -28,6 +29,13 @@ namespace MathCursor.Engine.Rewriting
         /// manquants rendus en <c>\square</c>). Toujours false pour un
         /// TokenItem. Utilisé en typing flow + scoring.</summary>
         public virtual bool IsPartial => false;
+
+        /// <summary>Lectures ALTERNATIVES de ce même span source (= collisions).
+        /// Ex. un corps `f(x)/x+1` porte la variante `\frac{f(x)}{x+1}`. Propagé
+        /// à l'émission des règles → les collisions remontent récursivement à
+        /// toute profondeur. Vide par défaut. Cf. ADR
+        /// 2026-06-02-Feat-recursive-collisions-variants.</summary>
+        public virtual IReadOnlyList<Item> Variants { get; set; } = System.Array.Empty<Item>();
     }
 
     /// <summary>Primitive issue du Tokenizer, pas encore rewriten.</summary>

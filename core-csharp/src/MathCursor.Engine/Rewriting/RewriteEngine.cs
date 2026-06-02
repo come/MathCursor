@@ -108,9 +108,14 @@ namespace MathCursor.Engine.Rewriting
             RunPrimitivePhase(items, _relationRules, trace, ref ruleId);
 
             // 4) Lectures alternatives = fork des ordres de composition
-            //    primitifs. Structures pures (List<Item>), AUCUN latex ici :
-            //    la sérialisation + dédup se font en dernière étape (adapter).
-            var alternatives = ForkReadings(baseForFork);
+            //    primitifs PLUS dépliage des Variants portés par les Items
+            //    (collisions remontées récursivement des corps d'anchor).
+            //    Structures pures (List<Item>), AUCUN latex ici : la
+            //    sérialisation + dédup se font en dernière étape (adapter).
+            var alternatives = new List<IReadOnlyList<Item>>();
+            foreach (var reading in ForkReadings(baseForFork))
+                foreach (var expanded in ExpandVariants(reading))
+                    alternatives.Add(expanded);
 
             return new RewriteResult(Serialize(items), items, alternatives, ruleId, trace);
         }
@@ -191,30 +196,103 @@ namespace MathCursor.Engine.Rewriting
             return m.Rule.Priority > cur.Rule.Priority;
         }
 
-        /// <summary>Résout récursivement un chunk capturé → un seul Item.
-        /// Si la résolution laisse plusieurs Items, les concatène en un Expr.</summary>
+        /// <summary>Résout récursivement un chunk capturé → un seul Item, en y
+        /// ATTACHANT ses lectures alternatives (Variants). Le best est
+        /// déterministe ; les autres lectures (fork d'ordre + variants déjà
+        /// portés par les sous-Items) deviennent des Variants → les collisions
+        /// remontent récursivement à toute profondeur.</summary>
         private Item ResolveChunk(List<Item> chunk)
         {
             var tr = new List<string>();
             string rid = "";
-            ResolveItems(chunk, tr, ref rid);
-            if (chunk.Count == 1) return chunk[0];
+            // 1) Best déterministe (= comportement historique).
+            StructuralLoop(chunk, tr, ref rid);
+            var baseForFork = new List<Item>(chunk);
+            RunPrimitivePhase(chunk, _phase0Rules, tr, ref rid);
+            RunPrimitivePhase(chunk, _primitiveRules, tr, ref rid);
+            RunPrimitivePhase(chunk, _relationRules, tr, ref rid);
+            var best = Collapse(chunk);
+
+            // 2) Lectures alternatives du chunk → Variants du best.
+            var bestLatex = Serialize(chunk);
+            var seen = new HashSet<string> { bestLatex };
+            List<Item>? variants = null;
+            foreach (var reading in ForkReadings(baseForFork))
+                foreach (var expanded in ExpandVariants(reading))
+                {
+                    var latex = Serialize(expanded);
+                    if (!seen.Add(latex)) continue;
+                    (variants ??= new List<Item>()).Add(
+                        new RewriteItem("chunk-alt", best.Category, "", latex, false));
+                    if (variants.Count >= VariantCap) goto done;
+                }
+            done:
+            if (variants != null) best.Variants = variants;
+            return best;
+        }
+
+        /// <summary>Effondre une liste d'Items en un seul (Item unique tel quel,
+        /// sinon concaténation en Expr).</summary>
+        private static Item Collapse(List<Item> items)
+        {
+            if (items.Count == 1) return items[0];
             var sb = new StringBuilder();
             var src = new StringBuilder();
-            foreach (var it in chunk) { sb.Append(it.Latex); src.Append(it.SourceText); }
+            foreach (var it in items) { sb.Append(it.Latex); src.Append(it.SourceText); }
             return new RewriteItem("chunk", Category.Expr, src.ToString(), sb.ToString(), false);
         }
 
         private static void ApplyMatch(List<Item> items, RewriteMatch m,
             List<string> trace, ref string ruleId)
         {
-            var latex = RewriteMatcher.ApplyTemplate(m.Rule.EmitTemplate, m.Slots);
             var src = ConcatSource(items, m.Start, m.End);
-            var produced = new RewriteItem(m.Rule.Id, m.Rule.Produces, src, latex, m.IsPartial);
+            var produced = Produce(m, src);
             items.RemoveRange(m.Start, m.End - m.Start);
             items.Insert(m.Start, produced);
-            trace.Add($"{m.Rule.Id}@{m.Start} → {latex}");
+            trace.Add($"{m.Rule.Id}@{m.Start} → {produced.Latex}");
             ruleId = m.Rule.Id;
+        }
+
+        // ─── Production + propagation des variants (collisions récursives) ───
+        // Un slot dont l'Item porte des Variants (lectures alternatives) fait
+        // produire à la règle les sorties correspondantes, attachées comme
+        // Variants de l'Item produit. Récursif par construction : les variants
+        // remontent de n'importe quelle profondeur. Cf. ADR 2026-06-02-Feat-
+        // recursive-collisions-variants.
+        private const int VariantCap = 16;
+
+        private static RewriteItem Produce(RewriteMatch m, string src)
+        {
+            var latex = RewriteMatcher.ApplyTemplate(m.Rule.EmitTemplate, m.Slots);
+            var item = new RewriteItem(m.Rule.Id, m.Rule.Produces, src, latex, m.IsPartial);
+            var variants = SlotVariants(m, latex);
+            if (variants.Count > 0) item.Variants = variants;
+            return item;
+        }
+
+        /// <summary>Pour chaque slot porteur de variants, ré-émet en substituant
+        /// CE seul slot (vary-one-slot, borné). Suffit pour propager un point de
+        /// collision par niveau, récursivement.</summary>
+        private static IReadOnlyList<Item> SlotVariants(RewriteMatch m, string bestLatex)
+        {
+            List<Item>? result = null;
+            foreach (var kv in m.Slots)
+            {
+                var slotVariants = kv.Value.Variants;
+                if (slotVariants.Count == 0) continue;
+                foreach (var variant in slotVariants)
+                {
+                    var slots2 = new Dictionary<string, Item>();
+                    foreach (var p in m.Slots) slots2[p.Key] = p.Value;
+                    slots2[kv.Key] = variant;
+                    var vlatex = RewriteMatcher.ApplyTemplate(m.Rule.EmitTemplate, slots2);
+                    if (vlatex == bestLatex) continue;
+                    (result ??= new List<Item>()).Add(
+                        new RewriteItem(m.Rule.Id, m.Rule.Produces, "", vlatex, m.IsPartial));
+                    if (result.Count >= VariantCap) return result;
+                }
+            }
+            return result ?? (IReadOnlyList<Item>)System.Array.Empty<Item>();
         }
 
         /// <summary>Fixed-point leftmost-longest des règles single-item
@@ -311,11 +389,29 @@ namespace MathCursor.Engine.Rewriting
 
         private static void ApplyMatchInPlace(List<Item> items, RewriteMatch m)
         {
-            var latex = RewriteMatcher.ApplyTemplate(m.Rule.EmitTemplate, m.Slots);
-            var src = ConcatSource(items, m.Start, m.End);
-            var produced = new RewriteItem(m.Rule.Id, m.Rule.Produces, src, latex, m.IsPartial);
+            var produced = Produce(m, ConcatSource(items, m.Start, m.End));
             items.RemoveRange(m.Start, m.End - m.Start);
             items.Insert(m.Start, produced);
+        }
+
+        /// <summary>Déplie les Variants des Items d'une lecture (vary-un-item,
+        /// borné) → lectures alternatives. Sérialisation latex hors moteur.</summary>
+        private static List<List<Item>> ExpandVariants(IReadOnlyList<Item> reading)
+        {
+            var results = new List<List<Item>> { new List<Item>(reading) };
+            for (int i = 0; i < reading.Count; i++)
+            {
+                var variants = reading[i].Variants;
+                if (variants.Count == 0) continue;
+                foreach (var v in variants)
+                {
+                    var clone = new List<Item>(reading);
+                    clone[i] = v;
+                    results.Add(clone);
+                    if (results.Count > VariantCap) return results;
+                }
+            }
+            return results;
         }
 
         private static string ConcatSource(IReadOnlyList<Item> items, int start, int endExcl)
