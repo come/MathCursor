@@ -90,32 +90,8 @@ namespace MathCursor.Engine.Rewriting
             var trace = new List<string>();
             string ruleId = "";
 
-            // 1) Phase structurelle (anchors) : mono-chaîne (chunk-scoped).
-            StructuralLoop(items, trace, ref ruleId);
-
-            // 2) Snapshot post-structurel : base du fork pour les lectures
-            //    alternatives (Principe 5). Les Items sont immuables, un
-            //    nouveau conteneur suffit.
-            var baseForFork = new List<Item>(items);
-
-            // 3) Meilleure lecture = phases primitives DÉTERMINISTES
-            //    (leftmost-longest) — identique à l'historique → tops golden
-            //    préservés.
-            RunPrimitivePhase(items, _phase0Rules, trace, ref ruleId);
-            RunPrimitivePhase(items, _primitiveRules, trace, ref ruleId);
-            // Relations (=, <, >, ⇔…) : phase la plus lâche, opérandes déjà
-            // résolus → `f(x) = <expr>` plutôt que `\frac{f(x)=1}{…}`.
-            RunPrimitivePhase(items, _relationRules, trace, ref ruleId);
-
-            // 4) Lectures alternatives = fork des ordres de composition
-            //    primitifs PLUS dépliage des Variants portés par les Items
-            //    (collisions remontées récursivement des corps d'anchor).
-            //    Structures pures (List<Item>), AUCUN latex ici : la
-            //    sérialisation + dédup se font en dernière étape (adapter).
-            var alternatives = new List<IReadOnlyList<Item>>();
-            foreach (var reading in ForkReadings(baseForFork))
-                foreach (var expanded in ExpandVariants(reading))
-                    alternatives.Add(expanded);
+            // Le top-level est juste le chunk racine : même cœur de résolution.
+            var alternatives = ResolveReadings(items, trace, ref ruleId);
 
             return new RewriteResult(Serialize(items), items, alternatives, ruleId, trace);
         }
@@ -143,15 +119,28 @@ namespace MathCursor.Engine.Rewriting
         /// </list>
         /// Cet ordre rend le `,` contextuel sans hack tokenizer : séparateur
         /// dans une liste structurelle, décimal sinon.</summary>
-        /// <summary>Résolution mono-chaîne in-place (structurel + primitives
-        /// déterministes). Utilisée pour les chunks (args d'anchor) : pas de
-        /// fork à ce niveau (cf. ADR périmètre Principe 5).</summary>
-        private void ResolveItems(List<Item> items, List<string> trace, ref string ruleId)
+        /// <summary>Cœur de résolution UNIFIÉ (top-level ET chunks). Résout
+        /// <paramref name="items"/> en place vers la meilleure lecture
+        /// (déterministe : structurel → phase0 → primitives → relations) et
+        /// RETOURNE les lectures alternatives (fork des ordres + dépliage des
+        /// Variants). Un chunk n'est qu'un sous-arbre : la MÊME fonction y est
+        /// rappelée récursivement par le matcher → collisions génériques à
+        /// toute profondeur, un seul chemin. Cf. ADR
+        /// 2026-06-02-Feat-recursive-collisions-variants.</summary>
+        private List<IReadOnlyList<Item>> ResolveReadings(
+            List<Item> items, List<string> trace, ref string ruleId)
         {
             StructuralLoop(items, trace, ref ruleId);
+            var snapshot = new List<Item>(items);
             RunPrimitivePhase(items, _phase0Rules, trace, ref ruleId);
             RunPrimitivePhase(items, _primitiveRules, trace, ref ruleId);
             RunPrimitivePhase(items, _relationRules, trace, ref ruleId);
+
+            var alternatives = new List<IReadOnlyList<Item>>();
+            foreach (var reading in ForkReadings(snapshot))
+                foreach (var expanded in ExpandVariants(reading))
+                    alternatives.Add(expanded);
+            return alternatives;
         }
 
         /// <summary>Boucle structurelle (anchors) leftmost, point-fixe.</summary>
@@ -205,28 +194,22 @@ namespace MathCursor.Engine.Rewriting
         {
             var tr = new List<string>();
             string rid = "";
-            // 1) Best déterministe (= comportement historique).
-            StructuralLoop(chunk, tr, ref rid);
-            var baseForFork = new List<Item>(chunk);
-            RunPrimitivePhase(chunk, _phase0Rules, tr, ref rid);
-            RunPrimitivePhase(chunk, _primitiveRules, tr, ref rid);
-            RunPrimitivePhase(chunk, _relationRules, tr, ref rid);
+            // Même cœur que le top-level : best en place + lectures alternatives.
+            var alternatives = ResolveReadings(chunk, tr, ref rid);
             var best = Collapse(chunk);
 
-            // 2) Lectures alternatives du chunk → Variants du best.
-            var bestLatex = Serialize(chunk);
-            var seen = new HashSet<string> { bestLatex };
+            // Les lectures alternatives du chunk deviennent les Variants du best
+            // → propagées vers le haut par l'émission (collisions récursives).
+            var seen = new HashSet<string> { Serialize(chunk) };
             List<Item>? variants = null;
-            foreach (var reading in ForkReadings(baseForFork))
-                foreach (var expanded in ExpandVariants(reading))
-                {
-                    var latex = Serialize(expanded);
-                    if (!seen.Add(latex)) continue;
-                    (variants ??= new List<Item>()).Add(
-                        new RewriteItem("chunk-alt", best.Category, "", latex, false));
-                    if (variants.Count >= VariantCap) goto done;
-                }
-            done:
+            foreach (var reading in alternatives)
+            {
+                var latex = Serialize(reading);
+                if (!seen.Add(latex)) continue;
+                (variants ??= new List<Item>()).Add(
+                    new RewriteItem("chunk-alt", best.Category, "", latex, false));
+                if (variants.Count >= VariantCap) break;
+            }
             if (variants != null) best.Variants = variants;
             return best;
         }

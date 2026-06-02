@@ -26,8 +26,12 @@ namespace MathCursor.Engine.Adapter.Tests
             Assert.NotNull(zone);
             Assert.Equal(expectedTop, zone!.TopLatex);
 
+            // Les deux collisions sont présentes (l'ordre n'est pas garanti :
+            // il dépend de l'exploration du fork, pas d'une priorité).
             var previews = zone.PatternCompletions.Select(p => p.PreviewLatex).ToList();
-            Assert.Equal(new[] { expectedVec, expectedParen }, previews);
+            Assert.Equal(2, previews.Count);
+            Assert.Contains(expectedVec, previews);
+            Assert.Contains(expectedParen, previews);
         }
 
         [Theory]
