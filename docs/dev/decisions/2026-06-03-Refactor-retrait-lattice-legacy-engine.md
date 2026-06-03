@@ -40,26 +40,43 @@ Retirer entièrement le moteur legacy Lattice. Sur exception v2, on **log +
 retourne une zone identité** (dégradé gracieux), au lieu de basculer sur un
 second moteur parallèle.
 
-**Supprimé :**
-- `core-csharp/src/MathCursor.Core/LatticeEngine.cs`
-- `core-csharp/src/MathCursor.Core/Lattice/` (dossier entier)
-- `core-csharp/src/MathCursor.Core/ILatexEngine.cs` (contrat obsolète)
-- Tests legacy : `tests/.../Lattice/*`, `ZoneResolverLegacyFallbackTests`.
+> ⚠️ **CORRECTION 2026-06-03 (vérif post-acté)** : la formule initiale
+> « supprimer `Lattice/` (dossier entier) » est **FAUSSE**. Le grep précis a
+> montré que `Lattice/` contient DEUX couches, et que la couche basse est
+> **partagée avec du code vivant** (`Patterns/PatternScanContext` →
+> `Lattice.Ast` ; `Patterns/Templates/MatrixTemplate` →
+> `Lattice.LatexRenderer.GlobalOptions`). Supprimer le dossier en bloc
+> casserait le build. La décision **reste** (retirer le moteur de résolution
+> legacy) mais la liste « supprimé » est affinée ci-dessous.
+
+**Supprimé (couche RÉSOLUTION morte uniquement) :**
+- `LatticeEngine.cs`, `ILatexEngine.cs` (contrat obsolète)
+- `Lattice/AlternativeGenerator.cs` (générateur — DTOs déjà extraits en
+  `AmbiguityModel.cs`, palier 0), `Lattice/AmbiguityDetector.cs`,
+  `Lattice/Ambiguity/` (scanners), `Lattice/LatticePathFinder.cs`,
+  `Lattice/LatticeEdge.cs`. (`Lexer.cs`/`Parser.cs` : seulement si plus aucun
+  consommateur vivant — à confirmer via le graphe de deps interne.)
+- Tests legacy : `ZoneResolverLegacyFallbackTests` + les 15 fichiers mappés
+  (cf. diff de-risque) + `tests/.../Lattice/*` testant la couche morte.
+
+**Conservé (couche PARSING/RENDU partagée + Patterns) :**
+- `Lattice/Ast/`, `Lattice/LatexRenderer.cs`, `Lattice/LatexRenderingVisitor.cs`,
+  `Lattice/Vocabulary.cs`, `Lattice/AmbiguityModel.cs` (DTOs partagés v2).
+- `core-csharp/src/MathCursor.Core/Patterns/` (templates compositionnels —
+  dépendent de `Lattice.Ast`/`LatexRenderer`, donc PAS orthogonaux : à garder
+  avec leur infra).
 
 **Simplifié :**
-- `ZoneResolver` : ctor sans `LatticeEngine`, `engineSource` requis (non-null) ;
-  suppression de la branche fallback + des champs `LegacyFallbackCalls` /
-  `LastResolveUsedLegacy`.
+- `ZoneResolver` : ctor sans `LatticeEngine`, `engineSource` requis ;
+  suppression de la branche fallback + champs `LegacyFallbackCalls` /
+  `LastResolveUsedLegacy` + helpers morts (`ApplyPreferences`, etc.).
 - `SuggestionService` ctor : sans param `engine`, sans kill-switch
   `MATHCURSOR_ENGINE_V2=0` (v2 toujours actif).
 - `ThisAddIn` : suppression du field `_engine` + `LoadEmbedded`.
 
-**Conservé (orthogonal à Lattice) :**
-- `core-csharp/src/MathCursor.Core/Patterns/` (templates compositionnels, ne
-  dépend pas de LatticeEngine).
-- `IResolvedZoneSource`, l'adapter `MathCursor.Engine.Adapter`.
-- `_vocab` (vient de `engineV2.Vocab` ; fallback `LocaleVocabulary.LoadEmbedded`
-  conservé par sécurité).
+(Conservés aussi, inchangés : `IResolvedZoneSource`, l'adapter
+`MathCursor.Engine.Adapter`, `_vocab` via `engineV2.Vocab` avec fallback
+`LocaleVocabulary.LoadEmbedded`.)
 
 ## Tradeoff & alternatives écartées
 
