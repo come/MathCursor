@@ -19,6 +19,9 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-06-03
+- `[forte]` Refactor — [Retrait du moteur legacy Lattice (LatticeEngine + Lattice/)](2026-06-03-Refactor-retrait-lattice-legacy-engine.md) — Le legacy P32, gardé en « fallback ~10% », n'était en réalité jamais consulté (v2 ne rend null que sur exception ; `LegacyFallbackCalls==0` verrouillé). Suppression de ~3540 lignes (LatticeEngine + Lattice/ + ILatexEngine + tests), simplification ZoneResolver/SuggestionService/ThisAddIn (ctors sans `engine`, kill-switch retiré). Patterns/ conservé (orthogonal). Sur exception v2 → zone identité dégradée.
+
 ### 2026-06-02
 - `[forte]` Feat — [Insertion OMML (structure native) au lieu de UnicodeMath + BuildUp](2026-06-02-Feat-omml-insertion.md) — Word re-parsait l'UnicodeMath linéaire → `lim_(x→0) 1/(x+1)` rendu `\frac{lim 1}{x+1}`. On insère désormais l'OMML natif (`LatexToOmml` → `Range.InsertXML`, chirurgical, range locale 1-char) : Word ne re-devine rien. Inclut `\left`/`\right` → `<m:d>` auto-sizé (fin du « fleft(xright) ») et l'échappement caret `MoveRight` (frappe après équation en texte plat). Batterie Word 16/17 (seul fail = bug intra-merge pré-existant). Bug lim/fraction MORT.
 - `[forte]` Feat — [Collisions récursives génériques (Variants propagés à toute profondeur)](2026-06-02-Feat-recursive-collisions-variants.md) — Le fork Principe 5 était limité au top-level ; les corps d'anchor (chunks) restaient mono-chaîne. Chaque Item porte désormais ses lectures alternatives (`Variants`), `ResolveChunk` les attache, l'émission les propage → une collision remonte de n'importe quelle profondeur. `somm k=1 2 f(x)/x+1` → collision `…\frac{f(x)}{x+1}` ; imbriqué `1/sum…1/k+1` aussi. Best déterministe, latex en dernière étape.
