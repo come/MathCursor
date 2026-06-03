@@ -144,46 +144,70 @@
                   size="normal"
                   onAction="OnDebugInspectCcAtCaretClicked" />
           <!-- Recette validée G + variantes CC à explorer pour ajouter le backlink. -->
+          <!-- Batterie échappement caret : chaque bouton insère f(x) en OMML,
+               tente UNE technique de sortie de zone math, tape "ABC" et juge
+               PLAIN(✓)/MATH(✗). Verdict dans l'inspecteur + mathcursor.log. -->
           <button id="DebugVariantEButton"
-                  label="Variant E : BuildUp → NO Type set → CC full para"
-                  screentip="E: TypeText → OMaths.Add+BuildUp → AUCUN Type set (trust Word auto-promo) → CC RichText sur paragraph COMPLET (block-level)."
+                  label="Escape 0 : BASELINE (reproduit le bug)"
+                  screentip="Insère f(x) en OMML, SetRange(om.End), tape ABC. Sans échappement → ABC en italique math (reproduit le bug retour-saisie)."
                   size="normal"
                   onAction="OnDebugVariantEClicked" />
+          <button id="DebugPocDeleteButton"
+                  label="Escape 1 : MoveRight 1 char"
+                  screentip="Après om.End, sel.MoveRight(wdCharacter,1) puis tape ABC. Juge PLAIN/MATH."
+                  size="normal"
+                  onAction="OnDebugPocDeleteClicked" />
           <button id="DebugVariantGButton"
-                  label="Variant G : recette propre SANS CC"
-                  screentip="G: TypeText → OMaths.Add+BuildUp → Type=Display, sans CC. Référence : display propre, pas de &lt;w:br/&gt;."
+                  label="Escape 2 : MoveRight puis MoveLeft"
+                  screentip="Sortie/retour flèche : MoveRight 1 puis MoveLeft 1 (replique l'arrow-out qui clôt l'input math), puis tape ABC."
                   size="normal"
                   onAction="OnDebugVariantGClicked" />
           <button id="DebugVariantG1Button"
-                  label="Variant G1 : G + anchor CC ZWSP avant l'OMath"
-                  screentip="G1: G + CC RichText hidden autour d'un ZWSP (​) hidden inséré juste AVANT l'OMath. Le CC ne wrappe pas l'OMath, juste un ancrage adjacent. Lookup OMath via cc.Range.Next."
+                  label="Escape 3 : EndKey wdLine"
+                  screentip="sel.EndKey(wdLine) après l'OMath puis tape ABC. Juge PLAIN/MATH."
                   size="normal"
                   onAction="OnDebugVariantG1Clicked" />
           <button id="DebugVariantG2Button"
-                  label="Variant G2 : G + wrap CC via OOXML"
-                  screentip="G2: G + lit l'OOXML du ¶, wrap &lt;w:p&gt; dans &lt;w:sdt&gt; via XDocument, re-injecte via Range.InsertXML. Bypass l'API ContentControls.Add."
+                  label="Escape 4 : Font.Italic=0 + Calibri"
+                  screentip="Force Font.Italic=0 et Name=Calibri au caret après l'OMath, puis tape ABC. Teste si reset font suffit à sortir de la math."
                   size="normal"
                   onAction="OnDebugVariantG2Clicked" />
           <button id="DebugVariantG3Button"
-                  label="Variant G3 : G + CC RichText sur om.Range (tardif)"
-                  screentip="G3: G + CC RichText sur om.Range APRÈS Type+Justification. Test : Word a-t-il finalisé l'OMathPara au moment du CC ?"
+                  label="Escape 5 : espace après om + recale"
+                  screentip="Type un espace plain juste après l'OMath comme ancre, recale le caret après, puis tape ABC."
                   size="normal"
                   onAction="OnDebugVariantG3Clicked" />
           <button id="DebugVariantG4Button"
-                  label="Variant G4 : G3 + caret après l'OMath"
-                  screentip="G4: G3 + SetRange explicite caret @ cc.Range.End post-wrap, pour continuer à taper directement après l'équation (in-line, pas saut de ¶)."
+                  label="Escape 6 : Range(om.End+1) collapsed"
+                  screentip="SetRange à om.End+1 (au-delà de la frontière) puis tape ABC. Juge PLAIN/MATH."
                   size="normal"
                   onAction="OnDebugVariantG4Clicked" />
-          <button id="DebugPocDeleteButton"
-                  label="POC DELETE : OMath + anchor CC au caret"
-                  screentip="Place le caret DANS une OMath puis clique : tente de supprimer l'OMath + son anchor CC sans typetext. Logs ultra détaillés sur chaque étape (find OMath, find anchor, unlock, cc.Delete, om.Delete, état final). Diagnostic pur du problème de suppression."
-                  size="normal"
-                  onAction="OnDebugPocDeleteClicked" />
           <button id="DebugRunScenariosButton"
                   label="Run Word scenarios"
                   screentip="Lance une suite de scenarios end-to-end qui exercent les fixes Word interop : prose+OMath inline, OMath seule display, liste numérotée, cellule de tableau. Ouvre un doc Word temporaire (fermé sans save) et affiche les résultats."
                   size="normal"
                   onAction="OnDebugRunScenariosClicked" />
+          <!-- Échappement caret en TABLEAU / LISTE (technique gagnante MoveRight + EndKey en comparaison). -->
+          <button id="DebugEscTableMoveRightButton"
+                  label="Escape TABLEAU : MoveRight"
+                  screentip="Tableau 2×2, insère f(x) en OMML dans la cellule, MoveRight, tape ABC. Juge PLAIN/MATH. Attention : MoveRight en fin de cellule peut sauter de cellule — c'est ce qu'on vérifie."
+                  size="normal"
+                  onAction="OnDebugEscTableMoveRightClicked" />
+          <button id="DebugEscTableEndKeyButton"
+                  label="Escape TABLEAU : EndKey"
+                  screentip="Idem cellule mais échappement via EndKey wdLine (comparaison)."
+                  size="normal"
+                  onAction="OnDebugEscTableEndKeyClicked" />
+          <button id="DebugEscListMoveRightButton"
+                  label="Escape LISTE : MoveRight"
+                  screentip="Liste numérotée, insère f(x) en OMML, MoveRight, tape ABC. Juge PLAIN/MATH."
+                  size="normal"
+                  onAction="OnDebugEscListMoveRightClicked" />
+          <button id="DebugEscListEndKeyButton"
+                  label="Escape LISTE : EndKey"
+                  screentip="Idem liste mais échappement via EndKey wdLine (comparaison)."
+                  size="normal"
+                  onAction="OnDebugEscListEndKeyClicked" />
           <button id="AboutButton"
                   getLabel="OnGetAboutButtonLabel"
                   getScreentip="OnGetAboutButtonScreentip"

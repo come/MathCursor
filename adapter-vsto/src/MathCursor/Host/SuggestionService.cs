@@ -2321,29 +2321,20 @@ namespace MathCursor.Host
                     try { doc.Range(zwspStart, zwspEnd).Font.Hidden = -1; } catch { }
                 }
 
-                // 5. TypeText math source APRÈS le ZWSP.
-                int mathStart = sel.Start;
-                try { sel.TypeText(unicodeMath); Log($"InsertOMathAt: math TypeText done, sel=[{sel.Start},{sel.End})"); }
-                catch (Exception ex) { Log("insert_typetext_error: " + ex.Message); return (absStart, absEnd, null); }
-
-                int afterEnd = sel.Start;
-                int srcStart = mathStart;
-                Log($"InsertOMathAt: math typed range=[{srcStart},{afterEnd})");
-
-                // 6. OMaths.Add + BuildUp UNIQUEMENT sur la math range.
-                //    Word convertit la math en OMath SANS toucher au ZWSP
-                //    (séparé par 1 char en amont).
-                int newStart = srcStart, newEnd = afterEnd;
+                // 5-6. Produit l'OMath en OMML (structure native) inséré
+                //      CHIRURGICALEMENT sur une range placeholder 1-char après
+                //      le ZWSP — JAMAIS sur le ¶ (remplacer le ¶ casse les
+                //      positions / la prose inline, cf. mémoire surgical). Word
+                //      ne re-parse rien → fin du bug lim/fraction & précédence.
+                //      Approche A validée en POC (inline, prose préservée, CC
+                //      backlink OK). Cf. ADR 2026-06-02-Feat-omml-insertion.
+                int newStart = zwspEnd, newEnd = zwspEnd;
                 Word.OMath om = null;
                 Word.WdOMathType omType = Word.WdOMathType.wdOMathInline;
                 Word.WdOMathJc omJc = Word.WdOMathJc.wdOMathJcLeft;
                 try
                 {
-                    var typedRange = doc.Range(srcStart, afterEnd);
-                    var addedRange = typedRange.OMaths.Add(typedRange);
-                    addedRange.OMaths.BuildUp();
-
-                    foreach (Word.OMath o in addedRange.OMaths) { om = o; break; }
+                    om = BuildOMathViaOmml(doc, sel, latex, zwspEnd);
 
                     if (om != null)
                     {
@@ -2377,9 +2368,9 @@ namespace MathCursor.Host
                         newEnd = om.Range.End;
                         Log($"InsertOMathAt: OMath finalized as {omType} / {omJc}, range=[{newStart},{newEnd})");
                     }
-                    else { Log("InsertOMathAt: addedRange.OMaths empty after BuildUp"); }
+                    else { Log("InsertOMathAt: OMML inséré mais OMath introuvable au re-probe"); }
                 }
-                catch (Exception ex) { Log("insert_buildup_error: " + ex.Message); return (srcStart, afterEnd, null); }
+                catch (Exception ex) { Log("insert_omml_error: " + ex.Message); return (zwspEnd, zwspEnd, null); }
 
                 // 7. Wrap le ZWSP dans une CC RichText hidden EN DERNIER.
                 //    Le math/OMath est settled, la CC ne le perturbe plus.
@@ -2414,10 +2405,22 @@ namespace MathCursor.Host
                     }
                     catch (Exception exP) { Log("insert_reprobe_om_error: " + exP.Message); }
 
-                    // Caret APRÈS l'OMath, prêt à taper.
+                    // Caret APRÈS l'OMath, HORS de la zone math sticky.
+                    // SetRange(om.End) seul laisse Word en « math input mode »
+                    // → la frappe suivante sort en italique math (bug
+                    // retour-saisie + □-leak adjacent). MoveRight 1 char
+                    // franchit la frontière de l'OMath et CLÔT la saisie math
+                    // (= flèche droite). Technique validée POC Escape 1 (les
+                    // alternatives SetRange(om.End+1)/EndKey/Italic off n'y
+                    // arrivent pas). Cf. ADR 2026-06-02-Feat-omml-insertion.
                     if (om != null)
                     {
-                        try { _app.Selection.SetRange(om.Range.End, om.Range.End); } catch { }
+                        try
+                        {
+                            _app.Selection.SetRange(om.Range.End, om.Range.End);
+                            _app.Selection.MoveRight(Word.WdUnits.wdCharacter, 1, Word.WdMovementType.wdMove);
+                        }
+                        catch { }
                     }
                 }
                 catch (Exception exCc) { Log("insert_anchor_cc_error: " + exCc.Message); cc = null; }
@@ -2480,6 +2483,62 @@ namespace MathCursor.Host
             {
                 DebugInProgress = prevDebug;
             }
+        }
+
+        /// <summary>
+        /// Produit l'OMath en OMML natif (structure, pas de re-parse Word → fin
+        /// du bug lim/fraction) et l'insère CHIRURGICALEMENT sur une range
+        /// placeholder 1-char à <paramref name="mathStart"/> (après le ZWSP).
+        /// JAMAIS sur le ¶ : remplacer le ¶ casse positions + prose inline
+        /// (cf. mémoire feedback_omml_insertion_surgical, ADR 2026-06-02).
+        /// Lecture WordOpenXML LOCALE (le ¶ courant), pas O(doc). Renvoie null
+        /// si l'insertion échoue (l'appelant retombe sur le chemin d'abandon).
+        /// </summary>
+        private Word.OMath BuildOMathViaOmml(Word.Document doc, Word.Selection sel, string latex, int mathStart)
+        {
+            var w = System.Xml.Linq.XNamespace.Get("http://schemas.openxmlformats.org/wordprocessingml/2006/main");
+            System.Xml.Linq.XElement oMath;
+            try { oMath = MathCursor.Core.LatexToOmml.Convert(latex); }
+            catch (Exception ex) { Log("BuildOMathViaOmml: LatexToOmml error: " + ex.Message); return null; }
+            if (oMath == null) { Log("BuildOMathViaOmml: oMath null"); return null; }
+
+            // Placeholder éphémère 1-char à la position math (juste après ZWSP).
+            sel.SetRange(mathStart, mathStart);
+            int phStart = sel.Start;
+            sel.TypeText("□"); // □ marqueur transitoire
+            int phEnd = sel.Start;
+            var phRange = doc.Range(phStart, phEnd);
+
+            // Lit le package WordOpenXML LOCAL (¶ courant), remplace le run du
+            // placeholder par l'<m:oMath>, ré-insère sur la RANGE 1-char.
+            // InsertXML sur une range étroite = insertion inline chirurgicale :
+            // la prose avant/après est préservée (validé POC inline).
+            System.Xml.Linq.XDocument xdoc;
+            try { xdoc = System.Xml.Linq.XDocument.Parse(phRange.WordOpenXML); }
+            catch (Exception ex) { Log("BuildOMathViaOmml: parse WordOpenXML error: " + ex.Message); return null; }
+
+            System.Xml.Linq.XElement phRun = null;
+            foreach (var r in xdoc.Descendants(w + "r"))
+            {
+                var t = r.Element(w + "t");
+                if (t != null && t.Value == "□") { phRun = r; break; }
+            }
+            if (phRun == null) { Log("BuildOMathViaOmml: run placeholder introuvable dans WordOpenXML"); return null; }
+            phRun.ReplaceWith(oMath);
+
+            try { phRange.InsertXML(xdoc.ToString(System.Xml.Linq.SaveOptions.DisableFormatting)); }
+            catch (Exception ex) { Log("BuildOMathViaOmml: InsertXML error: " + ex.Message); return null; }
+
+            // Re-probe l'OMath fraîchement insérée — LOCAL, autour de phStart.
+            Word.OMath om = null;
+            try
+            {
+                int probeEnd = System.Math.Min(doc.Content.End, phStart + 200);
+                foreach (Word.OMath o in doc.Range(phStart, probeEnd).OMaths) { om = o; break; }
+            }
+            catch (Exception ex) { Log("BuildOMathViaOmml: probe error: " + ex.Message); }
+            if (om == null) Log("BuildOMathViaOmml: OMath introuvable au re-probe");
+            return om;
         }
 
 

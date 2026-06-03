@@ -311,64 +311,8 @@ namespace MathCursor
         /// de splice XML, pas de Policy caret).</para>
         /// </summary>
         public void OnDebugReplaceByOMathClicked(IRibbonControl control)
-        {
-            // NER déjà désactivé pour toute la session via DebugInProgress=true
-            // dans ThisAddIn.Startup (TODO retirer quand user demande remise).
-            try
-            {
-                var app = Globals.ThisAddIn?.Application;
-                if (app == null) return;
-                var doc = app.ActiveDocument;
-                if (doc == null) return;
-                var sel = app.Selection;
-                if (sel == null) return;
-
-                // Détermine la range source à remplacer :
-                // - Sélection étendue → remplace la sélection
-                // - Caret simple → remplace les 6 chars avant (= simule
-                //   « f(x)=1 » fraîchement tapé par l'utilisateur)
-                // Si pas de sélection, étend backward de 6 chars (= simule
-                // « f(x)=1 » tapé). NER désactivé pour la session donc pas
-                // de re-entrancy sur SetRange.
-                if (sel.Start == sel.End)
-                    sel.SetRange(Math.Max(0, sel.Start - 6), sel.Start);
-
-                // 1. TypeText : remplace la sélection ET avance le caret à
-                //    la fin (= recette qui marche partout, prouvée par le
-                //    bouton « Debug : f(x)=1 » avec sélection préalable).
-                string unicodeMath = MathCursor.Core.LatexToUnicodeMath.Convert("f(x)=1");
-                int srcStart = sel.Start;
-                sel.TypeText(unicodeMath);
-                int afterEnd = sel.Start;
-
-                // 2. OMaths.Add retourne la Range de la nouvelle OMath.
-                var mathRange = doc.Range(srcStart, afterEnd);
-                var addedRange = mathRange.OMaths.Add(mathRange);
-                addedRange.OMaths.BuildUp();
-
-                // 3. Récupère l'OMath via la range et aligne (silencieux).
-                // TODO nettoyer : foreach + break pour récupérer le seul
-                // élément (équivalent Item[1] mais tolérant aux collections
-                // paresseuses Word).
-                Microsoft.Office.Interop.Word.OMath om = null;
-                foreach (Microsoft.Office.Interop.Word.OMath o in addedRange.OMaths) { om = o; break; }
-                if (om != null)
-                {
-                    try { om.Justification = Microsoft.Office.Interop.Word.WdOMathJc.wdOMathJcLeft; }
-                    catch (Exception exJ) { LogDebug("debug_replace.justification_error: " + exJ.Message); }
-                    LogDebug($"debug_replace: om.Range=[{om.Range.Start},{om.Range.End}] sel.Start={sel.Start}");
-                }
-            }
-            catch (Exception ex)
-            {
-                LogDebug("debug_replace_error: " + ex.Message);
-                MessageBox.Show(
-                    "Debug replace OMath failed :\n" + ex.Message,
-                    "MathCursor — Debug",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-        }
+            // Escape LISTE — MoveRight.
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunEscapeList_MoveRight);
 
         /// <summary>
         /// POC Phase A (brief 2026-05-18) — Wrap l'OMath collée au caret
@@ -384,81 +328,8 @@ namespace MathCursor
         /// de scanner doc.OMaths complet.
         /// </summary>
         public void OnDebugWrapOMathInCCClicked(IRibbonControl control)
-        {
-            try
-            {
-                var app = Globals.ThisAddIn?.Application;
-                if (app == null) return;
-                var doc = app.ActiveDocument;
-                if (doc == null) return;
-                var sel = app.Selection;
-                if (sel == null) return;
-
-                int caret = sel.Range.Start;
-                if (caret <= 0)
-                {
-                    Globals.ThisAddIn.PushDebugTrace("POC wrap CC — caret en début de doc, pas d'OMath avant.");
-                    return;
-                }
-
-                // Probe locale (brief §1) : OMath collée juste avant le caret.
-                var probe = doc.Range(caret - 1, caret);
-                if (probe.OMaths.Count == 0)
-                {
-                    Globals.ThisAddIn.PushDebugTrace($"POC wrap CC — pas d'OMath collée au caret (probe [caret-1, caret]).\ncaret = {caret}");
-                    return;
-                }
-
-                Microsoft.Office.Interop.Word.OMath om = null;
-                foreach (Microsoft.Office.Interop.Word.OMath o in probe.OMaths) { om = o; break; }
-                if (om == null) return;
-
-                // Anti-duplicate : déjà wrappée → no-op.
-                if (om.Range.ParentContentControl?.Title == MathCursor.Host.CCMeta.MCMetaJson.CcTitle) return;
-
-                // 1. Wrap d'abord (le wrap modifie l'OOXML — ajoute <w:sdt>).
-                var cc = om.Range.ContentControls.Add(
-                    Microsoft.Office.Interop.Word.WdContentControlType.wdContentControlRichText);
-                cc.Title = MathCursor.Host.CCMeta.MCMetaJson.CcTitle;
-                try { cc.Appearance = Microsoft.Office.Interop.Word.WdContentControlAppearance.wdContentControlHidden; }
-                catch (Exception exApp) { LogDebug("poc_wrap.appearance_error: " + exApp.Message); }
-                try { cc.LockContentControl = false; } catch { }
-                try { cc.LockContents = false; } catch { }
-
-                // 2. Hash APRÈS wrap : sinon store-hash et read-hash diffèrent
-                //    toujours (le wrap lui-même change l'OOXML lu via
-                //    om.Range.WordOpenXML) → stale=True systématique.
-                string hash = MathCursor.Host.CCMeta.Sha1Helper.Compute(om.Range.WordOpenXML ?? "");
-
-                // 3. Construit + sérialise la métadonnée + assigne le Tag.
-                var meta = new MathCursor.Host.CCMeta.MCMeta
-                {
-                    V = 1,
-                    Steno = "(POC — wrapped from existing OMath)",
-                    Latex = "(POC)",
-                    Version = typeof(RibbonCallback).Assembly.GetName().Version?.ToString() ?? "0",
-                    OmmlHash = hash,
-                    ParsedAt = DateTime.UtcNow,
-                };
-                string tag = MathCursor.Host.CCMeta.MCMetaJson.Serialize(meta);
-                cc.Tag = tag;
-
-                LogDebug($"poc_wrap: om=[{om.Range.Start},{om.Range.End}] cc.Range=[{cc.Range.Start},{cc.Range.End}] tag_len={tag.Length} hash={hash.Substring(0, 8)}…");
-
-                Globals.ThisAddIn.PushDebugTrace(
-                    $"=== POC wrap CC — OK ===\n"
-                    + $"om.Range  = [{om.Range.Start}, {om.Range.End})\n"
-                    + $"cc.Range  = [{cc.Range.Start}, {cc.Range.End})\n"
-                    + $"Title     = {cc.Title}\n"
-                    + $"Appearance = {cc.Appearance}\n"
-                    + $"Tag JSON ({tag.Length} chars):\n{tag}");
-            }
-            catch (Exception ex)
-            {
-                LogDebug("poc_wrap_error: " + ex.Message);
-                Globals.ThisAddIn.PushDebugTrace("=== POC wrap CC — ERROR ===\n" + ex.Message);
-            }
-        }
+            // Escape TABLEAU — EndKey.
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunEscapeTable_EndKey);
 
         /// <summary>
         /// POC Phase A — Lit le CC parent de l'OMath collée au caret et
@@ -1145,13 +1016,28 @@ namespace MathCursor
         // ─── Variantes d'insertion display+CC pour comparaison ─────────
 
         public void OnDebugVariantEClicked(IRibbonControl control)
-            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunVariantE_BuildUpFirst_NoTypeSet_CcOnFullPara);
+            // Escape 0 : BASELINE (reproduit le bug caret math).
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunEscape_Baseline);
 
         public void OnDebugVariantG4Clicked(IRibbonControl control)
-            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunVariantG4_LikeG3PlusCaretAfterOm);
+            // Escape 6 : doc.Range(om.End+1) collapsed.
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunEscape_RangeAfterPlusOne);
+
+        public void OnDebugEscTableMoveRightClicked(IRibbonControl control)
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunEscapeTable_MoveRight);
+
+        public void OnDebugEscTableEndKeyClicked(IRibbonControl control)
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunEscapeTable_EndKey);
+
+        public void OnDebugEscListMoveRightClicked(IRibbonControl control)
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunEscapeList_MoveRight);
+
+        public void OnDebugEscListEndKeyClicked(IRibbonControl control)
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunEscapeList_EndKey);
 
         public void OnDebugPocDeleteClicked(IRibbonControl control)
-            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunPocDeleteOMathAndAnchor);
+            // Escape 1 : MoveRight 1 char.
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunEscape_MoveRight);
 
         /// <summary>Lance la suite de scenarios Word end-to-end (cellule,
         /// liste, prose, alone, chain, system…). Écrit séparateurs + titres
@@ -1177,16 +1063,20 @@ namespace MathCursor
         }
 
         public void OnDebugVariantGClicked(IRibbonControl control)
-            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunVariantG_NoCc);
+            // Escape 2 : MoveRight puis MoveLeft (sortie/retour flèche).
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunEscape_MoveRightLeft);
 
         public void OnDebugVariantG1Clicked(IRibbonControl control)
-            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunVariantG1_AnchorCcBefore);
+            // Escape 3 : EndKey wdLine.
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunEscape_EndKey);
 
         public void OnDebugVariantG2Clicked(IRibbonControl control)
-            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunVariantG2_CcViaOoxml);
+            // Escape 4 : Font.Italic=0 + Name Calibri.
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunEscape_ItalicOff);
 
         public void OnDebugVariantG3Clicked(IRibbonControl control)
-            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunVariantG3_CcOmRangeLate);
+            // Escape 5 : type espace après om puis recale.
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunEscape_TrailingSpace);
 
         private void RunVariant(Func<Microsoft.Office.Interop.Word.Application, string> variant)
         {
@@ -1450,60 +1340,8 @@ namespace MathCursor
         }
 
         public void OnDebugInsertOMathClicked(IRibbonControl control)
-        {
-            try
-            {
-                var app = Globals.ThisAddIn?.Application;
-                if (app == null) return;
-                var doc = app.ActiveDocument;
-                if (doc == null) return;
-                var sel = app.Selection;
-                if (sel == null) return;
-
-                int insertPos = sel.Start;
-                LogDebug($"debug_insert: start at sel.Start={insertPos} docEnd={doc.Content.End}");
-
-                // 1. Type "f(x)=1" à la position du caret.
-                sel.TypeText("f(x)=1");
-
-                // 2. OMaths.Add retourne la Range de la nouvelle OMath.
-                int afterTypedEnd = insertPos + 6;
-                var typedRange = doc.Range(insertPos, afterTypedEnd);
-                var addedRange = typedRange.OMaths.Add(typedRange);
-                addedRange.OMaths.BuildUp();
-
-                // 3. Récupère l'OMath via la range et aligne (silencieux).
-                // TODO nettoyer : foreach + break pour récupérer le seul
-                // élément (équivalent Item[1] mais tolérant aux collections
-                // paresseuses Word).
-                Microsoft.Office.Interop.Word.OMath om = null;
-                foreach (Microsoft.Office.Interop.Word.OMath o in addedRange.OMaths) { om = o; break; }
-                if (om != null)
-                {
-                    LogDebug($"debug_insert: om.Range=[{om.Range.Start},{om.Range.End}]");
-                    try
-                    {
-                        om.Justification = Microsoft.Office.Interop.Word.WdOMathJc.wdOMathJcLeft;
-                        LogDebug("debug_insert: om.Justification = Left → OK");
-                    }
-                    catch (Exception exAlign)
-                    {
-                        LogDebug("debug_insert.align_justification_error: " + exAlign.Message);
-                    }
-                }
-
-                // 4. Pas de SetRange — Word place le caret naturellement.
-            }
-            catch (Exception ex)
-            {
-                LogDebug("debug_insert_error: " + ex.Message);
-                MessageBox.Show(
-                    "Debug insert OMath failed :\n" + ex.Message,
-                    "MathCursor — Debug",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-        }
+            // Escape TABLEAU — MoveRight.
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunEscapeTable_MoveRight);
 
         /// <summary>
         /// Ouvre la fenêtre WPF "Signaler une erreur" pré-remplie depuis le

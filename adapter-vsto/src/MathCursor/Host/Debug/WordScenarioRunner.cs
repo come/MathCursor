@@ -85,6 +85,22 @@ namespace MathCursor.Host.Debug
             results.Add(Run(doc, "Tableau 1×2 : système à gauche + équivalences à droite",
                 () => ScenarioMixedTableSystemAndEquivalences(service, doc)));
 
+            // ── Scénarios OMML (bug lim/fraction + insert chirurgical) ────
+            results.Add(Run(doc, "BUG lim/fraction — Display (lim englobe la fraction)",
+                () => ScenarioLimFractionDisplay(service, doc)));
+
+            results.Add(Run(doc, "BUG lim/fraction — Inline en prose",
+                () => ScenarioLimFractionInline(service, doc)));
+
+            results.Add(Run(doc, "Insert entre 2 ¶ pleins (prose voisine intacte)",
+                () => ScenarioBetweenTwoFullParagraphs(service, doc)));
+
+            results.Add(Run(doc, "Remplacement via intra-merge (f(x) puis =1 abouté)",
+                () => ScenarioReplaceViaIntraMerge(service, doc)));
+
+            results.Add(Run(doc, "Retour à la saisie (caret en fin d'OMath, frappe non absorbée)",
+                () => ScenarioCaretReturnsToTyping(service, doc)));
+
             AppendFooter(doc, FormatSummary(results));
 
             return results;
@@ -594,6 +610,225 @@ namespace MathCursor.Host.Debug
             try { sel.SetRange(doc.Content.End - 1, doc.Content.End - 1); } catch { }
 
             return Pass("Tableau mixed OK : cases gauche + align* droite, 1 OMath/cellule ✓");
+        }
+
+        // ─── Scénarios OMML (bug lim/fraction + insert chirurgical) ─────
+
+        /// <summary>Lit l'OOXML de l'OMath (best-effort).</summary>
+        private static string OmmlOf(Word.OMath om)
+        {
+            try { return om?.Range?.WordOpenXML ?? ""; }
+            catch { return ""; }
+        }
+
+        /// <summary>
+        /// Vérifie structurellement que <c>lim</c> ENGLOBE la fraction (et non
+        /// l'inverse). Bug d'origine : Word re-parsait l'UnicodeMath et rendait
+        /// <c>\frac{\lim 1}{x+1}</c> — la fraction outermost, le lim aspiré dans
+        /// le numérateur. Correct OMML : <c>&lt;m:func&gt;</c> (le lim) contient
+        /// la <c>&lt;m:f&gt;</c> → <c>&lt;m:limLow&gt;</c> apparaît AVANT la
+        /// première <c>&lt;m:f&gt;</c>.
+        /// </summary>
+        private static WordScenarioResult AssertLimWrapsFraction(string omml, Word.WdOMathType type, Word.WdOMathType expectedType)
+        {
+            int idxFunc = omml.IndexOf("<m:func", StringComparison.Ordinal);
+            int idxLim = omml.IndexOf("<m:limLow", StringComparison.Ordinal);
+            int idxFrac = omml.IndexOf("<m:f>", StringComparison.Ordinal);
+            if (idxFrac < 0) idxFrac = omml.IndexOf("<m:f ", StringComparison.Ordinal);
+
+            if (idxFunc < 0 || idxLim < 0)
+                return Fail(null, "Structure lim absente (<m:func>/<m:limLow> introuvables)",
+                    diag: $"func@{idxFunc} lim@{idxLim} frac@{idxFrac}");
+            if (idxFrac < 0)
+                return Fail(null, "Fraction <m:f> absente de l'OMML",
+                    diag: $"func@{idxFunc} lim@{idxLim}");
+            if (idxFrac < idxLim)
+                return Fail(null, "BUG REPRODUIT : la fraction englobe le lim (frac avant limLow)",
+                    diag: $"frac@{idxFrac} < lim@{idxLim} — Word a re-parsé ?");
+            if (type != expectedType)
+                return Fail(null, $"Attendu {expectedType}, obtenu {type} (structure OK sinon)");
+            return Pass($"lim englobe la fraction ✓ (limLow@{idxLim} < frac@{idxFrac}), {type} ✓");
+        }
+
+        private static WordScenarioResult ScenarioLimFractionDisplay(SuggestionService svc, Word.Document doc)
+        {
+            int regionStart = OpenScenarioRegion(doc, "lim/fraction — Display",
+                "Tape « lim x 0 1/x+1 » seul sur ¶ vide. Attendu : Display, lim englobe la fraction (PAS de frac{lim 1}{x+1}).");
+
+            var sel = doc.Application.Selection;
+            int absStart = sel.Start;
+            sel.TypeText("lim x 0 1/x+1");
+            int absEnd = sel.Start;
+
+            svc.InsertOMathForScenarioTest(absStart, absEnd, @"\lim_{x\to0}\frac{1}{x+1}", "lim x 0 1/x+1");
+
+            int omCount = OMathCountInRange(doc, regionStart, doc.Content.End);
+            if (omCount != 1) return Fail(null, $"Attendu 1 OMath, obtenu {omCount}");
+
+            Word.OMath om = null;
+            foreach (Word.OMath o in doc.Range(regionStart, doc.Content.End).OMaths) { om = o; break; }
+            if (om == null) return Fail(null, "OMath introuvable");
+
+            return AssertLimWrapsFraction(OmmlOf(om), om.Type, Word.WdOMathType.wdOMathDisplay);
+        }
+
+        private static WordScenarioResult ScenarioLimFractionInline(SuggestionService svc, Word.Document doc)
+        {
+            int regionStart = OpenScenarioRegion(doc, "lim/fraction — Inline",
+                "Tape « On a lim x 0 1/x+1 » en prose. Attendu : Inline, lim englobe la fraction.");
+
+            var sel = doc.Application.Selection;
+            sel.TypeText("On a ");
+            int absStart = sel.Start;
+            sel.TypeText("lim x 0 1/x+1");
+            int absEnd = sel.Start;
+
+            svc.InsertOMathForScenarioTest(absStart, absEnd, @"\lim_{x\to0}\frac{1}{x+1}", "lim x 0 1/x+1");
+
+            int omCount = OMathCountInRange(doc, regionStart, doc.Content.End);
+            if (omCount != 1) return Fail(null, $"Attendu 1 OMath, obtenu {omCount}");
+
+            Word.OMath om = null;
+            foreach (Word.OMath o in doc.Range(regionStart, doc.Content.End).OMaths) { om = o; break; }
+            if (om == null) return Fail(null, "OMath introuvable");
+
+            string paraText = "";
+            try { paraText = om.Range.Paragraphs[1].Range.Text ?? ""; } catch { }
+            if (!paraText.StartsWith("On a "))
+                return Fail(null, $"Prose 'On a ' mangée. Para: \"{Escape(paraText)}\"");
+
+            return AssertLimWrapsFraction(OmmlOf(om), om.Type, Word.WdOMathType.wdOMathInline);
+        }
+
+        private static WordScenarioResult ScenarioBetweenTwoFullParagraphs(SuggestionService svc, Word.Document doc)
+        {
+            int regionStart = OpenScenarioRegion(doc, "Insert entre 2 ¶ pleins",
+                "¶1 plein, ¶2 « Donc 1/x fin de ligne. » (insert inline mid-¶), ¶3 plein. Attendu : 3 ¶ intacts + 1 OMath inline.");
+
+            var sel = doc.Application.Selection;
+            sel.TypeText("Paragraphe avant, plein de texte.");
+            sel.TypeParagraph();
+
+            // ¶2 : prose AVANT et APRÈS l'insertion (= inline mid-paragraphe).
+            sel.TypeText("Donc ");
+            int absStart = sel.Start;
+            sel.TypeText("1/x");
+            int absEnd = sel.Start;
+            sel.TypeText(" fin de ligne.");
+
+            // ¶3 plein APRÈS (ne décale pas absStart/absEnd, situés avant).
+            sel.TypeParagraph();
+            sel.TypeText("Paragraphe apres, plein aussi.");
+
+            svc.InsertOMathForScenarioTest(absStart, absEnd, @"\frac{1}{x}", "1/x");
+
+            int omCount = OMathCountInRange(doc, regionStart, doc.Content.End);
+            if (omCount != 1) return Fail(null, $"Attendu 1 OMath, obtenu {omCount}");
+
+            string regionText = "";
+            try { regionText = doc.Range(regionStart, doc.Content.End).Text ?? ""; } catch { }
+            if (!regionText.Contains("Paragraphe avant, plein de texte."))
+                return Fail(null, "¶ AVANT corrompu", diag: $"region=\"{Escape(Trunc(regionText, 200))}\"");
+            if (!regionText.Contains("Paragraphe apres, plein aussi."))
+                return Fail(null, "¶ APRÈS corrompu", diag: $"region=\"{Escape(Trunc(regionText, 200))}\"");
+            if (!regionText.Contains("Donc ") || !regionText.Contains("fin de ligne."))
+                return Fail(null, "Prose du ¶ d'insertion corrompue", diag: $"region=\"{Escape(Trunc(regionText, 200))}\"");
+
+            Word.OMath om = null;
+            foreach (Word.OMath o in doc.Range(regionStart, doc.Content.End).OMaths) { om = o; break; }
+            if (om != null && om.Type != Word.WdOMathType.wdOMathInline)
+                return Fail(null, $"Attendu Inline (prose autour), obtenu {om.Type}");
+
+            return Pass("3 ¶ intacts ✓, 1 OMath inline ✓ (prose avant ET après préservée)");
+        }
+
+        private static WordScenarioResult ScenarioReplaceViaIntraMerge(SuggestionService svc, Word.Document doc)
+        {
+            int regionStart = OpenScenarioRegion(doc, "Remplacement via intra-merge",
+                "Commit « f(x) », puis commit « =1 » abouté juste après. Attendu : 1 SEULE OMath « f(x)=1 » (le 2e commit absorbe le 1er via InsertOMathAt+absorbedHandles).");
+
+            var sel = doc.Application.Selection;
+            int aStart = sel.Start;
+            sel.TypeText("f(x)");
+            int aEnd = sel.Start;
+            svc.CommitWithMergersForScenarioTest(aStart, aEnd, @"f\left(x\right)", "f(x)");
+
+            int omAfter1 = OMathCountInRange(doc, regionStart, doc.Content.End);
+            if (omAfter1 != 1) return Fail(null, $"Après commit 1, attendu 1 OMath, obtenu {omAfter1}");
+
+            // Caret est rendu en fin d'OMath par InsertOMathAt → on tape « =1 »
+            // collé et on re-commit : doit fusionner avec l'OMath de gauche.
+            var sel2 = doc.Application.Selection;
+            int bStart = sel2.Start;
+            sel2.TypeText("=1");
+            int bEnd = sel2.Start;
+            svc.CommitWithMergersForScenarioTest(bStart, bEnd, "= 1", "=1");
+
+            int omAfter2 = OMathCountInRange(doc, regionStart, doc.Content.End);
+            if (omAfter2 != 1)
+                return Fail(null, $"Après commit 2, attendu 1 OMath fusionnée, obtenu {omAfter2}",
+                    diag: "IntraOMathsMerger n'a pas absorbé l'OMath de gauche (remplacement KO).");
+
+            Word.OMath om = null;
+            foreach (Word.OMath o in doc.Range(regionStart, doc.Content.End).OMaths) { om = o; break; }
+            string omText = "";
+            try { omText = om?.Range.Text ?? ""; } catch { }
+            if (!omText.Contains("1"))
+                return Fail(null, "L'OMath fusionnée ne contient pas « =1 »", diag: $"om.Text=\"{Escape(omText)}\"");
+
+            return Pass("Intra-merge OK : 1 OMath « f(x)=1 » après 2 commits ✓");
+        }
+
+        private static WordScenarioResult ScenarioCaretReturnsToTyping(SuggestionService svc, Word.Document doc)
+        {
+            int regionStart = OpenScenarioRegion(doc, "Retour à la saisie",
+                "Commit « Soit f(x) » inline, puis tape « et g » SANS rien faire d'autre. Attendu : caret rendu APRÈS l'OMath, frappe NON absorbée par la math.");
+
+            var sel = doc.Application.Selection;
+            sel.TypeText("Soit ");
+            int absStart = sel.Start;
+            sel.TypeText("f(x)");
+            int absEnd = sel.Start;
+
+            var res = svc.InsertOMathForScenarioTest(absStart, absEnd, @"f\left(x\right)", "f(x)");
+
+            // Caret doit être prêt à taper en fin d'OMath (= res.newEnd).
+            int caretAfterInsert = doc.Application.Selection.Start;
+
+            Word.OMath om = null;
+            foreach (Word.OMath o in doc.Range(regionStart, doc.Content.End).OMaths) { om = o; break; }
+            if (om == null) return Fail(null, "OMath introuvable après insert");
+
+            int omEnd = om.Range.End;
+            // Tolérance : le caret peut être en omEnd ou omEnd±1 (ZWSP/limites).
+            if (Math.Abs(caretAfterInsert - omEnd) > 2)
+                return Fail(null, $"Caret PAS rendu en fin d'OMath (caret={caretAfterInsert}, om.End={omEnd})",
+                    diag: "InsertOMathAt step 7 (SetRange om.Range.End) défaillant ?");
+
+            // Frappe suivante : ne doit PAS être aspirée dans la math.
+            doc.Application.Selection.TypeText(" et g");
+
+            int omCount = OMathCountInRange(doc, regionStart, doc.Content.End);
+            if (omCount != 1) return Fail(null, $"Attendu 1 OMath après frappe, obtenu {omCount}");
+
+            string omText = "";
+            try { omText = om.Range.Text ?? ""; } catch { }
+            if (omText.Contains("et"))
+                return Fail(null, "Frappe « et g » ABSORBÉE dans la math", diag: $"om.Text=\"{Escape(omText)}\"");
+
+            string paraText = "";
+            try { paraText = om.Range.Paragraphs[1].Range.Text ?? ""; } catch { }
+            if (!paraText.Contains("et g"))
+                return Fail(null, "Frappe « et g » introuvable dans le ¶", diag: $"para=\"{Escape(paraText)}\"");
+
+            return Pass($"Caret rendu en fin d'OMath ✓ (caret={caretAfterInsert}, om.End={omEnd}), frappe « et g » hors math ✓");
+        }
+
+        /// <summary>Tronque pour les diagnostics (sans guillemets).</summary>
+        private static string Trunc(string s, int n)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            return s.Length > n ? s.Substring(0, n) + "…" : s;
         }
 
         private static string Escape(string s)
