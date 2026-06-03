@@ -208,6 +208,16 @@
                   screentip="Idem liste mais échappement via EndKey wdLine (comparaison)."
                   size="normal"
                   onAction="OnDebugEscListEndKeyClicked" />
+          <button id="DebugPerfProbeButton"
+                  label="Perf probe : insert local (docSize / WordOpenXML / ms)"
+                  screentip="Insère f(x) en OMML en fin de doc et logge docSize, taille du WordOpenXML lu (¶ courant) et timings. Relance sur doc vide puis doc 50-100 pages : si docSize change mais WordOpenXML+timing restent stables → iso-perf confirmé (pas O(doc))."
+                  size="normal"
+                  onAction="OnDebugPerfProbeClicked" />
+          <button id="DebugOmmlBatteryButton"
+                  label="OMML battery : 16 constructions rendues"
+                  screentip="Insère 16 constructions LaTeX→OMML (frac, lim, racine, somme, vec, intervalles, délimiteurs…) chacune sur sa ligne. Sanity visuelle de l'émetteur LatexToOmml."
+                  size="normal"
+                  onAction="OnDebugOmmlBatteryClicked" />
           <button id="AboutButton"
                   getLabel="OnGetAboutButtonLabel"
                   getScreentip="OnGetAboutButtonScreentip"

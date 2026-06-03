@@ -48,7 +48,13 @@ explicite (`<m:f>`, `<m:func><m:limLow>`, `<m:nary>`, `<m:rad>`, `<m:sSubSup>`,
   collé à l'équation, `EndKey` saute en fin de ligne). Validé en **normal +
   tableau + liste**.
 - **Local** : on ne lit que le WordOpenXML du **paragraphe courant** (1 ¶,
-  iso-perf), jamais le doc entier.
+  iso-perf), jamais le doc entier. **Mesuré** (bouton Perf probe) : doc vide vs
+  doc 44 587 chars (×44 000) → total insert **203 ms vs 204 ms (plat)**,
+  InsertXML 122/113 ms, lecture WordOpenXML 39/49 ms. Le WordOpenXML grossit
+  (62→240 Ko) mais avec le **catalogue de styles** du doc (toujours 1 `<w:p>`),
+  pas avec la longueur du texte — coût de lecture ~50 ms, plat. Aucun
+  `doc.OMaths`/`doc.ContentControls`/WordOpenXML doc-entier dans le chemin ;
+  `ZoneCleaner` ne balaie que la zone, `DecideOMathTyping` que le ¶ courant.
 
 ## POC validés (avant prod, règle Word-API)
 

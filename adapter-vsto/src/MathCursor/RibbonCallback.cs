@@ -1035,6 +1035,12 @@ namespace MathCursor
         public void OnDebugEscListEndKeyClicked(IRibbonControl control)
             => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunEscapeList_EndKey);
 
+        public void OnDebugPerfProbeClicked(IRibbonControl control)
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunPerfProbe);
+
+        public void OnDebugOmmlBatteryClicked(IRibbonControl control)
+            => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunOmmlBattery);
+
         public void OnDebugPocDeleteClicked(IRibbonControl control)
             // Escape 1 : MoveRight 1 char.
             => RunVariant(MathCursor.Host.Debug.OMathInsertVariants.RunEscape_MoveRight);
