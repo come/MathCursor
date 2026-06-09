@@ -73,7 +73,7 @@ src → lexAll → segment (coupes) → forest (tous les parses) → filtre coup
 | `index.js` (157 l.) | orchestrateur : `assemble` (relations → n-aire tête → coupes) + `analyze` → `{ decision, ranked }`. | `ForestEngine.cs` |
 | `render.js` (50 l.) | AST → LaTeX (dispatch vers le `render` du vocabulaire). | `LatexRenderer.cs` |
 | `units.js` (62 l.) | unités composées (m/s, km/h…). | `Units.cs` |
-| `fixtures.js` | **Snapshot de non-régression** (~40 cas). | `EngineTests` (xUnit) — **source de vérité du portage** |
+| `fixtures.js` | **Snapshot de non-régression** (**280 cas** : 234 auto / 45 popup / 1 erreur ; baseline JS 280/280 vert). | `EngineTests` (xUnit) — **source de vérité du portage** |
 
 **Sortie** : LaTeX (ex. `\frac{1}{x+1}`, `\lim_{n\to 0} \frac{1}{n}`). Décision `popup`
 (plusieurs candidats dans la fenêtre de coût) ou `auto` (un seul).
