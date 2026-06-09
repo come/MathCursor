@@ -1,0 +1,84 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using MathCursor.Engine;
+using MathCursor.Serialization;
+using Xunit;
+
+namespace MathCursor.Serialization.Tests;
+
+// Pont moteur → Word : chaque LaTeX produit par le moteur (sur les 280 fixtures) doit
+// se convertir en OMML structurellement valide, SANS fuite de commande LaTeX.
+public sealed class OmmlCoverageTests
+{
+    private sealed class Fixture
+    {
+        [JsonPropertyName("in")] public string In { get; set; } = "";
+        [JsonPropertyName("cands")] public List<string> Cands { get; set; } = new();
+    }
+
+    private static List<Fixture> Load()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "fixtures.json");
+        return JsonSerializer.Deserialize<List<Fixture>>(File.ReadAllText(path)) ?? new();
+    }
+
+    // Restes de commandes LaTeX qui ne devraient JAMAIS apparaître dans l'OMML.
+    private static readonly string[] Leaks =
+    {
+        "binom", "begin", "end{", "mathbin", "square", "langle", "rangle",
+        "lfloor", "rfloor", "lceil", "rceil", "bmod", "Vert", "colon", "nexists",
+    };
+
+    [Fact]
+    public void EveryEngineLatexConvertsCleanly()
+    {
+        var fixtures = Load();
+        Assert.Equal(280, fixtures.Count);
+
+        var fails = new List<string>();
+        int n = 0;
+        foreach (var f in fixtures)
+        {
+            var r = ForestEngine.Analyze(f.In);
+            foreach (var cand in r.Ranked)
+            {
+                n++;
+                string omml;
+                try { omml = LatexToOmml.ConvertToString(cand.Latex); }
+                catch (Exception e) { fails.Add($"\"{f.In}\" :: {cand.Latex} → THROW {e.Message}"); continue; }
+
+                if (omml.Contains('\\'))
+                    fails.Add($"\"{f.In}\" :: {cand.Latex} → backslash résiduel dans l'OMML");
+                foreach (var leak in Leaks)
+                    if (omml.Contains(leak))
+                        fails.Add($"\"{f.In}\" :: {cand.Latex} → fuite « {leak} » : {omml}");
+            }
+        }
+
+        Assert.True(fails.Count == 0,
+            $"{n} candidats testés — {fails.Count} échec(s) :\n" + string.Join("\n", fails.Take(40)));
+    }
+
+    [Theory]
+    // golden : les nouveaux handlers produisent la bonne structure OMML.
+    [InlineData("\\binom{n}{k}", "noBar")]
+    [InlineData("\\begin{pmatrix}1 & 2 \\\\ 3 & 4\\end{pmatrix}", "<m>")]
+    [InlineData("\\lfloor x\\rfloor ", "⌊")]
+    [InlineData("\\lceil x\\rceil ", "⌈")]
+    [InlineData("a\\mid b", "∣")]
+    [InlineData("a\\not\\subset b", "⊄")]
+    [InlineData("\\left\\|x\\right\\|", "‖")]
+    [InlineData("\\langle u,v\\rangle ", "⟨")]
+    [InlineData("AB \\mathbin{/\\!/} CD", "//")]
+    [InlineData("\\frac{1}{x+1}", "<f>")]
+    public void GoldenStructure(string latex, string expectedFragment)
+    {
+        var omml = LatexToOmml.ConvertToString(latex);
+        Assert.Contains(expectedFragment, omml);
+        Assert.DoesNotContain('\\', omml);
+    }
+}

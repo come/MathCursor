@@ -70,7 +70,7 @@ namespace MathCursor.Serialization
                     {
                         // \, \; \  \{ \} … → espace/littéral
                         char next = j < s.Length ? s[j] : '\0';
-                        if (next == ',' || next == ';' || next == ':' || next == ' ') { i = j + 1; continue; }
+                        if (next == ',' || next == ';' || next == ':' || next == ' ' || next == '!') { i = j + 1; continue; }
                         if (next == '{' || next == '}') { text.Append(next); i = j + 1; continue; }
                         i = j; continue;
                     }
@@ -183,7 +183,11 @@ namespace MathCursor.Serialization
                     var arg = ReadArg(s, ref i);
                     if (cmd == "mathbb" && arg.Length == 1 && SetLetter.TryGetValue(arg, out var sc))
                     { text.Append(sc); return null; }
-                    text.Append(arg); return null;
+                    // Parse le contenu comme math (préserve \cdot, exposants… des unités
+                    // composées \mathrm{m\cdot s^{-1}}) plutôt que de le dumper en texte brut.
+                    flush();
+                    outEls.AddRange(ParseFragment(arg));
+                    return null;
                 }
                 case "lim": case "limsup": case "liminf":
                 case "max": case "min": case "sup": case "inf":
@@ -212,6 +216,54 @@ namespace MathCursor.Serialization
                 case "iint": return Nary("∬", s, ref i);
                 case "iiint": return Nary("∭", s, ref i);
                 case "oint": return Nary("∮", s, ref i);
+                case "binom":
+                {
+                    // coefficient binomial : <m:d>( … )</m:d> avec fraction SANS barre.
+                    var a = ReadArg(s, ref i); var b = ReadArg(s, ref i);
+                    var frac = new XElement(M + "f",
+                        new XElement(M + "fPr", new XElement(M + "type", new XAttribute(M + "val", "noBar"))),
+                        new XElement(M + "num", ParseFragment(a)),
+                        new XElement(M + "den", ParseFragment(b)));
+                    return Delimited("(", ")", frac);
+                }
+                case "begin":
+                {
+                    // \begin{pmatrix} … \end{pmatrix} → <m:d>( <m:m> … )</m:d>.
+                    var env = ReadArg(s, ref i);
+                    string endTok = "\\end{" + env + "}";
+                    int endPos = s.IndexOf(endTok, i, StringComparison.Ordinal);
+                    string body = endPos >= 0 ? s.Substring(i, endPos - i) : s.Substring(i);
+                    i = endPos >= 0 ? endPos + endTok.Length : s.Length;
+                    return MatrixEnv(env, body);
+                }
+                case "end":
+                    // \end orphelin (mal formé) : consomme {env}, ignore.
+                    ReadArg(s, ref i);
+                    return null;
+                case "mathbin":
+                {
+                    // \mathbin{…} : transparent — l'argument est rendu en math inline.
+                    var arg = ReadArg(s, ref i);
+                    flush();
+                    outEls.AddRange(ParseFragment(arg));
+                    return null;
+                }
+                case "not":
+                {
+                    // \not\subset → ⊄, etc. ; sinon ¬<symbole>.
+                    if (i < s.Length && s[i] == '\\')
+                    {
+                        int j = i + 1;
+                        while (j < s.Length && char.IsLetter(s[j])) j++;
+                        string nxt = s.Substring(i + 1, j - (i + 1));
+                        i = j;
+                        if (NegSymbols.TryGetValue(nxt, out var neg)) { text.Append(neg); return null; }
+                        text.Append('¬');
+                        if (Symbols.TryGetValue(nxt, out var rep2)) text.Append(rep2); else text.Append(nxt);
+                        return null;
+                    }
+                    text.Append('¬'); return null;
+                }
                 default:
                     // Symbole littéral (grec, opérateur, relation, fonction trig).
                     if (Symbols.TryGetValue(cmd, out var rep)) text.Append(rep);
@@ -268,6 +320,39 @@ namespace MathCursor.Serialization
                 new XElement(M + "accPr", new XElement(M + "chr", new XAttribute(M + "val", combining))),
                 new XElement(M + "e", ParseFragment(arg)));
 
+        // Délimiteur auto-sizé <m:d> autour d'un contenu déjà construit.
+        private static XElement Delimited(string beg, string end, params object[] content)
+            => new XElement(M + "d",
+                new XElement(M + "dPr",
+                    new XElement(M + "begChr", new XAttribute(M + "val", beg)),
+                    new XElement(M + "endChr", new XAttribute(M + "val", end))),
+                new XElement(M + "e", content));
+
+        // Environnement matriciel : \begin{pmatrix} a & b \\ c & d \end{pmatrix}
+        // → <m:d>( <m:m><m:mr><m:e>a</m:e><m:e>b</m:e></m:mr>…</m:m> )</m:d>.
+        // Lignes séparées par \\ (deux backslashes), colonnes par &.
+        private static XElement MatrixEnv(string env, string body)
+        {
+            string beg = "(", end = ")";
+            switch (env)
+            {
+                case "bmatrix": beg = "["; end = "]"; break;
+                case "Bmatrix": beg = "{"; end = "}"; break;
+                case "vmatrix": beg = "|"; end = "|"; break;
+                case "Vmatrix": beg = "‖"; end = "‖"; break;
+            }
+            var m = new XElement(M + "m");
+            foreach (var rowStr in body.Split(new[] { "\\\\" }, StringSplitOptions.None))
+            {
+                if (rowStr.Trim().Length == 0) continue;
+                var mr = new XElement(M + "mr");
+                foreach (var cell in rowStr.Split('&'))
+                    mr.Add(new XElement(M + "e", ParseFragment(cell.Trim())));
+                m.Add(mr);
+            }
+            return Delimited(beg, end, m);
+        }
+
         private static XElement Run(string t) =>
             new XElement(M + "r", new XElement(M + "t",
                 new XAttribute(XNamespace.Xml + "space", "preserve"), t));
@@ -320,7 +405,7 @@ namespace MathCursor.Serialization
                 if (j == i + 1) // \{ \} \| : un seul char non-lettre après \
                 {
                     string one = s[i + 1].ToString(); i += 2;
-                    return DelimChar(one);
+                    return one == "|" ? "‖" : DelimChar(one); // \| = norme (double barre)
                 }
                 string cmd = s.Substring(i + 1, j - i - 1); i = j;
                 return DelimChar(cmd);
@@ -395,9 +480,19 @@ namespace MathCursor.Serialization
             { "K", "𝕂" }, { "P", "ℙ" }, { "F", "𝔽" },
         };
 
+        // \not<rel> → relation barrée (négation). Cf. ParseCommand case "not".
+        private static readonly Dictionary<string, string> NegSymbols = new Dictionary<string, string>
+        {
+            {"subset","⊄"},{"supset","⊅"},{"subseteq","⊈"},{"supseteq","⊉"},{"in","∉"},{"equiv","≢"},
+        };
+
         // Symboles littéraux (grec, relations, opérateurs, fonctions).
         private static readonly Dictionary<string, string> Symbols = new Dictionary<string, string>
         {
+            // ajouts portage forest : délimiteurs/relations/placeholder
+            {"colon",":"},{"mid","∣"},{"langle","⟨"},{"rangle","⟩"},
+            {"lfloor","⌊"},{"rfloor","⌋"},{"lceil","⌈"},{"rceil","⌉"},
+            {"ast","∗"},{"cong","≅"},{"nexists","∄"},{"bmod","mod"},{"square","□"},
             {"infty","∞"},{"to","→"},{"mapsto","↦"},{"times","×"},{"cdot","⋅"},
             {"div","÷"},{"pm","±"},{"mp","∓"},{"leq","≤"},{"geq","≥"},{"neq","≠"},
             {"approx","≈"},{"equiv","≡"},{"sim","∼"},{"propto","∝"},

@@ -21,6 +21,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{CD3B5CE5
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MathCursor.Engine.Tests", "engine\tests\MathCursor.Engine.Tests\MathCursor.Engine.Tests.csproj", "{EE3559B9-E3C8-4B2A-B14F-93D65425090A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "serialization", "serialization", "{5F325649-0B45-EE90-6A18-22336E597486}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{3698293E-038C-2F73-CB80-2C5DC2BC661B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MathCursor.Serialization.Tests", "serialization\tests\MathCursor.Serialization.Tests\MathCursor.Serialization.Tests.csproj", "{3DB7C223-9E0C-455D-9C1C-803C9CDB7589}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -91,6 +97,18 @@ Global
 		{EE3559B9-E3C8-4B2A-B14F-93D65425090A}.Release|x64.Build.0 = Release|Any CPU
 		{EE3559B9-E3C8-4B2A-B14F-93D65425090A}.Release|x86.ActiveCfg = Release|Any CPU
 		{EE3559B9-E3C8-4B2A-B14F-93D65425090A}.Release|x86.Build.0 = Release|Any CPU
+		{3DB7C223-9E0C-455D-9C1C-803C9CDB7589}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3DB7C223-9E0C-455D-9C1C-803C9CDB7589}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3DB7C223-9E0C-455D-9C1C-803C9CDB7589}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3DB7C223-9E0C-455D-9C1C-803C9CDB7589}.Debug|x64.Build.0 = Debug|Any CPU
+		{3DB7C223-9E0C-455D-9C1C-803C9CDB7589}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3DB7C223-9E0C-455D-9C1C-803C9CDB7589}.Debug|x86.Build.0 = Debug|Any CPU
+		{3DB7C223-9E0C-455D-9C1C-803C9CDB7589}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3DB7C223-9E0C-455D-9C1C-803C9CDB7589}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3DB7C223-9E0C-455D-9C1C-803C9CDB7589}.Release|x64.ActiveCfg = Release|Any CPU
+		{3DB7C223-9E0C-455D-9C1C-803C9CDB7589}.Release|x64.Build.0 = Release|Any CPU
+		{3DB7C223-9E0C-455D-9C1C-803C9CDB7589}.Release|x86.ActiveCfg = Release|Any CPU
+		{3DB7C223-9E0C-455D-9C1C-803C9CDB7589}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -103,5 +121,7 @@ Global
 		{4DCA8F45-BB2B-4761-9290-33036D1A3D8D} = {44223483-D230-BE34-58A4-7D0B4234B9DA}
 		{CD3B5CE5-C23F-38B4-04AA-A303F94731A5} = {D585295F-7994-3649-1065-7AA403C41681}
 		{EE3559B9-E3C8-4B2A-B14F-93D65425090A} = {CD3B5CE5-C23F-38B4-04AA-A303F94731A5}
+		{3698293E-038C-2F73-CB80-2C5DC2BC661B} = {5F325649-0B45-EE90-6A18-22336E597486}
+		{3DB7C223-9E0C-455D-9C1C-803C9CDB7589} = {3698293E-038C-2F73-CB80-2C5DC2BC661B}
 	EndGlobalSection
 EndGlobal
