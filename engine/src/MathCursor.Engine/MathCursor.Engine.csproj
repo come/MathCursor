@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>MathCursor.Engine</RootNamespace>
+    <AssemblyName>MathCursor.Engine</AssemblyName>
+    <LangVersion>10.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <Version>0.1.0</Version>
+    <Description>MathCursor recognition engine — portage C# du moteur web `forest` (grammaire ambiguë → forêt → classement → LaTeX). Pur, host-agnostic. Cf. PLAN.md §3.</Description>
+  </PropertyGroup>
+
+</Project>

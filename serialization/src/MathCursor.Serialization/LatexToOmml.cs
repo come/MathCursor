@@ -1,0 +1,418 @@
+#nullable disable
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Xml.Linq;
+
+namespace MathCursor.Serialization
+{
+    /// <summary>
+    /// Convertit notre LaTeX en <b>OMML</b> (OfficeMath) — la STRUCTURE native
+    /// que Word stocke pour ses équations. Contrairement à
+    /// <see cref="LatexToUnicodeMath"/> (ligne linéaire que Word re-parse au
+    /// BuildUp, avec des bugs de précédence : lim happe le numérateur, etc.),
+    /// l'OMML est inséré tel quel via <c>Range.InsertXML</c> et Word ne
+    /// re-devine RIEN.
+    ///
+    /// <para>Retourne l'élément <c>&lt;m:oMath&gt;</c> (namespace math). À
+    /// insérer dans un <c>&lt;w:p&gt;</c>. Cf. ADR 2026-06-02-Feat-omml-insertion
+    /// + POC validé (backlink CC OK).</para>
+    /// </summary>
+    public static class LatexToOmml
+    {
+        public static readonly XNamespace M =
+            "http://schemas.openxmlformats.org/officeDocument/2006/math";
+
+        /// <summary>Convertit un LaTeX en élément <c>&lt;m:oMath&gt;</c>.</summary>
+        public static XElement Convert(string latex)
+        {
+            var oMath = new XElement(M + "oMath");
+            if (!string.IsNullOrEmpty(latex))
+            {
+                int i = 0;
+                foreach (var el in ParseSeq(latex, ref i, stopAtBrace: false))
+                    oMath.Add(el);
+            }
+            return oMath;
+        }
+
+        /// <summary>Sérialise l'<c>&lt;m:oMath&gt;</c> en string (tests/debug).</summary>
+        public static string ConvertToString(string latex)
+            => Convert(latex).ToString(SaveOptions.DisableFormatting);
+
+        // ── Parsing récursif : LaTeX → liste d'éléments OMML ──────────────
+        // Émet une séquence de runs (<m:r>) et de structures (<m:f>, <m:rad>,
+        // <m:sSup>, <m:nary>, <m:func>, <m:d>, <m:m>, <m:acc>). Le texte courant
+        // est accumulé puis flush en <m:r> quand une structure arrive.
+
+        private static List<XElement> ParseSeq(string s, ref int i, bool stopAtBrace)
+        {
+            var outEls = new List<XElement>();
+            var text = new StringBuilder();
+
+            void Flush()
+            {
+                if (text.Length > 0) { outEls.Add(Run(text.ToString())); text.Clear(); }
+            }
+
+            while (i < s.Length)
+            {
+                char c = s[i];
+                if (stopAtBrace && c == '}') break;
+
+                if (c == '\\')
+                {
+                    // Commande : lit le nom (lettres).
+                    int j = i + 1;
+                    while (j < s.Length && char.IsLetter(s[j])) j++;
+                    string cmd = s.Substring(i + 1, j - (i + 1));
+                    if (cmd.Length == 0)
+                    {
+                        // \, \; \  \{ \} … → espace/littéral
+                        char next = j < s.Length ? s[j] : '\0';
+                        if (next == ',' || next == ';' || next == ':' || next == ' ') { i = j + 1; continue; }
+                        if (next == '{' || next == '}') { text.Append(next); i = j + 1; continue; }
+                        i = j; continue;
+                    }
+                    i = j;
+                    var st = ParseCommand(cmd, s, ref i, text, Flush, outEls);
+                    if (st != null) { Flush(); outEls.Add(st); }
+                    continue;
+                }
+
+                if (c == '^' || c == '_')
+                {
+                    // Exposant/indice : s'applique au texte courant (dernier
+                    // atome) — on flush le texte SAUF le dernier atome, qui
+                    // devient la base.
+                    string baseAtom = PopLastAtom(text);
+                    Flush();
+                    var script = BuildScript(baseAtom, s, ref i);
+                    if (script != null) outEls.Add(script);
+                    continue;
+                }
+
+                if (c == '{') { i++; continue; }   // groupe nu : transparent
+                if (c == '}') { i++; continue; }
+
+                text.Append(c);
+                i++;
+            }
+            Flush();
+            return outEls;
+        }
+
+        // Exp/indice (+ combiné) attaché à une base.
+        private static XElement BuildScript(string baseAtom, string s, ref int i)
+        {
+            bool sup = s[i] == '^';
+            i++;
+            var first = ReadArg(s, ref i);
+            // Combiné a_b^c ou a^b_c ?
+            string supTxt = null, subTxt = null;
+            List<XElement> firstEls = ParseFragment(first);
+            if (sup) supTxt = first; else subTxt = first;
+            List<XElement> secondEls = null;
+            if (i < s.Length && (s[i] == '^' || s[i] == '_'))
+            {
+                bool sup2 = s[i] == '^';
+                i++;
+                var second = ReadArg(s, ref i);
+                secondEls = ParseFragment(second);
+                if (sup2) supTxt = second; else subTxt = second;
+            }
+            var bEls = ParseFragment(baseAtom);
+            if (supTxt != null && subTxt != null)
+                return new XElement(M + "sSubSup",
+                    new XElement(M + "e", bEls),
+                    new XElement(M + "sub", ParseFragment(subTxt)),
+                    new XElement(M + "sup", ParseFragment(supTxt)));
+            if (sup)
+                return new XElement(M + "sSup",
+                    new XElement(M + "e", bEls),
+                    new XElement(M + "sup", firstEls));
+            return new XElement(M + "sSub",
+                new XElement(M + "e", bEls),
+                new XElement(M + "sub", firstEls));
+        }
+
+        // Dispatch des commandes structurelles. Retourne l'élément OMML, ou
+        // null si la commande a déjà été traitée (texte/symbole accumulé).
+        private static XElement ParseCommand(string cmd, string s, ref int i,
+            StringBuilder text, Action flush, List<XElement> outEls)
+        {
+            switch (cmd)
+            {
+                case "frac": case "dfrac": case "tfrac":
+                {
+                    var a = ReadArg(s, ref i); var b = ReadArg(s, ref i);
+                    return new XElement(M + "f",
+                        new XElement(M + "num", ParseFragment(a)),
+                        new XElement(M + "den", ParseFragment(b)));
+                }
+                case "sqrt":
+                {
+                    string deg = null;
+                    if (i < s.Length && s[i] == '[')
+                    {
+                        int close = s.IndexOf(']', i + 1);
+                        if (close > i) { deg = s.Substring(i + 1, close - i - 1); i = close + 1; }
+                    }
+                    var arg = ReadArg(s, ref i);
+                    if (deg != null)
+                        return new XElement(M + "rad",
+                            new XElement(M + "deg", ParseFragment(deg)),
+                            new XElement(M + "e", ParseFragment(arg)));
+                    return new XElement(M + "rad",
+                        new XElement(M + "radPr", new XElement(M + "degHide", new XAttribute(M + "val", "1"))),
+                        new XElement(M + "deg"),
+                        new XElement(M + "e", ParseFragment(arg)));
+                }
+                case "vec": case "overrightarrow":
+                    return Accent(ReadArg(s, ref i), "⃗");
+                case "hat": case "widehat":
+                    return Accent(ReadArg(s, ref i), "̂");
+                case "bar": case "overline":
+                    return Accent(ReadArg(s, ref i), "̅");
+                case "dot": return Accent(ReadArg(s, ref i), "̇");
+                case "ddot": return Accent(ReadArg(s, ref i), "̈");
+                case "tilde": case "widetilde": return Accent(ReadArg(s, ref i), "̃");
+                case "mathbb": case "mathcal": case "mathrm": case "mathbf":
+                case "mathsf": case "operatorname": case "text":
+                {
+                    var arg = ReadArg(s, ref i);
+                    if (cmd == "mathbb" && arg.Length == 1 && SetLetter.TryGetValue(arg, out var sc))
+                    { text.Append(sc); return null; }
+                    text.Append(arg); return null;
+                }
+                case "lim": case "limsup": case "liminf":
+                case "max": case "min": case "sup": case "inf":
+                    return LimitFunc(cmd, s, ref i);
+                case "left":
+                {
+                    // Délimiteur auto-sizé <m:d> : lit le délim ouvrant, le
+                    // corps jusqu'au \right correspondant (imbrication gérée),
+                    // puis le délim fermant. '.' = délim invisible (val="").
+                    string beg = ReadDelim(s, ref i);
+                    string body = ReadUntilMatchingRight(s, ref i);
+                    string end = ReadDelim(s, ref i);
+                    return new XElement(M + "d",
+                        new XElement(M + "dPr",
+                            new XElement(M + "begChr", new XAttribute(M + "val", beg)),
+                            new XElement(M + "endChr", new XAttribute(M + "val", end))),
+                        new XElement(M + "e", ParseFragment(body)));
+                }
+                case "right":
+                    // \right orphelin (LaTeX mal formé) : consomme le délim, ignore.
+                    ReadDelim(s, ref i);
+                    return null;
+                case "sum": return Nary("∑", s, ref i);
+                case "prod": return Nary("∏", s, ref i);
+                case "int": return Nary("∫", s, ref i);
+                case "iint": return Nary("∬", s, ref i);
+                case "iiint": return Nary("∭", s, ref i);
+                case "oint": return Nary("∮", s, ref i);
+                default:
+                    // Symbole littéral (grec, opérateur, relation, fonction trig).
+                    if (Symbols.TryGetValue(cmd, out var rep)) text.Append(rep);
+                    else text.Append(cmd); // inconnu : nom brut
+                    return null;
+            }
+        }
+
+        // lim/sup/… : <m:func><m:fName><m:limLow>{nom}{indice}</m:limLow></m:fName><m:e>{opérande}</m:e></m:func>
+        private static XElement LimitFunc(string cmd, string s, ref int i)
+        {
+            string name = cmd; // lim, sup, …
+            XElement fName;
+            if (i < s.Length && s[i] == '_')
+            {
+                i++;
+                var sub = ReadArg(s, ref i);
+                fName = new XElement(M + "fName",
+                    new XElement(M + "limLow",
+                        new XElement(M + "e", Run(name)),
+                        new XElement(M + "lim", ParseFragment(sub))));
+            }
+            else fName = new XElement(M + "fName", Run(name));
+            // opérande = reste jusqu'à fin (le moteur a déjà scopé le corps).
+            var bodyEls = ParseSeq(s, ref i, stopAtBrace: true);
+            return new XElement(M + "func", fName, new XElement(M + "e", bodyEls));
+        }
+
+        // ∑/∫/… : <m:nary> avec chr, sub (from), sup (to), e (corps).
+        private static XElement Nary(string chr, string s, ref int i)
+        {
+            string sub = null, sup = null;
+            while (i < s.Length && (s[i] == '_' || s[i] == '^'))
+            {
+                bool isSup = s[i] == '^'; i++;
+                var arg = ReadArg(s, ref i);
+                if (isSup) sup = arg; else sub = arg;
+            }
+            var naryPr = new XElement(M + "naryPr",
+                new XElement(M + "chr", new XAttribute(M + "val", chr)),
+                new XElement(M + "limLoc", new XAttribute(M + "val", "undOvr")),
+                new XElement(M + "subHide", new XAttribute(M + "val", sub == null ? "1" : "0")),
+                new XElement(M + "supHide", new XAttribute(M + "val", sup == null ? "1" : "0")));
+            var body = ParseSeq(s, ref i, stopAtBrace: true);
+            return new XElement(M + "nary",
+                naryPr,
+                new XElement(M + "sub", sub == null ? null : ParseFragment(sub)),
+                new XElement(M + "sup", sup == null ? null : ParseFragment(sup)),
+                new XElement(M + "e", body));
+        }
+
+        private static XElement Accent(string arg, string combining)
+            => new XElement(M + "acc",
+                new XElement(M + "accPr", new XElement(M + "chr", new XAttribute(M + "val", combining))),
+                new XElement(M + "e", ParseFragment(arg)));
+
+        private static XElement Run(string t) =>
+            new XElement(M + "r", new XElement(M + "t",
+                new XAttribute(XNamespace.Xml + "space", "preserve"), t));
+
+        // Parse un fragment isolé (argument) en liste d'éléments.
+        private static List<XElement> ParseFragment(string frag)
+        {
+            int k = 0;
+            return ParseSeq(frag ?? "", ref k, stopAtBrace: false);
+        }
+
+        // Lit un argument : {…} (équilibré) ou un seul caractère / \cmd.
+        private static string ReadArg(string s, ref int i)
+        {
+            if (i >= s.Length) return "";
+            if (s[i] == '{')
+            {
+                int depth = 1, start = ++i;
+                while (i < s.Length && depth > 0)
+                {
+                    if (s[i] == '\\' && i + 1 < s.Length) { i += 2; continue; }
+                    if (s[i] == '{') depth++;
+                    else if (s[i] == '}') { depth--; if (depth == 0) break; }
+                    i++;
+                }
+                string inner = s.Substring(start, i - start);
+                if (i < s.Length) i++; // skip }
+                return inner;
+            }
+            if (s[i] == '\\')
+            {
+                int j = i + 1;
+                while (j < s.Length && char.IsLetter(s[j])) j++;
+                string cmd = s.Substring(i, j - i);
+                i = j;
+                return cmd; // ex. \infty
+            }
+            return s[i++].ToString();
+        }
+
+        // Lit un délimiteur après \left / \right. Retourne le caractère OMML
+        // (val de begChr/endChr). '.' → "" (délimiteur invisible).
+        private static string ReadDelim(string s, ref int i)
+        {
+            if (i >= s.Length) return "";
+            if (s[i] == '\\')
+            {
+                int j = i + 1;
+                while (j < s.Length && char.IsLetter(s[j])) j++;
+                if (j == i + 1) // \{ \} \| : un seul char non-lettre après \
+                {
+                    string one = s[i + 1].ToString(); i += 2;
+                    return DelimChar(one);
+                }
+                string cmd = s.Substring(i + 1, j - i - 1); i = j;
+                return DelimChar(cmd);
+            }
+            char ch = s[i++];
+            return ch == '.' ? "" : ch.ToString();
+        }
+
+        // Mappe un token de délimiteur (litéral ou \cmd) vers son caractère.
+        private static string DelimChar(string tok)
+        {
+            switch (tok)
+            {
+                case ".": return "";
+                case "{": case "lbrace": return "{";
+                case "}": case "rbrace": return "}";
+                case "|": case "vert": case "lvert": case "rvert": return "|";
+                case "Vert": case "lVert": case "rVert": return "‖";
+                case "langle": return "⟨";
+                case "rangle": return "⟩";
+                case "lfloor": return "⌊";
+                case "rfloor": return "⌋";
+                case "lceil": return "⌈";
+                case "rceil": return "⌉";
+                default: return tok; // ( ) [ ] etc. (ou inconnu : brut)
+            }
+        }
+
+        // Consomme s à partir de i jusqu'au \right qui matche le \left courant
+        // (imbrication \left/\right gérée), retourne le corps (sans le \right).
+        // i est laissé juste après "\right" (sur le délim fermant).
+        private static string ReadUntilMatchingRight(string s, ref int i)
+        {
+            int start = i, depth = 0;
+            while (i < s.Length)
+            {
+                if (s[i] == '\\')
+                {
+                    if (MatchKw(s, i, "left")) { depth++; i += 5; continue; }
+                    if (MatchKw(s, i, "right"))
+                    {
+                        if (depth == 0) { string body = s.Substring(start, i - start); i += 6; return body; }
+                        depth--; i += 6; continue;
+                    }
+                }
+                i++;
+            }
+            return s.Substring(start); // \right manquant (mal formé) : tout le reste
+        }
+
+        // True si s[at]=='\\' et \kw suit, terminé par un non-lettre (ou fin).
+        private static bool MatchKw(string s, int at, string kw)
+        {
+            if (at + 1 + kw.Length > s.Length) return false;
+            if (string.CompareOrdinal(s, at + 1, kw, 0, kw.Length) != 0) return false;
+            int after = at + 1 + kw.Length;
+            return after >= s.Length || !char.IsLetter(s[after]);
+        }
+
+        // Retire et retourne le dernier "atome" du buffer texte (pour base de ^/_).
+        private static string PopLastAtom(StringBuilder text)
+        {
+            if (text.Length == 0) return "";
+            char last = text[text.Length - 1];
+            text.Remove(text.Length - 1, 1);
+            return last.ToString();
+        }
+
+        private static readonly Dictionary<string, string> SetLetter = new Dictionary<string, string>
+        {
+            { "R", "ℝ" }, { "N", "ℕ" }, { "Z", "ℤ" }, { "Q", "ℚ" }, { "C", "ℂ" },
+            { "K", "𝕂" }, { "P", "ℙ" }, { "F", "𝔽" },
+        };
+
+        // Symboles littéraux (grec, relations, opérateurs, fonctions).
+        private static readonly Dictionary<string, string> Symbols = new Dictionary<string, string>
+        {
+            {"infty","∞"},{"to","→"},{"mapsto","↦"},{"times","×"},{"cdot","⋅"},
+            {"div","÷"},{"pm","±"},{"mp","∓"},{"leq","≤"},{"geq","≥"},{"neq","≠"},
+            {"approx","≈"},{"equiv","≡"},{"sim","∼"},{"propto","∝"},
+            {"in","∈"},{"notin","∉"},{"subset","⊂"},{"subseteq","⊆"},{"supset","⊃"},{"supseteq","⊇"},
+            {"cup","∪"},{"cap","∩"},{"setminus","∖"},{"emptyset","∅"},
+            {"forall","∀"},{"exists","∃"},{"Rightarrow","⇒"},{"Leftrightarrow","⇔"},
+            {"iff","⇔"},{"implies","⇒"},{"wedge","∧"},{"vee","∨"},{"land","∧"},{"lor","∨"},{"neg","¬"},
+            {"partial","∂"},{"nabla","∇"},{"circ","∘"},{"perp","⊥"},{"parallel","∥"},
+            {"alpha","α"},{"beta","β"},{"gamma","γ"},{"delta","δ"},{"epsilon","ε"},{"varepsilon","ε"},
+            {"zeta","ζ"},{"eta","η"},{"theta","θ"},{"iota","ι"},{"kappa","κ"},{"lambda","λ"},
+            {"mu","μ"},{"nu","ν"},{"xi","ξ"},{"pi","π"},{"rho","ρ"},{"sigma","σ"},{"tau","τ"},
+            {"phi","φ"},{"varphi","φ"},{"chi","χ"},{"psi","ψ"},{"omega","ω"},
+            {"Gamma","Γ"},{"Delta","Δ"},{"Theta","Θ"},{"Lambda","Λ"},{"Xi","Ξ"},{"Pi","Π"},
+            {"Sigma","Σ"},{"Phi","Φ"},{"Psi","Ψ"},{"Omega","Ω"},
+            {"sin","sin"},{"cos","cos"},{"tan","tan"},{"ln","ln"},{"log","log"},{"exp","exp"},
+        };
+    }
+}
