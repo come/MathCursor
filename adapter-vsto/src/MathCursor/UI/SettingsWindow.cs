@@ -29,6 +29,7 @@ namespace MathCursor.UI
         private readonly ComboBox _cultureBox;
         private readonly ComboBox _intervalSepBox;
         private readonly ComboBox _matrixBox;
+        private readonly CheckBox _autoDetectBox;
         private readonly TextBlock _intervalSepHint;
         private readonly TextBlock _matrixHint;
         private readonly TextBlock _preview;
@@ -40,7 +41,7 @@ namespace MathCursor.UI
 
             Title = Strings.SettingsWindowTitle;
             Width = 560;
-            Height = 460;
+            Height = 540;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             ResizeMode = ResizeMode.NoResize;
             ShowInTaskbar = false;
@@ -81,6 +82,18 @@ namespace MathCursor.UI
             _matrixHint = HintBlock();
             root.Children.Add(FieldRow(Strings.SettingsMatrixLabel, _matrixBox, _matrixHint));
 
+            // ── Détection (ADR 2026-06-10-Feat-ner-auto-detection-debounce) ─
+            root.Children.Add(SectionHeader(Strings.SettingsSectionDetection));
+            _autoDetectBox = new CheckBox
+            {
+                Content = Strings.SettingsAutoDetectLabel,
+                FontSize = 12,
+                Margin = new Thickness(0, 2, 0, 14),
+            };
+            _autoDetectBox.Checked += (_, __) => { if (!_loading) _draft.AutoDetect = true; };
+            _autoDetectBox.Unchecked += (_, __) => { if (!_loading) _draft.AutoDetect = false; };
+            root.Children.Add(_autoDetectBox);
+
             // ── Aperçu ───────────────────────────────────────────────────
             root.Children.Add(SectionHeader(Strings.SettingsPreviewLabel));
             _preview = new TextBlock
@@ -115,6 +128,7 @@ namespace MathCursor.UI
             var effective = _draft.ToEngineCulture();
             _intervalSepBox.SelectedIndex = effective.IntervalSep == "," ? 1 : 0;
             _matrixBox.SelectedIndex = effective.MatrixEnv == "bmatrix" ? 1 : 0;
+            _autoDetectBox.IsChecked = _draft.AutoDetect;
             _loading = false;
             RefreshHintsAndPreview();
         }

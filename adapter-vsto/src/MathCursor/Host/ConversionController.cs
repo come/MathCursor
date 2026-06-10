@@ -132,8 +132,33 @@ namespace MathCursor.Host
             AnalyzeAndShow(extended);
         }
 
-        /// <summary>Moteur forest + affichage popup. Garde la zone si OK.</summary>
-        private void AnalyzeAndShow(ZoneSpan zone)
+        /// <summary>
+        /// Proposition AUTO (NER, cf. ADR 2026-06-10-Feat-ner-auto-detection-
+        /// debounce) : même moteur/popup que le manuel mais SILENCIEUX —
+        /// pas de StatusBar en échec (la popup se masque si la zone ne donne
+        /// rien), pas de re-show si la zone est inchangée (anti-flicker),
+        /// jamais en nav mode (la sélection de l'utilisateur est sacrée).
+        /// </summary>
+        public bool TryProposeAuto(ZoneSpan zone)
+        {
+            if (zone == null || zone.IsEmpty)
+            {
+                if (IsPopupVisible && !IsNavMode) HidePopup();
+                return false;
+            }
+            if (IsNavMode || _committing) return false;
+            if (IsPopupVisible && _zone != null
+                && _zone.ParagraphAbsStart == zone.ParagraphAbsStart
+                && _zone.StringStart == zone.StringStart
+                && _zone.StringEnd == zone.StringEnd
+                && string.Equals(_zone.Text, zone.Text, StringComparison.Ordinal))
+                return true; // zone identique → rien à rafraîchir
+            return AnalyzeAndShow(zone, silent: true);
+        }
+
+        /// <summary>Moteur forest + affichage popup. Garde la zone si OK.
+        /// <paramref name="silent"/> : échec sans StatusBar, popup masquée.</summary>
+        private bool AnalyzeAndShow(ZoneSpan zone, bool silent = false)
         {
             MathCursor.Engine.AnalyzeResult result;
             // Culture relue à chaque trigger : un changement dans la popup
@@ -142,14 +167,16 @@ namespace MathCursor.Host
             catch (Exception ex)
             {
                 _log($"convert: engine error sur \"{Preview(zone.Text)}\": {ex.Message}");
-                TryStatusBar(Strings.ConvertNothingRecognized);
-                return;
+                if (silent) { if (IsPopupVisible) HidePopup(); }
+                else TryStatusBar(Strings.ConvertNothingRecognized);
+                return false;
             }
             if (result.Decision == "erreur" || result.Ranked.Count == 0)
             {
                 _log($"convert: aucune lecture pour \"{Preview(zone.Text)}\"");
-                TryStatusBar(Strings.ConvertNothingRecognized);
-                return;
+                if (silent) { if (IsPopupVisible) HidePopup(); }
+                else TryStatusBar(Strings.ConvertNothingRecognized);
+                return false;
             }
 
             var candidates = result.Ranked.Select(c => c.Latex).ToList();
@@ -159,6 +186,7 @@ namespace MathCursor.Host
             var (x, yBelow, yAbove) = ComputeAnchor(zone);
             _zone = zone;
             _popup.ShowCandidates(candidates, x, yBelow, yAbove, zone.Text);
+            return true;
         }
 
         /// <summary>

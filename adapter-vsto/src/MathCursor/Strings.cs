@@ -671,6 +671,18 @@ namespace MathCursor
             _    => "Converts the text typed before the caret into an equation (Ctrl+Space). Press again to extend the zone leftwards.",
         };
 
+        public static string SettingsSectionDetection => Lang switch
+        {
+            "fr" => "Détection",
+            _    => "Detection",
+        };
+
+        public static string SettingsAutoDetectLabel => Lang switch
+        {
+            "fr" => "Proposer automatiquement pendant la frappe (le raccourci Ctrl+Espace reste toujours actif)",
+            _    => "Suggest automatically while typing (the Ctrl+Space shortcut always stays active)",
+        };
+
         public static string ConvertNothingRecognized => Lang switch
         {
             "fr" => "MathCursor : aucune notation mathématique reconnue ici.",

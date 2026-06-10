@@ -72,6 +72,7 @@ namespace MathCursor.Host.Settings
                 sb.Append(",\"interval_sep\":\"").Append(s.IntervalSepOverride).Append('"');
             if (s.MatrixEnvOverride != null)
                 sb.Append(",\"matrix_env\":\"").Append(s.MatrixEnvOverride).Append('"');
+            sb.Append(",\"auto_detect\":").Append(s.AutoDetect ? "true" : "false");
             sb.Append('}');
             return sb.ToString();
         }
@@ -92,6 +93,10 @@ namespace MathCursor.Host.Settings
             var env = ExtractString(json, "matrix_env");
             if (env == "pmatrix" || env == "bmatrix") s.MatrixEnvOverride = env;
 
+            // Clé absente (settings.json antérieur) → défaut true.
+            var auto = ExtractBool(json, "auto_detect");
+            if (auto.HasValue) s.AutoDetect = auto.Value;
+
             return s;
         }
 
@@ -108,6 +113,18 @@ namespace MathCursor.Host.Settings
             if (i >= json.Length || json[i] != '"') return null;
             int end = json.IndexOf('"', i + 1);
             return end < 0 ? null : json.Substring(i + 1, end - i - 1);
+        }
+
+        private static bool? ExtractBool(string json, string key)
+        {
+            string needle = "\"" + key + "\":";
+            int i = json.IndexOf(needle, StringComparison.Ordinal);
+            if (i < 0) return null;
+            i += needle.Length;
+            while (i < json.Length && json[i] == ' ') i++;
+            if (string.CompareOrdinal(json, i, "true", 0, 4) == 0) return true;
+            if (string.CompareOrdinal(json, i, "false", 0, 5) == 0) return false;
+            return null;
         }
 
         private static int? ExtractInt(string json, string key)

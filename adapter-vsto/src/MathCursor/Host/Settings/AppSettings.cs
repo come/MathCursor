@@ -25,6 +25,11 @@ namespace MathCursor.Host.Settings
         /// <summary>Env matriciel "pmatrix" ou "bmatrix" — null = suit la culture.</summary>
         public string MatrixEnvOverride { get; set; }
 
+        /// <summary>Auto-détection NER en cours de frappe (popup spontanée).
+        /// Ctrl+Espace reste actif quel que soit ce réglage. Cf. ADR
+        /// 2026-06-10-Feat-ner-auto-detection-debounce.</summary>
+        public bool AutoDetect { get; set; } = true;
+
         /// <summary>Preset moteur de la culture de base.</summary>
         public EngineCulture BaseCulture =>
             Culture == CultureUs ? EngineCulture.Us : EngineCulture.Fr;

@@ -26,6 +26,9 @@ namespace MathCursor.Host
         private const int VK_CONTROL = 0x11;
         private const int VK_ESCAPE = 0x1B;
         private const int VK_SPACE = 0x20;
+        private const int VK_BACK = 0x08;
+        private const int VK_DELETE = 0x2E;
+        private const int VK_MENU = 0x12;
         private const int VK_LEFT = 0x25;
         private const int VK_UP = 0x26;
         private const int VK_RIGHT = 0x27;
@@ -39,6 +42,15 @@ namespace MathCursor.Host
         public Func<bool> OnRightPressed { get; set; }
         public Func<bool> OnEscapePressed { get; set; }
         public Func<bool> OnCtrlSpacePressed { get; set; }
+
+        /// <summary>
+        /// Observation NON-consommante d'une frappe « texte » (lettres,
+        /// chiffres, opérateurs OEM, espace, Backspace, Delete — hors
+        /// Ctrl/Alt). Sert au debounce de l'auto-détection NER (ADR
+        /// 2026-06-10-Feat-ner-auto-detection-debounce) : la touche passe
+        /// toujours à Word, on ne fait que réarmer un timer.
+        /// </summary>
+        public Action OnTextKeyTyped { get; set; }
 
         private IntPtr _hookHandle;
         private KeyboardHookProc _proc; // référence GC-stable
@@ -94,9 +106,32 @@ namespace MathCursor.Host
                             LogHook($"vk={vkCode:X} exception: {ex.Message}");
                         }
                     }
+                    else if (!ctrlDown && IsTextKey(vkCode))
+                    {
+                        bool altDown = (GetKeyState(VK_MENU) & 0x8000) != 0;
+                        if (!altDown)
+                        {
+                            try { OnTextKeyTyped?.Invoke(); } catch { }
+                        }
+                    }
                 }
             }
             return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
+        }
+
+        /// <summary>Touche susceptible de MODIFIER le texte du ¶ courant :
+        /// lettres, chiffres (+ pavé num.), opérateurs OEM (+ - * / ^ = ( ) …),
+        /// espace, Backspace, Delete.</summary>
+        private static bool IsTextKey(int vk)
+        {
+            if (vk == VK_SPACE || vk == VK_BACK || vk == VK_DELETE) return true;
+            if (vk >= 0x30 && vk <= 0x39) return true;   // 0-9
+            if (vk >= 0x41 && vk <= 0x5A) return true;   // A-Z
+            if (vk >= 0x60 && vk <= 0x6F) return true;   // pavé num. + * + - . /
+            if (vk >= 0xBA && vk <= 0xC0) return true;   // OEM ; = , - . / `
+            if (vk >= 0xDB && vk <= 0xDF) return true;   // OEM [ \ ] ' #
+            if (vk == 0xE2) return true;                 // OEM 102 (< > sur AZERTY)
+            return false;
         }
 
         public void Dispose()

@@ -26,6 +26,8 @@ namespace MathCursor
     {
         private ConversionController _conversion;
         private EditModeController _editMode;
+        private AutoDetectController _autoDetect;
+        private Detection.MathNerDetector _ner;
         private KeyboardInterceptor _keyboard;
         private static readonly string SessionId = Guid.NewGuid().ToString("N").Substring(0, 12);
 
@@ -54,6 +56,14 @@ namespace MathCursor
                     getCaretScreenPos: CaretScreenPositionReader.Read,
                     log: LogStartup);
 
+                // Auto-détection NER en cours de frappe (ADR 2026-06-10-Feat-
+                // ner-auto-detection-debounce). Inerte tant que le modèle
+                // n'est pas chargé (cf. LoadNerDetectorAsync ci-dessous).
+                _autoDetect = new AutoDetectController(
+                    this.Application,
+                    _conversion,
+                    isEditPopupVisible: () => _editMode?.IsPopupVisible == true);
+
                 // Hook clavier thread-local (Word UI thread, pas global).
                 _keyboard = new KeyboardInterceptor
                 {
@@ -63,8 +73,14 @@ namespace MathCursor
                     OnUpPressed = HandleUpPressed,
                     OnDownPressed = HandleDownPressed,
                     OnEscapePressed = HandleEscapePressed,
+                    OnTextKeyTyped = () => _autoDetect?.OnTextKeyTyped(),
                 };
                 _keyboard.Install();
+
+                // Chargement du modèle NER HORS thread UI (~1-2 s : session
+                // ONNX + warm-up). Modèle absent = pas d'auto-détection, pas
+                // de crash — Ctrl+Espace reste pleinement fonctionnel.
+                LoadNerDetectorAsync();
 
                 // Event natif : pilote le mode édition + ferme la popup
                 // suggestion quand le caret bouge. Pas de polling.
@@ -86,8 +102,71 @@ namespace MathCursor
         {
             try { this.Application.WindowSelectionChange -= OnWindowSelectionChange; } catch { }
             try { _keyboard?.Dispose(); } catch { }
+            try { _autoDetect?.Dispose(); } catch { }
+            try { _ner?.Dispose(); } catch { }
             try { _conversion?.Dispose(); } catch { }
             try { _editMode?.Close(); } catch { }
+        }
+
+        // ── NER (auto-détection) ─────────────────────────────────────────
+
+        /// <summary>
+        /// Charge le modèle NER en arrière-plan puis l'attache à
+        /// l'<see cref="AutoDetectController"/>. Échec ou modèle introuvable
+        /// → log + auto-détection inactive, jamais d'exception vers Word.
+        /// </summary>
+        private void LoadNerDetectorAsync()
+        {
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                try
+                {
+                    var modelDir = TryFindModelDir();
+                    if (modelDir == null)
+                    {
+                        LogStartup("ner: modèle introuvable → auto-détection inactive (Ctrl+Espace seul)");
+                        return;
+                    }
+                    var detector = new Detection.MathNerDetector(modelDir);
+                    detector.Detect("x = 1"); // warm-up (1ʳᵉ inférence ~500 ms)
+                    _ner = detector;
+                    _autoDetect?.AttachDetector(detector);
+                    LogStartup("ner: modèle chargé depuis " + modelDir);
+                }
+                catch (Exception ex)
+                {
+                    LogStartup("ner_load_error: " + ex.Message + " → auto-détection inactive");
+                }
+            });
+        }
+
+        /// <summary>
+        /// Cherche <c>distilmult-v5</c> (model_quantized.onnx + vocab.txt)
+        /// dans les emplacements standards. Null si absent (le modèle
+        /// ~129 Mo n'est pas dans git ; l'installer le déploie, et en dev le
+        /// fallback DocMath s'applique).
+        /// </summary>
+        private static string TryFindModelDir()
+        {
+            var roots = new[]
+            {
+                Environment.GetEnvironmentVariable("MATHCURSOR_MODEL_DIR"),
+                Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MathCursor", "models"),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "models"),
+                @"D:\Software\DocMath\models", // dev
+            };
+            foreach (var root in roots)
+            {
+                if (string.IsNullOrEmpty(root)) continue;
+                var p = Path.Combine(root, "distilmult-v5");
+                if (Directory.Exists(p)
+                    && File.Exists(Path.Combine(p, "model_quantized.onnx"))
+                    && File.Exists(Path.Combine(p, "vocab.txt")))
+                    return p;
+            }
+            return null;
         }
 
         // ── Événement natif : caret bouge ────────────────────────────────

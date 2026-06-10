@@ -186,6 +186,7 @@
     <EmbeddedResource Include="Ribbon.xml" />
     <Compile Include="Host\ColumnLayoutInserter.cs" />
     <Compile Include="Host\ConversionController.cs" />
+    <Compile Include="Host\AutoDetectController.cs" />
     <Compile Include="Host\OMathInserter.cs" />
     <Compile Include="Host\WordContextReader.cs" />
     <Compile Include="Host\KeyboardInterceptor.cs" />
