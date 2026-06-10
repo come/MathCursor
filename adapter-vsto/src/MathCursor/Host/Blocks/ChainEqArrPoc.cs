@@ -37,69 +37,87 @@ namespace MathCursor.Host.Blocks
 
             using (new UndoRecordScope(app, "MathCursor : POC chaîne (eqArr)"))
             {
-                // L'oMath eqArr : une <m:e> par ligne, « & » = point d'alignement
-                // (juste AVANT le signe → tous les signes s'alignent).
-                var eqArr = new XElement(M + "eqArr",
+                // Bloc 1 — chaîne simple : alignement au « = » (1 marque & par ligne).
+                var simple = new XElement(M + "eqArr",
                     Line("f(x)", "=2x+2-2"),
                     Line(null, "=2x"),
                     Line(null, "=2\\cdot x"));
-                var oMath = new XElement(M + "oMath", eqArr);
+                InsertEqArr(app, doc, sel, simple, "simple", log);
 
-                // ¶ frais + insertion chirurgicale (même technique placeholder
-                // qu'OMathInserter.BuildOMathViaOmml).
-                sel.TypeParagraph();
-                sel.TypeText("¤");
-                int phEnd = sel.Start;
-                int phStart = phEnd - 1;
-                var phRange = doc.Range(phStart, phEnd);
+                // Bloc 2 — chaîne d'ÉQUIVALENCES : DOUBLE alignement (2 marques
+                // & par ligne) — les ⟺ s'alignent entre eux ET les = entre eux.
+                var equiv = new XElement(M + "eqArr",
+                    Line(null, "x+2", "=5"),
+                    Line("\\Leftrightarrow ", "x", "=3"),
+                    Line("\\Leftrightarrow ", "2x", "=6"));
+                InsertEqArr(app, doc, sel, equiv, "équivalences (double alignement)", log);
 
-                XDocument xdoc;
-                try { xdoc = XDocument.Parse(phRange.WordOpenXML); }
-                catch (Exception ex) { log("poc-eqarr: parse WordOpenXML KO: " + ex.Message); return; }
-
-                XElement phRun = null;
-                foreach (var r in xdoc.Descendants(W + "r"))
-                {
-                    var t = r.Element(W + "t");
-                    if (t != null && t.Value == "¤") { phRun = r; break; }
-                }
-                if (phRun == null) { log("poc-eqarr: placeholder introuvable"); phRange.Delete(); return; }
-                phRun.ReplaceWith(oMath);
-
-                try { phRange.InsertXML(xdoc.ToString(SaveOptions.DisableFormatting)); }
-                catch (Exception ex) { log("poc-eqarr: InsertXML KO: " + ex.Message); phRange.Delete(); return; }
-                log("poc-eqarr: eqArr 3 lignes inséré");
-
-                // Caret après le bloc.
-                try
-                {
-                    Word.OMath om = null;
-                    foreach (Word.OMath o in doc.Range(phStart, Math.Min(doc.Content.End, phStart + 200)).OMaths)
-                    { om = o; break; }
-                    if (om != null)
-                    {
-                        sel.SetRange(om.Range.End, om.Range.End);
-                        sel.MoveRight(Word.WdUnits.wdCharacter, 1, Word.WdMovementType.wdMove);
-                    }
-                }
-                catch { }
                 log("poc-eqarr: DONE");
             }
-            try { app.StatusBar = "MathCursor : POC eqArr inséré — comparer le feel avec le POC tableau"; } catch { }
+            try { app.StatusBar = "MathCursor : POC eqArr inséré (simple + double alignement) — comparer avec le POC tableau"; } catch { }
         }
 
-        /// <summary>Une ligne de l'array : [lhs] &amp; [marqueur+rhs]. Le
-        /// « &amp; » est la marque d'alignement native d'eqArr.</summary>
-        private static XElement Line(string lhsLatex, string rhsLatex)
+        /// <summary>Insère UN bloc eqArr dans un ¶ frais (technique placeholder
+        /// chirurgicale, comme OMathInserter.BuildOMathViaOmml).</summary>
+        private static void InsertEqArr(Word.Application app, Word.Document doc, Word.Selection sel,
+            XElement eqArr, string label, Action<string> log)
+        {
+            var oMath = new XElement(M + "oMath", eqArr);
+
+            sel.TypeParagraph();
+            sel.TypeText("¤");
+            int phEnd = sel.Start;
+            int phStart = phEnd - 1;
+            var phRange = doc.Range(phStart, phEnd);
+
+            XDocument xdoc;
+            try { xdoc = XDocument.Parse(phRange.WordOpenXML); }
+            catch (Exception ex) { log($"poc-eqarr: [{label}] parse WordOpenXML KO: " + ex.Message); return; }
+
+            XElement phRun = null;
+            foreach (var r in xdoc.Descendants(W + "r"))
+            {
+                var t = r.Element(W + "t");
+                if (t != null && t.Value == "¤") { phRun = r; break; }
+            }
+            if (phRun == null) { log($"poc-eqarr: [{label}] placeholder introuvable"); phRange.Delete(); return; }
+            phRun.ReplaceWith(oMath);
+
+            try { phRange.InsertXML(xdoc.ToString(SaveOptions.DisableFormatting)); }
+            catch (Exception ex) { log($"poc-eqarr: [{label}] InsertXML KO: " + ex.Message); phRange.Delete(); return; }
+            log($"poc-eqarr: [{label}] inséré");
+
+            // Caret après le bloc (sortie de la zone math).
+            try
+            {
+                Word.OMath om = null;
+                foreach (Word.OMath o in doc.Range(phStart, Math.Min(doc.Content.End, phStart + 300)).OMaths)
+                { om = o; break; }
+                if (om != null)
+                {
+                    sel.SetRange(om.Range.End, om.Range.End);
+                    sel.MoveRight(Word.WdUnits.wdCharacter, 1, Word.WdMovementType.wdMove);
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>Une ligne de l'array : segments séparés par les marques
+        /// d'alignement « &amp; » natives d'eqArr. Un segment null/vide est
+        /// permis (colonne vide, ex. pas de connecteur sur la 1ʳᵉ ligne) —
+        /// la marque &amp; est émise quand même pour garder les colonnes.</summary>
+        private static XElement Line(params string[] segmentsLatex)
         {
             var e = new XElement(M + "e");
-            if (!string.IsNullOrEmpty(lhsLatex))
-                foreach (var el in LatexToOmml.Convert(lhsLatex).Elements())
-                    e.Add(el);
-            e.Add(new XElement(M + "r",
-                new XElement(M + "t", new XAttribute(XNamespace.Xml + "space", "preserve"), "&")));
-            foreach (var el in LatexToOmml.Convert(rhsLatex).Elements())
-                e.Add(el);
+            for (int i = 0; i < segmentsLatex.Length; i++)
+            {
+                if (i > 0)
+                    e.Add(new XElement(M + "r",
+                        new XElement(M + "t", new XAttribute(XNamespace.Xml + "space", "preserve"), "&")));
+                if (!string.IsNullOrEmpty(segmentsLatex[i]))
+                    foreach (var el in LatexToOmml.Convert(segmentsLatex[i]).Elements())
+                        e.Add(el);
+            }
             return e;
         }
 
