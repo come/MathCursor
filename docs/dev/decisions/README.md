@@ -19,6 +19,9 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-06-10
+- `[forte]` Refactor — [Phase 2 beta-clean : réécriture de l'orchestration adapter + ribbon à neuf](2026-06-10-Refactor-phase2-adapter-orchestration-rewrite.md) — SuggestionService (2647 l., couplé à l'ancien moteur) supprimé ; primitives d'insertion validées extraites en `OMathInserter` ; nouveau `ConversionController` (Ctrl+Espace → forest → popup → OMML, UndoRecordScope) ; popup candidats simplifiée (modèle forest) ; ribbon refait (3 boutons, imageMso) ; events natifs (WindowSelectionChange), plus de polling ; NER différé Phase 4.
+
 ### 2026-06-03
 - `[forte]` Refactor — [Retrait du moteur legacy Lattice (LatticeEngine + Lattice/)](2026-06-03-Refactor-retrait-lattice-legacy-engine.md) — Le legacy P32, gardé en « fallback ~10% », n'était en réalité jamais consulté (v2 ne rend null que sur exception ; `LegacyFallbackCalls==0` verrouillé). Suppression de ~3540 lignes (LatticeEngine + Lattice/ + ILatexEngine + tests), simplification ZoneResolver/SuggestionService/ThisAddIn (ctors sans `engine`, kill-switch retiré). Patterns/ conservé (orthogonal). Sur exception v2 → zone identité dégradée.
 

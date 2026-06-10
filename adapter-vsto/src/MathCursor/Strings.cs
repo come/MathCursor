@@ -552,5 +552,37 @@ namespace MathCursor
 
         /// <summary>Format de version standard "Major.Minor.Patch" depuis l'AssemblyVersion.</summary>
         public static string FormatVersion(Version v) => $"{v.Major}.{v.Minor}.{v.Build}";
+
+        // ---------- Ribbon Phase 2 beta-clean (ADR 2026-06-10) ----------
+
+        public static string ConversionGroupLabel => Lang switch
+        {
+            "fr" => "Conversion",
+            _    => "Conversion",
+        };
+
+        public static string HelpGroupLabel => Lang switch
+        {
+            "fr" => "Aide",
+            _    => "Help",
+        };
+
+        public static string ConvertButtonLabel => Lang switch
+        {
+            "fr" => "Convertir",
+            _    => "Convert",
+        };
+
+        public static string ConvertButtonScreentip => Lang switch
+        {
+            "fr" => "Convertit le texte tapé avant le curseur en équation (Ctrl+Espace). Ré-appuyer étend la zone vers la gauche.",
+            _    => "Converts the text typed before the caret into an equation (Ctrl+Space). Press again to extend the zone leftwards.",
+        };
+
+        public static string ConvertNothingRecognized => Lang switch
+        {
+            "fr" => "MathCursor : aucune notation mathématique reconnue ici.",
+            _    => "MathCursor: no mathematical notation recognized here.",
+        };
     }
 }

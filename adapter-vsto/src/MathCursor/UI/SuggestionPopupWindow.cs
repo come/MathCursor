@@ -10,142 +10,50 @@ using System.Windows.Media.Animation;
 namespace MathCursor.UI
 {
     /// <summary>
-    /// Popup WPF affichée sous le caret. Modèle phase 5b2 :
+    /// Popup WPF affichée sous le caret : liste VERTICALE des candidats LaTeX
+    /// classés par le moteur forest (une ligne par candidat, top en premier).
+    /// Réécriture Phase 2 beta-clean (cf. ADR 2026-06-10) — le modèle
+    /// d'ambiguïté de l'ancien moteur (spots/splice/préférences) disparaît,
+    /// remplacé par le classement de candidats.
     ///
+    /// Acquis conservés :
     /// <list type="bullet">
-    /// <item>Si pas d'ambiguïté → une seule ligne : la formule finale (fond
-    ///   vert clair, signal "formule reconnue").</item>
-    /// <item>Si ambiguïté → alternatives en colonnes en haut, formule finale
-    ///   en bas, séparées par un trait. Up/Down navigue entre la zone alts
-    ///   et la zone finale ; Enter sur alt résout localement (recompose la
-    ///   formule finale, popup reste ouverte) ; Enter sur finale commit.</item>
+    /// <item><c>WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW</c> : la popup ne vole
+    ///   JAMAIS le focus de Word.</item>
+    /// <item>Nav-mode opt-in : aucun surlignage avant la première flèche
+    ///   (sinon l'élève croit qu'Enter va valider la ligne mise en avant).</item>
+    /// <item>Max 2 candidats affichés, « + N autres » pour étendre.</item>
+    /// <item>Fade in/out, opacité 0.5 affichage / 0.9 navigation.</item>
     /// </list>
-    ///
-    /// Construite en code (pas de XAML) pour minimiser le set-up VSTO.
     /// </summary>
     public sealed class SuggestionPopupWindow : Window
     {
         private const double DisplayOpacity = 0.5;
         private const double NavOpacity = 0.9;
         private const int FadeMs = 150;
+        private const int MaxCandidatesCollapsed = 2;
 
-        private readonly StackPanel _altsRow;
-        private readonly Border _altsRowBorder;
-        private readonly Grid _finalContainer;
-
-        private string _topLatex = "";
-        private string _currentRuleId = "";
-        private IReadOnlyList<MathCursor.Core.Lattice.AmbiguityAlternative> _alternatives
-            = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
-        // Tous les matches d'ambiguïté de la formule courante (pas juste le
-        // current spot). Permet la résolution en cascade : quand l'utilisateur
-        // valide vec pour BC, on applique vec aussi à AB et AC qui sont des
-        // patterns du même RuleId déjà présents dans la zone.
-        private IReadOnlyList<MathCursor.Core.Lattice.AmbiguityMatch> _allMatches
-            = Array.Empty<MathCursor.Core.Lattice.AmbiguityMatch>();
-        private int _spotStart = -1, _spotEnd = -1;
-        private string _resolvedLatex = "";
-        private bool _focusOnFinal = true;
-        private int _altIndex;
-
-        // Cache des résolutions par STRING (defaultLatex → altLatex). Appliqué
-        // à chaque update du polling NER pour préserver les choix précis de
-        // l'utilisateur (ex: "AB" → "\\vec{AB}" exactement, même si on retape).
-        // Span-pins accumulés à mesure que l'utilisateur résout des alts.
-        // Mapping index UI (= position dans _alternatives) → altIdx réel
-        // de la rule. -1 = alt-revert. Construit à chaque Show() en
-        // tenant compte du filtrage de l'alt active.
-        private System.Collections.Generic.IReadOnlyList<int> _altIdxMap
-            = System.Array.Empty<int>();
-
-        // P7d (2026-05-21) : PatternCompletion[] reçues du ZoneResolver et
-        // affichées en tête de la liste d'alternatives. Quand l'user
-        // sélectionne une entry pattern, TryResolveAlt set
-        // _resolvedLatex = selectedAlt.Latex (= PreviewLatex du pattern)
-        // pour que le commit Enter insère cet OMath.
-        private IReadOnlyList<MathCursor.Core.Patterns.PatternCompletion> _patternCompletions
-            = Array.Empty<MathCursor.Core.Patterns.PatternCompletion>();
-
-        /// <summary>
-        /// Base sentinel pour <see cref="_altIdxMap"/> qui marque une entry
-        /// comme PatternCompletion (vs ambig closed). L'index dans
-        /// <see cref="_patternCompletions"/> est encodé via
-        /// <c>AltIdxPatternBase - patternIndex</c> (-1000 = pattern 0,
-        /// -1001 = pattern 1, etc.). Permet de retrouver le PatternCompletion
-        /// original (et son PreviewLatex pour le commit, distinct du
-        /// HintLatex affiché). Local au popup (pas dans Core).
-        /// </summary>
-        private const int AltIdxPatternBase = -1000;
-
-        /// <summary>
-        /// P24 (2026-05-22) : sentinel pour la ligne du top latex (= 1er
-        /// candidat dans la liste unifiée). Click sur cette ligne déclenche
-        /// <see cref="CommitRequested"/> (= équivalent Enter sur la finale).
-        /// Refonte popup "une ligne par candidat".
-        /// </summary>
-        private const int AltIdxTop = -2000;
-
+        private readonly StackPanel _rows;
         private readonly TextBlock _debugFooter;
-        private readonly TextBlock _reportLink;
+
+        private IReadOnlyList<string> _candidates = Array.Empty<string>();
+        private int _selectedIndex;
         private bool _navMode;
+        private bool _expanded;
 
-        public bool IsNavMode => _navMode;
-        public bool IsFocusOnFinal => _focusOnFinal;
+        /// <summary>Levé quand l'utilisateur clique un candidat (le candidat
+        /// cliqué devient la sélection). L'hôte fait le commit.</summary>
+        public event Action CommitRequested;
 
-        /// <summary>LaTeX qui sera commité dans Word à l'Enter sur la formule
-        /// finale. Intègre les éventuelles résolutions d'alternatives faites
-        /// par l'utilisateur en navigant + Enter sur les alts.</summary>
-        public string CurrentFinalLatex => _resolvedLatex;
-
-        /// <summary>
-        /// Résout le DefaultLatex correct pour une ambig au span (spotStart,
-        /// spotEnd) en cherchant dans <paramref name="allMatches"/>. Évite le
-        /// piège du <c>topLatex.Substring(...)</c> qui peut renvoyer du
-        /// gibberish quand le topLatex a été splicé par un RulePin (= les
-        /// bornes spotStart/End restent du baseTopLatex pré-splice).
-        /// Fallback substring si aucun match trouvé.
-        /// </summary>
-        private static string ResolveDefaultLatex(
-            string topLatex,
-            int spotStart,
-            int spotEnd,
-            IReadOnlyList<MathCursor.Core.Lattice.AmbiguityMatch> allMatches)
-        {
-            if (allMatches != null)
-            {
-                foreach (var m in allMatches)
-                {
-                    if (m?.Spot == null) continue;
-                    if (m.Start == spotStart && m.End == spotEnd)
-                        return m.Spot.DefaultLatex ?? "";
-                }
-            }
-            if (string.IsNullOrEmpty(topLatex)) return "";
-            if (spotStart < 0 || spotEnd <= spotStart || spotEnd > topLatex.Length) return "";
-            return topLatex.Substring(spotStart, spotEnd - spotStart);
-        }
-
-
+        /// <summary>Levé par le lien « Signaler une erreur ».</summary>
         public event Action ReportRequested;
 
-        /// <summary>
-        /// Levé quand l'utilisateur résout une alt dont la mutation source
-        /// est non null (ex: V→forall). Le service hôte mémorise la
-        /// préférence (ruleId, altIdx) et relance le pipeline. La popup
-        /// elle-même n'a pas accès à la source brute — c'est l'hôte qui
-        /// maintient la source dans Word.
-        ///
-        /// Args : `(ruleId, altIdx, mutation)`. ruleId+altIdx servent à
-        /// mémoriser la pref par règle (V→forall pour la session). mutation
-        /// est l'instance précise pour le V courant.
-        /// </summary>
-        public event Action<string, int, MathCursor.Core.Lattice.SourceMutation> SourceMutationRequested;
+        public bool IsNavMode => _navMode;
 
-        /// <summary>
-        /// Levé quand l'utilisateur clique sur la formule finale dans la popup
-        /// (équivalent d'un Enter sur la finale). L'hôte fait le commit OMath.
-        /// </summary>
-        public event Action CommitRequested;
+        /// <summary>LaTeX qui sera commité : la sélection courante (= top
+        /// par défaut si l'utilisateur n'a pas navigué).</summary>
+        public string SelectedLatex =>
+            _selectedIndex >= 0 && _selectedIndex < _candidates.Count ? _candidates[_selectedIndex] : null;
 
         public SuggestionPopupWindow()
         {
@@ -160,36 +68,7 @@ namespace MathCursor.UI
             AllowsTransparency = true;
             Opacity = 0;
 
-            var border = new Border
-            {
-                BorderBrush = new SolidColorBrush(Color.FromRgb(180, 180, 180)),
-                BorderThickness = new Thickness(1),
-                Background = Brushes.White,
-            };
-
-            // P22 (2026-05-22) : refonte popup IDE-style. Liste VERTICALE
-            // des alternatives (= une ligne par candidat). Cf. demande user
-            // « une ligne par candidat et c'est tout ».
-            _altsRow = new StackPanel
-            {
-                Orientation = Orientation.Vertical,
-                Margin = new Thickness(4, 4, 4, 4),
-            };
-            _altsRowBorder = new Border
-            {
-                BorderBrush = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
-                BorderThickness = new Thickness(0, 0, 0, 1),
-                Background = Brushes.White,
-                Visibility = Visibility.Collapsed,
-                Child = _altsRow,
-            };
-
-            // Conteneur de la formule finale (toujours présent en mode actif)
-            _finalContainer = new Grid
-            {
-                Margin = new Thickness(0),
-                Background = Brushes.White,
-            };
+            _rows = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(4) };
 
             _debugFooter = new TextBlock
             {
@@ -197,19 +76,11 @@ namespace MathCursor.UI
                 FontSize = 10,
                 FontStyle = FontStyles.Italic,
                 Foreground = new SolidColorBrush(Color.FromRgb(140, 140, 140)),
-                Margin = new Thickness(8, 2, 8, 4),
-                Padding = new Thickness(0),
+                Margin = new Thickness(8, 2, 8, 2),
                 TextWrapping = TextWrapping.Wrap,
             };
-            var topSeparator = new Border
-            {
-                BorderBrush = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
-                BorderThickness = new Thickness(0, 1, 0, 0),
-                Margin = new Thickness(0, 4, 0, 0),
-                Child = _debugFooter,
-            };
 
-            _reportLink = new TextBlock
+            var reportLink = new TextBlock
             {
                 Text = "Signaler une erreur",
                 FontSize = 10,
@@ -219,21 +90,23 @@ namespace MathCursor.UI
                 TextDecorations = TextDecorations.Underline,
                 HorizontalAlignment = HorizontalAlignment.Right,
             };
-            _reportLink.MouseLeftButtonUp += (_, __) => ReportRequested?.Invoke();
-            var reportLinkBorder = new Border
+            reportLink.MouseLeftButtonUp += (_, __) => ReportRequested?.Invoke();
+
+            var footer = new Border
             {
                 BorderBrush = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
                 BorderThickness = new Thickness(0, 1, 0, 0),
-                Child = _reportLink,
+                Margin = new Thickness(0, 4, 0, 0),
+                Child = new StackPanel { Children = { _debugFooter, reportLink } },
             };
 
-            var stack = new StackPanel();
-            stack.Children.Add(_altsRowBorder);
-            stack.Children.Add(_finalContainer);
-            stack.Children.Add(topSeparator);
-            stack.Children.Add(reportLinkBorder);
-            border.Child = stack;
-            Content = border;
+            Content = new Border
+            {
+                BorderBrush = new SolidColorBrush(Color.FromRgb(180, 180, 180)),
+                BorderThickness = new Thickness(1),
+                Background = Brushes.White,
+                Child = new StackPanel { Children = { _rows, footer } },
+            };
 
             SourceInitialized += (_, _) =>
             {
@@ -244,172 +117,19 @@ namespace MathCursor.UI
         }
 
         /// <summary>
-        /// Rendu LaTeX → UIElement via MixedLatexRenderer (mixed-rendering
-        /// FormulaControl + TextBlock Unicode pour <c>\mathbb</c>, <c>\mapsto</c>,
-        /// <c>\iint</c>, <c>\iiint</c>). Cf. brief 2026-05-06-wpfmath-fallback-renderer.
+        /// Affiche la liste des candidats à (screenX, screenY) en DIP.
+        /// <paramref name="sourceText"/> = texte source (footer informatif).
         /// </summary>
-        private UIElement RenderMath(string latex)
+        public void ShowCandidates(IReadOnlyList<string> candidates, double screenX, double screenY,
+            string sourceText = "")
         {
-            var container = new Grid { Margin = new Thickness(8, 4, 12, 4) };
-            container.Children.Add(MixedLatexRenderer.Render(latex ?? "", 18));
-            return container;
-        }
-
-        /// <summary>
-        /// Affiche la popup. Si <paramref name="alternatives"/> est non-vide
-        /// ET qu'aucune préférence n'est mémorisée pour <paramref name="ruleId"/>,
-        /// la zone d'ambiguïté apparaît en haut. Sinon (pas d'alts, ou pref
-        /// déjà mémorisée), juste la formule finale (fond vert clair).
-        /// </summary>
-        public void Show(
-            string topLatex,
-            string ruleId,
-            IReadOnlyList<MathCursor.Core.Lattice.AmbiguityAlternative> alternatives,
-            int spotStart,
-            int spotEnd,
-            IReadOnlyList<MathCursor.Core.Lattice.AmbiguityMatch> allMatches,
-            double screenX,
-            double screenY,
-            string debugText = "",
-            IReadOnlyList<MathCursor.Core.Patterns.PatternCompletion>? patternCompletions = null)
-        {
-            LogPopup($"Show top=\"{topLatex}\" rule=\"{ruleId}\" alts={(alternatives?.Count ?? 0)} pos=({screenX:F0},{screenY:F0}) patterns={(patternCompletions?.Count ?? 0)}");
-
-            // P7d (2026-05-21) : rendering définitif des PatternCompletion[].
-            // Pattern d'abord en tête des alternatives (Choix 5 du plan P7),
-            // converties en AmbiguityAlternative virtuelles (Latex =
-            // PreviewLatex, Mutation préservée). Sentinel AltIdxPattern dans
-            // _altIdxMap pour distinguer ces entries des ambig closed.
-            // Quand l'user sélectionne une entry Pattern : TryResolveAlt
-            // détecte le sentinel et set _resolvedLatex = selectedAlt.Latex.
-            // Le commit Enter standard insère cet OMath. Cf. ADR
-            // 2026-05-21-Feat-popup-pattern-completion-rendering (P7d).
-            _patternCompletions = patternCompletions
-                ?? Array.Empty<MathCursor.Core.Patterns.PatternCompletion>();
-            // P15.2 : reset l'expand state à chaque Show (= nouvelle zone).
-            _altsExpanded = false;
-            if (_patternCompletions.Count > 0)
-            {
-                LogPopup($"Pattern completions: {_patternCompletions.Count}, first preview=\"{_patternCompletions[0].PreviewLatex}\" desc=\"{_patternCompletions[0].Description}\"");
-            }
-
-            // Spot bounds : le topLatex est déjà splicé par le ZoneResolver
-            // (= AppliedAltIdx reflète la pref active). Pas de re-substitution
-            // locale → bornes inchangées par rapport à l'entrée. Le fallback
-            // sur les bornes d'entrée couvre le cas defaultLatex introuvable.
-            int newSpotStart = -1, newSpotEnd = -1;
-            if (alternatives != null && alternatives.Count > 0
-                && spotStart >= 0 && spotEnd > spotStart && spotEnd <= (topLatex?.Length ?? 0))
-            {
-                newSpotStart = spotStart;
-                newSpotEnd = spotEnd;
-            }
-
-            _topLatex = topLatex ?? "";
-            _currentRuleId = ruleId ?? "";
-            _allMatches = allMatches ?? Array.Empty<MathCursor.Core.Lattice.AmbiguityMatch>();
-            // Construction de la liste affichée dans la popup d'ambig.
-            // Règle invariant 2026-05-07 (user) : « le choix final (par
-            // défaut si pas de choix) d'une désambig n'est jamais montré
-            // dans une popup de désambig ».
-            //
-            //   - Si activeAltIdx = -1 (cas vierge, pas de RulePin) : la
-            //     finale = defaultLatex (brut). On affiche TOUTES les vraies
-            //     alts. Pas d'alt-revert (= redondant avec la finale).
-            //   - Si activeAltIdx >= 0 (RulePin / scoring actif) : la finale
-            //     = alts[activeAltIdx]. On AJOUTE l'alt-revert (permet de
-            //     revenir au default brut) + les autres vraies alts (sauf
-            //     l'active filtrée).
-            //
-            // Précédence pour activeAltIdx :
-            //   1) _rulePreferences[ruleId] (in-session courante)
-            //   2) activeAltIdxFromCaller (RulePin cross-commit via _globalCtx)
-            if (newSpotStart >= 0 && alternatives != null && alternatives.Count > 0)
-            {
-                string defaultLatex = ResolveDefaultLatex(topLatex!, spotStart, spotEnd, allMatches);
-
-                // Logique pure de filter extraite dans MathCursor.Core.Resolution.PopupAltFilter
-                // pour testabilité (cf. tests PopupAltFilterTests).
-                var filtered = MathCursor.Core.Resolution.PopupAltFilter.Filter(
-                    spotStart, spotEnd, alternatives, allMatches, defaultLatex);
-
-                // P7d : prepend les PatternCompletion en tête (Choix 5 plan P7).
-                _alternatives = PrependPatternCompletions(filtered.Built, out var prependedMap);
-                _altIdxMap = MergePrependedMap(prependedMap, filtered.AltIdxMap);
-
-                // Diag pour debug bugs filter rapportés (« click X fait Y »).
-                LogPopup($"filter activeAltIdx={filtered.ActiveAltIdx} spotStart={spotStart} spotEnd={spotEnd} allMatches={allMatches?.Count ?? 0} prepended={prependedMap.Count}");
-                if (allMatches != null)
-                {
-                    for (int dbgI = 0; dbgI < allMatches.Count; dbgI++)
-                    {
-                        var dm = allMatches[dbgI];
-                        LogPopup($"  match[{dbgI}] Start={dm?.Start} End={dm?.End} AppliedAltIdx={dm?.AppliedAltIdx} ruleId=\"{dm?.Spot?.RuleId}\"");
-                    }
-                }
-                var altDbg = new System.Text.StringBuilder("Show alts map: ");
-                for (int dbgI = 0; dbgI < _alternatives.Count; dbgI++)
-                {
-                    altDbg.Append($"[{dbgI}]→real={_altIdxMap[dbgI]} latex=\"{_alternatives[dbgI].Latex}\" ");
-                }
-                LogPopup(altDbg.ToString());
-            }
-            else if (_patternCompletions.Count > 0)
-            {
-                // P7d : pas d'ambig closed mais des Pattern → la popup ne
-                // montre QUE les Patterns. Cas typique : V x app a R sans
-                // ambig closed (pas de AB / tight-chain / etc.) dans la zone.
-                _alternatives = PrependPatternCompletions(
-                    Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>(),
-                    out var patternMap);
-                _altIdxMap = patternMap;
-                LogPopup($"Patterns-only popup: {_alternatives.Count} entries");
-            }
-            else
-            {
-                _alternatives = Array.Empty<MathCursor.Core.Lattice.AmbiguityAlternative>();
-                _altIdxMap = Array.Empty<int>();
-            }
-            _spotStart = newSpotStart;
-            _spotEnd = newSpotEnd;
-            _resolvedLatex = _topLatex;
-            _focusOnFinal = true;
-
-            // P22+P24 (2026-05-22) : refonte popup "une ligne par candidat".
-            // Le top latex devient la 1ère entry de _alternatives (= sentinel
-            // AltIdxTop). Plus de _finalContainer séparé. Tout en colonne
-            // verticale (= _altsRow).
-            if (!string.IsNullOrEmpty(_topLatex))
-            {
-                var topEntry = new MathCursor.Core.Lattice.AmbiguityAlternative(_topLatex, null);
-                var combined = new System.Collections.Generic.List<MathCursor.Core.Lattice.AmbiguityAlternative>(_alternatives.Count + 1);
-                combined.Add(topEntry);
-                combined.AddRange(_alternatives);
-                _alternatives = combined;
-                var combinedMap = new System.Collections.Generic.List<int>(_altIdxMap.Count + 1);
-                combinedMap.Add(AltIdxTop);
-                combinedMap.AddRange(_altIdxMap);
-                _altIdxMap = combinedMap;
-            }
-
-            // Pré-sélection : index 0 (= top) sauf si on a un revert en 0
-            // (cas legacy avec splice actif).
-            bool firstIsRevert = _altIdxMap.Count > 0
-                && _altIdxMap[0] == MathCursor.Core.Resolution.SpanOverride.AltIdxRevert;
-            _altIndex = (firstIsRevert && _alternatives.Count > 1) ? 1 : 0;
-
-            _debugFooter.Text = string.IsNullOrEmpty(debugText) ? "" : "NER: \"" + debugText + "\"";
-
-            BuildAltCells();
-
-            // P24 : _finalContainer collapsed définitivement — toute l'UI
-            // passe par _altsRow (colonne verticale unifiée).
-            _finalContainer.Children.Clear();
-
-            // Reset navMode AVANT UpdateHighlight, sinon une popup réouverte
-            // après un commit garde l'ancien _navMode=true et apparaît déjà
-            // surlignée (l'élève croit qu'Enter va valider direct).
+            _candidates = candidates ?? Array.Empty<string>();
+            _selectedIndex = 0;
             _navMode = false;
+            _expanded = _candidates.Count <= MaxCandidatesCollapsed;
+            _debugFooter.Text = string.IsNullOrEmpty(sourceText) ? "" : "« " + Truncate(sourceText, 60) + " »";
+
+            BuildRows();
             UpdateHighlight();
             Left = screenX;
             Top = screenY;
@@ -418,409 +138,46 @@ namespace MathCursor.UI
                 new DoubleAnimation(DisplayOpacity, TimeSpan.FromMilliseconds(FadeMs)));
         }
 
-        /// <summary>
-        /// Reconstruit la rangée d'alts UI à partir de <c>_alternatives</c>.
-        /// Chaque cell est une <c>Border</c> avec un <c>RenderMath</c> du
-        /// latex de l'alt, + handlers <c>MouseEnter</c> (preview) et
-        /// <c>MouseLeftButtonUp</c> (résolution direct).
-        /// </summary>
-        // P7d helpers : intégration PatternCompletion[] en tête des alts ambig.
-
-        /// <summary>
-        /// Convertit chaque <see cref="MathCursor.Core.Patterns.PatternCompletion"/>
-        /// en <see cref="MathCursor.Core.Lattice.AmbiguityAlternative"/> virtuelle
-        /// (Latex = <b>HintLatex</b> avec carrés `\square` pour les slots vides,
-        /// Mutation préservée), prepend en tête de <paramref name="baseAlts"/>
-        /// et retourne la liste combinée. L'index dans <see cref="_patternCompletions"/>
-        /// est encodé dans <paramref name="prependedMap"/> via
-        /// <c>AltIdxPatternBase - i</c> (P5R+ 2026-05-21).
-        ///
-        /// <para>Le commit Enter (= ResolveCurrentAltIfFocused → set
-        /// _resolvedLatex) utilise le <b>PreviewLatex</b> distinct (sans
-        /// carrés) en faisant le lookup inverse via patternIndex.</para>
-        /// </summary>
-        private IReadOnlyList<MathCursor.Core.Lattice.AmbiguityAlternative> PrependPatternCompletions(
-            IReadOnlyList<MathCursor.Core.Lattice.AmbiguityAlternative> baseAlts,
-            out IReadOnlyList<int> prependedMap)
-        {
-            if (_patternCompletions.Count == 0)
-            {
-                prependedMap = Array.Empty<int>();
-                return baseAlts;
-            }
-            var combined = new System.Collections.Generic.List<MathCursor.Core.Lattice.AmbiguityAlternative>(
-                _patternCompletions.Count + baseAlts.Count);
-            var mapList = new System.Collections.Generic.List<int>(_patternCompletions.Count);
-            for (int i = 0; i < _patternCompletions.Count; i++)
-            {
-                var pc = _patternCompletions[i];
-                // HintLatex pour l'affichage popup (= avec carrés visuels)
-                combined.Add(new MathCursor.Core.Lattice.AmbiguityAlternative(
-                    pc.HintLatex, pc.Mutation));
-                // Encodage de l'index pour retrouver pc.PreviewLatex au commit
-                mapList.Add(AltIdxPatternBase - i);
-            }
-            foreach (var alt in baseAlts) combined.Add(alt);
-            prependedMap = mapList;
-            return combined;
-        }
-
-        /// <summary>
-        /// Fusionne <paramref name="prependedMap"/> (entries Pattern en tête)
-        /// avec <paramref name="baseMap"/> (entries ambig closed standard) en
-        /// préservant l'ordre.
-        /// </summary>
-        private static IReadOnlyList<int> MergePrependedMap(
-            IReadOnlyList<int> prependedMap,
-            IReadOnlyList<int> baseMap)
-        {
-            if (prependedMap.Count == 0) return baseMap;
-            var combined = new System.Collections.Generic.List<int>(prependedMap.Count + baseMap.Count);
-            combined.AddRange(prependedMap);
-            combined.AddRange(baseMap);
-            return combined;
-        }
-
-        // P15.2 (2026-05-22) : popup IDE-style — max 2 candidats affichés
-        // par défaut, bouton "+ N autres" pour expand. Cf. brief v5 +
-        // ADR 2026-05-22-Feat-popup-ide-style.
-        private const int MaxAltsCollapsed = 2;
-        private bool _altsExpanded = false;
-
-        private void BuildAltCells()
-        {
-            _altsRow.Children.Clear();
-            if (_alternatives.Count == 0)
-            {
-                _altsRowBorder.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            int total = _alternatives.Count;
-            int visibleCount = (_altsExpanded || total <= MaxAltsCollapsed)
-                ? total
-                : MaxAltsCollapsed;
-
-            for (int i = 0; i < visibleCount; i++)
-            {
-                var altLatex = _alternatives[i].Latex;
-                var cell = new Border
-                {
-                    BorderBrush = new SolidColorBrush(Color.FromRgb(230, 230, 230)),
-                    // P22 : séparateur horizontal (= entre lignes verticales).
-                    BorderThickness = new Thickness(0, 0, 0, i < visibleCount - 1 ? 1 : 0),
-                    Padding = new Thickness(4, 3, 4, 3),
-                };
-                cell.Child = RenderMath(altLatex);
-                int idx = i;
-                cell.MouseEnter += (_, __) =>
-                {
-                    _altIndex = idx;
-                    _focusOnFinal = false;
-                    EnterNavMode();
-                    UpdateHighlight();
-                };
-                cell.MouseLeftButtonUp += (_, __) =>
-                {
-                    int realFromMap = idx < _altIdxMap.Count ? _altIdxMap[idx] : idx;
-                    string latexClicked = idx < _alternatives.Count ? _alternatives[idx].Latex : "<oob>";
-                    LogPopup($"click display={idx} real={realFromMap} latex=\"{latexClicked}\"");
-                    _altIndex = idx;
-                    // P24 (2026-05-22) : click sur AltIdxTop (= 1ère ligne =
-                    // top latex) = commit standard (équivalent ★ avant).
-                    if (realFromMap == AltIdxTop)
-                    {
-                        _focusOnFinal = true;
-                        _resolvedLatex = _topLatex;
-                        EnterNavMode();
-                        UpdateHighlight();
-                        CommitRequested?.Invoke();
-                        return;
-                    }
-                    _focusOnFinal = false;
-                    EnterNavMode();
-                    UpdateHighlight();
-                    ResolveCurrentAltIfFocused();
-                };
-                _altsRow.Children.Add(cell);
-            }
-
-            // Bouton "+ N autres" si collapsed et plus à afficher.
-            if (!_altsExpanded && total > MaxAltsCollapsed)
-            {
-                int hiddenCount = total - MaxAltsCollapsed;
-                var moreCell = new Border
-                {
-                    BorderBrush = new SolidColorBrush(Color.FromRgb(230, 230, 230)),
-                    // P22 : séparateur horizontal (= vertical layout).
-                    BorderThickness = new Thickness(0, 1, 0, 0),
-                    Padding = new Thickness(6, 3, 6, 3),
-                    Background = new SolidColorBrush(Color.FromRgb(245, 245, 250)),
-                    Cursor = System.Windows.Input.Cursors.Hand,
-                };
-                moreCell.Child = new TextBlock
-                {
-                    Text = $"+ {hiddenCount} autre" + (hiddenCount > 1 ? "s" : ""),
-                    FontSize = 11,
-                    Foreground = new SolidColorBrush(Color.FromRgb(80, 100, 180)),
-                    VerticalAlignment = VerticalAlignment.Center,
-                };
-                moreCell.MouseLeftButtonUp += (_, __) =>
-                {
-                    _altsExpanded = true;
-                    BuildAltCells();
-                };
-                _altsRow.Children.Add(moreCell);
-            }
-
-            _altsRowBorder.Visibility = Visibility.Visible;
-        }
-
-        private UIElement BuildFinalRow(string latex)
-        {
-            var panel = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Margin = new Thickness(0),
-                Background = Brushes.White,
-            };
-            // P22+P24 (2026-05-22) : ★ retiré (= ergo "une ligne par candidat,
-            // sans distinction final/alts").
-            panel.Children.Add(RenderMath(latex));
-            panel.MouseEnter += (_, __) =>
-            {
-                _focusOnFinal = true;
-                EnterNavMode();
-                UpdateHighlight();
-            };
-            // Clic sur la formule finale = commit OMath direct (équivalent
-            // Enter). Délégué à l'hôte qui détient la logique d'insertion.
-            panel.MouseLeftButtonUp += (_, __) =>
-            {
-                _focusOnFinal = true;
-                EnterNavMode();
-                UpdateHighlight();
-                CommitRequested?.Invoke();
-            };
-            return panel;
-        }
-
-        private void UpdateHighlight()
-        {
-            // Highlight bleu uniquement en nav mode actif (l'utilisateur a
-            // touché une flèche). Avant ça, AUCUN fond colorisé sur les
-            // items — sinon l'élève croit qu'Enter va valider la ligne
-            // visuellement mise en avant.
-            for (int i = 0; i < _altsRow.Children.Count; i++)
-            {
-                if (_altsRow.Children[i] is Border cell)
-                {
-                    cell.Background = (_navMode && !_focusOnFinal && i == _altIndex)
-                        ? new SolidColorBrush(Color.FromRgb(190, 215, 250))
-                        : Brushes.Transparent;
-                }
-            }
-            if (_finalContainer.Children.Count > 0 && _finalContainer.Children[0] is StackPanel finalPanel)
-            {
-                // Fond bleu UNIQUEMENT en nav mode + focus sur final. Sinon
-                // blanc — pas de fond vert "formule complète" (se confondait
-                // avec le highlight de nav, retiré sur demande user).
-                finalPanel.Background = (_navMode && _focusOnFinal)
-                    ? new SolidColorBrush(Color.FromRgb(190, 215, 250))
-                    : Brushes.White;
-            }
-        }
-
-        /// <summary>
-        /// Si l'utilisateur a Enter sur une alternative (focus alts), résout
-        /// localement : remplace la zone ambiguë dans la formule finale par
-        /// l'alt sélectionnée, FERME la zone d'ambiguïté (la rangée d'alts
-        /// disparaît), passe focus sur la formule finale qui devient le seul
-        /// élément actif. Retourne true si une résolution a été faite.
-        /// </summary>
-        public bool ResolveCurrentAltIfFocused()
-        {
-            LogPopup($"resolve_called focusOnFinal={_focusOnFinal} altIdx={_altIndex} altCount={_alternatives.Count} spot=[{_spotStart},{_spotEnd}]");
-            if (_focusOnFinal) { LogPopup("  → SKIP (focus on final)"); return false; }
-            if (_alternatives.Count == 0) { LogPopup("  → SKIP (no alts)"); return false; }
-            if (_altIndex < 0 || _altIndex >= _alternatives.Count) { LogPopup("  → SKIP (altIdx oob)"); return false; }
-
-            // === Mapping index UI → altIdx réel (cf. brief 2026-05-07 étape 7) ===
-            // _altIdxMap[uiIndex] = altIdx réel, ou AltIdxRevert (-1) pour l'alt-revert,
-            // ou AltIdxPattern (-200) pour une PatternCompletion (P7d).
-            int realAltIdx = _altIndex < _altIdxMap.Count
-                ? _altIdxMap[_altIndex]
-                : _altIndex; // fallback rétro-compat (ne devrait pas arriver)
-
-            // P7d + P5R+ : Pattern sélectionné → set _resolvedLatex avec le
-            // PreviewLatex (= sans carrés) et fermer la zone d'ambig. L'affichage
-            // popup montrait HintLatex (avec carrés), mais le commit Enter
-            // utilise le PreviewLatex pour l'OMath final inséré dans Word.
-            if (realAltIdx <= AltIdxPatternBase)
-            {
-                int patternIndex = AltIdxPatternBase - realAltIdx;
-                if (patternIndex < 0 || patternIndex >= _patternCompletions.Count)
-                {
-                    LogPopup($"  → SKIP (pattern index oob: {patternIndex})");
-                    return false;
-                }
-                var pc = _patternCompletions[patternIndex];
-                LogPopup($"Resolved as PATTERN[{patternIndex}] preview=\"{pc.PreviewLatex}\" → commit direct");
-                _resolvedLatex = pc.PreviewLatex;
-                // P24 (2026-05-22) : commit direct (= demande user).
-                CommitRequested?.Invoke();
-                return true;
-            }
-
-            // Le check _spotStart < 0 ne s'applique pas aux Patterns (déjà
-            // sortis au-dessus). Pour les autres entries, on a besoin d'un
-            // span valide pour AddPreference/Revert.
-            if (_spotStart < 0 || _spotEnd <= _spotStart) { LogPopup("  → SKIP (invalid spot)"); return false; }
-
-            bool isRevert = realAltIdx == MathCursor.Core.Resolution.SpanOverride.AltIdxRevert;
-
-            // === Index revert : l'utilisateur veut le defaultLatex brut ===
-            // Delegate au service : RemovePreference(ruleId) puis re-resolve.
-            // ApplyPreferences ne trouvera plus de pref pour cette rule →
-            // muted == rawSource → topLatex propre sans la mutation. Cf.
-            // ADR refacto désambig 2026-05-20.
-            if (isRevert)
-            {
-                // P24 : revert → commit direct du LaTeX courant (= top revertué).
-                LogPopup($"Resolved as REVERT rule=\"{_currentRuleId}\" → commit direct");
-                _resolvedLatex = _alternatives[_altIndex].Latex;
-                CommitRequested?.Invoke();
-                SourceMutationRequested?.Invoke(_currentRuleId,
-                    MathCursor.Core.Resolution.SpanOverride.AltIdxRevert, null);
-                return true;
-            }
-
-            var selectedAlt = _alternatives[_altIndex];
-
-            // P24 : Identity → commit direct du top (= reste pareil).
-            if (string.Equals(selectedAlt.Latex, _topLatex, StringComparison.Ordinal))
-            {
-                LogPopup($"Resolved as identity (alt[{realAltIdx}] = current) → commit direct");
-                _resolvedLatex = _topLatex;
-                CommitRequested?.Invoke();
-                return true;
-            }
-
-            // P24 (2026-05-22) : commit DIRECT du LaTeX de l'alt sélectionnée
-            // (= demande user "Enter sur un choix doit commit direct").
-            // SourceMutationRequested est aussi tiré pour mémoriser la
-            // préférence cross-commit (= la prochaine fois cette même
-            // source rendra automatiquement ce choix).
-            LogPopup($"Resolved via SourceMutation rule=\"{_currentRuleId}\" altIdx={realAltIdx} → commit direct"
-                + (selectedAlt.Mutation != null ? $" replacement=\"{selectedAlt.Mutation.Replacement}\"" : ""));
-            _resolvedLatex = selectedAlt.Latex;
-            CommitRequested?.Invoke();
-            // Pref mémorisée APRÈS le commit (= effet de bord pour next time).
-            SourceMutationRequested?.Invoke(_currentRuleId, realAltIdx, selectedAlt.Mutation);
-            return true;
-        }
-
         public void EnterNavMode()
         {
             if (_navMode) return;
             _navMode = true;
-            // À l'entrée en nav (Down depuis Word), focus sur le premier choix
-            // d'ambiguïté s'il y en a, sinon sur la formule finale.
-            if (_alternatives.Count > 0)
-            {
-                _focusOnFinal = false;
-                _altIndex = 0;
-            }
-            else
-            {
-                _focusOnFinal = true;
-            }
             UpdateHighlight();
             BeginAnimation(OpacityProperty,
                 new DoubleAnimation(NavOpacity, TimeSpan.FromMilliseconds(FadeMs / 2)));
         }
 
         /// <summary>
-        /// Up/Down navigue ENTRE les zones (alts ↔ finale). Aux bords (Up
-        /// depuis les alts, Down depuis la finale), on sort du nav mode et
-        /// on retourne false → la touche pass-through à Word, le curseur
-        /// texte bouge normalement. Permet de quitter la popup en navigant
-        /// "au-delà".
+        /// ↑/↓ dans la liste. Auto-étend « + N autres » quand on dépasse.
+        /// Hors-bornes = sortie du nav mode + pass-through Word (le caret
+        /// texte bouge normalement). Retourne true si la touche est consommée.
         /// </summary>
         public bool MoveSelection(int delta)
         {
-            if (_alternatives.Count == 0) return false;
+            if (_candidates.Count == 0) return false;
+            int next = _selectedIndex + delta;
+            if (next < 0) { ExitNavMode(); return false; }
 
-            // P24 (2026-05-22) : refonte navigation pour popup verticale
-            // unifiée. Down/Up se déplacent dans _altIndex. Auto-expand
-            // sur "+ N autres" quand on dépasse. Hors-bornes = ExitNavMode +
-            // pass-through Word.
-            int next = _altIndex + delta;
-            if (next < 0)
-            {
-                ExitNavMode();
-                return false;
-            }
-            int visibleMax = (_altsExpanded || _alternatives.Count <= MaxAltsCollapsed)
-                ? _alternatives.Count - 1
-                : MaxAltsCollapsed - 1;
+            int visibleMax = _expanded ? _candidates.Count - 1 : MaxCandidatesCollapsed - 1;
             if (next > visibleMax)
             {
-                if (!_altsExpanded && _alternatives.Count > MaxAltsCollapsed)
+                if (!_expanded)
                 {
-                    _altsExpanded = true;
-                    BuildAltCells();
-                    visibleMax = _alternatives.Count - 1;
+                    _expanded = true;
+                    BuildRows();
+                    visibleMax = _candidates.Count - 1;
                     if (next > visibleMax) next = visibleMax;
                 }
-                else
-                {
-                    ExitNavMode();
-                    return false;
-                }
+                else { ExitNavMode(); return false; }
             }
-            _altIndex = next;
-            // _focusOnFinal = vrai uniquement si index 0 (= top latex
-            // = équivalent ex-finale ★).
-            _focusOnFinal = (_altIndex == 0
-                && _altIdxMap.Count > 0
-                && _altIdxMap[0] == AltIdxTop);
+            _selectedIndex = next;
             EnterNavMode();
             UpdateHighlight();
             return true;
         }
 
-        private void ExitNavMode()
+        public void HidePopup()
         {
-            if (!_navMode) return;
-            _navMode = false;
-            UpdateHighlight(); // retire le fond bleu sélection
-            BeginAnimation(OpacityProperty,
-                new DoubleAnimation(DisplayOpacity, TimeSpan.FromMilliseconds(FadeMs / 2)));
-        }
-
-        /// <summary>
-        /// Left/Right navigue HORIZONTALEMENT dans les alternatives. N'a
-        /// d'effet que si focus est sur la zone alts (sinon ignoré, retourne
-        /// false). Retourne true si la touche est consommée par la popup.
-        /// </summary>
-        public bool MoveSelectionHorizontal(int delta)
-        {
-            if (_alternatives.Count == 0) return false;
-            if (_focusOnFinal) return false;
-            int next = _altIndex + delta;
-            if (next < 0) next = 0;
-            if (next >= _alternatives.Count) next = _alternatives.Count - 1;
-            _altIndex = next;
-            UpdateHighlight();
-            return true;
-        }
-
-        public void HidePopup(bool resetCaches = true)
-        {
-            // Plus de cache local à reset — _resolver._preferences est la
-            // source de vérité unique (cf. refacto désambig 2026-05-21 D).
-            // Le paramètre resetCaches est gardé pour rétro-compat callers.
             if (!IsVisible) return;
             var anim = new DoubleAnimation(0, TimeSpan.FromMilliseconds(FadeMs));
             anim.Completed += (_, __) =>
@@ -835,21 +192,96 @@ namespace MathCursor.UI
             BeginAnimation(OpacityProperty, anim);
         }
 
-        private static void LogPopup(string message)
+        // ── Internals ────────────────────────────────────────────────────
+
+        private void BuildRows()
         {
-            try
+            _rows.Children.Clear();
+            int total = _candidates.Count;
+            int visibleCount = _expanded ? total : Math.Min(total, MaxCandidatesCollapsed);
+
+            for (int i = 0; i < visibleCount; i++)
             {
-                var dir = System.IO.Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "MathCursor", "logs");
-                System.IO.Directory.CreateDirectory(dir);
-                System.IO.File.AppendAllText(System.IO.Path.Combine(dir, "mathcursor.log"),
-                    $"{DateTime.UtcNow:o} popup {message}{Environment.NewLine}");
+                var cell = new Border
+                {
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(230, 230, 230)),
+                    BorderThickness = new Thickness(0, 0, 0, i < visibleCount - 1 ? 1 : 0),
+                    Padding = new Thickness(4, 3, 4, 3),
+                    Background = Brushes.Transparent,
+                };
+                var container = new Grid { Margin = new Thickness(8, 4, 12, 4) };
+                container.Children.Add(MixedLatexRenderer.Render(_candidates[i] ?? "", 18));
+                cell.Child = container;
+
+                int idx = i;
+                cell.MouseEnter += (_, __) =>
+                {
+                    _selectedIndex = idx;
+                    EnterNavMode();
+                    UpdateHighlight();
+                };
+                cell.MouseLeftButtonUp += (_, __) =>
+                {
+                    _selectedIndex = idx;
+                    CommitRequested?.Invoke();
+                };
+                _rows.Children.Add(cell);
             }
-            catch { }
+
+            if (!_expanded && total > MaxCandidatesCollapsed)
+            {
+                int hidden = total - MaxCandidatesCollapsed;
+                var moreCell = new Border
+                {
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(230, 230, 230)),
+                    BorderThickness = new Thickness(0, 1, 0, 0),
+                    Padding = new Thickness(6, 3, 6, 3),
+                    Background = new SolidColorBrush(Color.FromRgb(245, 245, 250)),
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                    Child = new TextBlock
+                    {
+                        Text = $"+ {hidden} autre" + (hidden > 1 ? "s" : ""),
+                        FontSize = 11,
+                        Foreground = new SolidColorBrush(Color.FromRgb(80, 100, 180)),
+                        VerticalAlignment = VerticalAlignment.Center,
+                    },
+                };
+                moreCell.MouseLeftButtonUp += (_, __) =>
+                {
+                    _expanded = true;
+                    BuildRows();
+                    UpdateHighlight();
+                };
+                _rows.Children.Add(moreCell);
+            }
         }
 
-        // --- Win32 pour WS_EX_NOACTIVATE / WS_EX_TOOLWINDOW ---
+        private void UpdateHighlight()
+        {
+            for (int i = 0; i < _rows.Children.Count; i++)
+            {
+                if (_rows.Children[i] is Border cell && i < (_expanded ? _candidates.Count : Math.Min(_candidates.Count, MaxCandidatesCollapsed)))
+                {
+                    cell.Background = (_navMode && i == _selectedIndex)
+                        ? new SolidColorBrush(Color.FromRgb(190, 215, 250))
+                        : Brushes.Transparent;
+                }
+            }
+        }
+
+        private void ExitNavMode()
+        {
+            if (!_navMode) return;
+            _navMode = false;
+            UpdateHighlight();
+            BeginAnimation(OpacityProperty,
+                new DoubleAnimation(DisplayOpacity, TimeSpan.FromMilliseconds(FadeMs / 2)));
+        }
+
+        private static string Truncate(string s, int max)
+            => string.IsNullOrEmpty(s) || s.Length <= max ? s : s.Substring(0, max) + "…";
+
+        // --- Win32 : WS_EX_NOACTIVATE / WS_EX_TOOLWINDOW ---
         private const int GWL_EXSTYLE = -20;
         private const int WS_EX_NOACTIVATE = 0x08000000;
         private const int WS_EX_TOOLWINDOW = 0x00000080;

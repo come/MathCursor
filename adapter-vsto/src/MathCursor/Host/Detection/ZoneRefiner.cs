@@ -14,9 +14,24 @@ namespace MathCursor.Host.Detection
     /// </summary>
     internal static class ZoneRefiner
     {
-        // MathPrefixKeywords : maintenant data-driven via
-        // LocaleVocabulary.MathPrefixKeywords (= YAML `math_prefix_keywords:`).
-        // Migration Chantier 1 — 2026-05-25.
+        /// <summary>
+        /// Mots dont la zone détectée juste à droite doit être étendue
+        /// rétroactivement (ex. « limite x→0 f(x) » → la zone absorbe
+        /// « limite »). Table portée de l'ex data/locale/fr.yml
+        /// `math_prefix_keywords:` (Phase 2 beta-clean : le YAML appartenait
+        /// à l'ancien moteur).
+        /// </summary>
+        public static readonly ISet<string> DefaultMathPrefixKeywords =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "lim", "limite", "lmt",
+                "sqrt", "rac", "racine",
+                "int", "integrale", "integ", "integral",
+                "sum", "somme",
+                "forall", "qq", "qqe",
+                "exists", "existe",
+                "vec", "vect", "vecteur",
+            };
 
         /// <summary>
         /// Si le caret est juste après la zone avec UNIQUEMENT du whitespace
@@ -37,13 +52,13 @@ namespace MathCursor.Host.Detection
         }
 
         /// <summary>
-        /// Si le mot juste avant la zone est un math prefix keyword (= YAML
-        /// <c>math_prefix_keywords:</c> du vocab), l'inclut dans la zone
-        /// (ex: "limite" + "x→0 f(x)" → 1 zone unique).
+        /// Si le mot juste avant la zone est un math prefix keyword
+        /// (cf. <see cref="DefaultMathPrefixKeywords"/>), l'inclut dans la
+        /// zone (ex: "limite" + "x→0 f(x)" → 1 zone unique).
         /// </summary>
         public static DetectedZone ExtendBackwardWithKeyword(string paragraph,
             DetectedZone zone,
-            MathCursor.Engine.Vocabulary.LocaleVocabulary vocab)
+            ISet<string> mathPrefixKeywords)
         {
             if (string.IsNullOrEmpty(paragraph) || zone == null) return zone;
 
@@ -55,7 +70,7 @@ namespace MathCursor.Host.Detection
             if (wordEnd <= wordStart) return zone;
 
             string prevWord = paragraph.Substring(wordStart, wordEnd - wordStart);
-            if (!vocab.MathPrefixKeywords.Contains(prevWord)) return zone;
+            if (mathPrefixKeywords == null || !mathPrefixKeywords.Contains(prevWord)) return zone;
 
             int newEnd = zone.End;
             int newStart = wordStart;

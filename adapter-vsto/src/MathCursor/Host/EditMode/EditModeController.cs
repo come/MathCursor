@@ -1,5 +1,4 @@
 using System;
-using MathCursor.Core.Resolution;
 using MathCursor.Host.CCMeta;
 using MathCursor.HostContract;
 using MathCursor.UI;
@@ -28,7 +27,6 @@ namespace MathCursor.Host.EditMode
     internal sealed class EditModeController
     {
         private readonly Word.Application _app;
-        private readonly EquationHandleRegistry _handleRegistry;
         private readonly Action _hideSuggestionPopup;
         private readonly Func<(double x, double y)> _getCaretScreenPos;
         private readonly Action<string> _log;
@@ -54,13 +52,11 @@ namespace MathCursor.Host.EditMode
 
         public EditModeController(
             Word.Application app,
-            EquationHandleRegistry handleRegistry,
             Action hideSuggestionPopup,
             Func<(double x, double y)> getCaretScreenPos,
             Action<string> log)
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
-            _handleRegistry = handleRegistry ?? throw new ArgumentNullException(nameof(handleRegistry));
             _hideSuggestionPopup = hideSuggestionPopup ?? (() => { });
             _getCaretScreenPos = getCaretScreenPos ?? throw new ArgumentNullException(nameof(getCaretScreenPos));
             _log = log ?? (s => { });
@@ -201,7 +197,6 @@ namespace MathCursor.Host.EditMode
             }
             catch (Exception ex) { _log("revert_error: " + ex.Message); return; }
 
-            _handleRegistry.Forget(handle.Id);
             _editHandle = null;
             _editingOMathStart = -1;
             _popup?.HidePopup();

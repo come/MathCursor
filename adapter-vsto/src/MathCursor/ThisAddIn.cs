@@ -3,116 +3,72 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using Microsoft.Office.Core;
-// Microsoft.Office.Tools fournit CustomTaskPane (ambigu avec
-// Microsoft.Office.Core.CustomTaskPane) → on alias.
-using OfficeTools = Microsoft.Office.Tools;
-using MathCursor.Cheatsheet;
-using MathCursor.Detection;
 using MathCursor.Host;
-// Moteur lattice : enchaîne Lex → TopK → Parse → Render (cf. Lattice/).
-// P11.14 (2026-05-22) : alias renommé en LatticeEng pour éviter conflit
-// avec le namespace MathCursor.Engine (= POC v2).
-using LatticeEng = MathCursor.Core.LatticeEngine;
+using MathCursor.Host.Caret;
+using MathCursor.Host.EditMode;
+using Word = Microsoft.Office.Interop.Word;
 
 namespace MathCursor
 {
+    /// <summary>
+    /// Bootstrap de l'add-in — Phase 2 beta-clean (ADR 2026-06-10) :
+    /// <list type="bullet">
+    /// <item>Pas de polling : trigger manuel (Ctrl+Espace / ribbon) + event
+    ///   natif <c>WindowSelectionChange</c> pour le mode édition.</item>
+    /// <item>NER non démarré (différé Phase 4) — l'add-in démarre sans
+    ///   modèle sur disque.</item>
+    /// <item>Moteur de reconnaissance : portage forest
+    ///   (<c>MathCursor.Engine.ForestEngine</c>), statique, rien à init.</item>
+    /// </list>
+    /// </summary>
     public partial class ThisAddIn
     {
-        // VstoEquationStore retiré (Phase B 2026-05-18) — source/latex vivent
-        // maintenant dans cc.Tag MCMeta de chaque OMath wrappée.
-        private MathNerDetector _ner;
-        private LatticeEng _engine;
-        private SuggestionService _suggestions;
+        private ConversionController _conversion;
+        private EditModeController _editMode;
         private KeyboardInterceptor _keyboard;
+        private static readonly string SessionId = Guid.NewGuid().ToString("N").Substring(0, 12);
 
-        // Cheatsheet pane (cf. ADR 2026-05-05-Feat-ribbon-refactor-cheatsheet).
-        // Lazy-init au premier toggle. Après création, on flippe juste Visible.
-        private OfficeTools.CustomTaskPane _cheatsheetTaskPane;
-        private CheatsheetPaneHost _cheatsheetHost;
-        private CheatsheetViewModel _cheatsheetVm;
-
-        /// <summary>Accès au service pour le ribbon (bouton "Signaler une erreur").
-        /// Null si l'add-in a échoué à démarrer.</summary>
-        internal SuggestionService Suggestions => _suggestions;
+        /// <summary>Accès pour le ribbon. Null si le démarrage a échoué.</summary>
+        internal ConversionController Conversion => _conversion;
 
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
             try
             {
-                // Sélectionne le natif onnxruntime.dll de la bonne bitness AVANT
-                // toute interaction avec ONNX Runtime. Word peut être 32 ou 64
-                // bits — sans cet appel, P/Invoke pioche dans %PATH% ou côté
-                // assembly et tombe sur le mauvais binaire → BadImageFormatException
-                // remontée en TypeInitializationException sur NativeMethods..cctor()
-                // au premier `new SessionOptions()`. L'installer dépose les natifs
-                // dans <InstallDir>\onnxruntime-x86\ et <InstallDir>\onnxruntime-x64\.
+                // Natifs ONNX : pointer le loader sur la bonne bitness AVANT
+                // tout usage d'ONNX Runtime (Phase 4, NER). Harmless si le
+                // dossier n'existe pas. Cf. commentaire de la méthode.
                 ConfigureOnnxRuntimeNativeDir();
 
-                // Désactive l'autocorrect math hors zones math.
-                // Sans ça, Word anticipe une nouvelle équation quand on tape
-                // adjacent à une OMath existante via TypeText programmatique :
-                // au 2e POC insert consécutif, Word insère un template
-                // « Tapez une équation ici. » qui se fait wrapper avec notre
-                // CC (CC de 25 chars au lieu de 8). Bug observé 2026-05-18.
-                try
-                {
-                    var omac = this.Application.OMathAutoCorrect;
-                    if (omac != null)
-                    {
-                        var type = omac.GetType();
-                        var propNames = new[] { "UseOutsideOMathRegion", "UseOutsideMathRegion", "ReplaceText" };
-                        foreach (var name in propNames)
-                        {
-                            var prop = type.GetProperty(name);
-                            if (prop != null)
-                            {
-                                try
-                                {
-                                    object beforeVal = prop.GetValue(omac, null);
-                                    prop.SetValue(omac, false, null);
-                                    object afterVal = prop.GetValue(omac, null);
-                                    LogStartup($"OMathAutoCorrect.{name}: before={beforeVal} → after={afterVal}");
-                                }
-                                catch (Exception exSet) { LogStartup($"OMathAutoCorrect.{name} setter throw: {exSet.Message}"); }
-                            }
-                            else LogStartup($"OMathAutoCorrect.{name}: property not found on this Word version");
-                        }
-                    }
-                    else LogStartup("OMathAutoCorrect: returned null on this Word version");
-                }
-                catch (Exception ex) { LogStartup("OMathAutoCorrect setup error: " + ex.Message); }
+                // Désactive l'autocorrect math hors zones math. Sans ça, Word
+                // anticipe une « nouvelle équation » quand on tape adjacent à
+                // une OMath via TypeText programmatique (bug observé 2026-05-18).
+                DisableOMathAutoCorrectOutsideMath();
 
-                // Modèle NER (chemin dev hardcodé pour MVP)
-                var modelDir = FindModelDir();
-                _ner = new MathNerDetector(modelDir);
+                _conversion = new ConversionController(this.Application, BuildFeedbackReport);
 
-                // Warm-up async : la 1ère inférence prend ~500ms, on la fait
-                // hors thread UI pour ne pas bloquer le chargement de Word.
-                _ = _ner.WarmUpAsync();
+                _editMode = new EditModeController(
+                    this.Application,
+                    hideSuggestionPopup: () => _conversion?.HidePopup(),
+                    getCaretScreenPos: CaretScreenPositionReader.Read,
+                    log: LogStartup);
 
-                // Moteur lattice : convertit le texte détecté par le NER en
-                // suggestions LaTeX via Lex → top-K Dijkstra → Parse → Render.
-                _engine = LatticeEng.LoadEmbedded("fr");
-
-                _suggestions = new SuggestionService(this.Application, _ner, _engine);
-                _suggestions.Install();
-
-                // Hook clavier : Enter valide le candidat sélectionné UNIQUEMENT
-                // quand la popup est en NavMode. Tab pass-through, Esc masque.
+                // Hook clavier thread-local (Word UI thread, pas global).
                 _keyboard = new KeyboardInterceptor
                 {
-                    OnTabPressed = () => false,
+                    OnCtrlSpacePressed = HandleCtrlSpacePressed,
+                    OnTabPressed = HandleTabPressed,
                     OnEnterPressed = HandleEnterPressed,
                     OnUpPressed = HandleUpPressed,
                     OnDownPressed = HandleDownPressed,
-                    OnLeftPressed = HandleLeftPressed,
-                    OnRightPressed = HandleRightPressed,
                     OnEscapePressed = HandleEscapePressed,
-                    OnCtrlSpacePressed = HandleCtrlSpacePressed,
                 };
                 _keyboard.Install();
+
+                // Event natif : pilote le mode édition + ferme la popup
+                // suggestion quand le caret bouge. Pas de polling.
+                this.Application.WindowSelectionChange += OnWindowSelectionChange;
 
                 this.Application.StatusBar = "MathCursor prêt";
             }
@@ -128,12 +84,151 @@ namespace MathCursor
 
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
         {
-            // Save final pour capturer la largeur user (CustomTaskPane n'a pas
-            // d'event WidthChanged → on lit la valeur courante au shutdown).
-            try { SaveCheatsheetState(); } catch { }
+            try { this.Application.WindowSelectionChange -= OnWindowSelectionChange; } catch { }
             try { _keyboard?.Dispose(); } catch { }
-            try { _suggestions?.Dispose(); } catch { }
-            try { _ner?.Dispose(); } catch { }
+            try { _conversion?.Dispose(); } catch { }
+            try { _editMode?.Close(); } catch { }
+        }
+
+        // ── Événement natif : caret bouge ────────────────────────────────
+
+        private void OnWindowSelectionChange(Word.Selection sel)
+        {
+            try
+            {
+                if (_conversion?.IsCommitting == true) return;
+                _conversion?.OnSelectionChanged();
+
+                Word.OMath omAtCaret = null;
+                try
+                {
+                    if (sel?.OMaths != null && sel.OMaths.Count > 0)
+                        foreach (Word.OMath o in sel.OMaths) { omAtCaret = o; break; }
+                }
+                catch { }
+                _editMode?.Sync(omAtCaret, inPostCommitCooldown: false);
+            }
+            catch { }
+        }
+
+        // ── Hook clavier ─────────────────────────────────────────────────
+
+        // Ctrl+Espace : trigger explicite (1er appui = propose, appuis
+        // suivants popup ouverte = étend la zone d'un cran à gauche).
+        private bool HandleCtrlSpacePressed()
+        {
+            _conversion?.Trigger();
+            return true; // consomme (évite l'IME/compose de Word)
+        }
+
+        // Tab : popup visible → commit du candidat sélectionné (= top si
+        // l'utilisateur n'a pas navigué). Sinon pass-through.
+        private bool HandleTabPressed()
+        {
+            if (_conversion?.IsPopupVisible != true) return false;
+            return _conversion.CommitSelected();
+        }
+
+        // Enter : commit UNIQUEMENT en nav mode (sinon Enter = saut de ¶).
+        private bool HandleEnterPressed()
+        {
+            if (_conversion?.IsPopupVisible == true && _conversion.IsNavMode)
+                return _conversion.CommitSelected();
+            return false;
+        }
+
+        // Down : entre en nav mode, puis descend.
+        private bool HandleDownPressed()
+        {
+            if (_conversion?.IsPopupVisible != true) return false;
+            if (!_conversion.IsNavMode) { _conversion.EnterNavMode(); return true; }
+            return _conversion.MoveSelection(+1);
+        }
+
+        // Up : remonte si déjà en nav mode, sinon pass-through.
+        private bool HandleUpPressed()
+        {
+            if (_conversion?.IsPopupVisible != true || !_conversion.IsNavMode) return false;
+            return _conversion.MoveSelection(-1);
+        }
+
+        // Esc : ferme la popup suggestion, sinon la popup edit.
+        private bool HandleEscapePressed()
+        {
+            if (_conversion?.IsPopupVisible == true) { _conversion.HidePopup(); return true; }
+            if (_editMode?.IsPopupVisible == true) { _editMode.HidePopup(); return true; }
+            return false;
+        }
+
+        // ── Feedback ─────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Rapport pré-rempli pour « Signaler un souci » : versions, ids,
+        /// paragraphe courant, queue de log. Les champs zone (NerText,
+        /// RecognizedFormula…) sont remplis par l'appelant selon le contexte.
+        /// </summary>
+        internal Host.Feedback.FeedbackReport BuildFeedbackReport()
+        {
+            var report = new Host.Feedback.FeedbackReport
+            {
+                Version = SafeVersion(),
+                UserId = SafeUserId(),
+                SessionId = SessionId,
+                WordVersion = SafeWordVersion(),
+                OsVersion = Environment.OSVersion.ToString(),
+                DotNetVersion = Environment.Version.ToString(),
+            };
+            try
+            {
+                var sel = this.Application?.Selection;
+                if (sel != null) report.ParagraphContext = sel.Paragraphs[1].Range.Text ?? "";
+            }
+            catch { }
+            try
+            {
+                var tail = FeedbackBundle.ReadLogTail();
+                if (tail != null) report.LogTail = System.Text.Encoding.UTF8.GetString(tail);
+            }
+            catch { }
+            return report;
+        }
+
+        private static string SafeVersion()
+        {
+            try { return Strings.FormatVersion(Assembly.GetExecutingAssembly().GetName().Version); }
+            catch { return "?"; }
+        }
+
+        private static string SafeUserId()
+        {
+            try { return Host.Feedback.UserIdStore.GetOrCreate(); }
+            catch { return ""; }
+        }
+
+        private string SafeWordVersion()
+        {
+            try { return this.Application?.Version ?? "?"; }
+            catch { return "?"; }
+        }
+
+        // ── Setup Word ───────────────────────────────────────────────────
+
+        private void DisableOMathAutoCorrectOutsideMath()
+        {
+            try
+            {
+                var omac = this.Application.OMathAutoCorrect;
+                if (omac == null) { LogStartup("OMathAutoCorrect: null sur cette version de Word"); return; }
+                var type = omac.GetType();
+                foreach (var name in new[] { "UseOutsideOMathRegion", "UseOutsideMathRegion", "ReplaceText" })
+                {
+                    var prop = type.GetProperty(name);
+                    if (prop == null) continue;
+                    try { prop.SetValue(omac, false, null); }
+                    catch (Exception exSet) { LogStartup($"OMathAutoCorrect.{name} setter throw: {exSet.Message}"); }
+                }
+            }
+            catch (Exception ex) { LogStartup("OMathAutoCorrect setup error: " + ex.Message); }
         }
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
@@ -141,368 +236,44 @@ namespace MathCursor
         private static extern bool SetDllDirectory(string lpPathName);
 
         /// <summary>
-        /// Pointe le loader Windows sur le sous-dossier <c>onnxruntime-x86</c>
-        /// ou <c>onnxruntime-x64</c> selon la bitness de WINWORD.EXE, pour que
-        /// le P/Invoke d'ONNX Runtime trouve un <c>onnxruntime.dll</c> de la
-        /// bonne arch. Sinon : <see cref="BadImageFormatException"/> remontée
-        /// en <see cref="TypeInitializationException"/> dans le .cctor de
-        /// <c>Microsoft.ML.OnnxRuntime.NativeMethods</c>.
-        ///
-        /// Bretelles + ceinture :
-        /// 1) Tente plusieurs candidats pour le base dir (Location peut être
-        ///    shadow-copié par VSTO en <c>%LocalAppData%\Microsoft\Office\
-        ///    AddInsCache</c> ; CodeBase = URL original ; fallback hardcodé
-        ///    sur <c>%LocalAppData%\MathCursor</c> qui est le DefaultDirName
-        ///    de l'installer).
-        /// 2) Copie en plus les natifs DANS le folder de l'assembly chargée
-        ///    pour que le loader Windows les trouve sans dépendre de
-        ///    SetDllDirectory (résolution standard).
-        /// 3) Logs dans <c>%TEMP%\mathcursor-onnx-init.log</c> pour
-        ///    diagnostiquer en prod si ça crash encore.
+        /// Pointe le loader Windows sur <c>onnxruntime-x86</c> / <c>-x64</c>
+        /// selon la bitness de WINWORD.EXE (sinon BadImageFormatException au
+        /// premier <c>new SessionOptions()</c>). Conservé pour la Phase 4
+        /// (NER) — no-op silencieux si les dossiers natifs n'existent pas.
         /// </summary>
         private static void ConfigureOnnxRuntimeNativeDir()
         {
             var arch = IntPtr.Size == 4 ? "x86" : "x64";
             string targetSubdir = "onnxruntime-" + arch;
 
-            string logPath = null;
-            try { logPath = Path.Combine(Path.GetTempPath(), "mathcursor-onnx-init.log"); } catch { }
-            void Log(string msg)
-            {
-                if (string.IsNullOrEmpty(logPath)) return;
-                try { File.AppendAllText(logPath, "[" + DateTime.UtcNow.ToString("o") + "] " + msg + Environment.NewLine); } catch { }
-            }
-
-            Log("=== ConfigureOnnxRuntimeNativeDir start, arch=" + arch + " ===");
-
             var candidates = new List<string>();
             try
             {
                 var loc = Assembly.GetExecutingAssembly().Location;
-                Log("Assembly.Location=" + (loc ?? "<null>"));
                 if (!string.IsNullOrEmpty(loc)) candidates.Add(Path.GetDirectoryName(loc));
             }
-            catch (Exception ex) { Log("Location err: " + ex.Message); }
-
+            catch { }
             try
             {
                 var cb = Assembly.GetExecutingAssembly().CodeBase;
-                Log("Assembly.CodeBase=" + (cb ?? "<null>"));
-                if (!string.IsNullOrEmpty(cb))
-                {
-                    var uri = new Uri(cb);
-                    candidates.Add(Path.GetDirectoryName(uri.LocalPath));
-                }
+                if (!string.IsNullOrEmpty(cb)) candidates.Add(Path.GetDirectoryName(new Uri(cb).LocalPath));
             }
-            catch (Exception ex) { Log("CodeBase err: " + ex.Message); }
-
+            catch { }
             try
             {
                 var lad = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                if (!string.IsNullOrEmpty(lad))
-                {
-                    var hardcoded = Path.Combine(lad, "MathCursor");
-                    Log("Hardcoded LocalAppData=" + hardcoded);
-                    candidates.Add(hardcoded);
-                }
+                if (!string.IsNullOrEmpty(lad)) candidates.Add(Path.Combine(lad, "MathCursor"));
             }
-            catch (Exception ex) { Log("LocalAppData err: " + ex.Message); }
+            catch { }
 
-            // Tente chaque candidat. Premier qui contient le sous-dossier wins.
-            string foundNativeDir = null;
             foreach (var baseDir in candidates)
             {
                 if (string.IsNullOrEmpty(baseDir)) continue;
                 var nativeDir = Path.Combine(baseDir, targetSubdir);
-                bool exists = Directory.Exists(nativeDir);
-                Log("Try " + nativeDir + " exists=" + exists);
-                if (exists) { foundNativeDir = nativeDir; break; }
-            }
-
-            if (foundNativeDir == null)
-            {
-                Log("FAIL aucun candidat ne contient " + targetSubdir);
+                if (!Directory.Exists(nativeDir)) continue;
+                try { SetDllDirectory(nativeDir); } catch { }
                 return;
             }
-
-            // Ceinture : SetDllDirectory pour pointer le loader sur ce path.
-            try
-            {
-                bool ok = SetDllDirectory(foundNativeDir);
-                Log("SetDllDirectory(" + foundNativeDir + ") = " + ok);
-            }
-            catch (Exception ex) { Log("SetDllDirectory err: " + ex.Message); }
-
-            // Bretelles : copie les natifs DANS le folder de l'assembly chargée.
-            // Si l'assembly est shadow-copiée par VSTO, le shadow folder ne
-            // contient pas les natifs ; SetDllDirectory devrait suffire mais
-            // on copie quand même au cas où le loader CLR a déjà résolu via
-            // un autre chemin (cache JIT, etc.).
-            try
-            {
-                var asmDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                if (!string.IsNullOrEmpty(asmDir)
-                    && !string.Equals(asmDir, foundNativeDir, StringComparison.OrdinalIgnoreCase))
-                {
-                    foreach (var dll in new[] { "onnxruntime.dll", "onnxruntime_providers_shared.dll" })
-                    {
-                        var src = Path.Combine(foundNativeDir, dll);
-                        var dst = Path.Combine(asmDir, dll);
-                        if (File.Exists(src) && !File.Exists(dst))
-                        {
-                            File.Copy(src, dst, overwrite: false);
-                            Log("Copy " + src + " -> " + dst);
-                        }
-                        else
-                        {
-                            Log("Skip copy " + dll + " (src=" + File.Exists(src) + " dst=" + File.Exists(dst) + ")");
-                        }
-                    }
-                }
-            }
-            catch (Exception ex) { Log("Copy belt err: " + ex.Message); }
-
-            Log("=== ConfigureOnnxRuntimeNativeDir end ===");
-        }
-
-        /// <summary>
-        /// Cherche le dossier du modèle dans plusieurs endroits standards.
-        /// </summary>
-        private static string FindModelDir()
-        {
-            // Cherche le sous-dossier `distilmult-v5` (NER actif depuis
-            // 2026-04-30, cf. ADR 2026-04-27 d'adoption initiale + bump v5).
-            // Pas de fallback sur d'anciens layouts : l'installer propre
-            // déploie v5, les anciennes versions disparaissent à l'update.
-            var roots = new[]
-            {
-                Environment.GetEnvironmentVariable("MATHCURSOR_MODEL_DIR"),
-                Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "MathCursor", "models"),
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "models"),
-                @"D:\Software\DocMath\models",
-            };
-            var candidates = new List<string>();
-            foreach (var root in roots)
-            {
-                if (string.IsNullOrEmpty(root)) continue;
-                candidates.Add(Path.Combine(root, "distilmult-v5"));
-            }
-            foreach (var p in candidates)
-            {
-                if (Directory.Exists(p)
-                    && File.Exists(Path.Combine(p, "model_quantized.onnx"))
-                    && File.Exists(Path.Combine(p, "vocab.txt")))
-                    return p;
-            }
-            throw new DirectoryNotFoundException(
-                "Modèle NER introuvable (cherche model_quantized.onnx + vocab.txt). "
-                + "Chemins testés :\n" + string.Join("\n", candidates));
-        }
-
-        /// <summary>
-        /// Toggle du panneau Cheatsheet (cf. ADR 2026-05-05-Feat-ribbon-refactor-cheatsheet).
-        /// Lazy-init au premier appel : charge le JSON embarqué, instancie le
-        /// ViewModel, crée le CustomTaskPane ancré à droite. Appels suivants :
-        /// flippe juste <c>Visible</c>. Le pane survit à la fermeture (état
-        /// gardé en mémoire, persistance ajoutée en étape 2.E).
-        /// </summary>
-        internal void ToggleExamplesPane()
-        {
-            try
-            {
-                if (_cheatsheetTaskPane == null)
-                {
-                    var doc = MathCursor.Cheatsheet.CheatsheetData.LoadEmbedded();
-                    if (doc == null)
-                    {
-                        System.Windows.MessageBox.Show(
-                            "Exemples introuvables (ressource embarquée manquante).",
-                            "MathCursor", System.Windows.MessageBoxButton.OK,
-                            System.Windows.MessageBoxImage.Warning);
-                        return;
-                    }
-                    _cheatsheetVm = new CheatsheetViewModel(doc, MathCursor.Strings.Lang);
-                    // Restore l'état persisté (collapse) avant de monter l'UI
-                    var savedState = MathCursor.Cheatsheet.CheatsheetPersistence.Load();
-                    MathCursor.Cheatsheet.CheatsheetPersistence.ApplyToViewModel(savedState, _cheatsheetVm);
-
-                    _cheatsheetHost = new CheatsheetPaneHost(_cheatsheetVm);
-                    _cheatsheetHost.WpfPane.OnMissingShortcutRequested = OnMissingShortcutRequested;
-
-                    _cheatsheetTaskPane = CustomTaskPanes.Add(
-                        _cheatsheetHost, MathCursor.Strings.ExamplesPaneTitle);
-                    _cheatsheetTaskPane.Width = savedState.PaneWidth > 0 ? savedState.PaneWidth : 380;
-                    _cheatsheetTaskPane.DockPosition = MsoCTPDockPosition.msoCTPDockPositionRight;
-
-                    // Sauvegardes auto : sur changement collapse (VM) +
-                    // sur visibility (CustomTaskPane). La largeur est capturée
-                    // au moment de chaque save (pas d'event "WidthChanged" en
-                    // VSTO, on la lit depuis _cheatsheetTaskPane.Width).
-                    _cheatsheetVm.StateChanged += SaveCheatsheetState;
-                    _cheatsheetTaskPane.VisibleChanged += (s, e) => SaveCheatsheetState();
-                }
-                _cheatsheetTaskPane.Visible = !_cheatsheetTaskPane.Visible;
-            }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show(
-                    "Échec d'ouverture du panneau Exemples :\n" + ex.Message,
-                    "MathCursor", System.Windows.MessageBoxButton.OK,
-                    System.Windows.MessageBoxImage.Error);
-            }
-        }
-
-        /// <summary>
-        /// Capture l'état VM + UI courant et le persiste via IsolatedStorage.
-        /// Appelée sur StateChanged (collapse), VisibleChanged (open/close),
-        /// et au shutdown de l'add-in.
-        /// </summary>
-        private void SaveCheatsheetState()
-        {
-            try
-            {
-                if (_cheatsheetVm == null || _cheatsheetTaskPane == null) return;
-                var state = MathCursor.Cheatsheet.CheatsheetPersistence.Capture(
-                    _cheatsheetVm,
-                    paneOpen: _cheatsheetTaskPane.Visible,
-                    paneWidth: _cheatsheetTaskPane.Width);
-                MathCursor.Cheatsheet.CheatsheetPersistence.Save(state);
-            }
-            catch
-            {
-                // Persistance best-effort, jamais propager
-            }
-        }
-
-        /// <summary>
-        /// Ouvre le FeedbackDialog avec un report pré-rempli "missing shortcut" :
-        /// pas de zone math (champs source/proposed/committed/paragraph vides),
-        /// préfixe <c>[missing_shortcut]</c> dans UserMessage pour que le
-        /// backend / admin puisse trier ces feedbacks séparément des bugs.
-        /// </summary>
-        private void OnMissingShortcutRequested()
-        {
-            try
-            {
-                if (_suggestions == null)
-                {
-                    System.Windows.MessageBox.Show(
-                        "Service indisponible.",
-                        MathCursor.Strings.ExamplesMissingButton,
-                        System.Windows.MessageBoxButton.OK,
-                        System.Windows.MessageBoxImage.Warning);
-                    return;
-                }
-                // BuildFeedbackReport renseigne la metadata (version, user_id,
-                // session_id, word_version, os...). On clear les champs math
-                // spécifiques (pas de zone NER ici) et on préfixe le commentaire.
-                var report = _suggestions.BuildFeedbackReport();
-                report.NerText = "";
-                report.RecognizedFormula = "";
-                report.CommittedLatex = "";
-                report.ParagraphContext = "";
-                report.UserMessage = "[missing_shortcut] ";
-
-                var sender = MathCursor.Host.Feedback.FeedbackSenderFactory.Create();
-                var dialog = new MathCursor.UI.FeedbackDialog(report, sender);
-                dialog.ShowDialog();
-            }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show(
-                    "Impossible d'ouvrir le formulaire de feedback :\n" + ex.Message,
-                    MathCursor.Strings.ExamplesMissingButton,
-                    System.Windows.MessageBoxButton.OK,
-                    System.Windows.MessageBoxImage.Warning);
-            }
-        }
-
-        // Ctrl+Espace : trigger explicite — force la popup sur la span
-        // "caret → stopword/délimiteur/OMath précédent". Escape hatch quand le
-        // NER rate un bout (ex: "Soit f et g" avec f déjà converti → NER ne
-        // capte plus "g" tout seul, on tape Ctrl+Espace pour forcer).
-        private bool HandleCtrlSpacePressed()
-        {
-            _suggestions?.TriggerManual();
-            return true; // consomme la touche, évite l'IME/compose de Word
-        }
-
-        // Esc : cache la popup (suggestion OU édition). En mode édition d'OMath,
-        // les flèches restent à Word pour la nav math native — seul Esc est
-        // intercepté pour fermer la popup edit.
-        private bool HandleEscapePressed()
-        {
-            if (_suggestions?.IsAnyPopupVisible == true)
-            {
-                _suggestions.HidePopup();
-                // Après fermeture popup, si le caret est resté piégé dans
-                // une CC MC verrouillée (anti auto-grow), l'éjecter aussi.
-                _suggestions.EjectCaretFromLockedCcIfAny();
-                return true;
-            }
-            // Pas de popup : Esc seul peut aussi servir à sortir d'une CC
-            // verrouillée si l'utilisateur s'y est retrouvé piégé.
-            if (_suggestions?.EjectCaretFromLockedCcIfAny() == true) return true;
-            return false;
-        }
-
-        // Down : entre en mode nav et descend dans la liste si la popup est visible.
-        private bool HandleDownPressed()
-        {
-            if (_suggestions?.IsPopupVisible != true) return false;
-            if (!_suggestions.IsNavMode) _suggestions.EnterNavMode();
-            else _suggestions.MoveSelection(+1);
-            return true; // consomme la touche
-        }
-
-        // Up : remonte dans la liste si déjà en nav mode, sinon pass-through.
-        private bool HandleUpPressed()
-        {
-            if (_suggestions?.IsPopupVisible != true) return false;
-            if (!_suggestions.IsNavMode) return false;
-            _suggestions.MoveSelection(-1);
-            return true;
-        }
-
-        // Left/Right : navigation horizontale entre alternatives en mode
-        // ambiguïté. N'a d'effet que si la popup est visible + en nav mode +
-        // focus sur la zone alts. Sinon pass-through (Word déplace le caret
-        // dans le texte normalement).
-        private bool HandleLeftPressed()
-        {
-            if (_suggestions?.IsPopupVisible == true && _suggestions.IsNavMode)
-                return _suggestions.MoveSelectionHorizontal(-1);
-            // Si flèche gauche adjacente à une OMath MathCursor → sélectionne
-            // l'OMath (comme Word fait pour les inline shapes). User voit la
-            // formule surlignée, peut Delete pour supprimer, Enter pour éditer,
-            // re-flèche pour collapse et continuer.
-            return _suggestions?.TrySelectOMathOnLeft() == true;
-        }
-
-        private bool HandleRightPressed()
-        {
-            if (_suggestions?.IsPopupVisible == true && _suggestions.IsNavMode)
-                return _suggestions.MoveSelectionHorizontal(+1);
-            return _suggestions?.TrySelectOMathOnRight() == true;
-        }
-
-        // Enter : (1) si popup visible + NavMode → commit du candidat
-        // sélectionné, sinon (2) si list-mode actif (ADR 05-05) → préfixage
-        // automatique du marker + commit cross-merge, sinon (3) pass-through
-        // (Word insère un saut de ligne normal).
-        private bool HandleEnterPressed()
-        {
-            if (_suggestions?.IsPopupVisible == true && _suggestions.IsNavMode)
-            {
-                return _suggestions.CommitSelected();
-            }
-            // Liste invisible : si une chaîne multi-ligne vient d'être créée
-            // ou étendue, l'utilisateur peut taper sa nouvelle équation sans
-            // re-saisir le marker. Voir ListModeStateMachine.
-            if (_suggestions?.TryHandleListModeEnter() == true) return true;
-            return false;
         }
 
         protected override IRibbonExtensibility CreateRibbonExtensibilityObject()
@@ -524,12 +295,12 @@ namespace MathCursor
         {
             try
             {
-                var dir = System.IO.Path.Combine(
-                    System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+                var dir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "MathCursor", "logs");
-                System.IO.Directory.CreateDirectory(dir);
-                System.IO.File.AppendAllText(System.IO.Path.Combine(dir, "mathcursor.log"),
-                    $"{System.DateTime.UtcNow:o} startup {message}{System.Environment.NewLine}");
+                Directory.CreateDirectory(dir);
+                File.AppendAllText(Path.Combine(dir, "mathcursor.log"),
+                    $"{DateTime.UtcNow:o} startup {message}{Environment.NewLine}");
             }
             catch { }
         }
