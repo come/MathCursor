@@ -81,12 +81,7 @@ namespace MathCursor
                     OnEscapePressed = HandleEscapePressed,
                     OnBackspacePressed = () => _hygiene?.TrySelectEquationBeforeCaret() ?? false,
                     OnDeletePressed = () => _hygiene?.TrySelectEquationAfterCaret() ?? false,
-                    OnUndoPressed = () => _conversion?.TryUndoLastCommit() ?? false,
-                    OnTextKeyTyped = () =>
-                    {
-                        _conversion?.InvalidateUndoGrab();
-                        _autoDetect?.OnTextKeyTyped();
-                    },
+                    OnTextKeyTyped = () => _autoDetect?.OnTextKeyTyped(),
                 };
                 _keyboard.Install();
 
@@ -222,12 +217,14 @@ namespace MathCursor
             return _conversion.CommitSelected();
         }
 
-        // Enter : commit UNIQUEMENT en nav mode (sinon Enter = saut de ¶).
+        // Enter : commit UNIQUEMENT en nav mode (sinon Enter = saut de ¶) ;
+        // sinon, sortie du flow multiligne si la ligne = séparateur pré-placé
+        // seul (M4 : le séparateur s'efface, la ligne reste vide).
         private bool HandleEnterPressed()
         {
             if (_conversion?.IsPopupVisible == true && _conversion.IsNavMode)
                 return _conversion.CommitSelected();
-            return false;
+            return _conversion?.TryExitFlowOnEnter() ?? false;
         }
 
         // Down : entre en nav mode, puis descend.

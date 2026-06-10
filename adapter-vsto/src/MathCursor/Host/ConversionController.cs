@@ -48,13 +48,6 @@ namespace MathCursor.Host
         private bool _pendingSystemOpener;
         private List<string> _pendingRestCandidates;
 
-        // Dernier commit, pour le Ctrl+Z « en un coup » : InsertXML CASSE
-        // l'UndoRecordScope en 3-4 enregistrements (retour user 2026-06-10)
-        // → le premier Ctrl+Z après un commit rejoue les undos NATIFS en
-        // rafale jusqu'au retour du texte initial. Invalidé à la première
-        // frappe / au premier déplacement du caret.
-        private (int Start, int End, string Source)? _lastCommit;
-
         public ConversionController(
             Word.Application app,
             Func<Feedback.FeedbackReport> buildFeedbackReport,
@@ -240,9 +233,18 @@ namespace MathCursor.Host
             var candidates = result.Ranked.Select(c => c.Latex).ToList();
             _log($"convert: {result.Decision}, {candidates.Count} candidat(s), top=\"{(displayPrefix + candidates[0])}\"");
 
+            // Aperçu de MERGE (demande user 2026-06-10) : si la ligne du
+            // dessus sera fusionnée au commit, chaque candidat est rendu
+            // INTÉGRÉ dans l'aperçu du bloc (lignes précédentes grisées,
+            // « ⋯ » au-delà de 2 lignes, accolade pour les systèmes).
+            var (mergeKind, mergePrevLines) = ProbeMergePreview(zone);
+
             // Bloc en attente : la popup AFFICHE le marqueur en préfixe, mais
             // le commit utilise le LaTeX du RESTE (aligné par index).
+            // Exception : aperçu SYSTÈME actif → l'accolade de l'aperçu
+            // représente déjà le « { », pas de préfixe (sinon double {{).
             _pendingRestCandidates = candidates;
+            if (mergeKind == Blocks.BlockTypes.System) displayPrefix = "";
             var display = displayPrefix.Length == 0
                 ? candidates
                 : candidates.Select(c => displayPrefix + c).ToList();
@@ -250,8 +252,34 @@ namespace MathCursor.Host
             EnsurePopup();
             var (x, yBelow, yAbove) = ComputeAnchor(zone);
             _zone = zone;
-            _popup.ShowCandidates(display, x, yBelow, yAbove, zone.Text);
+            _popup.ShowCandidates(display, x, yBelow, yAbove, zone.Text, mergeKind, mergePrevLines);
             return true;
+        }
+
+        /// <summary>Contexte de merge pour l'aperçu popup : ("chain"|"system",
+        /// LaTeX des lignes du bloc du dessus) si la ligne committée sera
+        /// fusionnée, (null, null) sinon. Règle système 2026-06-10 : « { »
+        /// requis sur la ligne courante ET système au-dessus. Sonde
+        /// non-mutante, silencieuse.</summary>
+        private (string Kind, IReadOnlyList<string> PrevLines) ProbeMergePreview(ZoneSpan zone)
+        {
+            try
+            {
+                var doc = _app.ActiveDocument;
+                if (doc == null || zone == null) return (null, null);
+                if (!_pendingSystemOpener && _pendingChainMatch == null) return (null, null);
+                var probe = _chain.ProbeMergeAbove(doc, zone);
+                if (probe == null) return (null, null);
+                var (t, lines) = probe.Value;
+                if (_pendingSystemOpener)
+                    return t == Blocks.BlockTypes.System
+                        ? (Blocks.BlockTypes.System, (IReadOnlyList<string>)lines)
+                        : (null, null);
+                return (t == "" || t == Blocks.BlockTypes.Chain)
+                    ? (Blocks.BlockTypes.Chain, (IReadOnlyList<string>)lines)
+                    : (null, null);
+            }
+            catch { return (null, null); }
         }
 
         /// <summary>
@@ -341,13 +369,33 @@ namespace MathCursor.Host
                 using (new UndoRecordScope(_app, "MathCursor : conversion"))
                 {
                     if (_pendingSystemOpener)
-                        _chain.CommitSystemOpener(doc, zone, latex);
+                        _chain.CommitSystemLine(doc, zone, latex);
                     else if (_pendingChainMatch != null)
                         _chain.CommitChainLine(doc, zone, _pendingChainMatch, latex);
-                    else if (!_chain.TryAbsorbIntoSystemAbove(doc, zone, latex))
+                    else
                         _inserter.Insert(absStart, absEnd, latex, zone.Text);
+
+                    // M4 — flow multiligne (validé user 2026-06-10) : la ligne
+                    // committée portait un séparateur → on ouvre la ligne
+                    // suivante avec le même séparateur pré-placé (« { » pour
+                    // les systèmes, le marqueur tapé pour les chaînes).
+                    // Dans le MÊME record undo : 1 Ctrl+Z annule tout.
+                    // Sortie de flow : Entrée sur la ligne marqueur-seul
+                    // l'efface (cf. TryExitFlowOnEnter).
+                    string nextPrefix = _pendingSystemOpener ? "{ "
+                        : _pendingChainMatch != null ? _pendingChainMatch.MarkerTyped + " "
+                        : null;
+                    if (nextPrefix != null)
+                    {
+                        try
+                        {
+                            var sel = _app.Selection;
+                            sel.TypeParagraph();
+                            sel.TypeText(nextPrefix);
+                        }
+                        catch (Exception exF) { _log("flow_next_line_error: " + exF.Message); }
+                    }
                 }
-                _lastCommit = (absStart, absEnd, zone.Text);
                 return true;
             }
             catch (Exception ex) { _log("commit_error: " + ex.Message); return false; }
@@ -380,73 +428,49 @@ namespace MathCursor.Host
         public void OnSelectionChanged()
         {
             if (_committing) return;
-            _lastCommit = null; // le caret a bougé → Ctrl+Z redevient natif
             if (IsPopupVisible) HidePopup();
         }
 
-        /// <summary>Frappe texte (relais du hook) : invalide le Ctrl+Z groupé.</summary>
-        public void InvalidateUndoGrab() => _lastCommit = null;
-
         /// <summary>
-        /// Ctrl+Z juste après un commit : rejoue les undos NATIFS en rafale
-        /// jusqu'au retour du texte initial (InsertXML casse l'UndoRecordScope
-        /// → 3-4 enregistrements sinon). Pile d'annulation 100 % native :
-        /// Ctrl+Y refait pas à pas, et dès la moindre action utilisateur ce
-        /// chemin se désarme (Ctrl+Z normal). False = undo natif.
+        /// Sortie du flow multiligne (M4) : Entrée sur une ligne qui ne
+        /// contient QUE le séparateur pré-placé (« ⟺ », « = », « { »…) →
+        /// on efface le séparateur et on consomme l'Entrée. La ligne reste,
+        /// vide — la chaîne est close (« double entrée c'est naturel »).
+        /// False = Entrée normale.
         /// </summary>
-        public bool TryUndoLastCommit()
+        public bool TryExitFlowOnEnter()
         {
-            var last = _lastCommit;
-            if (last == null) return false;
-            _lastCommit = null;
-
-            var doc = _app.ActiveDocument;
-            if (doc == null) return false;
-            var (start, end, source) = last.Value;
-
-            _committing = true; // étouffe hygiène/popup pendant la rafale
-            int steps = 0;
             try
             {
-                const int MaxSteps = 8;
-                for (; steps < MaxSteps; )
-                {
-                    bool undone;
-                    try { undone = doc.Undo(); }
-                    catch { break; }
-                    if (!undone) break;
-                    steps++;
+                var doc = _app.ActiveDocument;
+                var sel = _app.Selection;
+                if (doc == null || sel == null) return false;
 
-                    // Texte initial revenu à sa position d'origine ? Stop —
-                    // et caret REPLACÉ EN FIN du texte restauré (chaque Undo
-                    // laisse la sélection au début de la plage restaurée).
-                    try
-                    {
-                        int e = Math.Min(end, doc.Content.End);
-                        if (e > start && (doc.Range(start, e).Text ?? "") == source)
-                        {
-                            try { _app.Selection.SetRange(e, e); } catch { }
-                            _log($"undo-grab: texte initial restauré en {steps} undo(s), caret en {e}");
-                            return true;
-                        }
-                    }
-                    catch { }
-                }
+                var para = sel.Range.Paragraphs[1];
+                try { if (para.Range.OMaths != null && para.Range.OMaths.Count > 0) return false; } catch { }
 
-                // GARDE-FOU (retour user : « tu grappes pas les undo là si ? ») :
-                // pas de match = on a pu dépasser le commit et entamer
-                // l'historique de l'UTILISATEUR. ROLLBACK INTÉGRAL par Redo,
-                // puis Ctrl+Z natif (dégradé = pas-à-pas, jamais de casse).
-                if (steps > 0)
+                string line = (para.Range.Text ?? "").TrimEnd('\r', '\n');
+                string t = line.Trim();
+                if (t.Length == 0) return false;
+
+                bool markerOnly = false;
+                var sys = Blocks.RelationLineDetector.TryDetectSystemOpener(t);
+                if (sys != null && string.IsNullOrWhiteSpace(sys.Rest)) markerOnly = true;
+                else
                 {
-                    object times = steps;
-                    try { doc.Redo(ref times); }
-                    catch (Exception exR) { _log("undo-grab: redo rollback error: " + exR.Message); }
+                    var m = Blocks.RelationLineDetector.TryDetect(t);
+                    if (m != null && string.IsNullOrWhiteSpace(m.Rest)) markerOnly = true;
                 }
-                _log($"undo-grab: pas de match en {steps} undo(s) → rollback Redo + undo natif");
-                return false;
+                if (!markerOnly) return false;
+
+                int s = para.Range.Start;
+                int e = para.Range.End - 1; // préserve la marque de ¶
+                if (e > s) doc.Range(s, e).Delete();
+                HidePopup();
+                _log("flow: sortie (ligne séparateur-seul effacée)");
+                return true; // consomme l'Entrée
             }
-            finally { _committing = false; }
+            catch (Exception ex) { _log("flow_exit_error: " + ex.Message); return false; }
         }
 
         public void Dispose()

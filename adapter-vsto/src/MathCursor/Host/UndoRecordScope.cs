@@ -41,24 +41,68 @@ namespace MathCursor.Host
                 _app.UndoRecord.StartCustomRecord(name);
                 _started = true;
             }
-            catch
+            catch (System.Exception ex)
             {
-                // UndoRecord indispo ou state Word weird — no-op silencieux,
-                // le scope ne fera rien (et Dispose ne fera rien non plus).
+                // UndoRecord indispo ou state Word weird — no-op, MAIS loggé :
+                // un Start silencieusement raté = commit non groupé = 3-4
+                // Ctrl+Z (diagnostic fragmentation, 2026-06-10).
                 _started = false;
+                Log("START FAILED: " + ex.Message);
             }
         }
 
         public void Dispose()
         {
-            if (!_started || _app == null) return;
-            try { _app.UndoRecord.EndCustomRecord(); }
-            catch
+            if (_app == null) return;
+            if (!_started) { Log("END skipped (record jamais ouvert)"); return; }
+            try
             {
-                // EndCustomRecord peut échouer si Word a déjà fermé le
-                // record (rare). On swallow pour ne pas masquer une
-                // exception primaire du scope appelant.
+                // IsRecordingCustomRecord AVANT End : si false alors qu'on a
+                // ouvert le record, quelque chose l'a FERMÉ en cours de route
+                // (suspect n°1 : InsertXML) → preuve de fragmentation.
+                bool stillRecording = false;
+                try { stillRecording = _app.UndoRecord.IsRecordingCustomRecord; } catch { }
+                if (!stillRecording)
+                    Log("record FERMÉ PRÉMATURÉMENT avant Dispose (fragmentation — suspect : InsertXML)");
+                _app.UndoRecord.EndCustomRecord();
             }
+            catch (System.Exception ex)
+            {
+                Log("END FAILED: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Sonde de diagnostic : loggue si Word est encore en train
+        /// d'enregistrer le custom record à un point nommé du commit.
+        /// Permet de localiser l'opération exacte qui ferme le record
+        /// (InsertXML ? CC.Add ? …). No-op silencieux hors record / erreur.
+        /// </summary>
+        public static void Probe(Word.Application app, string label)
+        {
+            try
+            {
+                bool recording = app?.UndoRecord?.IsRecordingCustomRecord ?? false;
+                Log($"probe [{label}] recording={recording}");
+            }
+            catch (System.Exception ex)
+            {
+                Log($"probe [{label}] error: {ex.Message}");
+            }
+        }
+
+        private static void Log(string message)
+        {
+            try
+            {
+                var dir = System.IO.Path.Combine(
+                    System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
+                    "MathCursor", "logs");
+                System.IO.Directory.CreateDirectory(dir);
+                System.IO.File.AppendAllText(System.IO.Path.Combine(dir, "mathcursor.log"),
+                    $"{System.DateTime.UtcNow:o} undo-record {message}{System.Environment.NewLine}");
+            }
+            catch { }
         }
     }
 }

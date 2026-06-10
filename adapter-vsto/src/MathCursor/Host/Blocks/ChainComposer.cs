@@ -29,15 +29,36 @@ namespace MathCursor.Host.Blocks
     {
         private static readonly XNamespace M = LatexToOmml.M;
 
-        /// <summary>Bloc CHAÎNE : une ligne par (source, latex-sans-marqueur).</summary>
+        /// <summary>Bloc CHAÎNE : une ligne par (source, latex-sans-marqueur).
+        /// Layout ADAPTATIF, chaque forme prouvée EMPIRIQUEMENT (docx de
+        /// variantes V1-V5, user 2026-06-10) :
+        /// <list type="bullet">
+        /// <item>AUCUN connecteur (suite de « = ») → 2 colonnes, UN « &amp; »
+        ///   par ligne devant le signe (<c>[lhs &amp; =rhs]</c>) — V. POC
+        ///   « simple » + bissection B-series : aligné.</item>
+        /// <item>Au moins un ⟺/⟹ → 3 colonnes, DEUX « &amp; » par ligne
+        ///   (<c>[conn &amp; lhs &amp; =rhs]</c>) — variantes V4/V5 : aligné
+        ///   (la forme single-&amp; désalignait les lignes à connecteur,
+        ///   variantes V1-V3).</item>
+        /// </list>
+        /// Le jc=left posé par Word à la promotion display est conservé
+        /// (V5 : aligné ET à gauche, validé).</summary>
         public static XElement ComposeChain(IReadOnlyList<string> stenoLines, IReadOnlyList<string> latexLines)
         {
-            var eqArr = new XElement(M + "eqArr");
+            var matches = new RelationLineMatch[latexLines.Count];
+            bool anyConnector = false;
             for (int i = 0; i < latexLines.Count; i++)
             {
                 string steno = i < stenoLines.Count ? stenoLines[i] : "";
+                matches[i] = RelationLineDetector.TryDetect(steno);
+                if (matches[i] != null && matches[i].IsConnector) anyConnector = true;
+            }
+
+            var eqArr = new XElement(M + "eqArr");
+            for (int i = 0; i < latexLines.Count; i++)
+            {
                 string latex = latexLines[i] ?? "";
-                var m = RelationLineDetector.TryDetect(steno);
+                var m = matches[i];
 
                 string conn = "", lhs = "", relRhs = "";
                 if (m == null)
@@ -55,13 +76,13 @@ namespace MathCursor.Host.Blocks
                 }
                 else
                 {
-                    // CONNECTEUR (« ⟺ x=3 ») : colonne 1 + équation scindée.
+                    // CONNECTEUR (« ⟺ x=3 ») : colonne 1, équation scindée.
                     conn = m.MarkerLatex;
                     var (l, r) = LatexTopLevelSplit.Split(latex);
                     if (r != null) { lhs = l; relRhs = r; }
                     else lhs = latex;
                 }
-                eqArr.Add(Row(conn, lhs, relRhs));
+                eqArr.Add(anyConnector ? Row3(conn, lhs, relRhs) : Row2(lhs, relRhs));
             }
             return new XElement(M + "oMath", eqArr);
         }
@@ -89,7 +110,21 @@ namespace MathCursor.Host.Blocks
 
         // ── Internals ────────────────────────────────────────────────────
 
-        private static XElement Row(string conn, string lhs, string relRhs)
+        /// <summary>Ligne 2 colonnes (chaîne sans connecteur) — forme du
+        /// POC « simple » : <c>[f(x) &amp; =2x+2-2]</c>, <c>[&amp; =2x]</c>.</summary>
+        private static XElement Row2(string lhs, string relRhs)
+        {
+            var e = new XElement(M + "e");
+            Graft(e, lhs);
+            Amp(e);
+            Graft(e, relRhs);
+            return e;
+        }
+
+        /// <summary>Ligne 3 colonnes (chaîne AVEC connecteur) — forme V4/V5 :
+        /// <c>[⇔ &amp; f(x)-1 &amp; =2+4]</c>, colonne 1 vide sur les lignes
+        /// sans connecteur.</summary>
+        private static XElement Row3(string conn, string lhs, string relRhs)
         {
             var e = new XElement(M + "e");
             Graft(e, conn);

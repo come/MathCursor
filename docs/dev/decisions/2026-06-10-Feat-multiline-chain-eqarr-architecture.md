@@ -150,3 +150,71 @@ M2 livré : taper `f(x) = 2x+2-2` (commit), ⏎ `= 2x` → bloc aligné créé ;
 ⏎ `= 2·x` → ligne ajoutée ; Ctrl+Z remonte étape par étape ; Backspace ×2
 sur le bloc → tout disparaît (hygiène) ; équivalences `⟺` : double
 alignement conforme au POC.
+
+## Amendements (2026-06-10, soir — validés en session)
+
+### A1 — Alignement : UN SEUL `&` par ligne
+
+> « c'est <=> qui aligne pas j'ai l'imp » — utilisateur, 2026-06-10
+
+Les marques `&` d'un eqArr ALTERNENT (1ʳᵉ = point d'alignement, 2ᵉ =
+séparateur) : le layout 3 colonnes du M2 alignait le début du lhs, pas
+le `=`. Retour au design du brief DocMath 2026-04-30 : un seul `&` devant
+le signe, connecteur ⟺ en tête de colonne gauche
+(`ChainComposer.RowSingleAlign`). Display forcé sur les blocs (les `&`
+n'agissent qu'en display), Justification au défaut. Détail dans
+`word-api-helpers.md` §3.
+
+### A2 — Saut de ligne au merge : remplacer depuis le DÉBUT DU ¶
+
+La plage de remplacement démarrait à `cc.Range.Start` ; la frontière sdt
+vit une position avant → Word gardait un ¶ squelette vide (paras-diag :
+« paras 2→2 » malgré la marque dans la plage) → le bloc descendait d'une
+ligne par merge. Fix : `ReplaceStart` = début du ¶ du bloc (garde-fou
+prose inline). + démasquage `Font.Hidden=0` avant suppression (Word
+refuse de supprimer du texte caché). Détail dans `word-api-helpers.md` §3.
+
+### A3 — Règle système : `{` requis sur la ligne courante
+
+> « si du coup on change legerement le systeme, il faut un { sur la ligne
+> courante ET un { sur la ligne du dessus pour merger » — utilisateur,
+> 2026-06-10
+
+Supersede l'absorption M2b des lignes nues : une ligne SANS `{` sous un
+système n'est plus absorbée (commit normal). `{ …` avec système au-dessus
+= EXTENSION ; sans = CRÉATION. `TryAbsorbIntoSystemAbove` supprimé,
+`CommitSystemOpener` → `CommitSystemLine` (create-or-extend).
+
+### A4 — M4 livré : flow multiligne au commit
+
+> « est ce qu'on pourrait se brancher à l'insert, si multiligne
+> (separateur identifié : => <=> { etc) alors on insere un nouveau
+> paragraphe et on pré place le séparateur » … « yes parfait » —
+> utilisateur, 2026-06-10
+
+Au commit d'une ligne à séparateur : nouveau ¶ + séparateur pré-placé
+(marqueur tapé pour les chaînes, `{ ` pour les systèmes), DANS le même
+UndoRecordScope. Sortie : Entrée sur la ligne séparateur-seul l'efface et
+consomme la frappe (`ConversionController.TryExitFlowOnEnter`). Équations
+simples : comportement inchangé.
+
+### A5 — Popup : aperçu de merge intégré
+
+Chaque candidat est rendu DANS l'aperçu du bloc cible : « ⋯ » (s'il y a
+plus d'une ligne au-dessus), puis la VRAIE ligne du dessus grisée, puis le
+candidat ; accolade `{` étirée à gauche pour les systèmes. Assemblage WPF
+pur (StackPanel de rendus WpfMath), lignes lues du Tag
+(`ChainController.ProbeMergeAbove`).
+
+### A6 — Affinage A1 par preuve empirique (docx de variantes)
+
+> « V5 aligné et à gauche : good / V4 aligné et centré » — utilisateur,
+> 2026-06-10
+
+Le single-`&` universel d'A1 désalignait les lignes à connecteur. Docx de
+variantes XML (V1-V5, mêmes lignes ⇔ en 5 structures) : single-`&`
+désaligné (V1-V3), double-`&` aligné (V4 centré, V5 jc=left à gauche —
+retenu). Layout final ADAPTATIF dans `ComposeChain` : sans connecteur =
+2 colonnes / 1 `&` (prouvé B-series) ; avec connecteur = 3 colonnes /
+2 `&` (prouvé V4/V5). Le `jc=left` posé naturellement par Word est
+conservé. Détail : `word-api-helpers.md` §3.

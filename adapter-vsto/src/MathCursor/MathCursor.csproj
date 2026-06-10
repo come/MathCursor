@@ -196,6 +196,9 @@
     <Compile Include="Host\Blocks\ChainTablePoc.cs" />
     <Compile Include="Host\Blocks\ChainEqArrPoc.cs" />
     <Compile Include="Host\OMathInserter.cs" />
+    <Compile Include="Host\OmmlToOMathBuilder.cs" />
+    <Compile Include="Host\OmathWalkerConformance.cs" />
+    <Compile Include="Host\UndoPoc.cs" />
     <Compile Include="Host\WordContextReader.cs" />
     <Compile Include="Host\KeyboardInterceptor.cs" />
     <Compile Include="Host\ZoneCleaner.cs" />

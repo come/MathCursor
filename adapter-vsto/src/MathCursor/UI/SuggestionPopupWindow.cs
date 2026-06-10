@@ -135,8 +135,11 @@ namespace MathCursor.UI
         /// l'écran. <paramref name="sourceText"/> = texte source (footer).
         /// </summary>
         public void ShowCandidates(IReadOnlyList<string> candidates, double anchorX,
-            double anchorYBelow, double anchorYAbove, string sourceText = "")
+            double anchorYBelow, double anchorYAbove, string sourceText = "",
+            string mergeKind = null, IReadOnlyList<string> mergePrevLines = null)
         {
+            _mergeKind = mergeKind;
+            _mergePrevLines = (mergePrevLines != null && mergePrevLines.Count > 0) ? mergePrevLines : null;
             // Rafraîchissement d'une popup DÉJÀ ouverte (frappe continue,
             // extension Ctrl+Espace…) : on PRÉSERVE le nav mode, la sélection
             // (index clampé à la nouvelle liste) et l'état déplié — l'utilisateur
@@ -234,6 +237,68 @@ namespace MathCursor.UI
 
         // ── Internals ────────────────────────────────────────────────────
 
+        /// <summary>Contexte de merge pour l'aperçu intégré (demande user
+        /// 2026-06-10) : quand la ligne committée FUSIONNERA avec le bloc du
+        /// dessus, chaque candidat est rendu DANS l'aperçu du bloc — lignes
+        /// précédentes grisées (la dernière réelle, « ⋯ » au-delà de 2
+        /// lignes), candidat en dessous, accolade à gauche pour les
+        /// systèmes. Null = rendu candidat simple.</summary>
+        private string _mergeKind;               // "chain" | "system" | null
+        private IReadOnlyList<string> _mergePrevLines;
+
+        /// <summary>Rendu d'une cellule candidat : simple, ou intégré dans
+        /// l'aperçu de bloc si contexte de merge.</summary>
+        private UIElement BuildCandidateContent(string candidateLatex)
+        {
+            var candidateEl = MixedLatexRenderer.Render(candidateLatex ?? "", 18);
+            if (_mergePrevLines == null) return candidateEl;
+
+            var lines = new StackPanel { Orientation = Orientation.Vertical };
+            // La VRAIE ligne du dessus (dernière du bloc), grisée ; s'il y en
+            // a d'autres encore au-dessus, « ⋯ » en tête (retour user).
+            if (_mergePrevLines.Count > 1)
+                lines.Children.Add(Dim(new TextBlock
+                {
+                    Text = "⋯",
+                    FontSize = 12,
+                    Margin = new Thickness(12, 0, 0, 0),
+                    Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 120)),
+                }));
+            lines.Children.Add(Dim(MixedLatexRenderer.Render(
+                _mergePrevLines[_mergePrevLines.Count - 1], 13)));
+            if (candidateEl is FrameworkElement feCand) feCand.Margin = new Thickness(0, 1, 0, 0);
+            lines.Children.Add(candidateEl);
+
+            if (_mergeKind != "system") return lines;
+
+            // Système : accolade ouvrante à gauche, étirée sur les lignes.
+            int rowCount = _mergePrevLines.Count > 1 ? 3 : 2;
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition());
+            var brace = new TextBlock
+            {
+                Text = "{",
+                FontSize = 12 + 11 * rowCount,
+                FontWeight = FontWeights.Light,
+                Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 120)),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 4, 0),
+            };
+            Grid.SetColumn(brace, 0);
+            Grid.SetColumn(lines, 1);
+            lines.VerticalAlignment = VerticalAlignment.Center;
+            grid.Children.Add(brace);
+            grid.Children.Add(lines);
+            return grid;
+        }
+
+        private static UIElement Dim(UIElement el)
+        {
+            el.Opacity = 0.5;
+            return el;
+        }
+
         private void BuildRows()
         {
             _rows.Children.Clear();
@@ -250,7 +315,7 @@ namespace MathCursor.UI
                     Background = Brushes.Transparent,
                 };
                 var container = new Grid { Margin = new Thickness(8, 4, 12, 4) };
-                container.Children.Add(MixedLatexRenderer.Render(_candidates[i] ?? "", 18));
+                container.Children.Add(BuildCandidateContent(_candidates[i]));
                 cell.Child = container;
 
                 int idx = i;

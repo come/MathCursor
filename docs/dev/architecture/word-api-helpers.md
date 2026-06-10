@@ -107,6 +107,44 @@ pour détecter via différence de longueur de `Range.Text`. Cf. bug `=F(x)= 1`
 
 Retourne la position post-cleanup où placer le caret pour `TypeText`.
 
+### ⚠️ Remplacer un ¶ entier : partir du DÉBUT DU ¶, pas de `cc.Range.Start`
+
+La frontière structurelle du sdt (anchor CC) occupe une position **avant**
+`cc.Range.Start` (qui pointe le CONTENU). Une suppression `[cc.Start, …)`
+qui contient pourtant la marque de ¶ laisse un **¶ squelette vide** d'une
+position que Word refuse de fusionner — symptôme : « le bloc descend d'une
+ligne à chaque merge », `doc.Paragraphs.Count` inchangé malgré
+`removed=N/N` (diagnostic paras-diag, 2026-06-10). Recette validée :
+`ChainController.ReplaceStart` = `om.Range.Paragraphs[1].Range.Start` si
+rien de visible ne précède l'anchor dans le ¶, sinon repli `cc.Range.Start`
+(équation inline dans de la prose).
+
+À combiner avec : **démasquer avant de supprimer** (`range.Font.Hidden = 0`)
+— Word refuse silencieusement de supprimer du texte en police cachée
+(le ZWSP anchor !) quand « afficher le texte masqué » est décoché.
+Symptômes observés : `cc.Delete(true)` no-op (boucle ZoneCleaner ×20,
+shift=0), `sel.Delete` qui laisse 2 chars survivants.
+
+### ⚠️ Alignement eqArr : layout ADAPTATIF (preuve empirique V1-V5)
+
+Établi par docx de variantes XML (2026-06-10, `alignement-variants.docx`,
+mêmes lignes en 5 structures, verdict visuel user) :
+
+- **Chaîne sans connecteur** (suite de `=`) : UN `&` par ligne devant le
+  signe (`[lhs & =rhs]`) → aligné. (POC « simple » + bissection B-series.)
+- **Chaîne avec ⟺/⟹** : DEUX `&` par ligne (`[conn & lhs & =rhs]`) →
+  aligné (V4/V5). La forme single-`&` désaligne les lignes à connecteur
+  (V1-V3) — ne pas « simplifier ».
+- `jc=left` sur l'`oMathPara` (posé par Word à la promotion display quand
+  le ¶ contient le ZWSP anchor) : ne casse PAS l'alignement (V5), et donne
+  le rendu à gauche voulu. Ne pas le toucher.
+- L'alignement n'agit qu'en mode **display** → les blocs forcent
+  `om.Type = wdOMathDisplay` (sans setter `Justification` : il jette sur
+  les OMath fraîchement insérées).
+
+Implémentation : `ChainComposer.ComposeChain` (Row2/Row3 selon
+`anyConnector`).
+
 ---
 
 ## 4. Insertion d'OMath (anchor pattern)

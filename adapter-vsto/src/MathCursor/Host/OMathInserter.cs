@@ -99,10 +99,13 @@ namespace MathCursor.Host
             }
             catch (Exception ex) { _log("insert_normalize_error: " + ex.Message); return (absStart, absEnd, null); }
 
+            UndoRecordScope.Probe(_app, "avant ClearZone");
+
             // 2. Cleanup structurel (CCs + OMaths résiduelles + plain text).
             int afterCleanupPos;
             try { afterCleanupPos = ZoneCleaner.ClearZone(doc, internalStart, internalEnd, _log); }
             catch (Exception ex) { _log("insert_clearzone_error: " + ex.Message); return (absStart, absEnd, null); }
+            UndoRecordScope.Probe(_app, "après ClearZone");
 
             // 3. SetRange collapsed sur la position post-cleanup.
             try { sel.SetRange(afterCleanupPos, afterCleanupPos); }
@@ -124,6 +127,7 @@ namespace MathCursor.Host
             catch (Exception ex) { _log("insert_zwsp_typetext_error: " + ex.Message); return (absStart, absEnd, null); }
             int zwspStart = caretBeforeZwsp;
             int zwspEnd = sel.Start;
+            UndoRecordScope.Probe(_app, "après ZWSP TypeText");
             if (!isInList)
             {
                 try { doc.Range(zwspStart, zwspEnd).Font.Hidden = -1; } catch { }
@@ -141,20 +145,40 @@ namespace MathCursor.Host
                     newStart = om.Range.Start;
                     newEnd = om.Range.End;
 
-                    var (omType, omJc) = isInList
-                        ? (Word.WdOMathType.wdOMathInline, Word.WdOMathJc.wdOMathJcLeft)
-                        : DecideOMathTyping(om, source, _log);
-
-                    Word.WdOMathType currentType;
-                    try { currentType = om.Type; }
-                    catch { currentType = Word.WdOMathType.wdOMathInline; }
-                    if (currentType != omType)
+                    // BLOCS (chaînes/systèmes eqArr) : Display FORCÉ — les
+                    // marques & d'un eqArr ne s'appliquent qu'en mode display,
+                    // et notre ¶ contient le ZWSP anchor qui maintiendrait
+                    // l'équation inline (le POC, lui, était promu display
+                    // naturellement : ¶ vierge). PAS de Justification : le
+                    // POC laissait le défaut et l'alignement marchait — et
+                    // jc=Left jette « Impossible de définir l'alignement »
+                    // au log depuis ce matin.
+                    if (blockType != null)
                     {
-                        try { om.Type = omType; }
-                        catch (Exception exType) { _log("insert_omath_type_error: " + exType.Message); }
+                        try
+                        {
+                            if (om.Type != Word.WdOMathType.wdOMathDisplay)
+                                om.Type = Word.WdOMathType.wdOMathDisplay;
+                        }
+                        catch (Exception exT) { _log("insert_block_display_error: " + exT.Message); }
                     }
-                    try { om.Justification = omJc; }
-                    catch (Exception exJc) { _log("insert_omath_jc_error: " + exJc.Message); }
+                    else
+                    {
+                        var (omType, omJc) = isInList
+                            ? (Word.WdOMathType.wdOMathInline, Word.WdOMathJc.wdOMathJcLeft)
+                            : DecideOMathTyping(om, source, _log);
+
+                        Word.WdOMathType currentType;
+                        try { currentType = om.Type; }
+                        catch { currentType = Word.WdOMathType.wdOMathInline; }
+                        if (currentType != omType)
+                        {
+                            try { om.Type = omType; }
+                            catch (Exception exType) { _log("insert_omath_type_error: " + exType.Message); }
+                        }
+                        try { om.Justification = omJc; }
+                        catch (Exception exJc) { _log("insert_omath_jc_error: " + exJc.Message); }
+                    }
                     newStart = om.Range.Start;
                     newEnd = om.Range.End;
                 }
@@ -190,6 +214,7 @@ namespace MathCursor.Host
             {
                 var anchorRange = doc.Range(zwspStart, zwspEnd);
                 cc = anchorRange.ContentControls.Add(Word.WdContentControlType.wdContentControlRichText);
+                UndoRecordScope.Probe(_app, "après CC.Add");
                 cc.Title = MCMetaJson.CcTitle;
                 try { cc.Appearance = Word.WdContentControlAppearance.wdContentControlHidden; } catch { }
                 try { cc.LockContentControl = false; } catch { }
@@ -217,6 +242,16 @@ namespace MathCursor.Host
                     {
                         _app.Selection.SetRange(om.Range.End, om.Range.End);
                         _app.Selection.MoveRight(Word.WdUnits.wdCharacter, 1, Word.WdMovementType.wdMove);
+                        // Réarme le format de frappe à VISIBLE. Sans ça, quand
+                        // le seul run plain du ¶ est l'anchor vanish (cas
+                        // liste : équation seule sur la puce), la frappe
+                        // suivante — y compris après Entrée sur la puce
+                        // d'après — hérite de Font.Hidden → texte invisible
+                        // (« caret coincé », listbug.docx 2026-06-10). Idem
+                        // après re-commit : ZoneCleaner vient de supprimer
+                        // un anchor masqué et laisse la frappe en masqué.
+                        // Ne touche PAS l'anchor (sélection collapsed).
+                        try { _app.Selection.Font.Hidden = 0; } catch { }
                     }
                     catch { }
                 }
@@ -247,6 +282,7 @@ namespace MathCursor.Host
                 catch (Exception exTag) { _log("insert_tag_error: " + exTag.Message); }
             }
 
+            UndoRecordScope.Probe(_app, "fin InsertCore (après Tag)");
             _log($"OMathInserter: OUT range=[{newStart},{newEnd}) handle={(newHandle ?? "null")}");
             return (newStart, newEnd, newHandle);
         }
@@ -256,6 +292,15 @@ namespace MathCursor.Host
         /// <paramref name="mathStart"/> (juste après le ZWSP). JAMAIS sur le
         /// ¶ entier (casse positions + prose inline). Lecture WordOpenXML
         /// LOCALE (¶ courant), pas O(doc). Renvoie null si échec.
+        ///
+        /// <para>NOTE undo (ADR 2026-06-10-Feat-undo-contract-omath-walker) :
+        /// InsertXML FERME le custom record → commit fragmenté en 3-4 Ctrl+Z.
+        /// Le walker <see cref="OmmlToOMathBuilder"/> (v1) a été branché ici
+        /// puis RETIRÉ après test Word : fidélité KO (exposant mangé, OMath
+        /// vide « Tapez une équation ici » résiduelle). À re-brancher quand
+        /// le conformance runner sera 100 % PASS. Les sondes ont aussi montré
+        /// un 2ᵉ tueur de record entre CC.Add et la fin du Tag — à traiter
+        /// dans le même chantier.</para>
         /// </summary>
         private Word.OMath BuildOMathViaOmml(Word.Document doc, Word.Selection sel,
             System.Xml.Linq.XElement oMath, int mathStart, out bool inserted)
@@ -314,6 +359,7 @@ namespace MathCursor.Host
                 return null;
             }
             inserted = true;
+            UndoRecordScope.Probe(doc.Application, "après InsertXML");
 
             // Re-probe LOCAL de l'OMath fraîchement insérée.
             Word.OMath om = null;

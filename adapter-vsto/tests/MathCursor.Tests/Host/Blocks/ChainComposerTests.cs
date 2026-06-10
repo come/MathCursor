@@ -54,8 +54,11 @@ namespace MathCursor.Tests.Host.Blocks
         // ── ChainComposer : chaînes ──────────────────────────────────────
 
         [Fact]
-        public void Chain_rows_have_three_columns_two_amp_marks()
+        public void Chain_with_connector_uses_three_columns_two_amp_marks()
         {
+            // Forme V4/V5 prouvée par le docx de variantes (2026-06-10) :
+            // dès qu'un connecteur apparaît, 3 colonnes / 2 marques & par
+            // ligne — la forme single-& désalignait les lignes à ⟺ (V1-V3).
             // Ligne 1 = équation simple (scindée au =) ; ligne 2 = marqueur-
             // relation « = 2x » ; ligne 3 = connecteur « ⟺ x=1 ».
             var oMath = ChainComposer.ComposeChain(
@@ -66,16 +69,15 @@ namespace MathCursor.Tests.Host.Blocks
             var rows = eqArr.Elements(M + "e").ToList();
             Assert.Equal(3, rows.Count);
 
-            // 2 marques & par ligne (3 colonnes), sur TOUTES les lignes.
+            // 2 marques & par ligne, sur TOUTES les lignes.
             foreach (var row in rows)
                 Assert.Equal(2, row.Elements(M + "r")
                     .Count(r => r.Element(M + "t")?.Value == "&"));
 
-            // Ligne 1 : « f(x) » avant le 1er &… non — colonnes : ["", lhs, relRhs].
             Assert.Equal("&f(x)&=2x+2-2", AllText(rows[0]));
-            // Ligne 2 (marqueur-relation) : tout en colonne 3.
+            // Ligne 2 (marqueur-relation) : colonnes 1 et 2 vides.
             Assert.Equal("&&=2x", AllText(rows[1]));
-            // Ligne 3 (connecteur) : ⇔ en colonne 1, équation scindée.
+            // Ligne 3 (connecteur) : ⇔ en colonne 1.
             Assert.Equal("⇔&x&=1", AllText(rows[2]));
         }
 
@@ -86,7 +88,24 @@ namespace MathCursor.Tests.Host.Blocks
                 new[] { "2x+1", "= 2x" },
                 new[] { "2x+1", "2x" });
             var rows = oMath.Element(M + "eqArr").Elements(M + "e").ToList();
-            Assert.Equal("&2x+1&", AllText(rows[0]));
+            Assert.Equal("2x+1&", AllText(rows[0]));
+        }
+
+        [Fact]
+        public void Chain_without_connector_keeps_single_amp_per_row()
+        {
+            // Suite de « = » sans ⟺ : même layout 1-& (forme POC « simple »).
+            var oMath = ChainComposer.ComposeChain(
+                new[] { "f(x) = 2x+2-2", "= 2x" },
+                new[] { "f(x)=2x+2-2", "2x" });
+
+            var rows = oMath.Element(M + "eqArr").Elements(M + "e").ToList();
+            Assert.Equal(2, rows.Count);
+            foreach (var row in rows)
+                Assert.Equal(1, row.Elements(M + "r")
+                    .Count(r => r.Element(M + "t")?.Value == "&"));
+            Assert.Equal("f(x)&=2x+2-2", AllText(rows[0]));
+            Assert.Equal("&=2x", AllText(rows[1]));
         }
 
         // ── ChainComposer : systèmes ─────────────────────────────────────

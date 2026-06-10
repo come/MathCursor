@@ -176,6 +176,36 @@ namespace MathCursor
             }
         }
 
+        /// <summary>POC banc undo (temporaire) : variante parsée depuis l'id
+        /// (PocUndo{1..4}Button) — cf. Host/UndoPoc.</summary>
+        public void OnPocUndoClicked(IRibbonControl control)
+        {
+            try
+            {
+                int variant = ParseColumnCountFromId(control?.Id);
+                Host.UndoPoc.Run(Globals.ThisAddIn?.Application, variant);
+            }
+            catch (Exception ex)
+            {
+                LogDebug("poc_undo_error: " + ex.Message);
+                MessageBox.Show("POC undo : " + ex.Message, "MathCursor",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        /// <summary>Conformance runner du walker OMML→OMath (cf. ADR
+        /// 2026-06-10-Feat-undo-contract-omath-walker §3).</summary>
+        public void OnPocWalkerConformanceClicked(IRibbonControl control)
+        {
+            try { Host.OmathWalkerConformance.Run(Globals.ThisAddIn?.Application); }
+            catch (Exception ex)
+            {
+                LogDebug("poc_walker_error: " + ex.Message);
+                MessageBox.Show("POC walker : " + ex.Message, "MathCursor",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         public void OnAboutClicked(IRibbonControl control)
         {
             MessageBox.Show(

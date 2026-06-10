@@ -60,6 +60,22 @@
                   size="normal"
                   imageMso="EquationLinearFormat"
                   onAction="OnPocChainEqArrClicked" />
+          <menu id="PocUndoMenu"
+                label="POC undo"
+                screentip="Banc d'essai groupage undo : chaque variante insère « avant [x=1/2] après » dans un custom record. Protocole : cliquer, faire UN Ctrl+Z, vérifier que tout disparaît, lire le log (sondes IsRecordingCustomRecord)."
+                size="normal"
+                imageMso="Undo">
+            <button id="PocUndo1Button" label="V1 — InsertXML direct (témoin cassé)" onAction="OnPocUndoClicked" />
+            <button id="PocUndo2Button" label="V2 — TypeText + BuildUp (témoin OK)" onAction="OnPocUndoClicked" />
+            <button id="PocUndo3Button" label="V3 — Ghost doc + FormattedText" onAction="OnPocUndoClicked" />
+            <button id="PocUndo4Button" label="V4 — OMaths.Add + Functions.Add" onAction="OnPocUndoClicked" />
+          </menu>
+          <button id="PocWalkerConformanceButton"
+                  label="POC walker (conformance)"
+                  screentip="Batterie LaTeX → walker OMML→OMath → relecture WordOpenXML → comparaison normalisée. Rapport PASS/DIFF/FALLBACK au log. À lancer dans un doc de test (insère/supprime en fin de doc)."
+                  size="normal"
+                  imageMso="ReviewCompareTwoVersions"
+                  onAction="OnPocWalkerConformanceClicked" />
         </group>
         <group id="MathCursorHelpGroup" getLabel="OnGetHelpGroupLabel">
           <button id="ReportIssueButton"
