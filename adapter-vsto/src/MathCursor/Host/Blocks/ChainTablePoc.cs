@@ -85,7 +85,10 @@ namespace MathCursor.Host.Blocks
                 int p = cell.Range.Start;
                 var sel = app.Selection;
                 sel.SetRange(p, p);
-                sel.TypeText(" "); // OMathInserter exige une plage non vide
+                // Placeholder NON-BLANC : OMathInserter trim les espaces aux
+                // bords de la plage (un espace seul → plage vide → abandon,
+                // bug du 1er essai POC).
+                sel.TypeText("¤");
                 log($"poc-chain: cell({row},{col}) insert à {p} latex=\"{latex}\"");
                 var (s, e, h) = inserter.Insert(p, p + 1, latex, source);
                 log($"poc-chain: cell({row},{col}) → [{s},{e}) handle={(h ?? "NULL")}");
