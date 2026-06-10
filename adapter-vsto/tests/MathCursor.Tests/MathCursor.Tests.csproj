@@ -69,6 +69,8 @@
     <Compile Include="..\..\src\MathCursor\Host\Detection\ZoneEngineText.cs" Link="adapter-sources\Host\Detection\ZoneEngineText.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Detection\ZoneRefiner.cs" Link="adapter-sources\Host\Detection\ZoneRefiner.cs" />
     <Compile Include="..\..\src\MathCursor\Host\ParagraphTextExtractor.cs" Link="adapter-sources\Host\ParagraphTextExtractor.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Blocks\RelationMarkers.cs" Link="adapter-sources\Host\Blocks\RelationMarkers.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Blocks\RelationLineDetector.cs" Link="adapter-sources\Host\Blocks\RelationLineDetector.cs" />
   </ItemGroup>
 
 </Project>
