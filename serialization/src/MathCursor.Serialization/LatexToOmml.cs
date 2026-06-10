@@ -277,6 +277,7 @@ namespace MathCursor.Serialization
                         while (j < s.Length && char.IsLetter(s[j])) j++;
                         string nxt = s.Substring(i + 1, j - (i + 1));
                         i = j;
+                        if (i < s.Length && s[i] == ' ') i++; // espace délimiteur de nom
                         if (NegSymbols.TryGetValue(nxt, out var neg)) { text.Append(neg); return null; }
                         text.Append('¬');
                         if (Symbols.TryGetValue(nxt, out var rep2)) text.Append(rep2); else text.Append(nxt);
@@ -288,6 +289,11 @@ namespace MathCursor.Serialization
                     // Symbole littéral (grec, opérateur, relation, fonction trig).
                     if (Symbols.TryGetValue(cmd, out var rep)) text.Append(rep);
                     else text.Append(cmd); // inconnu : nom brut
+                    // Règle LaTeX : l'espace qui SUIT une commande-nom est un
+                    // délimiteur de nom, pas un espace visuel (`x\leq y` = x≤y).
+                    // Le garder mettait des espaces parasites dans Word
+                    // (découvert par LatexToOmmlTests, 2026-06-10).
+                    if (i < s.Length && s[i] == ' ') i++;
                     return null;
             }
         }
