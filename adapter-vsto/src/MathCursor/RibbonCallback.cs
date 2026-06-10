@@ -163,6 +163,19 @@ namespace MathCursor
             }
         }
 
+        /// <summary>POC M0 multiligne (temporaire) : même chaîne en UN OMath
+        /// eqArr — cf. Host/Blocks/ChainEqArrPoc.</summary>
+        public void OnPocChainEqArrClicked(IRibbonControl control)
+        {
+            try { Host.Blocks.ChainEqArrPoc.Run(Globals.ThisAddIn?.Application); }
+            catch (Exception ex)
+            {
+                LogDebug("poc_eqarr_error: " + ex.Message);
+                MessageBox.Show("POC eqArr : " + ex.Message, "MathCursor",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         public void OnAboutClicked(IRibbonControl control)
         {
             MessageBox.Show(

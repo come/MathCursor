@@ -54,6 +54,12 @@
                   size="normal"
                   imageMso="TableInsert"
                   onAction="OnPocChainTableClicked" />
+          <button id="PocChainEqArrButton"
+                  label="POC chaîne (eqArr)"
+                  screentip="Insère la MÊME chaîne en UN SEUL OMath multiligne (equation array natif, alignement &amp; au signe — option A-discipliné). Comparer le feel de modification avec le POC tableau : Backspace (bloc atomique), clic dedans (édition native), Ctrl+Z."
+                  size="normal"
+                  imageMso="EquationLinearFormat"
+                  onAction="OnPocChainEqArrClicked" />
         </group>
         <group id="MathCursorHelpGroup" getLabel="OnGetHelpGroupLabel">
           <button id="ReportIssueButton"

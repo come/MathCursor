@@ -189,6 +189,7 @@
     <Compile Include="Host\AutoDetectController.cs" />
     <Compile Include="Host\AnchorHygiene.cs" />
     <Compile Include="Host\Blocks\ChainTablePoc.cs" />
+    <Compile Include="Host\Blocks\ChainEqArrPoc.cs" />
     <Compile Include="Host\OMathInserter.cs" />
     <Compile Include="Host\WordContextReader.cs" />
     <Compile Include="Host\KeyboardInterceptor.cs" />
