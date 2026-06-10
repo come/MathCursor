@@ -109,9 +109,10 @@ namespace MathCursor.Host
             // 5-6. OMML inséré chirurgicalement + typage Display/Inline.
             int newStart = zwspEnd, newEnd = zwspEnd;
             Word.OMath om;
+            bool ommlInserted = false;
             try
             {
-                om = BuildOMathViaOmml(doc, sel, latex, zwspEnd);
+                om = BuildOMathViaOmml(doc, sel, latex, zwspEnd, out ommlInserted);
                 if (om != null)
                 {
                     newStart = om.Range.Start;
@@ -134,12 +135,34 @@ namespace MathCursor.Host
                     newStart = om.Range.Start;
                     newEnd = om.Range.End;
                 }
-                else _log("OMathInserter: OMML inséré mais OMath introuvable au re-probe");
+                else _log(ommlInserted
+                    ? "OMathInserter: OMML inséré mais OMath introuvable au re-probe"
+                    : "OMathInserter: OMML non inséré (placeholder/InsertXML KO)");
             }
             catch (Exception ex) { _log("insert_omml_error: " + ex.Message); return (zwspEnd, zwspEnd, null); }
 
-            // 7. Anchor CC EN DERNIER (le math est settled, la CC ne le perturbe plus).
+            // ROLLBACK (bug « carrés orphelins » 2026-06-10) : l'OMML n'a pas
+            // pris ET rien n'a été inséré — le texte source ayant déjà été
+            // détruit par ZoneCleaner, on le RETAPE à la place du ZWSP pour
+            // ne jamais laisser le document mutilé. Pas de CC, pas de Tag.
+            if (om == null && !ommlInserted)
+            {
+                try
+                {
+                    doc.Range(zwspStart, zwspEnd).Delete();
+                    sel.SetRange(zwspStart, zwspStart);
+                    sel.TypeText(source ?? "");
+                    _log("OMathInserter: ROLLBACK — texte source restauré");
+                }
+                catch (Exception exRb) { _log("insert_rollback_error: " + exRb.Message); }
+                return (zwspStart, zwspStart + (source?.Length ?? 0), null);
+            }
+
+            // 7. Anchor CC EN DERNIER (le math est settled, la CC ne le perturbe
+            //    plus). Seulement si l'OMath est LÀ : une anchor sans équation
+            //    serait une CC orpheline.
             Word.ContentControl cc = null;
+            if (om != null)
             try
             {
                 var anchorRange = doc.Range(zwspStart, zwspEnd);
@@ -210,8 +233,10 @@ namespace MathCursor.Host
         /// ¶ entier (casse positions + prose inline). Lecture WordOpenXML
         /// LOCALE (¶ courant), pas O(doc). Renvoie null si échec.
         /// </summary>
-        private Word.OMath BuildOMathViaOmml(Word.Document doc, Word.Selection sel, string latex, int mathStart)
+        private Word.OMath BuildOMathViaOmml(Word.Document doc, Word.Selection sel, string latex, int mathStart,
+            out bool inserted)
         {
+            inserted = false;
             var w = System.Xml.Linq.XNamespace.Get("http://schemas.openxmlformats.org/wordprocessingml/2006/main");
             System.Xml.Linq.XElement oMath;
             try { oMath = MathCursor.Serialization.LatexToOmml.Convert(latex); }
@@ -225,9 +250,22 @@ namespace MathCursor.Host
             int phEnd = sel.Start;
             var phRange = doc.Range(phStart, phEnd);
 
+            // À chaque échec AVANT insertion, retirer le « □ » du doc —
+            // sinon il y reste (bug « carrés orphelins » 2026-06-10).
+            void CleanupPlaceholder()
+            {
+                try { doc.Range(phStart, phEnd).Delete(); }
+                catch (Exception exC) { _log("BuildOMathViaOmml: cleanup placeholder error: " + exC.Message); }
+            }
+
             System.Xml.Linq.XDocument xdoc;
             try { xdoc = System.Xml.Linq.XDocument.Parse(phRange.WordOpenXML); }
-            catch (Exception ex) { _log("BuildOMathViaOmml: parse WordOpenXML error: " + ex.Message); return null; }
+            catch (Exception ex)
+            {
+                _log("BuildOMathViaOmml: parse WordOpenXML error: " + ex.Message);
+                CleanupPlaceholder();
+                return null;
+            }
 
             System.Xml.Linq.XElement phRun = null;
             foreach (var r in xdoc.Descendants(w + "r"))
@@ -235,11 +273,26 @@ namespace MathCursor.Host
                 var t = r.Element(w + "t");
                 if (t != null && t.Value == "□") { phRun = r; break; }
             }
-            if (phRun == null) { _log("BuildOMathViaOmml: run placeholder introuvable"); return null; }
+            if (phRun == null)
+            {
+                // Diag : tête du XML pour comprendre POURQUOI le run manque
+                // (math input mode ? run splitté ?). Cf. log 2026-06-10 08:38.
+                string head = xdoc.ToString(System.Xml.Linq.SaveOptions.DisableFormatting);
+                _log("BuildOMathViaOmml: run placeholder introuvable. XML head: "
+                    + (head.Length > 600 ? head.Substring(0, 600) + "…" : head));
+                CleanupPlaceholder();
+                return null;
+            }
             phRun.ReplaceWith(oMath);
 
             try { phRange.InsertXML(xdoc.ToString(System.Xml.Linq.SaveOptions.DisableFormatting)); }
-            catch (Exception ex) { _log("BuildOMathViaOmml: InsertXML error: " + ex.Message); return null; }
+            catch (Exception ex)
+            {
+                _log("BuildOMathViaOmml: InsertXML error: " + ex.Message);
+                CleanupPlaceholder();
+                return null;
+            }
+            inserted = true;
 
             // Re-probe LOCAL de l'OMath fraîchement insérée.
             Word.OMath om = null;

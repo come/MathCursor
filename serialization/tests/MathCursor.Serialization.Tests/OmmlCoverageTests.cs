@@ -56,11 +56,29 @@ public sealed class OmmlCoverageTests
                 foreach (var leak in Leaks)
                     if (omml.Contains(leak))
                         fails.Add($"\"{f.In}\" :: {cand.Latex} → fuite « {leak} » : {omml}");
+                // Base de script VIDE (<m:sSup><m:e/>…) : Word affiche sa
+                // boîte de saisie carrée — bug « carrés » \mathrm{cm}^{3}
+                // du 2026-06-10. Une base vide n'est JAMAIS légitime ici.
+                if (HasEmptyScriptBase(cand.Latex))
+                    fails.Add($"\"{f.In}\" :: {cand.Latex} → base de script VIDE (carré Word)");
             }
         }
 
         Assert.True(fails.Count == 0,
             $"{n} candidats testés — {fails.Count} échec(s) :\n" + string.Join("\n", fails.Take(40)));
+    }
+
+    private static bool HasEmptyScriptBase(string latex)
+    {
+        var el = LatexToOmml.Convert(latex);
+        var m = LatexToOmml.M;
+        foreach (var name in new[] { "sSup", "sSub", "sSubSup" })
+            foreach (var script in el.Descendants(m + name))
+            {
+                var e = script.Element(m + "e");
+                if (e == null || !e.HasElements) return true;
+            }
+        return false;
     }
 
     [Theory]
@@ -77,6 +95,7 @@ public sealed class OmmlCoverageTests
     [InlineData("\\langle u,v\\rangle ", "⟨")]
     [InlineData("AB \\mathbin{/\\!/} CD", "//")]
     [InlineData("\\frac{1}{x+1}", "<f>")]
+    [InlineData("1\\mathrm{cm}^{3}+1\\mathrm{cm}^{3}=3\\mathrm{cm}^{4}", "cm")]
     public void GoldenStructure(string latex, string expectedFragment)
     {
         var omml = LatexToOmml.ConvertToString(latex);

@@ -83,11 +83,19 @@ namespace MathCursor.Serialization
                 if (c == '^' || c == '_')
                 {
                     // Exposant/indice : s'applique au texte courant (dernier
-                    // atome) — on flush le texte SAUF le dernier atome, qui
-                    // devient la base.
+                    // atome). Si le buffer texte est VIDE (le token précédent
+                    // était une STRUCTURE déjà émise, ex. \mathrm{cm}^{3} —
+                    // bug « carrés » 2026-06-10 : base vide → Word affiche sa
+                    // boîte de saisie), la base = dernier élément OMML émis.
                     string baseAtom = PopLastAtom(text);
                     Flush();
-                    var script = BuildScript(baseAtom, s, ref i);
+                    XElement poppedBase = null;
+                    if (baseAtom.Length == 0 && outEls.Count > 0)
+                    {
+                        poppedBase = outEls[outEls.Count - 1];
+                        outEls.RemoveAt(outEls.Count - 1);
+                    }
+                    var script = BuildScript(baseAtom, poppedBase, s, ref i);
                     if (script != null) outEls.Add(script);
                     continue;
                 }
@@ -102,8 +110,10 @@ namespace MathCursor.Serialization
             return outEls;
         }
 
-        // Exp/indice (+ combiné) attaché à une base.
-        private static XElement BuildScript(string baseAtom, string s, ref int i)
+        // Exp/indice (+ combiné) attaché à une base. La base est soit le
+        // dernier atome texte (baseAtom), soit un élément OMML déjà construit
+        // (poppedBase — ex. le <m:r>cm</m:r> issu de \mathrm{cm}).
+        private static XElement BuildScript(string baseAtom, XElement poppedBase, string s, ref int i)
         {
             bool sup = s[i] == '^';
             i++;
@@ -121,7 +131,9 @@ namespace MathCursor.Serialization
                 secondEls = ParseFragment(second);
                 if (sup2) supTxt = second; else subTxt = second;
             }
-            var bEls = ParseFragment(baseAtom);
+            var bEls = poppedBase != null
+                ? new List<XElement> { poppedBase }
+                : ParseFragment(baseAtom);
             if (supTxt != null && subTxt != null)
                 return new XElement(M + "sSubSup",
                     new XElement(M + "e", bEls),
