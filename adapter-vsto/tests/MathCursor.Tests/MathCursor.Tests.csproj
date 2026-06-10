@@ -48,6 +48,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Audit de couverture popup (UI/PopupLatexCoverageAuditTests) : le
+         moteur fournit les candidats LaTeX réels, fixtures.json = même
+         snapshot que les tests moteur (source unique). -->
+    <ProjectReference Include="..\..\..\engine\src\MathCursor.Engine\MathCursor.Engine.csproj" />
+    <None Include="..\..\..\engine\tests\MathCursor.Engine.Tests\fixtures.json" Link="fixtures.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Sources adapter testées : compilation directe (le csproj VSTO requiert
          MSBuild Office Tools, qu'on ne veut pas comme prérequis du test runner).
          Tous les fichiers liés ici sont pure compute (pas de Word interop). -->
@@ -58,6 +66,7 @@
     <Compile Include="..\..\src\MathCursor\Detection\MathNerDetector.cs" Link="adapter-sources\Detection\MathNerDetector.cs" />
     <Compile Include="..\..\src\MathCursor\Host\AutocorrectNormalizer.cs" Link="adapter-sources\Host\AutocorrectNormalizer.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Detection\NerInputWindow.cs" Link="adapter-sources\Host\Detection\NerInputWindow.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Detection\ZoneEngineText.cs" Link="adapter-sources\Host\Detection\ZoneEngineText.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Detection\ZoneRefiner.cs" Link="adapter-sources\Host\Detection\ZoneRefiner.cs" />
     <Compile Include="..\..\src\MathCursor\Host\ParagraphTextExtractor.cs" Link="adapter-sources\Host\ParagraphTextExtractor.cs" />
   </ItemGroup>

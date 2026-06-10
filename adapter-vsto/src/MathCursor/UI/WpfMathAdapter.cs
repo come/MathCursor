@@ -40,6 +40,14 @@ namespace MathCursor.UI
             // 3) \overline{X} → \bar{X}. Pareil, perd la barre étendue.
             s = OverlineRegex.Replace(s, "\\bar{$1}");
 
+            // 3b) \overrightarrow{AB} → \vec{AB}. Perd la flèche étendue
+            //     multi-char (même dégradation assumée que widehat→hat).
+            //     Émis par le moteur forest (vec AB, audit 2026-06-10).
+            s = OverrightarrowRegex.Replace(s, "\\vec{$1}");
+
+            // 3c) \operatorname{Re} → \mathrm{Re} (Re/Im du moteur forest).
+            s = OperatornameRegex.Replace(s, "\\mathrm{$1}");
+
             // 4) \begin{cases}…\end{cases} : empile les lignes via \stackrel,
             //    pas de vraie accolade gauche. Visuel dégradé mais lisible.
             //    Format LaTeX d'entrée : "\begin{cases} A \\ B \end{cases}".
@@ -105,6 +113,12 @@ namespace MathCursor.UI
 
         private static readonly Regex OverlineRegex =
             new Regex(@"\\overline\{([^{}]*)\}", RegexOptions.Compiled);
+
+        private static readonly Regex OverrightarrowRegex =
+            new Regex(@"\\overrightarrow\{([^{}]*)\}", RegexOptions.Compiled);
+
+        private static readonly Regex OperatornameRegex =
+            new Regex(@"\\operatorname\{([^{}]*)\}", RegexOptions.Compiled);
 
         private static readonly Regex CasesRegex =
             new Regex(@"\\begin\{cases\}(?<body>.*?)\\end\{cases\}",
@@ -190,6 +204,17 @@ namespace MathCursor.UI
         // Substitutions simples (ordre important : remplacements longs d'abord).
         private static readonly (string from, string to)[] LiteralSubs = new[]
         {
+            // Parallèle penché du moteur forest (AB parallel CD) : \mathbin
+            // et \! inconnus de WpfMath → symbole ∥ natif.
+            ("\\mathbin{/\\!/}", "\\parallel "),
+            // Non-appartenance : \notin inconnu → composition \not\in.
+            ("\\notin", "\\not\\in"),
+            // Intégrales multiples AVEC bornes (\iint_{a}^{b}) : le ∬ Unicode
+            // de MixedLatexRenderer ne peut pas porter de scripts → ces cas
+            // restent dans le segment WpfMath (cf. lookahead du Tokenize) et
+            // sont rendus en intégrales simples enchaînées. Ordre : long d'abord.
+            ("\\iiint", "\\int\\int\\int"),
+            ("\\iint", "\\int\\int"),
             // Différence d'ensembles
             ("\\setminus", "\\backslash"),
             // Flèche fonction : `\mapsto` géré désormais par MixedLatexRenderer

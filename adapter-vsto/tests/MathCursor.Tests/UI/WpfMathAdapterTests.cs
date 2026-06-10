@@ -146,18 +146,17 @@ namespace MathCursor.Tests.UI
         public void Literal_substitution(string input, string expected)
             => Assert.Equal(expected, WpfMathAdapter.Adapt(input));
 
-        // \iint, \iiint, \oint : NE doivent PAS être substitués en Unicode
-        // par WpfMathAdapter (cf. brief 2026-05-06-wpfmath-fallback-renderer).
-        // - \iint, \iiint sont gérés en amont par MixedLatexRenderer (TextBlock
-        //   Unicode ∬ / ∭) — si l'un arrive ici c'est qu'il était nesté, on
-        //   le passe à WpfMath qui le rendra "." mais c'est mieux que rien.
-        // - \oint est rendu natively par WpfMath, donc pass-through.
+        // \iint/\iiint SANS bornes : gérés en amont par MixedLatexRenderer
+        // (TextBlock Unicode ∬ / ∭), n'atteignent jamais Adapt. AVEC bornes
+        // (\iint_{a}^{b}) ils RESTENT dans le segment WpfMath (le ∬ Unicode
+        // ne porte pas de scripts) et Adapt les dégrade en intégrales simples
+        // enchaînées (audit popup 2026-06-10). \oint : pass-through natif.
         [Theory]
-        [InlineData("\\iint")]
-        [InlineData("\\iiint")]
-        [InlineData("\\oint")]
-        public void Integrals_passthrough(string input)
-            => Assert.Equal(input, WpfMathAdapter.Adapt(input));
+        [InlineData("\\iint_{0}^{1} f", "\\int\\int_{0}^{1} f")]
+        [InlineData("\\iiint_{0}^{1} f", "\\int\\int\\int_{0}^{1} f")]
+        [InlineData("\\oint", "\\oint")]
+        public void Integrals_with_bounds_degrade_to_chained_ints(string input, string expected)
+            => Assert.Equal(expected, WpfMathAdapter.Adapt(input));
 
         [Fact]
         public void Limsup_decomposes()

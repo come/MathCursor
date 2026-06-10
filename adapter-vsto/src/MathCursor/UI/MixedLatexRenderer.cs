@@ -40,10 +40,15 @@ namespace MathCursor.UI
         // éviter que `\iiint` ne soit tokenizé comme `\iint` + `iint`. Les
         // lookaheads `(?![a-zA-Z])` empêchent de matcher des prefixes (ex:
         // `\mapstop` ne doit pas matcher `\mapsto`).
+        // `(?![a-zA-Z_^])` sur \iint/\iiint : une intégrale multiple AVEC
+        // bornes (\iint_{0}^{1}) ne peut pas être extraite — le TextBlock ∬
+        // ne porte pas de scripts, et le segment WpfMath restant commencerait
+        // par `_` (« script needs a base »). Ces cas restent dans le segment
+        // WpfMath, dégradés en \int\int par WpfMathAdapter (audit 2026-06-10).
         private static readonly Regex UnicodeMacroRegex = new Regex(
             @"\\mathbb\{[RNZQCP]\}"
-            + @"|\\iiint(?![a-zA-Z])"
-            + @"|\\iint(?![a-zA-Z])"
+            + @"|\\iiint(?![a-zA-Z_^])"
+            + @"|\\iint(?![a-zA-Z_^])"
             + @"|\\mapsto(?![a-zA-Z])",
             RegexOptions.Compiled);
 

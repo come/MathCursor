@@ -74,6 +74,12 @@ namespace MathCursor.Host.Detection
             }
         }
 
+        /// <summary>Texte envoyé au MOTEUR : <see cref="Text"/> + restitution de
+        /// l'espace final trimé des bornes — signal d'étoile postfixe pour le
+        /// lexer. Logique pure dans <see cref="ZoneEngineText"/> (testée sans Word).</summary>
+        public string TextForEngine
+            => ZoneEngineText.WithTrailingSpaceSignal(Text, ParagraphText, StringEnd);
+
         /// <summary><c>true</c> si la zone est vide ou inversée.</summary>
         public bool IsEmpty => StringEnd <= StringStart;
 
