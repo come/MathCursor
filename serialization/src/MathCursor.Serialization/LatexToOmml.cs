@@ -68,9 +68,17 @@ namespace MathCursor.Serialization
                     string cmd = s.Substring(i + 1, j - (i + 1));
                     if (cmd.Length == 0)
                     {
-                        // \, \; \  \{ \} … → espace/littéral
+                        // Commandes d'espacement : ÉMETTRE l'espace (le code
+                        // hérité les avalait → « 1 cm » rendu collé « 1cm »
+                        // dans Word, bug user 2026-06-10). \, = espace fine
+                        // U+2009 (unités : 1\,\mathrm{cm}, intégrales \, dx) ;
+                        // \; \: = espace moyenne U+2005 ; "\ " = espace pleine.
+                        // \! (négative) reste ignorée.
                         char next = j < s.Length ? s[j] : '\0';
-                        if (next == ',' || next == ';' || next == ':' || next == ' ' || next == '!') { i = j + 1; continue; }
+                        if (next == ',') { text.Append(' '); i = j + 1; continue; }
+                        if (next == ';' || next == ':') { text.Append(' '); i = j + 1; continue; }
+                        if (next == ' ') { text.Append(' '); i = j + 1; continue; }
+                        if (next == '!') { i = j + 1; continue; }
                         if (next == '{' || next == '}') { text.Append(next); i = j + 1; continue; }
                         i = j; continue;
                     }
