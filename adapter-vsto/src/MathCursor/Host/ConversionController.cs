@@ -137,8 +137,8 @@ namespace MathCursor.Host
         /// debounce) : même moteur/popup que le manuel mais SILENCIEUX —
         /// pas de StatusBar en échec (la popup se masque si la zone ne donne
         /// rien), pas de re-show si la zone est inchangée (anti-flicker).
-        /// La frappe SORT du nav mode et rafraîchit (un survol souris ne gèle
-        /// pas la popup) ; seules les flèches préservent la sélection.
+        /// Recalcule MÊME en nav mode : la popup préserve nav mode +
+        /// sélection à travers le rafraîchissement (cf. ShowCandidates).
         /// </summary>
         public bool TryProposeAuto(ZoneSpan zone)
         {
@@ -148,11 +148,9 @@ namespace MathCursor.Host
                 return false;
             }
             if (_committing) return false;
-            // L'utilisateur TAPE (seul chemin vers ici) : un nav mode actif
-            // (souvent un simple survol souris de la popup) est caduc → on en
-            // sort et on rafraîchit. Les flèches seules, elles, ne déclenchent
-            // jamais ce chemin — leur sélection reste intacte.
-            if (IsNavMode) _popup?.ExitNavMode();
+            // Pas de garde nav mode : on recalcule TOUJOURS — c'est la popup
+            // qui préserve nav mode + sélection à travers le rafraîchissement
+            // (cf. ShowCandidates, retour user 2026-06-10).
             if (IsPopupVisible && _zone != null
                 && _zone.ParagraphAbsStart == zone.ParagraphAbsStart
                 && _zone.StringStart == zone.StringStart

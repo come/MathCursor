@@ -133,10 +133,22 @@ namespace MathCursor.UI
         public void ShowCandidates(IReadOnlyList<string> candidates, double anchorX,
             double anchorYBelow, double anchorYAbove, string sourceText = "")
         {
+            // Rafraîchissement d'une popup DÉJÀ ouverte (frappe continue,
+            // extension Ctrl+Espace…) : on PRÉSERVE le nav mode, la sélection
+            // (index clampé à la nouvelle liste) et l'état déplié — l'utilisateur
+            // ne perd jamais où il en était (retour user 2026-06-10).
+            bool wasVisible = IsVisible;
+            bool preserveNav = wasVisible && _navMode;
+            int prevIndex = _selectedIndex;
+            bool prevExpanded = wasVisible && _expanded;
+
             _candidates = candidates ?? Array.Empty<string>();
-            _selectedIndex = 0;
-            _navMode = false;
-            _expanded = _candidates.Count <= MaxCandidatesCollapsed;
+            _navMode = preserveNav;
+            _expanded = _candidates.Count <= MaxCandidatesCollapsed || prevExpanded;
+            _selectedIndex = preserveNav
+                ? Math.Max(0, Math.Min(prevIndex, _candidates.Count - 1))
+                : 0;
+            if (_selectedIndex > MaxCandidatesCollapsed - 1) _expanded = true; // sélection hors zone repliée → déplie
             _debugFooter.Text = string.IsNullOrEmpty(sourceText) ? "" : "« " + Truncate(sourceText, 60) + " »";
 
             BuildRows();
@@ -156,7 +168,7 @@ namespace MathCursor.UI
                 Top = Math.Max(wa.Top + 4, anchorYAbove - h); // bascule au-dessus de la ligne
 
             BeginAnimation(OpacityProperty,
-                new DoubleAnimation(DisplayOpacity, TimeSpan.FromMilliseconds(FadeMs)));
+                new DoubleAnimation(_navMode ? NavOpacity : DisplayOpacity, TimeSpan.FromMilliseconds(FadeMs)));
         }
 
         public void EnterNavMode()
@@ -290,11 +302,7 @@ namespace MathCursor.UI
             }
         }
 
-        /// <summary>Sort du nav mode (retire le surlignage, ré-atténue).
-        /// Public : appelé aussi quand l'utilisateur REPREND LA FRAPPE — un
-        /// nav mode actif (souvent un survol souris) ne doit pas geler le
-        /// rafraîchissement auto (retour user 2026-06-10).</summary>
-        public void ExitNavMode()
+        private void ExitNavMode()
         {
             if (!_navMode) return;
             _navMode = false;

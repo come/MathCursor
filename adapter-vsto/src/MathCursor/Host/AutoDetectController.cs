@@ -95,10 +95,9 @@ namespace MathCursor.Host
                 if (detector == null) return;
                 if (!Settings.SettingsStore.Current.AutoDetect) return;
                 if (_conversion.IsCommitting) return;
-                // PAS de garde nav mode ici : ce tick n'arrive QUE par une
-                // frappe texte → l'utilisateur a repris l'écriture, le nav
-                // mode (souvent juste un survol souris de la popup) ne doit
-                // pas geler le rafraîchissement (retour user 2026-06-10).
+                // PAS de garde nav mode : on recalcule toujours, la popup
+                // préserve nav mode + sélection au rafraîchissement
+                // (retour user 2026-06-10).
                 if (_isEditPopupVisible()) return;
                 if (_app.Documents.Count == 0) return;
 

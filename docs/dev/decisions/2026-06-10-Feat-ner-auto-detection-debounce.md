@@ -51,10 +51,12 @@ pause 100 ms → guards (réglage off / commit / popup edit /
 `TryProposeAuto` = même moteur, même popup, mêmes touches que le manuel,
 mais **silencieux** : pas de message StatusBar en échec, popup masquée si la
 zone disparaît, **pas de re-show si la zone est identique** (anti-flicker).
-La popup auto se met à jour au fil de la frappe. **La frappe sort du nav
-mode et rafraîchit** — un survol souris de la popup (qui active le nav mode)
-ne doit pas la geler (retour user 2026-06-10) ; seules les flèches, qui ne
-sont pas des frappes texte, préservent la sélection en cours.
+La popup auto se met à jour au fil de la frappe, **nav mode compris** :
+le recalcul n'est jamais gelé (un survol souris active le nav mode et figeait
+la popup → incompréhensible) ; c'est la popup qui **préserve nav mode,
+sélection (index clampé) et état déplié** à travers chaque rafraîchissement
+(retour user 2026-06-10 : « on recalcule et on remet la sélection où elle
+était »).
 
 ### 3. Ctrl+Espace inchangé = forçage + extension
 
@@ -105,8 +107,9 @@ le mode fin Auto/Manuel/Silent viendra si le besoin se confirme.)
 1. Taper « on a 1/x+1 » puis pause → popup apparaît seule sous la zone ;
    continuer à taper → elle suit ; Tab commit.
 2. Taper de la prose pure → pas de popup. Tab ou double espace → popup se ferme.
-3. Flèche bas (nav mode) sans taper → la sélection ne saute pas ; survoler
-   la popup à la souris PUIS taper → la popup se rafraîchit normalement.
+3. Flèche bas (sélection au 2ᵉ candidat) puis CONTINUER À TAPER → la popup
+   se rafraîchit ET la sélection reste sur le 2ᵉ candidat (clampée si la
+   liste raccourcit).
 4. Ctrl+Espace force quand le NER n'a rien vu ; re-Ctrl+Espace étend.
 5. Renommer le dossier modèle → l'add-in démarre, pas de popup auto,
    Ctrl+Espace fonctionne.
