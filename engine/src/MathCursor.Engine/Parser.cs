@@ -12,19 +12,21 @@ internal sealed class Forest
 
     private readonly List<Token> _toks;
     private readonly Func<List<Token>, List<Node>>? _onGroup;
+    private readonly EngineCulture _culture;
     private readonly Dictionary<string, List<Node>> _memo = new();
     private readonly int _end;
 
-    private Forest(List<Token> toks, Func<List<Token>, List<Node>>? onGroup)
+    private Forest(List<Token> toks, Func<List<Token>, List<Node>>? onGroup, EngineCulture culture)
     {
         _toks = toks;
         _onGroup = onGroup;
+        _culture = culture;
         int vIdx = toks.FindIndex(t => t.Virtual);
         _end = vIdx == -1 ? toks.Count : vIdx;
     }
 
-    public static List<Node> Parse(List<Token> toks, Func<List<Token>, List<Node>>? onGroup)
-        => new Forest(toks, onGroup).ParseSpan(0, toks.Count);
+    public static List<Node> Parse(List<Token> toks, Func<List<Token>, List<Node>>? onGroup, EngineCulture culture)
+        => new Forest(toks, onGroup, culture).ParseSpan(0, toks.Count);
 
     private static Node Hole() => new() { Type = "atom", Sym = "\\square ", Hole = true };
 
@@ -134,7 +136,7 @@ internal sealed class Forest
                 if (t.Kind == "lparen") depth++;
                 else if (t.Kind == "rparen") depth--;
                 else if (depth == 0 && t.Kind == "bracket") ok = false;
-                else if (depth == 0 && t.Kind == "sep" && t.Sym == Vocabulary.Locale.IntervalSep) { if (comma == -1) comma = k; else ok = false; }
+                else if (depth == 0 && t.Kind == "sep" && t.Sym == _culture.IntervalSep) { if (comma == -1) comma = k; else ok = false; }
             }
             if (ok && comma != -1)
                 foreach (var lo in ParseSpan(i + 1, comma))

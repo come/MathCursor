@@ -184,6 +184,7 @@
     <Compile Include="Strings.cs" />
     <Compile Include="RibbonCallback.cs" />
     <EmbeddedResource Include="Ribbon.xml" />
+    <Compile Include="Host\ColumnLayoutInserter.cs" />
     <Compile Include="Host\ConversionController.cs" />
     <Compile Include="Host\OMathInserter.cs" />
     <Compile Include="Host\WordContextReader.cs" />
@@ -206,6 +207,8 @@
     <Compile Include="Host\Detection\ParagraphPositionTranslator.cs" />
     <Compile Include="Host\Detection\ZoneRefiner.cs" />
     <Compile Include="Host\Detection\ZoneSpan.cs" />
+    <Compile Include="Host\Settings\AppSettings.cs" />
+    <Compile Include="Host\Settings\SettingsStore.cs" />
     <Compile Include="Host\Feedback\FeedbackReport.cs" />
     <Compile Include="Host\Feedback\IFeedbackSender.cs" />
     <Compile Include="Host\Feedback\FeedbackJson.cs" />
@@ -213,6 +216,7 @@
     <Compile Include="Host\Feedback\ClipboardFeedbackSender.cs" />
     <Compile Include="Host\Feedback\HttpFeedbackSender.cs" />
     <Compile Include="Host\Feedback\FeedbackSenderFactory.cs" />
+    <Compile Include="UI\SettingsWindow.cs" />
     <Compile Include="UI\SuggestionPopupWindow.cs" />
     <Compile Include="UI\EditModePopupWindow.cs" />
     <Compile Include="UI\FeedbackDialog.cs" />

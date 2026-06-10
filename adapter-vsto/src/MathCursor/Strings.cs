@@ -188,14 +188,106 @@ namespace MathCursor
 
         public static string SettingsButtonScreentip => Lang switch
         {
-            "fr" => "Préférences MathCursor (langue, symbole de multiplication, popup auto, logs).",
-            _    => "MathCursor preferences (language, multiplication symbol, auto popup, logs).",
+            "fr" => "Préférences MathCursor : culture (FR/US), séparateur d'intervalle, affichage des matrices.",
+            _    => "MathCursor preferences: culture (FR/US), interval separator, matrix display.",
         };
 
-        public static string SettingsComingSoonBody => Lang switch
+        // ---------- Fenêtre Paramètres (SettingsWindow.cs, ADR 2026-06-10) ----------
+
+        public static string SettingsWindowTitle => Lang switch
         {
-            "fr" => "Les paramètres arriveront dans la v0.6.\nPour l'instant, la langue suit Word et les autres préférences sont par défaut.",
-            _    => "Settings will arrive in v0.6.\nFor now, language follows Word and other preferences are at default.",
+            "fr" => "MathCursor — Paramètres",
+            _    => "MathCursor — Settings",
+        };
+
+        public static string SettingsIntro => Lang switch
+        {
+            "fr" => "La culture choisit les défauts de notation. Tu peux ajuster chaque réglage individuellement — un réglage non modifié suit la culture.",
+            _    => "The culture sets the notation defaults. You can adjust each setting individually — an unmodified setting follows the culture.",
+        };
+
+        public static string SettingsSectionCulture => Lang switch
+        {
+            "fr" => "Culture",
+            _    => "Culture",
+        };
+
+        public static string SettingsCultureFr => Lang switch
+        {
+            "fr" => "Français (FR) — virgule décimale, intervalles [0;1], matrices ( )",
+            _    => "French (FR) — decimal comma, intervals [0;1], matrices ( )",
+        };
+
+        public static string SettingsCultureUs => Lang switch
+        {
+            "fr" => "Anglais (US) — point décimal, intervalles [0,1], matrices [ ]",
+            _    => "English (US) — decimal point, intervals [0,1], matrices [ ]",
+        };
+
+        public static string SettingsSectionNotation => Lang switch
+        {
+            "fr" => "Notation",
+            _    => "Notation",
+        };
+
+        public static string SettingsIntervalSepLabel => Lang switch
+        {
+            "fr" => "Séparateur d'intervalle",
+            _    => "Interval separator",
+        };
+
+        public static string SettingsMatrixLabel => Lang switch
+        {
+            "fr" => "Visualisation des matrices",
+            _    => "Matrix display",
+        };
+
+        public static string SettingsMatrixParens => Lang switch
+        {
+            "fr" => "( … )  parenthèses",
+            _    => "( … )  parentheses",
+        };
+
+        public static string SettingsMatrixBrackets => Lang switch
+        {
+            "fr" => "[ … ]  crochets",
+            _    => "[ … ]  brackets",
+        };
+
+        public static string SettingsInheritedHint => Lang switch
+        {
+            "fr" => "suit la culture",
+            _    => "follows the culture",
+        };
+
+        public static string SettingsOverrideHint => Lang switch
+        {
+            "fr" => "personnalisé",
+            _    => "customized",
+        };
+
+        public static string SettingsPreviewLabel => Lang switch
+        {
+            "fr" => "Aperçu",
+            _    => "Preview",
+        };
+
+        public static string SettingsButtonSave => Lang switch
+        {
+            "fr" => "Enregistrer",
+            _    => "Save",
+        };
+
+        public static string SettingsButtonCancel => Lang switch
+        {
+            "fr" => "Annuler",
+            _    => "Cancel",
+        };
+
+        public static string SettingsSaveFailed => Lang switch
+        {
+            "fr" => "Impossible d'écrire le fichier de réglages — les changements s'appliquent pour cette session seulement.",
+            _    => "Could not write the settings file — changes apply to this session only.",
         };
 
         public static string AboutButtonLabel => Lang switch

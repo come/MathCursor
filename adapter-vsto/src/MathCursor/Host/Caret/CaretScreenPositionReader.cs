@@ -18,6 +18,33 @@ namespace MathCursor.Host.Caret
     internal static class CaretScreenPositionReader
     {
         /// <summary>
+        /// Rect du caret GDI en DIP : (x, top, bottom). Contrairement à la
+        /// boîte de ligne Word (GetPoint, qui inclut interligne + espace de
+        /// paragraphe), le caret a exactement la hauteur du TEXTE → son bas
+        /// est l'ancre « collée sous la ligne ». False si pas de caret
+        /// (sélection non réduite, fenêtre sans focus...).
+        /// </summary>
+        public static bool TryReadRect(out double x, out double top, out double bottom)
+        {
+            x = top = bottom = 0;
+            try
+            {
+                var gti = new GUITHREADINFO { cbSize = (uint)Marshal.SizeOf(typeof(GUITHREADINFO)) };
+                if (!GetGUIThreadInfo(0, ref gti) || gti.hwndCaret == IntPtr.Zero) return false;
+                var pt = new POINT { X = gti.rcCaret.Left, Y = gti.rcCaret.Top };
+                var pb = new POINT { X = gti.rcCaret.Left, Y = gti.rcCaret.Bottom };
+                ClientToScreen(gti.hwndCaret, ref pt);
+                ClientToScreen(gti.hwndCaret, ref pb);
+                double scale = GetDpiScale();
+                x = pt.X / scale;
+                top = pt.Y / scale;
+                bottom = pb.Y / scale;
+                return bottom > top;
+            }
+            catch { return false; }
+        }
+
+        /// <summary>
         /// Retourne (x, y) en coordonnées DIP (= scaled by DPI). Si la lecture
         /// échoue, retourne (200, 200) — fallback raisonnable au coin du doc.
         /// </summary>

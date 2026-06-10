@@ -47,7 +47,17 @@ namespace MathCursor
 
         public string OnGetTabLabel(IRibbonControl control) => Strings.MathCursorTabLabel;
         public string OnGetConversionGroupLabel(IRibbonControl control) => Strings.ConversionGroupLabel;
+        public string OnGetLayoutGroupLabel(IRibbonControl control) => Strings.LayoutGroupLabel;
+        public string OnGetToolsGroupLabel(IRibbonControl control) => Strings.ToolsTabGroupLabel;
         public string OnGetHelpGroupLabel(IRibbonControl control) => Strings.HelpGroupLabel;
+        public string OnGetColumnsMenuLabel(IRibbonControl control) => Strings.ColumnsMenuLabel;
+        public string OnGetColumnsMenuScreentip(IRibbonControl control) => Strings.ColumnsMenuScreentip;
+        public string OnGetColumns1Label(IRibbonControl control) => Strings.Columns1Label;
+        public string OnGetColumns2Label(IRibbonControl control) => Strings.Columns2Label;
+        public string OnGetColumns3Label(IRibbonControl control) => Strings.Columns3Label;
+        public string OnGetColumns4Label(IRibbonControl control) => Strings.Columns4Label;
+        public string OnGetSettingsButtonLabel(IRibbonControl control) => Strings.SettingsButtonLabel;
+        public string OnGetSettingsButtonScreentip(IRibbonControl control) => Strings.SettingsButtonScreentip;
         public string OnGetConvertButtonLabel(IRibbonControl control) => Strings.ConvertButtonLabel;
         public string OnGetConvertButtonScreentip(IRibbonControl control) => Strings.ConvertButtonScreentip;
         public string OnGetReportButtonLabel(IRibbonControl control) => Strings.ReportButtonLabel;
@@ -89,6 +99,55 @@ namespace MathCursor
                 new UI.FeedbackDialog(report, sender).ShowDialog();
             }
             catch (Exception ex) { LogDebug("report_clicked_error: " + ex.Message); }
+        }
+
+        /// <summary>
+        /// Insère un tableau N colonnes au curseur (barres séparatrices,
+        /// pas de bordures externes). N parsé depuis l'id du bouton
+        /// (InsertColumns{1..4}Button).
+        /// </summary>
+        public void OnInsertColumnsClicked(IRibbonControl control)
+        {
+            try
+            {
+                int n = ParseColumnCountFromId(control?.Id);
+                LogDebug($"insert_columns_click id={control?.Id ?? "<null>"} n={n}");
+                if (n < 1 || n > 4) return;
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null) { LogDebug("insert_columns: app null"); return; }
+                Host.ColumnLayoutInserter.Insert(app, n);
+                LogDebug($"insert_columns_done n={n}");
+            }
+            catch (Exception ex)
+            {
+                LogDebug("insert_columns_error: " + ex.Message);
+                MessageBox.Show(
+                    "Impossible d'insérer les colonnes :\n" + ex.Message,
+                    "MathCursor",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+
+        private static int ParseColumnCountFromId(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return 0;
+            // Format attendu : "InsertColumns{N}Button". On scan le 1er chiffre.
+            foreach (char c in id)
+                if (c >= '1' && c <= '9') return c - '0';
+            return 0;
+        }
+
+        public void OnSettingsClicked(IRibbonControl control)
+        {
+            try
+            {
+                // Cacher la popup suggestion AVANT la modale (sinon elle
+                // reste topmost au-dessus du dialog).
+                try { Globals.ThisAddIn?.Conversion?.HidePopup(); } catch { }
+                new UI.SettingsWindow().ShowDialog();
+            }
+            catch (Exception ex) { LogDebug("settings_clicked_error: " + ex.Message); }
         }
 
         public void OnAboutClicked(IRibbonControl control)

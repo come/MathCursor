@@ -33,8 +33,13 @@ public sealed class ForestEngine
     private const string Note_ = "expression dense/ambiguë — ajoutez des espaces ou des parenthèses pour préciser.";
 
     private bool _deepNote;
+    private readonly EngineCulture _culture;
 
-    public static AnalyzeResult Analyze(string src) => new ForestEngine().Run(src);
+    private ForestEngine(EngineCulture culture) { _culture = culture; }
+
+    /// <summary>Analyse <paramref name="src"/> avec la culture donnée (défaut : <see cref="EngineCulture.Fr"/>).</summary>
+    public static AnalyzeResult Analyze(string src, EngineCulture? culture = null)
+        => new ForestEngine(culture ?? EngineCulture.Fr).Run(src);
 
     private static int Catalan(int n) => n >= 0 && n < Cat.Length ? Cat[n] : 429;
 
@@ -46,7 +51,7 @@ public sealed class ForestEngine
     }
 
     private List<Node> ParsesOf(List<Token> toks) =>
-        Forest.Parse(toks, OnGroup).Where(p => !Score.CrossesCut(p)).ToList();
+        Forest.Parse(toks, OnGroup, _culture).Where(p => !Score.CrossesCut(p)).ToList();
 
     private Node? BestOf(List<Token> toks)
     {
@@ -95,7 +100,7 @@ public sealed class ForestEngine
         if (all.Count == 0) return new AnalyzeResult("erreur", new List<EngineCandidate>(), false);
         var seen = new HashSet<string>();
         var ranked = all
-            .Select(p => new EngineCandidate(LatexRenderer.Render(p), Score.Cost(p)))
+            .Select(p => new EngineCandidate(LatexRenderer.Render(p, _culture), Score.Cost(p)))
             .OrderBy(r => r.Cost)                       // tri stable (comme V8)
             .Where(r => seen.Add(r.Latex))              // garde le meilleur par rendu
             .ToList();
@@ -161,7 +166,7 @@ public sealed class ForestEngine
 
         // 2) N-AIRE en TÊTE : scope toute la suite → PAS de segmentation (forêt entière).
         if (toks.Count > 0 && toks[0].Kind == "nary" && Segment.ChainLen(toks) < Segment.MaxChain)
-            return new Asm(Forest.Parse(toks, OnGroup).Where(p => !Score.CrossesCut(p)).ToList(), null);
+            return new Asm(Forest.Parse(toks, OnGroup, _culture).Where(p => !Score.CrossesCut(p)).ToList(), null);
 
         // 3) sinon : segmentation aux signes espacés + repli si trop long.
         var (segs, ops) = Segment.Split(toks);
@@ -170,7 +175,7 @@ public sealed class ForestEngine
         var lists3 = new List<List<Node>>();
         foreach (var seg in segs)
         {
-            if (Segment.ChainLen(seg) < Segment.MaxChain) lists3.Add(Forest.Parse(seg, OnGroup));
+            if (Segment.ChainLen(seg) < Segment.MaxChain) lists3.Add(Forest.Parse(seg, OnGroup, _culture));
             else { note3 = Note_; var f = Fold(seg); lists3.Add(f != null ? new() { f } : new()); }
         }
         return Recombine(lists3, ops, note3);
@@ -183,7 +188,7 @@ public sealed class ForestEngine
         int best = -1;
         var parses = new List<Node>();
         string? note = null;
-        foreach (var (toks, splits) in Lexer.LexAll(src))
+        foreach (var (toks, splits) in Lexer.LexAll(src, _culture))
         {
             var r = Assemble(toks);
             if (r.Parses.Count == 0) continue;

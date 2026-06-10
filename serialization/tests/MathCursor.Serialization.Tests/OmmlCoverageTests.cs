@@ -67,6 +67,8 @@ public sealed class OmmlCoverageTests
     // golden : les nouveaux handlers produisent la bonne structure OMML.
     [InlineData("\\binom{n}{k}", "noBar")]
     [InlineData("\\begin{pmatrix}1 & 2 \\\\ 3 & 4\\end{pmatrix}", "<m>")]
+    [InlineData("\\begin{bmatrix}1 & 2 \\\\ 3 & 4\\end{bmatrix}", "<m>")]
+    [InlineData("\\begin{bmatrix}1 & 2 \\\\ 3 & 4\\end{bmatrix}", "[")]
     [InlineData("\\lfloor x\\rfloor ", "⌊")]
     [InlineData("\\lceil x\\rceil ", "⌈")]
     [InlineData("a\\mid b", "∣")]

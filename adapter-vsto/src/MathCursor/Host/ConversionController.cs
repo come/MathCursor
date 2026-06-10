@@ -136,7 +136,9 @@ namespace MathCursor.Host
         private void AnalyzeAndShow(ZoneSpan zone)
         {
             MathCursor.Engine.AnalyzeResult result;
-            try { result = MathCursor.Engine.ForestEngine.Analyze(zone.Text); }
+            // Culture relue à chaque trigger : un changement dans la popup
+            // Paramètres s'applique sans redémarrage.
+            try { result = MathCursor.Engine.ForestEngine.Analyze(zone.Text, Settings.SettingsStore.Current.ToEngineCulture()); }
             catch (Exception ex)
             {
                 _log($"convert: engine error sur \"{Preview(zone.Text)}\": {ex.Message}");
@@ -169,6 +171,14 @@ namespace MathCursor.Host
         /// </summary>
         private (double x, double yBelow, double yAbove) ComputeAnchor(ZoneSpan zone)
         {
+            // X = début de zone (GetPoint Word) ; Y = caret GDI. Pourquoi ce
+            // mix : la boîte de ligne de GetPoint inclut interligne + espace
+            // de paragraphe (8 pt par défaut) → son « bas » tombe ~20 px sous
+            // le texte (retour user 2026-06-10). Le caret GDI a exactement la
+            // hauteur du texte → bas du caret = ancre collée sous la ligne.
+            double? anchorX = null;
+            double boxBelow = 0, boxAbove = 0;
+            bool hasBox = false;
             try
             {
                 var doc = _app.ActiveDocument;
@@ -180,16 +190,25 @@ namespace MathCursor.Host
                     if (height > 0)
                     {
                         double scale = CaretScreenPositionReader.GetDpiScale();
-                        const double GapDip = 3.0; // petit jour sous la ligne
-                        return (left / scale, (top + height) / scale + GapDip, top / scale - GapDip);
+                        anchorX = left / scale;
+                        boxBelow = (top + height) / scale;
+                        boxAbove = top / scale;
+                        hasBox = true;
                     }
                 }
             }
             catch (Exception ex) { _log("anchor_getpoint_error: " + ex.Message); }
 
-            // Fallback : position du caret GDI (déjà sous la ligne, en DIP).
-            var (cx, cy) = CaretScreenPositionReader.Read();
-            return (cx, cy, cy - 20);
+            const double GapDip = 2.0;
+            if (CaretScreenPositionReader.TryReadRect(out double cx, out double cTop, out double cBottom))
+                return (anchorX ?? cx, cBottom + GapDip, cTop - GapDip);
+
+            // Caret indispo (sélection étendue…) : boîte de ligne GetPoint.
+            if (hasBox && anchorX.HasValue)
+                return (anchorX.Value, boxBelow + GapDip, boxAbove - GapDip);
+
+            var (fx, fy) = CaretScreenPositionReader.Read();
+            return (fx, fy, fy - 20);
         }
 
         // ── Commit ───────────────────────────────────────────────────────

@@ -143,6 +143,10 @@ séparation moteur/vocabulaire. Les `fixtures.js` deviennent des tests xUnit qui
   - Popup WPF (`SuggestionPopupWindow` + `WpfMathAdapter`) au caret.
   - Câblage : Ctrl+Espace → `engine.analyze` → popup → sélection → OMML → insert + CC.
   - **Critère : taper `1/x+1`, Ctrl+Espace, popup 2 candidats, Tab insère l'OMath, Ctrl+Z revert.**
+  - *Extension 2026-06-10* : ribbon enrichi — menu Colonnes 1→4 restauré (port DocMath
+    sans bookmarks, POC `scripts/poc-formattedtext-cc.ps1` PASS) + bouton Paramètres
+    (culture FR/US, `EngineCulture` threadée dans `Analyze`, store JSON `%APPDATA%`).
+    ADR [`Feat-ribbon-columns-settings-culture`](docs/dev/decisions/2026-06-10-Feat-ribbon-columns-settings-culture.md).
 
 - **Phase 3 — Édition in-place + feedback**
   - `EditModeController` (clic dans OMath → retrouve source via CC → ré-édite).

@@ -61,7 +61,9 @@ namespace MathCursor.UI
             ResizeMode = ResizeMode.NoResize;
             ShowInTaskbar = false;
             ShowActivated = false;
-            Topmost = true;
+            // PAS de Topmost : la popup est POSSÉDÉE par la fenêtre Word
+            // (Owner, cf. SourceInitialized) → au-dessus de Word uniquement,
+            // disparaît derrière les autres apps à l'Alt-Tab.
             Width = 320;
             SizeToContent = SizeToContent.Height;
             Background = Brushes.White;
@@ -110,9 +112,13 @@ namespace MathCursor.UI
 
             SourceInitialized += (_, _) =>
             {
-                var hwnd = new WindowInteropHelper(this).Handle;
-                int exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-                SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
+                var helper = new WindowInteropHelper(this);
+                int exStyle = GetWindowLong(helper.Handle, GWL_EXSTYLE);
+                SetWindowLong(helper.Handle, GWL_EXSTYLE, exStyle | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
+                // Owner = fenêtre principale Word (on tourne DANS Word) :
+                // z-order lié à Word, pas au bureau entier.
+                try { helper.Owner = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle; }
+                catch { }
             };
         }
 

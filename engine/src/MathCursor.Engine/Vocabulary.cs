@@ -7,13 +7,6 @@ namespace MathCursor.Engine;
 // une liste à 1 élément et n = null (cf. LatexRenderer).
 internal delegate string RenderFn(IReadOnlyList<string> a, Node? n);
 
-internal sealed class Culture
-{
-    public char[] DecimalsIn = System.Array.Empty<char>();
-    public string DecimalTex = "";
-    public string IntervalSep = "";
-}
-
 internal sealed class VocabEntry
 {
     public string? Shape;          // "infix" | "prefix" | "nary" | "postfix" | "atom"
@@ -54,17 +47,8 @@ internal static class Vocabulary
     private const double REL = 5, SUM = 3, QUANT = 2.5, PROD = 2, POW = 1, APP = 0;
     private const string MUL = "\\times ";
 
-    public static readonly Culture Locale = new()
-    {
-        DecimalsIn = new[] { '.', ',' },
-        DecimalTex = "{,}",
-        IntervalSep = ";",
-    };
-
     public static readonly Dictionary<string, VocabEntry> Vocab = new();
     public static readonly Dictionary<char, int> Sep = new() { [','] = 0, [';'] = 2 };
-    public static readonly Dictionary<string, (string Open, string Close)> Matrix =
-        new() { ["("] = ("\\begin{pmatrix}", "\\end{pmatrix}") };
     public static readonly HashSet<string> Splittable = new();
     public static readonly Dictionary<string, string> Role = new();
 

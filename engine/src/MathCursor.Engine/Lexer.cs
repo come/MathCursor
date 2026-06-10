@@ -33,7 +33,7 @@ internal static class Lexer
         new() { Left = new[] { "num", "name", "close", "post" }, Right = new[] { "name", "open", "func" }, Roles = new[] { "implicit" } },
     };
 
-    public static List<Token> Lex(string src, Func<int, bool>? choices = null, List<int>? runsOut = null)
+    public static List<Token> Lex(string src, EngineCulture culture, Func<int, bool>? choices = null, List<int>? runsOut = null)
     {
         var toks = new List<Token>();
         int i = 0;
@@ -148,10 +148,10 @@ internal static class Lexer
             {
                 var sb = new System.Text.StringBuilder();
                 while (i < src.Length && IsDigit(src[i])) sb.Append(src[i++]);
-                if (Array.IndexOf(Vocabulary.Locale.DecimalsIn, Ch(i)) >= 0
+                if (Array.IndexOf(culture.DecimalsIn, Ch(i)) >= 0
                     && !(Ch(i) == ',' && brc > 0) && IsDigit(Ch(i + 1)))
                 {
-                    i++; sb.Append(Vocabulary.Locale.DecimalTex);
+                    i++; sb.Append(culture.DecimalTex);
                     while (i < src.Length && IsDigit(src[i])) sb.Append(src[i++]);
                 }
                 Push(new Token { Kind = "atom", Sym = sb.ToString(), Num = true });
@@ -249,18 +249,18 @@ internal static class Lexer
     private static int PopCount(int m) { int c = 0; while (m != 0) { c += m & 1; m >>= 1; } return c; }
 
     // NIVEAU 2 — lexAll : tous les flux (run entier OU découpé), tagués du nb de découpes.
-    public static List<(List<Token> Toks, int Splits)> LexAll(string src)
+    public static List<(List<Token> Toks, int Splits)> LexAll(string src, EngineCulture culture)
     {
         var runs = new List<int>();
-        var whole = Lex(src, _ => false, runs);
+        var whole = Lex(src, culture, _ => false, runs);
         int n = runs.Count;
         if (n == 0) return new() { (whole, 0) };
-        if (n > SplitCap) return new() { (Lex(src, _ => true), n), (whole, 0) };
+        if (n > SplitCap) return new() { (Lex(src, culture, _ => true), n), (whole, 0) };
         var outp = new List<(List<Token>, int)>();
         for (int m = 0; m < (1 << n); m++)
         {
             int mm = m;
-            outp.Add((Lex(src, st => (mm & (1 << runs.IndexOf(st))) != 0), PopCount(mm)));
+            outp.Add((Lex(src, culture, st => (mm & (1 << runs.IndexOf(st))) != 0), PopCount(mm)));
         }
         return outp;
     }

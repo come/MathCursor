@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Ribbon Phase 2 beta-clean (ADR 2026-06-10-Refactor-phase2-adapter-orchestration-rewrite).
-  Un seul onglet, trois boutons, icônes imageMso natives (pas de PNG embarqués).
-  Disparus : groupe TabHome, colonnes, constructions, cheatsheet, inspector, POC debug.
+  Un seul onglet, icônes imageMso natives (pas de PNG embarqués).
+  Disparus : groupe TabHome, constructions, cheatsheet, inspector, POC debug.
+  Colonnes + Paramètres restaurés ici UNIQUEMENT — pas de retour TabHome
+  (ADR 2026-06-10-Feat-ribbon-columns-settings-culture).
 -->
 <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="OnRibbonLoad">
   <ribbon>
@@ -15,6 +17,34 @@
                   size="large"
                   imageMso="EquationInsertNew"
                   onAction="OnConvertClicked" />
+        </group>
+        <group id="MathCursorLayoutGroup" getLabel="OnGetLayoutGroupLabel">
+          <menu id="ColumnsMenu"
+                getLabel="OnGetColumnsMenuLabel"
+                getScreentip="OnGetColumnsMenuScreentip"
+                size="large"
+                imageMso="ColumnsDialog">
+            <button id="InsertColumns1Button"
+                    getLabel="OnGetColumns1Label"
+                    onAction="OnInsertColumnsClicked" />
+            <button id="InsertColumns2Button"
+                    getLabel="OnGetColumns2Label"
+                    onAction="OnInsertColumnsClicked" />
+            <button id="InsertColumns3Button"
+                    getLabel="OnGetColumns3Label"
+                    onAction="OnInsertColumnsClicked" />
+            <button id="InsertColumns4Button"
+                    getLabel="OnGetColumns4Label"
+                    onAction="OnInsertColumnsClicked" />
+          </menu>
+        </group>
+        <group id="MathCursorToolsGroup" getLabel="OnGetToolsGroupLabel">
+          <button id="SettingsButton"
+                  getLabel="OnGetSettingsButtonLabel"
+                  getScreentip="OnGetSettingsButtonScreentip"
+                  size="large"
+                  imageMso="ApplicationOptionsDialog"
+                  onAction="OnSettingsClicked" />
         </group>
         <group id="MathCursorHelpGroup" getLabel="OnGetHelpGroupLabel">
           <button id="ReportIssueButton"

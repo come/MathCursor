@@ -30,7 +30,7 @@ namespace MathCursor.UI
             ResizeMode = ResizeMode.NoResize;
             ShowInTaskbar = false;
             ShowActivated = false;
-            Topmost = true;
+            // PAS de Topmost : fenêtre possédée par Word (cf. SourceInitialized).
             Width = 220;
             SizeToContent = SizeToContent.Height;
             Background = Brushes.White;
@@ -68,9 +68,12 @@ namespace MathCursor.UI
 
             SourceInitialized += (_, _) =>
             {
-                var hwnd = new WindowInteropHelper(this).Handle;
-                int exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-                SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
+                var helper = new WindowInteropHelper(this);
+                int exStyle = GetWindowLong(helper.Handle, GWL_EXSTYLE);
+                SetWindowLong(helper.Handle, GWL_EXSTYLE, exStyle | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
+                // Owner = fenêtre principale Word : z-order lié à Word.
+                try { helper.Owner = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle; }
+                catch { }
             };
         }
 
