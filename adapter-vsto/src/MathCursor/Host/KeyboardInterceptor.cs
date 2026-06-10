@@ -43,12 +43,19 @@ namespace MathCursor.Host
         public Func<bool> OnEscapePressed { get; set; }
         public Func<bool> OnCtrlSpacePressed { get; set; }
 
+        /// <summary>Backspace / Suppr : hygiène anchor CC (sélection atomique
+        /// équation+anchor, cf. ADR 2026-06-10-Fix-anchor-cc-deletion-hygiene).
+        /// Retourner false = la touche passe à Word normalement.</summary>
+        public Func<bool> OnBackspacePressed { get; set; }
+        public Func<bool> OnDeletePressed { get; set; }
+
         /// <summary>
         /// Observation NON-consommante d'une frappe « texte » (lettres,
         /// chiffres, opérateurs OEM, espace, Backspace, Delete — hors
         /// Ctrl/Alt). Sert au debounce de l'auto-détection NER (ADR
         /// 2026-06-10-Feat-ner-auto-detection-debounce) : la touche passe
-        /// toujours à Word, on ne fait que réarmer un timer.
+        /// toujours à Word, on ne fait que réarmer un timer. Tirée AUSSI
+        /// quand un handler spécifique a laissé passer la touche.
         /// </summary>
         public Action OnTextKeyTyped { get; set; }
 
@@ -92,21 +99,28 @@ namespace MathCursor.Host
                     else if (vkCode == VK_LEFT) handler = OnLeftPressed;
                     else if (vkCode == VK_RIGHT) handler = OnRightPressed;
                     else if (vkCode == VK_ESCAPE) handler = OnEscapePressed;
+                    else if (vkCode == VK_BACK && !ctrlDown) handler = OnBackspacePressed;
+                    else if (vkCode == VK_DELETE && !ctrlDown) handler = OnDeletePressed;
 
+                    bool consumed = false;
                     if (handler != null)
                     {
                         try
                         {
-                            bool consumed = handler();
+                            consumed = handler();
                             LogHook($"vk={vkCode:X} {(consumed ? "consume" : "passthru")}");
-                            if (consumed) return new IntPtr(1);
                         }
                         catch (Exception ex)
                         {
                             LogHook($"vk={vkCode:X} exception: {ex.Message}");
                         }
                     }
-                    else if (!ctrlDown && IsTextKey(vkCode))
+                    if (consumed) return new IntPtr(1);
+
+                    // Touche texte laissée passer (handler absent OU passthru,
+                    // ex. Backspace sans équation adjacente) → réarme le
+                    // debounce de l'auto-détection NER.
+                    if (!ctrlDown && IsTextKey(vkCode))
                     {
                         bool altDown = (GetKeyState(VK_MENU) & 0x8000) != 0;
                         if (!altDown)

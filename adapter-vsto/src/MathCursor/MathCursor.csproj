@@ -187,6 +187,7 @@
     <Compile Include="Host\ColumnLayoutInserter.cs" />
     <Compile Include="Host\ConversionController.cs" />
     <Compile Include="Host\AutoDetectController.cs" />
+    <Compile Include="Host\AnchorHygiene.cs" />
     <Compile Include="Host\OMathInserter.cs" />
     <Compile Include="Host\WordContextReader.cs" />
     <Compile Include="Host\KeyboardInterceptor.cs" />
@@ -206,6 +207,7 @@
     <Compile Include="Detection\WordPiece\WordPieceTokenizer.cs" />
     <Compile Include="Host\Detection\NerInputWindow.cs" />
     <Compile Include="Host\Detection\ParagraphPositionTranslator.cs" />
+    <Compile Include="Host\Detection\ZoneEngineText.cs" />
     <Compile Include="Host\Detection\ZoneRefiner.cs" />
     <Compile Include="Host\Detection\ZoneSpan.cs" />
     <Compile Include="Host\Settings\AppSettings.cs" />
