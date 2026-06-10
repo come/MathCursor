@@ -405,34 +405,46 @@ namespace MathCursor.Host
             var (start, end, source) = last.Value;
 
             _committing = true; // étouffe hygiène/popup pendant la rafale
+            int steps = 0;
             try
             {
-                const int MaxSteps = 12;
-                for (int i = 0; i < MaxSteps; i++)
+                const int MaxSteps = 8;
+                for (; steps < MaxSteps; )
                 {
                     bool undone;
                     try { undone = doc.Undo(); }
                     catch { break; }
                     if (!undone) break;
+                    steps++;
 
                     // Texte initial revenu à sa position d'origine ? Stop —
                     // et caret REPLACÉ EN FIN du texte restauré (chaque Undo
-                    // laisse la sélection au début de la plage restaurée,
-                    // retour user 2026-06-10 : « le curseur revient au début »).
+                    // laisse la sélection au début de la plage restaurée).
                     try
                     {
                         int e = Math.Min(end, doc.Content.End);
                         if (e > start && (doc.Range(start, e).Text ?? "") == source)
                         {
                             try { _app.Selection.SetRange(e, e); } catch { }
-                            _log($"undo-grab: texte initial restauré en {i + 1} undo(s), caret en {e}");
+                            _log($"undo-grab: texte initial restauré en {steps} undo(s), caret en {e}");
                             return true;
                         }
                     }
                     catch { }
                 }
-                _log("undo-grab: borne atteinte sans match exact (état natif conservé)");
-                return true; // les undos exécutés restent valides ; on a consommé la frappe
+
+                // GARDE-FOU (retour user : « tu grappes pas les undo là si ? ») :
+                // pas de match = on a pu dépasser le commit et entamer
+                // l'historique de l'UTILISATEUR. ROLLBACK INTÉGRAL par Redo,
+                // puis Ctrl+Z natif (dégradé = pas-à-pas, jamais de casse).
+                if (steps > 0)
+                {
+                    object times = steps;
+                    try { doc.Redo(ref times); }
+                    catch (Exception exR) { _log("undo-grab: redo rollback error: " + exR.Message); }
+                }
+                _log($"undo-grab: pas de match en {steps} undo(s) → rollback Redo + undo natif");
+                return false;
             }
             finally { _committing = false; }
         }
