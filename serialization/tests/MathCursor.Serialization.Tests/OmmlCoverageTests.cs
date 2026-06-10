@@ -17,6 +17,7 @@ public sealed class OmmlCoverageTests
     private sealed class Fixture
     {
         [JsonPropertyName("in")] public string In { get; set; } = "";
+        [JsonPropertyName("culture")] public string Culture { get; set; }
         [JsonPropertyName("cands")] public List<string> Cands { get; set; } = new();
     }
 
@@ -37,13 +38,14 @@ public sealed class OmmlCoverageTests
     public void EveryEngineLatexConvertsCleanly()
     {
         var fixtures = Load();
-        Assert.Equal(280, fixtures.Count);
+        // garde anti-troncature ; le compte exact vit dans FixtureTests (moteur).
+        Assert.True(fixtures.Count >= 310);
 
         var fails = new List<string>();
         int n = 0;
         foreach (var f in fixtures)
         {
-            var r = ForestEngine.Analyze(f.In);
+            var r = ForestEngine.Analyze(f.In, f.Culture == "us" ? EngineCulture.Us : null);
             foreach (var cand in r.Ranked)
             {
                 n++;
@@ -96,6 +98,9 @@ public sealed class OmmlCoverageTests
     [InlineData("AB \\mathbin{/\\!/} CD", "//")]
     [InlineData("\\frac{1}{x+1}", "<f>")]
     [InlineData("1\\mathrm{cm}^{3}+1\\mathrm{cm}^{3}=3\\mathrm{cm}^{4}", "cm")]
+    // « 1 cm » tapé AVEC espace : l'espace fine \, doit survivre jusqu'à
+    // l'OMML (U+2009) — le code hérité l'avalait (bug user 2026-06-10).
+    [InlineData("1\\,\\mathrm{cm}^{3}", "1 ")]
     public void GoldenStructure(string latex, string expectedFragment)
     {
         var omml = LatexToOmml.ConvertToString(latex);

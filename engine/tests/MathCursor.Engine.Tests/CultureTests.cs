@@ -64,4 +64,7 @@ public sealed class CultureTests
         var top = ForestEngine.Analyze("(1,2;3,4)", EngineCulture.Us).Ranked.Select(c => c.Latex);
         Assert.Contains(top, l => l.Contains("\\begin{bmatrix}") && l.Contains("\\end{bmatrix}"));
     }
+
+    // Les cas alias-par-culture, tolérance NBSP/casse et notations (//, (AB))
+    // vivent dans fixtures.json (champ "culture") — cf. politique FixtureTests.
 }

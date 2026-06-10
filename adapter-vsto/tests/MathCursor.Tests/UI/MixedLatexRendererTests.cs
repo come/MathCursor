@@ -43,12 +43,35 @@ namespace MathCursor.Tests.UI
         [InlineData(@"\mapsto", "↦")]
         [InlineData(@"\iint", "∬")]
         [InlineData(@"\iiint", "∭")]
+        [InlineData(@"\mathbin{/\!/}", "⫽")]
         public void Tokenize_SingleUnicodeMacro_OneUnicodeSegment(string latex, string expected)
         {
             var segs = MixedLatexRenderer.Tokenize(latex);
             Assert.Single(segs);
             Assert.Equal(MixedLatexRenderer.SegmentType.Unicode, segs[0].Type);
             Assert.Equal(expected, segs[0].Content);
+        }
+
+        [Fact]
+        public void Tokenize_Paralleles_ObliqueUnicode()
+        {
+            // « AB // CD » : le ⫽ (U+2AFD) penché, PAS le ∥ vertical de
+            // l'ancienne substitution WpfMathAdapter (retour user 2026-06-10).
+            var segs = MixedLatexRenderer.Tokenize(@"AB \mathbin{/\!/} CD");
+            Assert.Equal(3, segs.Count);
+            Assert.Equal(MixedLatexRenderer.SegmentType.Unicode, segs[1].Type);
+            Assert.Equal("⫽", segs[1].Content);
+        }
+
+        [Fact]
+        public void Tokenize_MacroNichee_ResteDansLeSegmentWpfMath()
+        {
+            // \mathbb{Z} NICHÉ dans \overline{…} : l'extraire couperait le
+            // groupe en accolades orphelines — il reste dans le segment
+            // WpfMath (subst dégradée |Z de WpfMathAdapter). Audit conjZ.
+            var segs = MixedLatexRenderer.Tokenize(@"\overline{\mathbb{Z} }");
+            Assert.Single(segs);
+            Assert.Equal(MixedLatexRenderer.SegmentType.WpfMath, segs[0].Type);
         }
 
         [Fact]

@@ -10,4 +10,10 @@
     <Description>MathCursor recognition engine — portage C# du moteur web `forest` (grammaire ambiguë → forêt → classement → LaTeX). Pur, host-agnostic. Cf. PLAN.md §3.</Description>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Tests de tolérance sur corpus : accès à Vocabulary/EngineCulture.Aliases
+         pour filtrer les fixtures qui commencent par un mot-clé. -->
+    <InternalsVisibleTo Include="MathCursor.Engine.Tests" />
+  </ItemGroup>
+
 </Project>

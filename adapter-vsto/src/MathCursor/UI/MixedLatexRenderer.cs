@@ -49,12 +49,17 @@ namespace MathCursor.UI
             @"\\mathbb\{[RNZQCP]\}"
             + @"|\\iiint(?![a-zA-Z_^])"
             + @"|\\iint(?![a-zA-Z_^])"
-            + @"|\\mapsto(?![a-zA-Z])",
+            + @"|\\mapsto(?![a-zA-Z])"
+            + @"|\\mathbin\{/\\!/\}",
             RegexOptions.Compiled);
 
         /// <summary>
         /// Découpe le LaTeX en segments alternés WpfMath/Unicode. Top-level
-        /// only — n'inspecte pas l'intérieur des accolades.
+        /// only — un match NICHÉ dans des accolades (<c>\overline{\mathbb{Z}}</c>)
+        /// est laissé dans son segment WpfMath, où les substitutions dégradées
+        /// de <see cref="WpfMathAdapter"/> s'en chargent (extraire un segment
+        /// au milieu d'un groupe produirait des accolades orphelines —
+        /// attrapé par l'audit popup sur la fixture conjZ, 2026-06-10).
         /// </summary>
         public static List<Segment> Tokenize(string latex)
         {
@@ -64,6 +69,7 @@ namespace MathCursor.UI
             int lastEnd = 0;
             foreach (Match m in UnicodeMacroRegex.Matches(latex))
             {
+                if (BraceDepthAt(latex, m.Index) > 0) continue; // niché : top-level only
                 if (m.Index > lastEnd)
                 {
                     result.Add(new Segment
@@ -90,6 +96,21 @@ namespace MathCursor.UI
             return result;
         }
 
+        // Profondeur d'accolades STRUCTURELLES à la position donnée (les
+        // accolades littérales \{ \} et les commandes \x sont sautées).
+        private static int BraceDepthAt(string s, int upto)
+        {
+            int d = 0;
+            for (int i = 0; i < upto; i++)
+            {
+                char c = s[i];
+                if (c == '\\' && i + 1 < s.Length) { i++; continue; }
+                if (c == '{') d++;
+                else if (c == '}') d--;
+            }
+            return d;
+        }
+
         private static string ResolveUnicode(string macroMatch)
         {
             // \mathbb{X} : extraire la lettre en position 8.
@@ -108,6 +129,10 @@ namespace MathCursor.UI
             if (macroMatch == @"\iiint")  return "∭";
             if (macroMatch == @"\iint")   return "∬";
             if (macroMatch == @"\mapsto") return "↦";
+            // Parallèles OBLIQUES (AB // CD) : WpfMath ne connaît ni \mathbin
+            // ni \! — U+2AFD est le glyphe penché attendu (le \parallel de
+            // WpfMathAdapter, vertical ∥, ne reste que pour les cas nichés).
+            if (macroMatch == @"\mathbin{/\!/}") return "⫽";
             return macroMatch;
         }
 

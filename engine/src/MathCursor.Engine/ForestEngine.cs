@@ -95,12 +95,12 @@ public sealed class ForestEngine
         return p;
     }
 
-    private AnalyzeResult Finish(List<Node> all, string? note)
+    private AnalyzeResult Finish(List<(Node N, double Off)> all, string? note)
     {
         if (all.Count == 0) return new AnalyzeResult("erreur", new List<EngineCandidate>(), false);
         var seen = new HashSet<string>();
         var ranked = all
-            .Select(p => new EngineCandidate(LatexRenderer.Render(p, _culture), Score.Cost(p)))
+            .Select(p => new EngineCandidate(LatexRenderer.Render(p.N, _culture), Score.Cost(p.N) + p.Off))
             .OrderBy(r => r.Cost)                       // tri stable (comme V8)
             .Where(r => seen.Add(r.Latex))              // garde le meilleur par rendu
             .ToList();
@@ -157,6 +157,14 @@ public sealed class ForestEngine
         var rel = Segment.SplitRel(toks);
         if (rel.Ops.Count >= 1)
         {
+            // Relation en TÊTE (membre gauche VIDE, ex. « =2x ») : pas une
+            // expression — c'est le marqueur de la couche CHAÎNE multiligne,
+            // qui vit HORS moteur. Sans cette garde, le membre vide devenait
+            // un trou → « □ = 2x » (requalifié bug par l'auteur, 2026-06-10 ;
+            // divergence assumée avec le JS figé, aucune fixture impactée).
+            // Le membre DROIT vide (« a= » → a=□), lui, reste un aperçu de
+            // saisie en cours légitime.
+            if (rel.Segs[0].Count == 0) return new Asm(new List<Node>(), null);
             if (rel.Ops.Count >= Segment.MaxChain) { var f = Fold(toks); return new Asm(f != null ? new() { f } : new(), Note_); }
             string? note = null;
             var lists = new List<List<Node>>();
@@ -181,20 +189,33 @@ public sealed class ForestEngine
         return Recombine(lists3, ops, note3);
     }
 
+    // distance de découpe : un terme de COÛT, pas un filtre — la lecture
+    // « mot entier » reste un CHOIX de la popup (ADR 2026-06-10-Feat-split-
+    // distance-cost-vec). > PopupGap pour qu'une découpe propre (sinx) reste
+    // auto ; < widen+trou pour que le mot entier batte une découpe sale (avec).
+    private const double SplitPenalty = 3;
+
     private AnalyzeResult Run(string src)
     {
         _deepNote = false;
-        // NIVEAU 2 — découpe de run : garder le flux LE PLUS DÉCOUPÉ qui PARSE.
-        int best = -1;
-        var parses = new List<Node>();
-        string? note = null;
+        // NIVEAU 2 — découpe de run : TOUS les flux concourent, pénalisés de
+        // leur distance au flux le plus découpé qui parse.
+        var streams = new List<(List<Node> Parses, int Splits, string? Note)>();
+        int maxS = 0;
         foreach (var (toks, splits) in Lexer.LexAll(src, _culture))
         {
             var r = Assemble(toks);
             if (r.Parses.Count == 0) continue;
-            if (splits > best) { best = splits; parses = new List<Node>(r.Parses); note = r.Note; }
-            else if (splits == best) { parses.AddRange(r.Parses); if (r.Note != null) note = r.Note; }
+            streams.Add((r.Parses, splits, r.Note));
+            if (splits > maxS) maxS = splits;
         }
-        return Finish(parses, note ?? (_deepNote ? Note_ : null));
+        var all = new List<(Node N, double Off)>();
+        string? note = null;
+        foreach (var (parses, splits, n) in streams)
+        {
+            foreach (var p in parses) all.Add((p, SplitPenalty * (maxS - splits)));
+            if (splits == maxS && n != null) note = n;   // note du flux principal
+        }
+        return Finish(all, note ?? (_deepNote ? Note_ : null));
     }
 }

@@ -30,6 +30,13 @@ internal sealed class Forest
 
     private static Node Hole() => new() { Type = "atom", Sym = "\\square ", Hole = true };
 
+    // Paire de points « AB » (géométrie lycée : (AB) droite, [AB] segment).
+    // Atome unique, exactement 2 majuscules, sans lectures multiples.
+    private static bool IsPointPair(Token t) =>
+        t.Kind == "atom" && t.Syms == null
+        && t.Sym is { Length: 2 } s
+        && s[0] >= 'A' && s[0] <= 'Z' && s[1] >= 'A' && s[1] <= 'Z';
+
     private int MatchClose(int i)
     {
         int d = 0;
@@ -121,10 +128,29 @@ internal sealed class Forest
         // ( E ) — intérieur via le callback (segmentation récursive) si fourni
         if (head.Kind == "lparen" && MatchClose(i) == j - 1)
         {
+            // (AB) = droite passant par A et B (ADR 2026-06-10-Feat-geo-point-
+            // pairs) : lecture atome littérale AVANT le groupement (à coût
+            // égal, les parenthèses tapées priment). Coh "geo" : les deux
+            // modes ne se mélangent pas dans une même expression.
+            bool pair = j - i == 3 && IsPointPair(_toks[i + 1]);
+            if (pair)
+                outl.Add(new Node { Type = "atom", Sym = "(" + _toks[i + 1].Sym + ")", Coh = "geo", Ai = 1 });
             List<Node> interior = _onGroup != null ? _onGroup(_toks.GetRange(i + 1, j - 1 - (i + 1))) : ParseSpan(i + 1, j - 1);
-            foreach (var e in interior) { var g = e.Clone(); g.Grouped = true; outl.Add(g); }
+            foreach (var e in interior)
+            {
+                var g = e.Clone(); g.Grouped = true;
+                if (pair && g.Type == "atom") { g.Coh = "geo"; g.Ai = 0; }
+                outl.Add(g);
+            }
             foreach (var m in Matrices(i + 1, j - 1)) outl.Add(m);
         }
+
+        // [AB] = segment (même pattern ; la voie intervalle ci-dessous exige
+        // un séparateur et ne s'applique donc jamais à ce span).
+        if (head.Kind == "bracket" && head.Sym == "[" && j - i == 3
+            && _toks[j - 1].Kind == "bracket" && _toks[j - 1].Sym == "]"
+            && IsPointPair(_toks[i + 1]))
+            outl.Add(new Node { Type = "atom", Sym = "[" + _toks[i + 1].Sym + "]", Coh = "geo", Ai = 1 });
 
         // INTERVALLE : crochet … SEP … crochet
         if (head.Kind == "bracket" && _toks[j - 1].Kind == "bracket" && j - i >= 3)

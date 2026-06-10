@@ -172,6 +172,31 @@ internal static class Score
         return d;
     }
 
+    // Écho de symétrie entre FRÈRES (« 1/2x + 1/2x2 ») : deux enfants dont la
+    // signature de l'un PROLONGE celle de l'autre (préfixe strict) sont la
+    // même tournure étendue par l'utilisateur — même forme de tête (/ et /)
+    // → bonus, formes divergentes (/ et ·) → malus. C'est l'analogue « à
+    // prolongement » de GlobalCoherence, qui ne couple que les signatures
+    // IDENTIQUES (1/2x + 1/2y) et laissait l'hybride
+    // \frac{1}{2x}+\frac{1}{2}x^2 gagner.
+    private static double SiblingEcho(Node n)
+    {
+        double d = 0;
+        var kids = Parts(n);
+        foreach (var c in kids) d += SiblingEcho(c);
+        for (int i = 0; i < kids.Count; i++)
+            for (int k = i + 1; k < kids.Count; k++)
+            {
+                var a = kids[i]; var b = kids[k];
+                if (a.Type == "atom" || b.Type == "atom" || a.Sig == null || b.Sig == null) continue;
+                if (a.Sig.Length == b.Sig.Length) continue; // identiques : GlobalCoherence
+                var (shorter, longer) = a.Sig.Length < b.Sig.Length ? (a, b) : (b, a);
+                if (!longer.Sig!.StartsWith(shorter.Sig!, System.StringComparison.Ordinal)) continue;
+                d += shorter.Sym == longer.Sym ? -1 : 1;
+            }
+        return d;
+    }
+
     private static double MatrixExtra(Node n)
     {
         if (n.Type == "atom") return 0;
@@ -199,5 +224,5 @@ internal static class Score
     }
 
     public static double Cost(Node n) =>
-        Base(n) + MatrixExtra(n) + HOLE_COST * Holes(n) + GlobalCoherence(n) + ModeCoherence(n) - ParentRefund(n) - DefChain(n);
+        Base(n) + MatrixExtra(n) + HOLE_COST * Holes(n) + GlobalCoherence(n) + ModeCoherence(n) + SiblingEcho(n) - ParentRefund(n) - DefChain(n);
 }

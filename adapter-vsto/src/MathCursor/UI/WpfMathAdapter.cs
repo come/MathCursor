@@ -204,8 +204,10 @@ namespace MathCursor.UI
         // Substitutions simples (ordre important : remplacements longs d'abord).
         private static readonly (string from, string to)[] LiteralSubs = new[]
         {
-            // Parallèle penché du moteur forest (AB parallel CD) : \mathbin
-            // et \! inconnus de WpfMath → symbole ∥ natif.
+            // Parallèle penché du moteur forest (AB parallel CD) : géré
+            // désormais par MixedLatexRenderer (TextBlock Unicode ⫽). Si on
+            // arrive ici avec un \mathbin{/\!/} (cas niché \frac{…}), on
+            // dégrade en ∥ vertical — \mathbin et \! inconnus de WpfMath.
             ("\\mathbin{/\\!/}", "\\parallel "),
             // Non-appartenance : \notin inconnu → composition \not\in.
             ("\\notin", "\\not\\in"),

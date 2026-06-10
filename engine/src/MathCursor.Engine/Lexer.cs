@@ -13,6 +13,10 @@ internal static class Lexer
     private static bool IsDigit(char c) => c >= '0' && c <= '9';
     private static bool IsUpper(char c) => c >= 'A' && c <= 'Z';
 
+    // L'autocorrection typographique FR de Word insère U+00A0 (et U+202F en
+    // versions récentes) avant « : ; ! ? » — pour le lexer ce sont des espaces.
+    private static bool IsSpace(char c) => c == ' ' || c == '\u00A0' || c == '\u202F';
+
     // ── jonction de tokens collés (JOIN) — premier match gagne ───────────────
     private sealed class JoinRule
     {
@@ -41,7 +45,7 @@ internal static class Lexer
         int brk = 0, brc = 0;
 
         char Ch(int idx) => idx >= 0 && idx < src.Length ? src[idx] : '\0';
-        bool Spaced(int a, int b) => Ch(a) == ' ' || Ch(b) == ' ';
+        bool Spaced(int a, int b) => IsSpace(Ch(a)) || IsSpace(Ch(b));
         void Push(Token t) { t.SpaceBefore = sawSpace; toks.Add(t); sawSpace = false; }
         Token? Last() => toks.Count > 0 ? toks[toks.Count - 1] : null;
 
@@ -52,11 +56,29 @@ internal static class Lexer
         }
 
         // classe+pousse UN mot (grec / mot-infixe / forme déclarée / mot-unité / atome).
+        // Les alias de la culture sont résolus ICI (match exact) : les tokens
+        // portent des Sym canoniques, l'aval (parser/score/render) ne voit
+        // jamais un mot alias. Les replis « atome littéral » gardent le mot
+        // original (« dans » isolé doit rendre « dans », pas « in »).
         void Word(string w, bool sp)
         {
-            Vocabulary.Vocab.TryGetValue(w, out var v);
+            string k = culture.Canon(w);
+            Vocabulary.Vocab.TryGetValue(k, out var v);
             VocabEntry? g = v is { Shape: "atom" } ? v
                 : Vocabulary.Vocab.TryGetValue(w.ToLowerInvariant(), out var gl) ? gl : null;
+
+            // Word AutoCorrect capitalise en début de phrase (« sum » → « Sum ») :
+            // repli insensible à la casse pour les MOTS-CLÉS non-atomes ≥ 2
+            // lettres (alias compris : « Somme » → somme → sum). Les atomes
+            // gardent leur sémantique de casse (Pi → \Pi, R = ensemble) — leur
+            // chemin (g) prime.
+            if (v == null && g is not { Shape: "atom" } && w.Length >= 2)
+            {
+                var k2 = culture.Canon(w.ToLowerInvariant());
+                if (k2 != k && Vocabulary.Vocab.TryGetValue(k2, out var v2)
+                    && v2.Shape is not null and not "atom") // opérateurs seulement : ni atomes (casse signifiante) ni unités (Sym = mot original)
+                { k = k2; v = v2; }
+            }
 
             if (g is { Shape: "atom", Alts: { } alts })
                 Push(new Token { Kind = "atom", Syms = alts, Coh = g.Coh });
@@ -66,18 +88,28 @@ internal static class Lexer
             {
                 var prev = Last();
                 bool binaryPos = prev != null && (prev.Kind is "atom" or "rparen" or "bracket" or "bar" or "postfix");
-                if (binaryPos) Push(new Token { Kind = "infix", Sym = w, Spaced = sp });
+                if (binaryPos) Push(new Token { Kind = "infix", Sym = k, Spaced = sp });
                 else if (v.Unary != null) Push(new Token { Kind = "prefix", Sym = v.Unary, Spaced = sp });
                 else Push(new Token { Kind = "atom", Sym = w });
             }
-            else if (v is { WordSpace: true } && Ch(i) != ' ')
+            else if (v is { WordSpace: true } && !IsSpace(Ch(i)))
                 Push(new Token { Kind = "atom", Sym = w });
             else if (v is { Shape: { } shape })
-                Push(new Token { Kind = shape, Sym = w, Spaced = sp });
+                Push(new Token { Kind = shape, Sym = k, Spaced = sp });
             else if (v is { UnitWord: true })
                 Push(new Token { Kind = "atom", Sym = w, UnitWord = true });
             else
                 Push(new Token { Kind = "atom", Sym = w });
+        }
+
+        // plus long mot-clé Splittable présent dans str à la position at.
+        static string BestSplittableAt(string str, int at)
+        {
+            string b = "";
+            foreach (var k in Vocabulary.Splittable)
+                if (k.Length > b.Length && at + k.Length <= str.Length && string.CompareOrdinal(str, at, k, 0, k.Length) == 0)
+                    b = k;
+            return b;
         }
 
         List<string> Decompose(string s)
@@ -86,11 +118,23 @@ internal static class Lexer
             int j = 0;
             while (j < s.Length)
             {
-                string best = "";
-                foreach (var k in Vocabulary.Splittable)
-                    if (k.Length > best.Length && j + k.Length <= s.Length && string.CompareOrdinal(s, j, k, 0, k.Length) == 0)
-                        best = k;
+                string best = BestSplittableAt(s, j);
+                // capitale de début de phrase (Word AutoCorrect) : « VecAB »,
+                // « Sinx »… — en TÊTE de run seulement (c'est là que Word
+                // capitalise), retenter en abaissant la 1re lettre et émettre
+                // la clé minuscule (la capitale est involontaire).
+                if (best.Length == 0 && j == 0 && IsUpper(s[0]) && s.Length >= 2)
+                    best = BestSplittableAt(char.ToLowerInvariant(s[0]) + s.Substring(1), 0);
                 if (best.Length > 0) { outp.Add(best); j += best.Length; }
+                else if (IsUpper(s[j]))
+                {
+                    // suite de MAJUSCULES = UN morceau (paire de points géo :
+                    // « vecAB » → vec + AB, pas vec·A·B où « A » mot-unité
+                    // bloquerait la jonction — ADR split-distance-cost-vec).
+                    int st = j;
+                    while (j < s.Length && IsUpper(s[j])) j++;
+                    outp.Add(s.Substring(st, j - st));
+                }
                 else { outp.Add(s[j].ToString()); j++; }
             }
             return outp;
@@ -99,7 +143,7 @@ internal static class Lexer
         while (i < src.Length)
         {
             char c = src[i];
-            if (c == ' ') { sawSpace = true; i++; continue; }
+            if (IsSpace(c)) { sawSpace = true; i++; continue; }
             if (c == '(') { Push(new Token { Kind = "lparen" }); i++; continue; }
             if (c == ')') { Push(new Token { Kind = "rparen" }); i++; continue; }
             if (c == '[' || c == ']') { Push(new Token { Kind = "bracket", Sym = c.ToString() }); brk++; i++; continue; }
@@ -124,8 +168,12 @@ internal static class Lexer
                 while (i < src.Length && IsAlpha(src[i])) sb.Append(src[i++]);
                 string s = sb.ToString();
                 bool sp = Spaced(st - 1, i);
-                bool known = Vocabulary.Vocab.ContainsKey(s)
-                    || (Vocabulary.Vocab.TryGetValue(s.ToLowerInvariant(), out var lv) && lv.Shape == "atom");
+                // canonicaliser AUSSI ici : « existe » contient « xi » (ξ,
+                // Splittable) et ne survit au découpage que si l'alias le
+                // rend « connu » dans la culture courante.
+                bool known = Vocabulary.Vocab.ContainsKey(culture.Canon(s))
+                    || (Vocabulary.Vocab.TryGetValue(s.ToLowerInvariant(), out var lv) && lv.Shape == "atom")
+                    || (s.Length >= 2 && Vocabulary.Vocab.ContainsKey(culture.Canon(s.ToLowerInvariant())));
                 if (!known)
                 {
                     var pieces = Decompose(s);
@@ -170,7 +218,7 @@ internal static class Lexer
                 var prev = Last();
                 bool binaryPos = prev != null && (prev.Kind is "atom" or "rparen" or "bracket" or "bar" or "postfix");
                 char after = Ch(i + len);
-                bool detachedR = after == ' ' || ")],;".IndexOf(after) >= 0;
+                bool detachedR = IsSpace(after) || ")],;".IndexOf(after) >= 0;
                 if (len == 1 && v.PostSign != null && binaryPos && !sawSpace && detachedR)
                 {
                     Push(new Token { Kind = "infix", Sym = Vocabulary.Role["sup"], Sticky = true });

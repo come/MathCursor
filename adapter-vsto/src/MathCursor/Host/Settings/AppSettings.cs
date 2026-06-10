@@ -34,17 +34,11 @@ namespace MathCursor.Host.Settings
         public EngineCulture BaseCulture =>
             Culture == CultureUs ? EngineCulture.Us : EngineCulture.Fr;
 
-        /// <summary>Culture effective passée au moteur (preset + overrides).</summary>
+        /// <summary>Culture effective passée au moteur (preset + overrides).
+        /// WithOverrides préserve les champs non réglables du preset (alias,
+        /// et tout champ futur) sans que l'adapter ait à les connaître.</summary>
         public EngineCulture ToEngineCulture()
-        {
-            var b = BaseCulture;
-            if (IntervalSepOverride == null && MatrixEnvOverride == null) return b;
-            return new EngineCulture(
-                b.DecimalsIn,
-                b.DecimalTex,
-                IntervalSepOverride ?? b.IntervalSep,
-                MatrixEnvOverride ?? b.MatrixEnv);
-        }
+            => BaseCulture.WithOverrides(IntervalSepOverride, MatrixEnvOverride);
 
         public AppSettings Clone() => (AppSettings)MemberwiseClone();
     }

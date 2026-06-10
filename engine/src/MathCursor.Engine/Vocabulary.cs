@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace MathCursor.Engine;
@@ -51,6 +52,12 @@ internal static class Vocabulary
     public static readonly Dictionary<char, int> Sep = new() { [','] = 0, [';'] = 2 };
     public static readonly HashSet<string> Splittable = new();
     public static readonly Dictionary<string, string> Role = new();
+
+    // Sets d'alias (mot saisi → clé canonique de Vocab) par culture :
+    // générique + langue, fusionnés une fois au cctor, jamais mutés ensuite.
+    // Consommés par le lexer via EngineCulture.Aliases/Canon.
+    internal static readonly IReadOnlyDictionary<string, string> AliasesFr;
+    internal static readonly IReadOnlyDictionary<string, string> AliasesUs;
 
     public static double Loose(string? sym) =>
         sym != null && Vocab.TryGetValue(sym, out var v) ? v.Looseness : 0;
@@ -121,6 +128,13 @@ internal static class Vocabulary
         foreach (var (name, upper) in greek) { Vocab[name] = Grk(name, upper); Splittable.Add(name); }
         foreach (var f in new[] { "cos", "sin", "tan", "arcsin", "arccos", "arctan", "ln", "log", "exp" })
             Splittable.Add(f);
+        // « vecAB » → \overrightarrow{AB}, « conjz » → \bar{z}. Sûrs : la
+        // distance de découpe est un coût (le mot entier reste un choix,
+        // ADR 2026-06-10-Feat-split-distance-cost-vec) et les décorations
+        // sont TIGHT (opérande = 1 morceau) — « vecteur »/« conjugue »
+        // restent des mots entiers.
+        Splittable.Add("vec");
+        Splittable.Add("conj");
 
         // ── SETS (atomes ambigus : variable | \mathbb) ; priment sur N/C unités
         foreach (var s in new[] { "R", "N", "Z", "Q", "C" }) Vocab[s] = Set(s);
@@ -188,6 +202,7 @@ internal static class Vocabulary
         Vocab["vec"] = Deco("overrightarrow", "vec");
         Vocab["hat"] = Deco("widehat", "hat");
         Vocab["norm"] = Prefix((a, _) => $"\\left\\|{a[0]}\\right\\|");
+        Vocab["abs"] = Prefix((a, _) => $"\\left|{a[0]}\\right|");
         Vocab["sqrt"] = Prefix((a, _) => $"\\sqrt{{{a[0]}}}");
         Vocab["root"] = Nary(2, APP, (a, _) => $"\\sqrt[{a[0]}]{{{a[1]}}}");
         Vocab["floor"] = Prefix((a, _) => $"\\lfloor {a[0]}\\rfloor ");
@@ -232,25 +247,44 @@ internal static class Vocabulary
         Vocab["upm"] = Prefix((a, _) => $"\\pm {a[0]}");
         Vocab["ump"] = Prefix((a, _) => $"\\mp {a[0]}");
         Vocab["parallel"] = Infix(SUM, WEAK, (a, _) => $"{a[0]} \\mathbin{{/\\!/}} {a[1]}");
+        Vocab["//"] = Vocab["parallel"]; // notation symbole (le match opérateur 2-chars prime sur "/")
         Vocab["mapsto"] = Infix(REL, WEAK, (a, _) => $"{a[0]}\\mapsto {a[1]}", cut: true, mapping: true);
 
-        // ── ALIAS ────────────────────────────────────────────────────────────
-        Vocab["somme"] = Vocab["som"] = Vocab["sum"];
-        Vocab["racine"] = Vocab["rac"] = Vocab["sqrt"];
-        Vocab["racn"] = Vocab["root"];
-        Vocab["cup"] = Vocab["U"] = Vocab["Union"] = Vocab["union"];
-        Vocab["cap"] = Vocab["Inter"] = Vocab["inter"];
-        Vocab["pourtout"] = Vocab["forall"];
-        var v = Vocab["forall"].Clone(); v.WordSpace = true; Vocab["V"] = v;
-        Vocab["ilexiste"] = Vocab["existe"] = Vocab["exist"] = Vocab["exists"];
-        Vocab["nexiste"] = Vocab["nexist"] = Vocab["nexists"];
-        Vocab["congr"] = Vocab["congru"] = Vocab["cong"];
-        Vocab["dans"] = Vocab["appartient"] = Vocab["appt"] = Vocab["app"] = Vocab["in"];
-        Vocab["inclus"] = Vocab["incl"] = Vocab["inclu"] = Vocab["subset"];
-        Vocab["pasinclus"] = Vocab["pasincl"] = Vocab["pasinclu"] = Vocab["notsubset"];
-        Vocab["pasdans"] = Vocab["nappartient"] = Vocab["napp"] = Vocab["notin"];
-        Vocab["rond"] = Vocab["circ"];
-        Vocab["conj"] = Vocab["bar"];
+        // ── ALIAS (lexicaux, rangés par culture) ────────────────────────────
+        // mot saisi → clé canonique de Vocab. Résolus par le lexer via
+        // EngineCulture.Canon ; les clés alias ne vivent plus dans Vocab.
+        // Répartition générique/FR/EN = décision produit ajustable
+        // (ADR 2026-06-10-Feat-culture-scoped-aliases).
+
+        // "V" n'est pas un alias pur : variante de forall qui n'agit que
+        // suivie d'un espace (WordSpace) — entrée interne, convention "·".
+        var fw = Vocab["forall"].Clone(); fw.WordSpace = true; Vocab["·forallWord"] = fw;
+
+        var aliasGeneric = new Dictionary<string, string>
+        {
+            ["cup"] = "union", ["U"] = "union", ["Union"] = "union",
+            ["cap"] = "inter", ["Inter"] = "inter",
+            ["V"] = "·forallWord",
+            ["exist"] = "exists", ["nexist"] = "nexists",
+        };
+        var aliasFrOnly = new Dictionary<string, string>
+        {
+            ["somme"] = "sum", ["som"] = "sum",
+            ["racine"] = "sqrt", ["rac"] = "sqrt", ["racn"] = "root",
+            ["pourtout"] = "forall",
+            ["ilexiste"] = "exists", ["existe"] = "exists", ["nexiste"] = "nexists",
+            ["congr"] = "cong", ["congru"] = "cong",
+            ["dans"] = "in", ["appartient"] = "in", ["appt"] = "in", ["app"] = "in",
+            ["inclus"] = "subset", ["incl"] = "subset", ["inclu"] = "subset",
+            ["pasinclus"] = "notsubset", ["pasincl"] = "notsubset", ["pasinclu"] = "notsubset",
+            ["pasdans"] = "notin", ["nappartient"] = "notin", ["napp"] = "notin",
+            ["rond"] = "circ", ["conj"] = "bar",
+            ["module"] = "abs",
+        };
+        var aliasEnOnly = new Dictionary<string, string>(); // à enrichir
+
+        AliasesFr = MergeAliases(aliasGeneric, aliasFrOnly);
+        AliasesUs = MergeAliases(aliasGeneric, aliasEnOnly);
 
         // ── ROLE : rôle de jonction → symbole (aucun opérateur nommé en dur) ─
         foreach (var kv in Vocab)
@@ -262,5 +296,19 @@ internal static class Vocabulary
             if (e.UnitOp) Role["unitOp"] = kv.Key;
             if (e.Apply) Role["apply"] = kv.Key;
         }
+    }
+
+    // Fusion générique+langue ; vérifie que chaque cible est bien une clé
+    // canonique de Vocab (une typo d'alias doit échouer au premier Analyze,
+    // pas produire un atome silencieux).
+    private static IReadOnlyDictionary<string, string> MergeAliases(
+        Dictionary<string, string> generic, Dictionary<string, string> lang)
+    {
+        var merged = new Dictionary<string, string>(generic);
+        foreach (var kv in lang) merged[kv.Key] = kv.Value;
+        foreach (var kv in merged)
+            if (!Vocab.ContainsKey(kv.Value))
+                throw new InvalidOperationException($"alias '{kv.Key}' → cible inconnue '{kv.Value}'");
+        return merged;
     }
 }

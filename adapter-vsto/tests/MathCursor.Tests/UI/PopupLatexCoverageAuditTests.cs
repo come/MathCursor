@@ -51,8 +51,17 @@ namespace MathCursor.Tests.UI
                     if (json[i] == '\\' && i + 1 < json.Length)
                     {
                         char n = json[i + 1];
-                        sb.Append(n == 'n' ? '\n' : n == 't' ? '\t' : n == 'r' ? '\r' : n);
-                        i += 2;
+                        if (n == 'u' && i + 5 < json.Length)
+                        {
+                            // \uXXXX (fixtures NBSP/NNBSP de tolerance lexer)
+                            sb.Append((char)Convert.ToInt32(json.Substring(i + 2, 4), 16));
+                            i += 6;
+                        }
+                        else
+                        {
+                            sb.Append(n == 'n' ? '\n' : n == 't' ? '\t' : n == 'r' ? '\r' : n);
+                            i += 2;
+                        }
                     }
                     else sb.Append(json[i++]);
                 }
@@ -65,19 +74,23 @@ namespace MathCursor.Tests.UI
         public void EveryEngineLatexSurvivesPopupPipeline()
         {
             var inputs = LoadFixtureInputs();
-            Assert.Equal(280, inputs.Count);
+            // garde anti-troncature ; le compte exact vit dans FixtureTests (moteur).
+            Assert.True(inputs.Count >= 310);
 
             // 1. Tous les candidats LaTeX émis par le moteur (dédupliqués).
+            //    Chaque entrée est analysée en FR ET en US (plus simple que de
+            //    parser le champ "culture", et couvre un superset de candidats).
             var candidates = new List<string>();
             var seen = new HashSet<string>(StringComparer.Ordinal);
             foreach (var input in inputs)
-            {
-                MathCursor.Engine.AnalyzeResult r;
-                try { r = MathCursor.Engine.ForestEngine.Analyze(input); }
-                catch { continue; } // cas "erreur" du moteur : pas de popup
-                foreach (var c in r.Ranked)
-                    if (seen.Add(c.Latex)) candidates.Add(c.Latex);
-            }
+                foreach (var culture in new[] { MathCursor.Engine.EngineCulture.Fr, MathCursor.Engine.EngineCulture.Us })
+                {
+                    MathCursor.Engine.AnalyzeResult r;
+                    try { r = MathCursor.Engine.ForestEngine.Analyze(input, culture); }
+                    catch { continue; } // cas "erreur" du moteur : pas de popup
+                    foreach (var c in r.Ranked)
+                        if (seen.Add(c.Latex)) candidates.Add(c.Latex);
+                }
             _output.WriteLine($"{candidates.Count} candidats LaTeX distincts");
             Assert.True(candidates.Count > 200, "le moteur devrait produire >200 candidats distincts");
 
