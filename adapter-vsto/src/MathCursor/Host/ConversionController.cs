@@ -48,6 +48,13 @@ namespace MathCursor.Host
         private bool _pendingSystemOpener;
         private List<string> _pendingRestCandidates;
 
+        // Dernier commit, pour le Ctrl+Z « en un coup » : InsertXML CASSE
+        // l'UndoRecordScope en 3-4 enregistrements (retour user 2026-06-10)
+        // → le premier Ctrl+Z après un commit rejoue les undos NATIFS en
+        // rafale jusqu'au retour du texte initial. Invalidé à la première
+        // frappe / au premier déplacement du caret.
+        private (int Start, int End, string Source)? _lastCommit;
+
         public ConversionController(
             Word.Application app,
             Func<Feedback.FeedbackReport> buildFeedbackReport,
@@ -340,6 +347,7 @@ namespace MathCursor.Host
                     else if (!_chain.TryAbsorbIntoSystemAbove(doc, zone, latex))
                         _inserter.Insert(absStart, absEnd, latex, zone.Text);
                 }
+                _lastCommit = (absStart, absEnd, zone.Text);
                 return true;
             }
             catch (Exception ex) { _log("commit_error: " + ex.Message); return false; }
@@ -372,7 +380,57 @@ namespace MathCursor.Host
         public void OnSelectionChanged()
         {
             if (_committing) return;
+            _lastCommit = null; // le caret a bougé → Ctrl+Z redevient natif
             if (IsPopupVisible) HidePopup();
+        }
+
+        /// <summary>Frappe texte (relais du hook) : invalide le Ctrl+Z groupé.</summary>
+        public void InvalidateUndoGrab() => _lastCommit = null;
+
+        /// <summary>
+        /// Ctrl+Z juste après un commit : rejoue les undos NATIFS en rafale
+        /// jusqu'au retour du texte initial (InsertXML casse l'UndoRecordScope
+        /// → 3-4 enregistrements sinon). Pile d'annulation 100 % native :
+        /// Ctrl+Y refait pas à pas, et dès la moindre action utilisateur ce
+        /// chemin se désarme (Ctrl+Z normal). False = undo natif.
+        /// </summary>
+        public bool TryUndoLastCommit()
+        {
+            var last = _lastCommit;
+            if (last == null) return false;
+            _lastCommit = null;
+
+            var doc = _app.ActiveDocument;
+            if (doc == null) return false;
+            var (start, end, source) = last.Value;
+
+            _committing = true; // étouffe hygiène/popup pendant la rafale
+            try
+            {
+                const int MaxSteps = 12;
+                for (int i = 0; i < MaxSteps; i++)
+                {
+                    bool undone;
+                    try { undone = doc.Undo(); }
+                    catch { break; }
+                    if (!undone) break;
+
+                    // Texte initial revenu à sa position d'origine ? Stop.
+                    try
+                    {
+                        int e = Math.Min(end, doc.Content.End);
+                        if (e > start && (doc.Range(start, e).Text ?? "") == source)
+                        {
+                            _log($"undo-grab: texte initial restauré en {i + 1} undo(s)");
+                            return true;
+                        }
+                    }
+                    catch { }
+                }
+                _log("undo-grab: borne atteinte sans match exact (état natif conservé)");
+                return true; // les undos exécutés restent valides ; on a consommé la frappe
+            }
+            finally { _committing = false; }
         }
 
         public void Dispose()

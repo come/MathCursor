@@ -81,7 +81,12 @@ namespace MathCursor
                     OnEscapePressed = HandleEscapePressed,
                     OnBackspacePressed = () => _hygiene?.TrySelectEquationBeforeCaret() ?? false,
                     OnDeletePressed = () => _hygiene?.TrySelectEquationAfterCaret() ?? false,
-                    OnTextKeyTyped = () => _autoDetect?.OnTextKeyTyped(),
+                    OnUndoPressed = () => _conversion?.TryUndoLastCommit() ?? false,
+                    OnTextKeyTyped = () =>
+                    {
+                        _conversion?.InvalidateUndoGrab();
+                        _autoDetect?.OnTextKeyTyped();
+                    },
                 };
                 _keyboard.Install();
 

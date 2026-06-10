@@ -29,6 +29,7 @@ namespace MathCursor.Host
         private const int VK_BACK = 0x08;
         private const int VK_DELETE = 0x2E;
         private const int VK_MENU = 0x12;
+        private const int VK_Z = 0x5A;
         private const int VK_LEFT = 0x25;
         private const int VK_UP = 0x26;
         private const int VK_RIGHT = 0x27;
@@ -48,6 +49,11 @@ namespace MathCursor.Host
         /// Retourner false = la touche passe à Word normalement.</summary>
         public Func<bool> OnBackspacePressed { get; set; }
         public Func<bool> OnDeletePressed { get; set; }
+
+        /// <summary>Ctrl+Z : juste après un commit, regroupe les undos natifs
+        /// en UNE frappe (InsertXML casse l'UndoRecordScope → 3-4 Ctrl+Z
+        /// sinon). Retourner false = undo natif normal.</summary>
+        public Func<bool> OnUndoPressed { get; set; }
 
         /// <summary>
         /// Observation NON-consommante d'une frappe « texte » (lettres,
@@ -101,6 +107,7 @@ namespace MathCursor.Host
                     else if (vkCode == VK_ESCAPE) handler = OnEscapePressed;
                     else if (vkCode == VK_BACK && !ctrlDown) handler = OnBackspacePressed;
                     else if (vkCode == VK_DELETE && !ctrlDown) handler = OnDeletePressed;
+                    else if (vkCode == VK_Z && ctrlDown && !shiftDown) handler = OnUndoPressed;
 
                     bool consumed = false;
                     if (handler != null)
