@@ -415,13 +415,17 @@ namespace MathCursor.Host
                     catch { break; }
                     if (!undone) break;
 
-                    // Texte initial revenu à sa position d'origine ? Stop.
+                    // Texte initial revenu à sa position d'origine ? Stop —
+                    // et caret REPLACÉ EN FIN du texte restauré (chaque Undo
+                    // laisse la sélection au début de la plage restaurée,
+                    // retour user 2026-06-10 : « le curseur revient au début »).
                     try
                     {
                         int e = Math.Min(end, doc.Content.End);
                         if (e > start && (doc.Range(start, e).Text ?? "") == source)
                         {
-                            _log($"undo-grab: texte initial restauré en {i + 1} undo(s)");
+                            try { _app.Selection.SetRange(e, e); } catch { }
+                            _log($"undo-grab: texte initial restauré en {i + 1} undo(s), caret en {e}");
                             return true;
                         }
                     }
