@@ -46,6 +46,15 @@
                   imageMso="ApplicationOptionsDialog"
                   onAction="OnSettingsClicked" />
         </group>
+        <!-- POC M0 multiligne (temporaire, à retirer une fois A/B tranché). -->
+        <group id="MathCursorPocGroup" label="POC">
+          <button id="PocChainTableButton"
+                  label="POC chaîne (tableau)"
+                  screentip="Insère un tableau invisible 2 colonnes avec 3 équations alignées au signe (option B du chantier multiligne). Sert au script de torture : suppression de lignes, Backspace aux bords, tableau fantôme, Ctrl+Z."
+                  size="normal"
+                  imageMso="TableInsert"
+                  onAction="OnPocChainTableClicked" />
+        </group>
         <group id="MathCursorHelpGroup" getLabel="OnGetHelpGroupLabel">
           <button id="ReportIssueButton"
                   getLabel="OnGetReportButtonLabel"

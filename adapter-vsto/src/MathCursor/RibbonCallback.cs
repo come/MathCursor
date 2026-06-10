@@ -150,6 +150,19 @@ namespace MathCursor
             catch (Exception ex) { LogDebug("settings_clicked_error: " + ex.Message); }
         }
 
+        /// <summary>POC M0 multiligne (temporaire) : tableau invisible 2 col
+        /// avec 3 équations alignées — cf. Host/Blocks/ChainTablePoc.</summary>
+        public void OnPocChainTableClicked(IRibbonControl control)
+        {
+            try { Host.Blocks.ChainTablePoc.Run(Globals.ThisAddIn?.Application); }
+            catch (Exception ex)
+            {
+                LogDebug("poc_chain_error: " + ex.Message);
+                MessageBox.Show("POC chaîne : " + ex.Message, "MathCursor",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         public void OnAboutClicked(IRibbonControl control)
         {
             MessageBox.Show(
