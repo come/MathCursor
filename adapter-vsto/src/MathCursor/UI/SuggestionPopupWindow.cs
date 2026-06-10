@@ -290,7 +290,11 @@ namespace MathCursor.UI
             }
         }
 
-        private void ExitNavMode()
+        /// <summary>Sort du nav mode (retire le surlignage, ré-atténue).
+        /// Public : appelé aussi quand l'utilisateur REPREND LA FRAPPE — un
+        /// nav mode actif (souvent un survol souris) ne doit pas geler le
+        /// rafraîchissement auto (retour user 2026-06-10).</summary>
+        public void ExitNavMode()
         {
             if (!_navMode) return;
             _navMode = false;

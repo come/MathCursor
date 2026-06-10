@@ -31,7 +31,7 @@ namespace MathCursor.Host
     /// </summary>
     internal sealed class AutoDetectController : IDisposable
     {
-        private const int DebounceMs = 400;
+        private const int DebounceMs = 100;
 
         private readonly Word.Application _app;
         private readonly ConversionController _conversion;
@@ -94,7 +94,11 @@ namespace MathCursor.Host
                 var detector = _detector;
                 if (detector == null) return;
                 if (!Settings.SettingsStore.Current.AutoDetect) return;
-                if (_conversion.IsCommitting || _conversion.IsNavMode) return;
+                if (_conversion.IsCommitting) return;
+                // PAS de garde nav mode ici : ce tick n'arrive QUE par une
+                // frappe texte → l'utilisateur a repris l'écriture, le nav
+                // mode (souvent juste un survol souris de la popup) ne doit
+                // pas geler le rafraîchissement (retour user 2026-06-10).
                 if (_isEditPopupVisible()) return;
                 if (_app.Documents.Count == 0) return;
 
@@ -157,11 +161,12 @@ namespace MathCursor.Host
             catch (Exception ex) { _log("auto_detect_error: " + ex.Message); }
         }
 
-        /// <summary>Plus de zone au caret → masque la popup auto (jamais en
-        /// nav mode : la sélection en cours appartient à l'utilisateur).</summary>
+        /// <summary>Plus de zone au caret → masque la popup. Appelé seulement
+        /// depuis un tick déclenché par la FRAPPE : l'utilisateur écrit, une
+        /// proposition périmée ne doit pas rester affichée (nav mode compris).</summary>
         private void HideAuto()
         {
-            if (_conversion.IsPopupVisible && !_conversion.IsNavMode)
+            if (_conversion.IsPopupVisible)
                 _conversion.HidePopup();
         }
 

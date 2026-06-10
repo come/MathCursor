@@ -2,7 +2,7 @@
 
 **Date :** 2026-06-10
 **Kind :** Feat
-**Température :** forte (mécanisme debounce-hook) / molle (délai 400 ms, seuil 0.85)
+**Température :** forte (mécanisme debounce-hook) / molle (délai 100 ms, seuil 0.85)
 **Statut :** acté
 **Supersedes :** —
 **Lié à :** [2026-06-10-Refactor-phase2-adapter-orchestration-rewrite.md](2026-06-10-Refactor-phase2-adapter-orchestration-rewrite.md) (« NER différé Phase 4 » — cette phase) ; brief `docs/briefs/detection-ner.md` ; ADR DocMath `2026-04-28-Fix-ort-version-bay-trail-compat` (ONNX pinné 1.16.3)
@@ -30,14 +30,14 @@ polling » (CLAUDE.md), et coûteux à vide (lecture ¶ + COM 5×/s en continu).
 Le hook `WH_KEYBOARD` thread-local existant observe (sans les consommer) les
 frappes « texte » (lettres, chiffres, opérateurs OEM, espace, Backspace,
 Delete — hors Ctrl/Alt) via un nouveau callback `OnTextKeyTyped`. Chaque
-frappe réarme un **timer one-shot de 400 ms** : la détection ne tourne qu'à
+frappe réarme un **timer one-shot de 100 ms** : la détection ne tourne qu'à
 la **pause de frappe**, et rien ne tourne quand l'utilisateur n'écrit pas.
 Réactivité ≈ polling, coût au repos nul, conforme à la règle projet.
 
 ### 2. Pipeline auto (`Host/AutoDetectController.cs`)
 
 ```
-pause 400 ms → guards (réglage off / commit / nav mode / popup edit /
+pause 100 ms → guards (réglage off / commit / popup edit /
                caret dans OMath / signal de sortie tab|double-espace)
   → WordContextReader (¶, OMaths masquées)
   → NerInputWindow.Compute (fenêtre entre OMaths voisines du caret)
@@ -51,8 +51,10 @@ pause 400 ms → guards (réglage off / commit / nav mode / popup edit /
 `TryProposeAuto` = même moteur, même popup, mêmes touches que le manuel,
 mais **silencieux** : pas de message StatusBar en échec, popup masquée si la
 zone disparaît, **pas de re-show si la zone est identique** (anti-flicker).
-La popup auto se met à jour au fil de la frappe ; elle n'est **jamais**
-rafraîchie en nav mode (la sélection de l'utilisateur est sacrée).
+La popup auto se met à jour au fil de la frappe. **La frappe sort du nav
+mode et rafraîchit** — un survol souris de la popup (qui active le nav mode)
+ne doit pas la geler (retour user 2026-06-10) ; seules les flèches, qui ne
+sont pas des frappes texte, préservent la sélection en cours.
 
 ### 3. Ctrl+Espace inchangé = forçage + extension
 
@@ -103,7 +105,8 @@ le mode fin Auto/Manuel/Silent viendra si le besoin se confirme.)
 1. Taper « on a 1/x+1 » puis pause → popup apparaît seule sous la zone ;
    continuer à taper → elle suit ; Tab commit.
 2. Taper de la prose pure → pas de popup. Tab ou double espace → popup se ferme.
-3. Flèche bas (nav mode) puis continuer à réfléchir → la sélection ne saute pas.
+3. Flèche bas (nav mode) sans taper → la sélection ne saute pas ; survoler
+   la popup à la souris PUIS taper → la popup se rafraîchit normalement.
 4. Ctrl+Espace force quand le NER n'a rien vu ; re-Ctrl+Espace étend.
 5. Renommer le dossier modèle → l'add-in démarre, pas de popup auto,
    Ctrl+Espace fonctionne.
