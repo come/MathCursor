@@ -20,6 +20,7 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-06-10
+- `[forte]` Feat — [Ribbon : retour des Colonnes + bouton Paramètres (culture FR/US)](2026-06-10-Feat-ribbon-columns-settings-culture.md) — Menu Colonnes 1→4 restauré (port DocMath sans bookmarks, anchor CC suffit) dans l'onglet MathCursor seul ; popup Paramètres WPF culture FR/US + overrides nullables (séparateur, matrice `(`/`[`) ; `EngineCulture` threadé en paramètre dans `Analyze` (pas de statique mutable), store JSON `%APPDATA%` V=1.
 - `[forte]` Refactor — [Phase 2 beta-clean : réécriture de l'orchestration adapter + ribbon à neuf](2026-06-10-Refactor-phase2-adapter-orchestration-rewrite.md) — SuggestionService (2647 l., couplé à l'ancien moteur) supprimé ; primitives d'insertion validées extraites en `OMathInserter` ; nouveau `ConversionController` (Ctrl+Espace → forest → popup → OMML, UndoRecordScope) ; popup candidats simplifiée (modèle forest) ; ribbon refait (3 boutons, imageMso) ; events natifs (WindowSelectionChange), plus de polling ; NER différé Phase 4.
 
 ### 2026-06-03

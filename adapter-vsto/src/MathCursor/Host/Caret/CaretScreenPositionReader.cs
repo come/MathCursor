@@ -41,7 +41,9 @@ namespace MathCursor.Host.Caret
             }
         }
 
-        private static double GetDpiScale()
+        /// <summary>Facteur DPI écran→DIP (96 = 1.0). Exposé pour les callers
+        /// qui convertissent d'autres coordonnées pixels (ex. Word GetPoint).</summary>
+        internal static double GetDpiScale()
         {
             try
             {

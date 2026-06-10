@@ -117,11 +117,15 @@ namespace MathCursor.UI
         }
 
         /// <summary>
-        /// Affiche la liste des candidats à (screenX, screenY) en DIP.
-        /// <paramref name="sourceText"/> = texte source (footer informatif).
+        /// Affiche la liste des candidats, ancrée en DIP : bord gauche à
+        /// <paramref name="anchorX"/>, haut à <paramref name="anchorYBelow"/>
+        /// (= juste sous la ligne de la zone). Si la popup déborde en bas
+        /// d'écran, elle bascule AU-DESSUS de la ligne (son bas posé à
+        /// <paramref name="anchorYAbove"/>). Clampée horizontalement à
+        /// l'écran. <paramref name="sourceText"/> = texte source (footer).
         /// </summary>
-        public void ShowCandidates(IReadOnlyList<string> candidates, double screenX, double screenY,
-            string sourceText = "")
+        public void ShowCandidates(IReadOnlyList<string> candidates, double anchorX,
+            double anchorYBelow, double anchorYAbove, string sourceText = "")
         {
             _candidates = candidates ?? Array.Empty<string>();
             _selectedIndex = 0;
@@ -131,9 +135,20 @@ namespace MathCursor.UI
 
             BuildRows();
             UpdateHighlight();
-            Left = screenX;
-            Top = screenY;
+            Left = anchorX;
+            Top = anchorYBelow;
             if (!IsVisible) base.Show();
+
+            // Clamp aux bords de l'écran APRÈS layout (SizeToContent → les
+            // dimensions réelles ne sont connues qu'une fois le contenu mesuré).
+            UpdateLayout();
+            var wa = SystemParameters.WorkArea;
+            double w = ActualWidth > 0 ? ActualWidth : Width;
+            double h = ActualHeight > 0 ? ActualHeight : 120;
+            if (anchorX + w > wa.Right - 4) Left = Math.Max(wa.Left + 4, wa.Right - 4 - w);
+            if (anchorYBelow + h > wa.Bottom - 4 && !double.IsNaN(anchorYAbove))
+                Top = Math.Max(wa.Top + 4, anchorYAbove - h); // bascule au-dessus de la ligne
+
             BeginAnimation(OpacityProperty,
                 new DoubleAnimation(DisplayOpacity, TimeSpan.FromMilliseconds(FadeMs)));
         }

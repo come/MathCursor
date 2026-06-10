@@ -154,10 +154,42 @@ namespace MathCursor.Host
             _log($"convert: {result.Decision}, {candidates.Count} candidat(s), top=\"{candidates[0]}\"");
 
             EnsurePopup();
-            var (x, y) = CaretScreenPositionReader.Read();
-            const double CaretOffsetYDip = 22.0; // sous la ligne courante
+            var (x, yBelow, yAbove) = ComputeAnchor(zone);
             _zone = zone;
-            _popup.ShowCandidates(candidates, x, y + CaretOffsetYDip, zone.Text);
+            _popup.ShowCandidates(candidates, x, yBelow, yAbove, zone.Text);
+        }
+
+        /// <summary>
+        /// Ancre de la popup = DÉBUT de la zone convertie (choix UX 2026-06-10) :
+        /// bord gauche aligné sur le 1er caractère de la zone, juste SOUS sa
+        /// ligne. Position lue via <c>Window.GetPoint(Range)</c> (Word donne
+        /// les pixels écran exacts — plus fiable que le caret GDI). Retourne
+        /// aussi <c>yAbove</c> (haut de ligne) pour que la popup bascule
+        /// AU-DESSUS si pas de place en bas d'écran. Fallback : caret GDI.
+        /// </summary>
+        private (double x, double yBelow, double yAbove) ComputeAnchor(ZoneSpan zone)
+        {
+            try
+            {
+                var doc = _app.ActiveDocument;
+                if (doc != null && zone.TryToInternal(doc, out int absStart, out _))
+                {
+                    var anchorRange = doc.Range(absStart, Math.Min(absStart + 1, doc.Content.End));
+                    int left, top, width, height;
+                    _app.ActiveWindow.GetPoint(out left, out top, out width, out height, anchorRange);
+                    if (height > 0)
+                    {
+                        double scale = CaretScreenPositionReader.GetDpiScale();
+                        const double GapDip = 3.0; // petit jour sous la ligne
+                        return (left / scale, (top + height) / scale + GapDip, top / scale - GapDip);
+                    }
+                }
+            }
+            catch (Exception ex) { _log("anchor_getpoint_error: " + ex.Message); }
+
+            // Fallback : position du caret GDI (déjà sous la ligne, en DIP).
+            var (cx, cy) = CaretScreenPositionReader.Read();
+            return (cx, cy, cy - 20);
         }
 
         // ── Commit ───────────────────────────────────────────────────────
