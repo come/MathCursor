@@ -25,10 +25,11 @@ namespace MathCursor.Host.Blocks
     {
         public static void Run(Word.Application app, Action<string> log = null)
         {
-            log = log ?? (_ => { });
+            log = log ?? LogDiag;
             var doc = app.ActiveDocument;
-            if (doc == null) return;
+            if (doc == null) { log("poc-chain: pas de document actif"); return; }
             var sel = app.Selection;
+            log("poc-chain: START");
 
             using (new UndoRecordScope(app, "MathCursor : POC chaîne (tableau)"))
             {
@@ -40,6 +41,7 @@ namespace MathCursor.Host.Blocks
                 table.Borders.Enable = 0;                    // invisible
                 table.Range.ParagraphFormat.SpaceAfter = 2;  // lignes serrées
                 table.Range.ParagraphFormat.SpaceBefore = 0;
+                log($"poc-chain: table 3x2 créée à {anchor}");
 
                 // Col 1 = membres gauches alignés à droite (bord de colonne =
                 // ligne d'alignement des signes) ; col 2 = relation + membre
@@ -55,10 +57,10 @@ namespace MathCursor.Host.Blocks
                 // Contenu — ligne 1 SCINDÉE au signe (le = de la ligne 1
                 // s'aligne avec ceux du dessous au bord de colonne).
                 var inserter = new OMathInserter(app, log);
-                InsertInCell(app, inserter, table.Cell(1, 1), "f(x)", "f(x)");
-                InsertInCell(app, inserter, table.Cell(1, 2), "=2x+2-2", "= 2x+2-2");
-                InsertInCell(app, inserter, table.Cell(2, 2), "=2x", "= 2x");
-                InsertInCell(app, inserter, table.Cell(3, 2), "=2\\cdot x", "= 2.x");
+                InsertInCell(app, inserter, table, 1, 1, "f(x)", "f(x)", log);
+                InsertInCell(app, inserter, table, 1, 2, "=2x+2-2", "= 2x+2-2", log);
+                InsertInCell(app, inserter, table, 2, 2, "=2x", "= 2x", log);
+                InsertInCell(app, inserter, table, 3, 2, "=2\\cdot x", "= 2.x", log);
 
                 // Caret après le tableau.
                 try
@@ -66,21 +68,43 @@ namespace MathCursor.Host.Blocks
                     int after = table.Range.End;
                     sel.SetRange(after, after);
                 }
-                catch { }
-                log("poc-chain: tableau 3x2 inséré");
+                catch (Exception ex) { log("poc-chain: caret après table KO: " + ex.Message); }
+                log("poc-chain: DONE");
             }
+            try { app.StatusBar = "MathCursor : POC chaîne inséré — à torturer (suppressions, Ctrl+Z, frappe autour)"; } catch { }
         }
 
         private static void InsertInCell(Word.Application app, OMathInserter inserter,
-            Word.Cell cell, string latex, string source)
+            Word.Table table, int row, int col, string latex, string source, Action<string> log)
         {
-            // OMathInserter exige une plage non vide à remplacer → on tape
-            // un espace placeholder dans la cellule puis on le remplace.
-            var sel = app.Selection;
-            int p = cell.Range.Start;
-            sel.SetRange(p, p);
-            sel.TypeText(" ");
-            inserter.Insert(p, p + 1, latex, source);
+            try
+            {
+                // Cellule re-résolue à CHAQUE insert : les inserts précédents
+                // décalent les positions, un Cell gardé d'avant est périmé.
+                var cell = table.Cell(row, col);
+                int p = cell.Range.Start;
+                var sel = app.Selection;
+                sel.SetRange(p, p);
+                sel.TypeText(" "); // OMathInserter exige une plage non vide
+                log($"poc-chain: cell({row},{col}) insert à {p} latex=\"{latex}\"");
+                var (s, e, h) = inserter.Insert(p, p + 1, latex, source);
+                log($"poc-chain: cell({row},{col}) → [{s},{e}) handle={(h ?? "NULL")}");
+            }
+            catch (Exception ex) { log($"poc-chain: cell({row},{col}) EXCEPTION: {ex.Message}"); }
+        }
+
+        private static void LogDiag(string message)
+        {
+            try
+            {
+                var dir = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "MathCursor", "logs");
+                System.IO.Directory.CreateDirectory(dir);
+                System.IO.File.AppendAllText(System.IO.Path.Combine(dir, "mathcursor.log"),
+                    $"{DateTime.UtcNow:o} poc {message}{Environment.NewLine}");
+            }
+            catch { }
         }
     }
 }
