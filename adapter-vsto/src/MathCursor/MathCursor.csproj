@@ -190,6 +190,9 @@
     <Compile Include="Host\AnchorHygiene.cs" />
     <Compile Include="Host\Blocks\RelationMarkers.cs" />
     <Compile Include="Host\Blocks\RelationLineDetector.cs" />
+    <Compile Include="Host\Blocks\LatexTopLevelSplit.cs" />
+    <Compile Include="Host\Blocks\ChainComposer.cs" />
+    <Compile Include="Host\Blocks\ChainController.cs" />
     <Compile Include="Host\Blocks\ChainTablePoc.cs" />
     <Compile Include="Host\Blocks\ChainEqArrPoc.cs" />
     <Compile Include="Host\OMathInserter.cs" />

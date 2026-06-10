@@ -49,6 +49,29 @@ namespace MathCursor.Host
         public (int newStart, int newEnd, string newHandle) Insert(
             int absStart, int absEnd, string latex, string source)
         {
+            System.Xml.Linq.XElement oMathEl;
+            try { oMathEl = MathCursor.Serialization.LatexToOmml.Convert(latex); }
+            catch (Exception ex) { _log("insert_l2o_error: " + ex.Message); return (absStart, absEnd, null); }
+            return InsertCore(absStart, absEnd, oMathEl, latex, source, blockType: null);
+        }
+
+        /// <summary>
+        /// Variante BLOC (chaînes/systèmes, ADR 2026-06-10-Feat-multiline-
+        /// chain-eqarr-architecture) : l'OMML est PRÉ-CONSTRUIT par
+        /// <c>ChainComposer</c>. <paramref name="latexJoined"/> et
+        /// <paramref name="sourceJoined"/> = LaTeX/sources par ligne joints
+        /// par '\n' ; <paramref name="blockType"/> = "chain" | "system"
+        /// (écrit dans le Tag).
+        /// </summary>
+        public (int newStart, int newEnd, string newHandle) InsertBlock(
+            int absStart, int absEnd, System.Xml.Linq.XElement oMath,
+            string latexJoined, string sourceJoined, string blockType)
+            => InsertCore(absStart, absEnd, oMath, latexJoined, sourceJoined, blockType);
+
+        private (int newStart, int newEnd, string newHandle) InsertCore(
+            int absStart, int absEnd, System.Xml.Linq.XElement oMathEl,
+            string latex, string source, string blockType)
+        {
             var doc = _app.ActiveDocument;
             _log($"OMathInserter: IN [{absStart},{absEnd}) latex=\"{Preview(latex)}\"");
             if (doc == null) return (absStart, absEnd, null);
@@ -112,7 +135,7 @@ namespace MathCursor.Host
             bool ommlInserted = false;
             try
             {
-                om = BuildOMathViaOmml(doc, sel, latex, zwspEnd, out ommlInserted);
+                om = BuildOMathViaOmml(doc, sel, oMathEl, zwspEnd, out ommlInserted);
                 if (om != null)
                 {
                     newStart = om.Range.Start;
@@ -211,6 +234,7 @@ namespace MathCursor.Host
                     var meta = new MCMeta
                     {
                         V = 1,
+                        Type = blockType,
                         HandleId = newHandle,
                         Steno = source ?? "",
                         Latex = latex ?? "",
@@ -233,14 +257,11 @@ namespace MathCursor.Host
         /// ¶ entier (casse positions + prose inline). Lecture WordOpenXML
         /// LOCALE (¶ courant), pas O(doc). Renvoie null si échec.
         /// </summary>
-        private Word.OMath BuildOMathViaOmml(Word.Document doc, Word.Selection sel, string latex, int mathStart,
-            out bool inserted)
+        private Word.OMath BuildOMathViaOmml(Word.Document doc, Word.Selection sel,
+            System.Xml.Linq.XElement oMath, int mathStart, out bool inserted)
         {
             inserted = false;
             var w = System.Xml.Linq.XNamespace.Get("http://schemas.openxmlformats.org/wordprocessingml/2006/main");
-            System.Xml.Linq.XElement oMath;
-            try { oMath = MathCursor.Serialization.LatexToOmml.Convert(latex); }
-            catch (Exception ex) { _log("BuildOMathViaOmml: LatexToOmml error: " + ex.Message); return null; }
             if (oMath == null) return null;
 
             // Placeholder éphémère 1-char à la position math.

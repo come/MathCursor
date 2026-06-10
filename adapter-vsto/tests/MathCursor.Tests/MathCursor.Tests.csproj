@@ -52,6 +52,8 @@
          moteur fournit les candidats LaTeX réels, fixtures.json = même
          snapshot que les tests moteur (source unique). -->
     <ProjectReference Include="..\..\..\engine\src\MathCursor.Engine\MathCursor.Engine.csproj" />
+    <!-- ChainComposer (M2 multiligne) greffe des fragments LatexToOmml. -->
+    <ProjectReference Include="..\..\..\serialization\src\MathCursor.Serialization\MathCursor.Serialization.csproj" />
     <None Include="..\..\..\engine\tests\MathCursor.Engine.Tests\fixtures.json" Link="fixtures.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
@@ -71,6 +73,8 @@
     <Compile Include="..\..\src\MathCursor\Host\ParagraphTextExtractor.cs" Link="adapter-sources\Host\ParagraphTextExtractor.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Blocks\RelationMarkers.cs" Link="adapter-sources\Host\Blocks\RelationMarkers.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Blocks\RelationLineDetector.cs" Link="adapter-sources\Host\Blocks\RelationLineDetector.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Blocks\LatexTopLevelSplit.cs" Link="adapter-sources\Host\Blocks\LatexTopLevelSplit.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Blocks\ChainComposer.cs" Link="adapter-sources\Host\Blocks\ChainComposer.cs" />
   </ItemGroup>
 
 </Project>

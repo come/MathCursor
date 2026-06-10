@@ -21,6 +21,7 @@ namespace MathCursor.Host.CCMeta
             var sb = new StringBuilder();
             sb.Append('{');
             sb.Append("\"v\":").Append(m.V);
+            if (m.Type != null) WriteString(sb, "type", m.Type); // bloc (chain|system)
             WriteString(sb, "handle_id", m.HandleId);
             WriteString(sb, "steno", m.Steno);
             WriteString(sb, "latex", m.Latex);
@@ -46,6 +47,7 @@ namespace MathCursor.Host.CCMeta
                 var m = new MCMeta();
                 m.V = ExtractInt(json, "v") ?? 0;
                 if (m.V == 0) return null;
+                m.Type = ExtractString(json, "type"); // null = équation simple
                 m.HandleId = ExtractString(json, "handle_id");
                 m.Steno = ExtractString(json, "steno");
                 m.Latex = ExtractString(json, "latex");

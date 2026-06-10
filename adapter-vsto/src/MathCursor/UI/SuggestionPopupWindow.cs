@@ -55,6 +55,10 @@ namespace MathCursor.UI
         public string SelectedLatex =>
             _selectedIndex >= 0 && _selectedIndex < _candidates.Count ? _candidates[_selectedIndex] : null;
 
+        /// <summary>Index de la sélection courante — permet au contrôleur de
+        /// retrouver le candidat SANS préfixe d'affichage (blocs M2).</summary>
+        public int SelectedIndex => _selectedIndex;
+
         public SuggestionPopupWindow()
         {
             WindowStyle = WindowStyle.None;

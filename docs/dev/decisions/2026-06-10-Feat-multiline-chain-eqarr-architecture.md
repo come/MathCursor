@@ -89,12 +89,46 @@ latex, omml_hash, …}` — rétro-compatible (absence de `type` = équation
 simple). L'hygiène anchor (H1-H3) fonctionne sur le bloc SANS modification
 (un OMath + un CC = suppression atomique déjà validée).
 
+### 5. Systèmes d'équations « { » (extension actée le même jour)
+
+> « si au commit tu check au dessus et y'avait une ligne qui commence
+> par { , on essaie de les merger ? » — utilisateur, validé.
+
+Le `{` ouvrant vit AUSSI hors moteur (un `{` non fermé est déjà « erreur »
+côté forest). Même machinerie que les chaînes :
+- ligne `{ 2x+y = 5` au commit → bloc SYSTÈME d'une ligne : `<m:d>`
+  accolade ouvrante / fermante invisible (le `{…┤` que DocMath simulait en
+  linéaire) enveloppant un eqArr ; Tag `type:"system"`.
+- ligne SANS marqueur committée dans le ¶ adjacent sous un système →
+  absorbée (+1 ligne, re-génération).
+
+### 6. Décisions d'ergonomie (validées utilisateur, 2026-06-10)
+
+1. **Règle d'arrêt** : absorption uniquement si ¶ ADJACENT ; une ligne
+   vide casse la chaîne/le système — « double entrée nickel c'est
+   naturel ». (M4 : répétition auto du marqueur à l'Entrée.)
+2. **Repli sans équation au-dessus** : équation autonome avec le marqueur
+   RENDU (« ⟺ x=3 ») — « si l'utilisateur l'a écrit il veut le voir ».
+3. **Alignement dans les systèmes** : chaque ligne scindée au signe
+   top-level, les `=` alignés dans l'accolade — « oui alignement des = ».
+
+### 7. Schéma de métadonnée bloc (Tag CC)
+
+`MCMeta.Type` = null (équation simple, rétro-compat) | "chain" | "system".
+`Steno` = les lignes SOURCES jointes par saut de ligne (exactement ce que
+l'utilisateur a tapé, marqueurs compris) ; `Latex` = les LaTeX par ligne
+(SANS marqueur, tels que choisis dans la popup) joints pareil. La
+re-génération ne RE-ANALYSE jamais : elle réutilise les LaTeX choisis
+(le choix popup de l'utilisateur est préservé) ; les marqueurs sont
+re-dérivés des lignes steno par le détecteur (pur, déterministe).
+
 ## Phasage
 
 - **M0 — POCs** ✅ (tableau rejeté, eqArr validé simple + double alignement).
 - **M1 — Détection pure** : RelationMarkers + RelationLineDetector + tests.
-- **M2 — Chaîne v1** : création du bloc + append, Ctrl+Z par étape ;
-  retrait des boutons POC.
+- **M2a — Chaînes v1** : création du bloc + append, repli autonome, Ctrl+Z
+  par étape. **M2b — Systèmes** : ouvreur `{` + absorption adjacente ;
+  retrait des boutons POC après validation Word.
 - **M3 — Vie du bloc** : revert du bloc (sources → N lignes texte),
   modification d'une ligne (réouverture/re-génération), suppression.
 - **M4 — Ergonomie** : répétition auto du marqueur à l'Entrée, double

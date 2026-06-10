@@ -20,10 +20,19 @@ namespace MathCursor.Host.CCMeta
         /// suit copy-paste et reload doc).</summary>
         public string HandleId { get; set; }
 
-        /// <summary>Sténo brute tapée par l'utilisateur (ex: "rac 1 sur x").</summary>
+        /// <summary>Type de bloc : null = équation simple (rétro-compat),
+        /// "chain" = chaîne de raisonnement, "system" = système d'équations.
+        /// Cf. ADR 2026-06-10-Feat-multiline-chain-eqarr-architecture §7.</summary>
+        public string Type { get; set; }
+
+        /// <summary>Sténo brute tapée par l'utilisateur (ex: "rac 1 sur x").
+        /// Pour un BLOC : les lignes sources jointes par '\n' (marqueurs
+        /// compris, exactement telles que tapées).</summary>
         public string Steno { get; set; }
 
-        /// <summary>LaTeX résolu (ex: "\sqrt{1/x}").</summary>
+        /// <summary>LaTeX résolu (ex: "\sqrt{1/x}"). Pour un BLOC : les LaTeX
+        /// par ligne (SANS marqueur, tels que choisis dans la popup) joints
+        /// par '\n' — la re-génération les réutilise sans re-analyse.</summary>
         public string Latex { get; set; }
 
         /// <summary>Version de l'add-in MathCursor au moment du commit.</summary>

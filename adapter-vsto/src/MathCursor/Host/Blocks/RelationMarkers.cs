@@ -8,41 +8,49 @@ namespace MathCursor.Host.Blocks
     /// CE module qui possède les connecteurs logiques (`&lt;=&gt;`, `=&gt;`…)
     /// volontairement retirés du moteur forest, et le LaTeX d'affichage de
     /// chaque marqueur. Pure compute — compilé aussi par MathCursor.Tests.
+    ///
+    /// Deux GENRES de marqueurs (déterminent la mise en page eqArr) :
+    /// <list type="bullet">
+    /// <item><b>Connecteur</b> (⟺, ⟹…) : colonne 1 du bloc, le reste de la
+    ///   ligne est une équation complète scindée au signe.</item>
+    /// <item><b>Relation</b> (=, ≤…) : c'est LE signe aligné — colonne 3,
+    ///   préfixé au reste.</item>
+    /// </list>
     /// </summary>
     internal static class RelationMarkers
     {
-        /// <summary>(forme tapée, LaTeX). Ordre = longueur décroissante
-        /// (plus-long-match : « &lt;=&gt; » avant « &lt;= » avant « = »).</summary>
-        public static readonly IReadOnlyList<(string Typed, string Latex)> Table =
-            new (string, string)[]
+        /// <summary>(forme tapée, LaTeX, connecteur ?). Ordre = longueur
+        /// décroissante (plus-long-match : « &lt;=&gt; » avant « &lt;= » avant « = »).</summary>
+        public static readonly IReadOnlyList<(string Typed, string Latex, bool IsConnector)> Table =
+            new (string, string, bool)[]
             {
-                ("<=>", "\\Leftrightarrow "),
-                ("=>",  "\\Rightarrow "),
-                ("<=",  "\\leq "),
-                (">=",  "\\geq "),
-                ("!=",  "\\neq "),
-                ("⟺",   "\\Leftrightarrow "),
-                ("⇔",   "\\Leftrightarrow "),
-                ("⟹",   "\\Rightarrow "),
-                ("⇒",   "\\Rightarrow "),
-                ("≤",   "\\leq "),
-                ("≥",   "\\geq "),
-                ("≠",   "\\neq "),
-                ("=",   "="),
-                ("<",   "<"),
-                (">",   ">"),
+                ("<=>", "\\Leftrightarrow ", true),
+                ("=>",  "\\Rightarrow ",     true),
+                ("<=",  "\\leq ",            false),
+                (">=",  "\\geq ",            false),
+                ("!=",  "\\neq ",            false),
+                ("⟺",   "\\Leftrightarrow ", true),
+                ("⇔",   "\\Leftrightarrow ", true),
+                ("⟹",   "\\Rightarrow ",     true),
+                ("⇒",   "\\Rightarrow ",     true),
+                ("≤",   "\\leq ",            false),
+                ("≥",   "\\geq ",            false),
+                ("≠",   "\\neq ",            false),
+                ("=",   "=",                 false),
+                ("<",   "<",                 false),
+                (">",   ">",                 false),
             };
 
         /// <summary>Plus-long-match d'un marqueur à <paramref name="start"/>.
         /// Null si aucun.</summary>
-        public static (string Typed, string Latex)? TryMatch(string text, int start)
+        public static (string Typed, string Latex, bool IsConnector)? TryMatch(string text, int start)
         {
             if (string.IsNullOrEmpty(text) || start < 0 || start >= text.Length) return null;
-            foreach (var (typed, latex) in Table)
+            foreach (var entry in Table)
             {
-                if (start + typed.Length > text.Length) continue;
-                if (string.CompareOrdinal(text, start, typed, 0, typed.Length) == 0)
-                    return (typed, latex);
+                if (start + entry.Typed.Length > text.Length) continue;
+                if (string.CompareOrdinal(text, start, entry.Typed, 0, entry.Typed.Length) == 0)
+                    return entry;
             }
             return null;
         }

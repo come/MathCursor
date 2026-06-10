@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using MathCursor.Host.Caret;
+using MathCursor.Host.Blocks;
 using MathCursor.Host.Detection;
 using MathCursor.UI;
 using Word = Microsoft.Office.Interop.Word;
@@ -31,12 +32,21 @@ namespace MathCursor.Host
         private readonly Word.Application _app;
         private readonly WordContextReader _contextReader;
         private readonly OMathInserter _inserter;
+        private readonly Blocks.ChainController _chain;
         private readonly Action<string> _log;
         private readonly Func<Feedback.FeedbackReport> _buildFeedbackReport;
 
         private SuggestionPopupWindow _popup;
         private ZoneSpan _zone;          // span en cours (état d'extension itérative)
         private bool _committing;        // supprime la réaction aux SelectionChange induits
+
+        // Pré-détection BLOC (M2 multiligne) : la zone committée commence par
+        // un marqueur de chaîne ou un « { » → le moteur n'a vu que le RESTE,
+        // la popup affichait le marqueur en préfixe, le commit route vers
+        // ChainController. _pendingRestCandidates[i] = LaTeX SANS préfixe.
+        private RelationLineMatch _pendingChainMatch;
+        private bool _pendingSystemOpener;
+        private List<string> _pendingRestCandidates;
 
         public ConversionController(
             Word.Application app,
@@ -48,6 +58,7 @@ namespace MathCursor.Host
             _log = log ?? LogDiag;
             _contextReader = new WordContextReader(app);
             _inserter = new OMathInserter(app, _log);
+            _chain = new Blocks.ChainController(app, _inserter, _log);
         }
 
         public bool IsPopupVisible => _popup?.IsVisible == true;
@@ -167,11 +178,43 @@ namespace MathCursor.Host
         /// <paramref name="silent"/> : échec sans StatusBar, popup masquée.</summary>
         private bool AnalyzeAndShow(ZoneSpan zone, bool silent = false)
         {
+            // Pré-détection BLOC (chaîne « = / ⟺ … » ou système « { … »,
+            // hors moteur — ADR multiline-chain-eqarr) : le moteur ne voit
+            // que le RESTE ; la popup affiche le marqueur rendu en préfixe
+            // (« si l'utilisateur l'a écrit il veut le voir »). Le detector
+            // ne trim pas la fin → l'espace-signal (R*␣) survit dans Rest.
+            _pendingSystemOpener = false;
+            _pendingChainMatch = null;
+            string engineInput = zone.TextForEngine;
+            string displayPrefix = "";
+            var sys = RelationLineDetector.TryDetectSystemOpener(engineInput);
+            if (sys != null)
+            {
+                _pendingSystemOpener = true;
+                engineInput = sys.Rest;
+                displayPrefix = "\\{";
+            }
+            else
+            {
+                var cm = RelationLineDetector.TryDetect(engineInput);
+                if (cm != null)
+                {
+                    _pendingChainMatch = cm;
+                    engineInput = cm.Rest;
+                    displayPrefix = cm.MarkerLatex;
+                }
+            }
+            if (string.IsNullOrWhiteSpace(engineInput))
+            {
+                // Marqueur seul (« = » en cours de frappe) : on attend la suite.
+                if (silent && IsPopupVisible) HidePopup();
+                return false;
+            }
+
             MathCursor.Engine.AnalyzeResult result;
             // Culture relue à chaque trigger : un changement dans la popup
-            // Paramètres s'applique sans redémarrage. TextForEngine (et non
-            // Text) : préserve l'espace final, signal d'étoile postfixe (R*␣).
-            try { result = MathCursor.Engine.ForestEngine.Analyze(zone.TextForEngine, Settings.SettingsStore.Current.ToEngineCulture()); }
+            // Paramètres s'applique sans redémarrage.
+            try { result = MathCursor.Engine.ForestEngine.Analyze(engineInput, Settings.SettingsStore.Current.ToEngineCulture()); }
             catch (Exception ex)
             {
                 _log($"convert: engine error sur \"{Preview(zone.Text)}\": {ex.Message}");
@@ -188,12 +231,19 @@ namespace MathCursor.Host
             }
 
             var candidates = result.Ranked.Select(c => c.Latex).ToList();
-            _log($"convert: {result.Decision}, {candidates.Count} candidat(s), top=\"{candidates[0]}\"");
+            _log($"convert: {result.Decision}, {candidates.Count} candidat(s), top=\"{(displayPrefix + candidates[0])}\"");
+
+            // Bloc en attente : la popup AFFICHE le marqueur en préfixe, mais
+            // le commit utilise le LaTeX du RESTE (aligné par index).
+            _pendingRestCandidates = candidates;
+            var display = displayPrefix.Length == 0
+                ? candidates
+                : candidates.Select(c => displayPrefix + c).ToList();
 
             EnsurePopup();
             var (x, yBelow, yAbove) = ComputeAnchor(zone);
             _zone = zone;
-            _popup.ShowCandidates(candidates, x, yBelow, yAbove, zone.Text);
+            _popup.ShowCandidates(display, x, yBelow, yAbove, zone.Text);
             return true;
         }
 
@@ -262,6 +312,12 @@ namespace MathCursor.Host
             string latex = popup.SelectedLatex;
             if (string.IsNullOrEmpty(latex)) return false;
 
+            // Le LaTeX à committer = celui du RESTE (sans le préfixe marqueur
+            // affiché), aligné par index de sélection.
+            int idx = popup.SelectedIndex;
+            if (_pendingRestCandidates != null && idx >= 0 && idx < _pendingRestCandidates.Count)
+                latex = _pendingRestCandidates[idx];
+
             _committing = true;
             try
             {
@@ -273,10 +329,16 @@ namespace MathCursor.Host
                     return false;
                 }
 
-                _log($"commit: [{absStart},{absEnd}) latex=\"{latex}\" source=\"{Preview(zone.Text)}\"");
+                _log($"commit: [{absStart},{absEnd}) latex=\"{latex}\" source=\"{Preview(zone.Text)}\""
+                    + (_pendingSystemOpener ? " [système]" : _pendingChainMatch != null ? $" [chaîne {_pendingChainMatch.MarkerTyped}]" : ""));
                 using (new UndoRecordScope(_app, "MathCursor : conversion"))
                 {
-                    _inserter.Insert(absStart, absEnd, latex, zone.Text);
+                    if (_pendingSystemOpener)
+                        _chain.CommitSystemOpener(doc, zone, latex);
+                    else if (_pendingChainMatch != null)
+                        _chain.CommitChainLine(doc, zone, _pendingChainMatch, latex);
+                    else if (!_chain.TryAbsorbIntoSystemAbove(doc, zone, latex))
+                        _inserter.Insert(absStart, absEnd, latex, zone.Text);
                 }
                 return true;
             }
@@ -297,6 +359,9 @@ namespace MathCursor.Host
         {
             _popup?.HidePopup();
             _zone = null;
+            _pendingChainMatch = null;
+            _pendingSystemOpener = false;
+            _pendingRestCandidates = null;
         }
 
         /// <summary>
