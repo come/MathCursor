@@ -182,14 +182,17 @@ namespace MathCursor.UI
 
         /// <summary>
         /// ↑/↓ dans la liste. Auto-étend « + N autres » quand on dépasse.
-        /// Hors-bornes = sortie du nav mode + pass-through Word (le caret
-        /// texte bouge normalement). Retourne true si la touche est consommée.
+        /// Hors-bornes : la PREMIÈRE flèche sort du nav mode en CONSOMMANT
+        /// la touche — le caret ne saute pas de ligne, la popup reste
+        /// ouverte (retour user 2026-06-10 : ↑ depuis le 1er candidat
+        /// déplaçait le caret et fermait la popup). La flèche SUIVANTE,
+        /// hors nav, passe à Word normalement. Retourne true si consommée.
         /// </summary>
         public bool MoveSelection(int delta)
         {
             if (_candidates.Count == 0) return false;
             int next = _selectedIndex + delta;
-            if (next < 0) { ExitNavMode(); return false; }
+            if (next < 0) { ExitNavMode(); return true; }
 
             int visibleMax = _expanded ? _candidates.Count - 1 : MaxCandidatesCollapsed - 1;
             if (next > visibleMax)
@@ -201,7 +204,7 @@ namespace MathCursor.UI
                     visibleMax = _candidates.Count - 1;
                     if (next > visibleMax) next = visibleMax;
                 }
-                else { ExitNavMode(); return false; }
+                else { ExitNavMode(); return true; }
             }
             _selectedIndex = next;
             EnterNavMode();
