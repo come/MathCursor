@@ -140,10 +140,13 @@ namespace MathCursor.Host
                 var zone = ZoneRefiner.PickNearestZone(filtered, effCaret, out _);
                 if (zone == null) { HideAuto(); return; }
 
-                // « En cours de frappe » = la zone se termine AU caret (les
-                // blancs entre zone et caret sont absorbés, ≤ 5).
+                // Le caret doit être DANS la zone (bords inclus) : couvre la
+                // frappe en fin d'expression ET l'édition au milieu d'une
+                // expression déjà tapée — la zone proposée englobe alors
+                // aussi ce qui est APRÈS le caret (retour user 2026-06-10).
+                // Les blancs entre zone et caret sont absorbés (≤ 5).
                 zone = ZoneRefiner.TryExtendForwardWhitespace(text, zone, effCaret);
-                if (zone.End != effCaret || effCaret < zone.Start) { HideAuto(); return; }
+                if (effCaret < zone.Start || effCaret > zone.End) { HideAuto(); return; }
 
                 // « limite », « racine »… juste avant la zone → inclus.
                 zone = ZoneRefiner.ExtendBackwardWithKeyword(text, zone, ZoneRefiner.DefaultMathPrefixKeywords);

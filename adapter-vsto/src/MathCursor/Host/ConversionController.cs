@@ -76,7 +76,9 @@ namespace MathCursor.Host
 
         /// <summary>
         /// Trigger explicite. Si la popup est déjà ouverte → étend la span
-        /// d'un cran à gauche. Sinon calcule la span au caret et propose.
+        /// d'un cran à gauche. Sinon calcule la span AUTOUR du caret (avant
+        /// ET après — un caret replacé au milieu d'une expression la prend
+        /// en entier, retour user 2026-06-10) et propose.
         /// </summary>
         public void Trigger()
         {
@@ -88,15 +90,16 @@ namespace MathCursor.Host
                 var paragraph = _contextReader.ReadCurrentParagraph();
                 string text = paragraph.Text ?? "";
                 int caret = paragraph.CaretOffset;
-                if (string.IsNullOrEmpty(text) || caret <= 0) return;
+                if (string.IsNullOrEmpty(text)) return;
 
                 // La fin de ¶ Word inclut un \r virtuel — le sauter, sinon
                 // il est pris pour un délimiteur et la span est vide.
                 while (caret > 0 && (text[caret - 1] == '\r' || text[caret - 1] == '\n')) caret--;
+                if (caret < 0) return;
 
                 int spanStart = ComputeSpanStart(text, caret, paragraph.OMathRegions);
-                while (spanStart < caret && char.IsWhiteSpace(text[spanStart])) spanStart++;
-                int spanEnd = caret;
+                int spanEnd = ComputeSpanEnd(text, caret, paragraph.OMathRegions);
+                while (spanStart < spanEnd && char.IsWhiteSpace(text[spanStart])) spanStart++;
                 while (spanEnd > spanStart && char.IsWhiteSpace(text[spanEnd - 1])) spanEnd--;
                 if (spanEnd <= spanStart) return;
 
@@ -166,8 +169,9 @@ namespace MathCursor.Host
         {
             MathCursor.Engine.AnalyzeResult result;
             // Culture relue à chaque trigger : un changement dans la popup
-            // Paramètres s'applique sans redémarrage.
-            try { result = MathCursor.Engine.ForestEngine.Analyze(zone.Text, Settings.SettingsStore.Current.ToEngineCulture()); }
+            // Paramètres s'applique sans redémarrage. TextForEngine (et non
+            // Text) : préserve l'espace final, signal d'étoile postfixe (R*␣).
+            try { result = MathCursor.Engine.ForestEngine.Analyze(zone.TextForEngine, Settings.SettingsStore.Current.ToEngineCulture()); }
             catch (Exception ex)
             {
                 _log($"convert: engine error sur \"{Preview(zone.Text)}\": {ex.Message}");
@@ -382,6 +386,57 @@ namespace MathCursor.Host
             }
 
             return start;
+        }
+
+        /// <summary>
+        /// Fin de la span : min(fin ¶ [sans \r virtuel], premier délimiteur
+        /// hors brackets/parens APRÈS le caret, début du premier OMath après
+        /// le caret, premier stopword mot-entier après le caret). Miroir
+        /// avant de <see cref="ComputeSpanStart"/> — un caret replacé au
+        /// milieu d'une expression la capture en entier.
+        /// </summary>
+        internal static int ComputeSpanEnd(string text, int caret,
+            IReadOnlyList<(int start, int end)> omathRegions)
+        {
+            int end = text.Length;
+            while (end > caret && (text[end - 1] == '\r' || text[end - 1] == '\n')) end--;
+
+            // Premier délimiteur — walk forward avec suivi profondeur brackets/parens.
+            int bracketDepth = 0, parenDepth = 0;
+            for (int k = caret; k < end; k++)
+            {
+                char c = text[k];
+                if (c == '[') { bracketDepth++; continue; }
+                if (c == ']') { if (bracketDepth > 0) bracketDepth--; continue; }
+                if (c == '(') { parenDepth++; continue; }
+                if (c == ')') { if (parenDepth > 0) parenDepth--; continue; }
+
+                if (!SpanDelimiters.Contains(c)) continue;
+                if ((c == ';' || c == ',') && (bracketDepth > 0 || parenDepth > 0)) continue;
+                end = k;
+                break;
+            }
+
+            // Début du premier OMath qui commence après le caret.
+            if (omathRegions != null)
+                foreach (var (s, _) in omathRegions)
+                    if (s >= caret && s < end) end = s;
+
+            // Premier stopword (mot entier) après le caret.
+            int i = caret;
+            while (i < end)
+            {
+                while (i < end && char.IsWhiteSpace(text[i])) i++;
+                if (i >= end) break;
+                int wordStart = i;
+                while (i < end && IsWordChar(text[i])) i++;
+                int wordEnd = i;
+                if (wordEnd <= wordStart) { i++; continue; }
+                string w = text.Substring(wordStart, wordEnd - wordStart);
+                if (Stopwords.Contains(w)) { end = wordStart; break; }
+            }
+
+            return end;
         }
 
         private static bool IsWordChar(char c) => char.IsLetter(c) || c == '\'' || c == '-';

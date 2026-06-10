@@ -43,7 +43,8 @@ pause 100 ms → guards (réglage off / commit / popup edit /
   → NerInputWindow.Compute (fenêtre entre OMaths voisines du caret)
   → MathNerDetector.Detect (seuil 0.85) → coords retraduites ¶
   → ZoneRefiner : FilterOutOMathOverlap → PickNearestZone(caret)
-    → TryExtendForwardWhitespace → exige zone.End == caret (frappe en cours)
+    → TryExtendForwardWhitespace → exige caret DANS la zone (frappe en
+      fin OU édition au milieu — la zone englobe l'après-caret)
     → ExtendBackwardWithKeyword (limite/racine/somme…)
   → ConversionController.TryProposeAuto(ZoneSpan)
 ```
@@ -115,3 +116,6 @@ le mode fin Auto/Manuel/Silent viendra si le besoin se confirme.)
    Ctrl+Espace fonctionne.
 6. Paramètres → décocher « Détection automatique » → plus de popup auto sans
    redémarrage.
+7. Replacer le caret au MILIEU d'une expression déjà tapée et modifier un
+   caractère → la popup propose l'expression ENTIÈRE (avant + après caret) ;
+   idem Ctrl+Espace (span symétrique autour du caret).
