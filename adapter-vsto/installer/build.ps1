@@ -71,15 +71,16 @@ New-Item -ItemType Directory -Force -Path $PayloadDir | Out-Null
 $FilesToCopy = @(
     'MathCursor.dll',
     'MathCursor.dll.manifest',
-    'MathCursor.dll.config',
+    # beta-clean : pas d'App.config dans le projet (pas de binding redirects
+    # nécessaires — l'add-in tourne sans en dev comme en Release).
     'MathCursor.vsto',
-    'MathCursor.Core.dll',
+    # beta-clean (2026-06-10) : moteur forest en 2 assemblies — l'ancien
+    # MathCursor.Core.dll (+ FuzzySharp/YamlDotNet/Protobuf) n'existe plus.
+    'MathCursor.Engine.dll',
+    'MathCursor.Serialization.dll',
     'MathCursor.HostContract.dll',
     'WpfMath.dll',
     'XamlMath.Shared.dll',
-    'FuzzySharp.dll',
-    'YamlDotNet.dll',
-    'Google.Protobuf.dll',
     'Microsoft.ML.OnnxRuntime.dll',
     # Microsoft.ML.OnnxRuntime.dll est managé (AnyCPU) — ok à la racine.
     # Les natifs onnxruntime.dll / onnxruntime_providers_shared.dll sont
@@ -188,6 +189,19 @@ foreach ($arch in @('x86', 'x64')) {
 # (FindModelDir priorise distilmult-v5 et tombe sur celui-ci).
 Write-Host "[3/4] Modèle NER (distilmult-v5)..." -ForegroundColor Yellow
 if (Test-Path $ModelDstDir) { Remove-Item -Recurse -Force $ModelDstDir }
+# beta-clean : le repo MathCursor ne versionne pas models/ (~129 Mo).
+# Fallbacks : install dev locale, puis DocMath (lecture seule, figé).
+if (-not (Test-Path (Join-Path $ModelSrcDir 'distilmult-v5'))) {
+    foreach ($cand in @(
+        (Join-Path $env:LOCALAPPDATA 'MathCursor\models'),
+        'D:\Software\DocMath\models')) {
+        if (Test-Path (Join-Path $cand 'distilmult-v5\model_quantized.onnx')) {
+            $ModelSrcDir = $cand
+            Write-Host "  source modèle : $ModelSrcDir (fallback)"
+            break
+        }
+    }
+}
 $DistilSrc = Join-Path $ModelSrcDir 'distilmult-v5'
 $DistilDst = Join-Path $ModelDstDir 'distilmult-v5'
 $modelOk = $false
@@ -211,6 +225,12 @@ $TutorialBuilderProj = Join-Path $RepoRoot 'tools\TutorialBuilder\TutorialBuilde
 foreach ($lang in @('fr', 'en')) {
     $specPath = Join-Path $RepoRoot ("tools\TutorialBuilder\tutorial-spec.$lang.json")
     $outPath  = Join-Path $PayloadDir ("MathCursor-Tutoriel-$lang.docx")
+    if (-not (Test-Path $specPath)) {
+        # beta-clean : seul le spec FR est porté (beta FR) — l'ISS a
+        # skipifsourcedoesntexist sur la ligne EN.
+        Write-Warning "Spec tutoriel $lang absente ($specPath) — skip."
+        continue
+    }
     & dotnet run --project $TutorialBuilderProj --configuration Release --nologo -- --in $specPath --out $outPath
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Génération du tutoriel .docx ($lang) échouée (code $LASTEXITCODE)."

@@ -12,7 +12,7 @@ allowed-tools:
 
 Pipeline qui prépare l'EXE prêt à être uploadé sur R2 par `/deploy-prod`. Ne touche RIEN en prod : juste tests + build local + checks de cohérence du payload.
 
-Working dir : `D:/Software/DocMath`. Tous les chemins sont relatifs à cette racine.
+Working dir : `D:/Software/MathCursor`. Tous les chemins sont relatifs à cette racine.
 
 ## Sortie attendue
 
@@ -23,7 +23,7 @@ Working dir : `D:/Software/DocMath`. Tous les chemins sont relatifs à cette rac
 - `vc_redist.x86.exe` + `vc_redist.x64.exe`
 - Modèle NER `distilmult-v5` complet
 - Tous les binaires .NET requis
-- `MathCursor-Tutoriel-fr.docx` + `MathCursor-Tutoriel-en.docx` (générés par `tools/TutorialBuilder/`)
+- `MathCursor-Tutoriel-fr.docx` (généré par `tools/TutorialBuilder/` ; EN optionnel, spec non portée)
 
 Si **n'importe quel** check échoue → stop, montre l'erreur, ne lance pas la suite. Pas de "best-effort" sur l'installer : un payload incomplet finit en crash chez les users.
 
@@ -34,15 +34,14 @@ Si **n'importe quel** check échoue → stop, montre l'erreur, ne lance pas la s
 Deux projets de tests (les deux sont SDK-style, donc `dotnet test` marche) :
 
 ```powershell
-dotnet test core-csharp/tests/MathCursor.Core.Tests/MathCursor.Core.Tests.csproj --nologo --verbosity minimal
+dotnet test engine/tests/MathCursor.Engine.Tests/MathCursor.Engine.Tests.csproj --nologo --verbosity minimal
+dotnet test serialization/tests/MathCursor.Serialization.Tests/MathCursor.Serialization.Tests.csproj --nologo --verbosity minimal
 dotnet test adapter-vsto/tests/MathCursor.Tests/MathCursor.Tests.csproj --nologo --verbosity minimal
-dotnet test tools/TutorialBuilder.Tests/TutorialBuilder.Tests.csproj --nologo --verbosity minimal
 ```
 
-Le projet `TutorialBuilder.Tests` porte le verrou anti-stale entre le tutoriel
-`.docx` livré et le comportement réel du `LatticeEngine` — si un test y casse,
-c'est soit une régression parser, soit la spec `tutorial-spec.json` qui doit
-être MAJ. Pas de skip toléré (cf. ADR `2026-05-22-Feat-tutorial-docx-generated-onboarding`).
+(beta-clean 2026-06-10 : moteur forest = engine + serialization, l'ex
+core-csharp/LatticeEngine n'existe plus ; le verrou tuto↔moteur vit dans
+`engine/tests` — `TutorialSpecTests`.)
 
 **Règle** (cf. memory `feedback_show_failing_tests`) : si des tests sont rouges, **lister les noms + cause** dans la sortie, même s'ils étaient déjà rouges avant. Puis demander via AskUserQuestion : *"Continuer le build malgré N tests rouges ?"*. Si non → stop.
 
@@ -50,61 +49,12 @@ Si tout est vert → continue.
 
 ---
 
-## Étape 1.5 — Couverture tuto vs YAML data-v2/concepts
+## Étape 1.5 — (retirée en beta-clean)
 
-Les fichiers `data-v2/concepts/*.yml` contiennent un bloc `tests:` listant des
-cas `"input => expected"` qui définissent ce que l'engine v2 doit savoir
-faire. Le tuto Word doit représenter les cas pédagogiquement intéressants
-parmi ceux-là — sinon l'utilisateur installe un produit qui sait faire des
-choses dont le tuto ne parle pas.
-
-Cette étape **rapporte** (warning, non bloquant) les cas YAML qui ne sont
-pas couverts dans `tools/TutorialBuilder/tutorial-spec.fr.json`. Pas
-d'ajout automatique — chaque cas pédagogique mérite une instruction
-manuelle. EN est skippé en V1 (les tests YAML sont FR-only avec mots-clés
-`dans` / `racine`).
-
-```powershell
-$Root        = 'D:/Software/DocMath'
-$TutoSpec    = Join-Path $Root 'tools/TutorialBuilder/tutorial-spec.fr.json'
-$ConceptsDir = Join-Path $Root 'data-v2/concepts'
-
-$tutoInputs = [System.Collections.Generic.HashSet[string]]::new()
-$tutoJson = Get-Content $TutoSpec -Raw | ConvertFrom-Json
-foreach ($s in $tutoJson.sections) {
-    foreach ($i in $s.items) {
-        if ($i.input) { [void]$tutoInputs.Add($i.input.Trim()) }
-    }
-}
-
-# Extraction simple via regex (les blocs tests YAML sont format ligne unique
-# `- "input => expected"`). Pas de parser YAML complet — overkill pour
-# cette étape qui ne lit qu'un format très contraint.
-$missing = @()
-foreach ($yml in Get-ChildItem $ConceptsDir -Filter '*.yml') {
-    $concept = $yml.BaseName
-    foreach ($line in Get-Content $yml.FullName) {
-        if ($line -match '^\s*-\s*"([^"]+?)\s*=>\s*[^"]*"\s*$') {
-            $inp = $matches[1].Trim()
-            if (-not $tutoInputs.Contains($inp)) {
-                $missing += "  [$concept] $inp"
-            }
-        }
-    }
-}
-
-if ($missing.Count -gt 0) {
-    Write-Host ""
-    Write-Host "WARN Couverture tuto FR incomplète vs data-v2/concepts ($($missing.Count) cas YAML non représentés) :" -ForegroundColor Yellow
-    $missing | ForEach-Object { Write-Host $_ -ForegroundColor Yellow }
-    Write-Host "  → Ajoute manuellement les cas pertinents à tutorial-spec.fr.json (avec instruction pédagogique)." -ForegroundColor Yellow
-    Write-Host ""
-} else {
-    Write-Host "  OK Tuto FR couvre tous les cas YAML data-v2/concepts" -ForegroundColor Green
-}
-```
-
-Ce check **n'arrête pas** le build — c'est de la couverture pédagogique, pas une régression de code. Le rapport final mentionnera `N cas YAML hors tuto` si applicable.
+L'ex-check de couverture tuto vs `data-v2/concepts/*.yml` n'a plus d'objet :
+le contrat du moteur forest = `engine/tests/fixtures.json`, et le verrou
+tuto↔moteur est testé par `TutorialSpecTests` (étape 1). Cf. ADR
+`2026-06-10-Feat-tutorial-fixtures-driven`.
 
 ---
 
@@ -136,7 +86,7 @@ Lance ce bloc PowerShell **complet** dans un seul `Bash` PowerShell — il véri
 
 ```powershell
 $ErrorActionPreference = 'Stop'
-$Root    = 'D:/Software/DocMath'
+$Root    = 'D:/Software/MathCursor'
 $Payload = Join-Path $Root 'adapter-vsto/installer/payload'
 $Output  = Join-Path $Root 'adapter-vsto/installer/output'
 $Iss     = Join-Path $Root 'adapter-vsto/installer/MathCursor.iss'
@@ -197,14 +147,14 @@ foreach ($f in @('vc_redist.x86.exe', 'vc_redist.x64.exe')) {
 }
 
 # 4) Binaires VSTO essentiels
-foreach ($f in @('MathCursor.dll', 'MathCursor.vsto', 'MathCursor.dll.manifest', 'MathCursor.dll.config', 'Microsoft.ML.OnnxRuntime.dll')) {
+foreach ($f in @('MathCursor.dll', 'MathCursor.vsto', 'MathCursor.dll.manifest', 'MathCursor.Engine.dll', 'MathCursor.Serialization.dll', 'MathCursor.HostContract.dll', 'Microsoft.ML.OnnxRuntime.dll')) {
     $p = Join-Path $Payload $f
     if (-not (Test-Path $p)) { $problems += "MANQUANT : $p" }
     else { Write-Host "  OK $f" -ForegroundColor Green }
 }
 
 # 5bis) Tutoriels FR + EN .docx (ADR 2026-05-22-Feat-tutorial-docx-generated-onboarding)
-foreach ($lang in @('fr', 'en')) {
+foreach ($lang in @('fr')) {  # EN : spec non portée en beta-clean (skipifsourcedoesntexist dans l'iss)
     $tuto = Join-Path $Payload "MathCursor-Tutoriel-$lang.docx"
     if (-not (Test-Path $tuto)) {
         $problems += "MANQUANT : $tuto (généré par tools/TutorialBuilder/)"
@@ -254,10 +204,9 @@ Si la sortie contient `BUILD INVALIDE` → stop, **ne pas** prétendre que c'est
 Format court, pas de blabla :
 
 ```
-✓ Tests : core (N tests OK) + adapter (M tests OK) + tutorial (P tests OK)
-✓ Couverture tuto : K cas YAML data-v2 non représentés (warning non bloquant) ou "tous couverts"
+✓ Tests : engine (N OK) + serialization (M OK) + adapter (P OK)
 ✓ Build : payload OK + ISCC OK
-✓ Payload : feedback.url, onnxruntime x86+x64, vc_redist x86+x64, modèle NER, MathCursor.{dll,vsto,manifest,config}, MathCursor-Tutoriel-{fr,en}.docx
+✓ Payload : feedback.url, onnxruntime x86+x64, vc_redist x86+x64, modèle NER, MathCursor.{dll,vsto,manifest} + Engine + Serialization, MathCursor-Tutoriel-fr.docx
 ✓ Installer : adapter-vsto/installer/output/MathCursor-Setup-<VERSION>.exe (XX Mo)
 
 → Prêt pour /deploy-prod <VERSION>

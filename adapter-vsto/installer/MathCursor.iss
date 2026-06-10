@@ -1,4 +1,4 @@
-; MathCursor — Inno Setup script (VSTO Word Add-in)
+﻿; MathCursor — Inno Setup script (VSTO Word Add-in)
 ;
 ; Build :
 ;   1. msbuild adapter-vsto\src\MathCursor\MathCursor.csproj /p:Configuration=Release
@@ -14,7 +14,7 @@
 ;   - Visual Studio Tools for Office Runtime (livré avec Office 2016+)
 
 #define MyAppName "MathCursor"
-#define MyAppVersion "0.6.0"
+#define MyAppVersion "0.7.0"
 #define MyAppPublisher "MathCursor"
 #define MyAppExeName "MathCursor.dll"
 #define MyAppId "{{6E4B3A1E-7F2D-4B8C-9A0E-2C5D6F7A8B90}"
@@ -46,17 +46,14 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 ; Binaires et manifest VSTO (copiés par build.ps1 depuis bin/Release/)
 Source: "payload\MathCursor.dll";                         DestDir: "{app}"; Flags: ignoreversion
 Source: "payload\MathCursor.dll.manifest";                DestDir: "{app}"; Flags: ignoreversion
-Source: "payload\MathCursor.dll.config";                  DestDir: "{app}"; Flags: ignoreversion
 Source: "payload\MathCursor.vsto";                        DestDir: "{app}"; Flags: ignoreversion
-Source: "payload\MathCursor.Core.dll";                    DestDir: "{app}"; Flags: ignoreversion
+Source: "payload\MathCursor.Engine.dll";                  DestDir: "{app}"; Flags: ignoreversion
+Source: "payload\MathCursor.Serialization.dll";           DestDir: "{app}"; Flags: ignoreversion
 Source: "payload\MathCursor.HostContract.dll";            DestDir: "{app}"; Flags: ignoreversion
 
 ; Dépendances gérées
 Source: "payload\WpfMath.dll";                            DestDir: "{app}"; Flags: ignoreversion
 Source: "payload\XamlMath.Shared.dll";                    DestDir: "{app}"; Flags: ignoreversion
-Source: "payload\FuzzySharp.dll";                         DestDir: "{app}"; Flags: ignoreversion
-Source: "payload\YamlDotNet.dll";                         DestDir: "{app}"; Flags: ignoreversion
-Source: "payload\Google.Protobuf.dll";                    DestDir: "{app}"; Flags: ignoreversion
 Source: "payload\Microsoft.ML.OnnxRuntime.dll";           DestDir: "{app}"; Flags: ignoreversion
 ; Native ORT DLLs : multi-arch (cf. commit cca4712, Word peut être 32 ou 64 bits).
 ; ThisAddIn.ConfigureOnnxRuntimeNativeDir() appelle SetDllDirectory sur
@@ -95,7 +92,7 @@ Source: "payload\mathcursor.cer";                         DestDir: "{tmp}"; Flag
 ; Le DestName est universel pour que [Run] ouvre le bon fichier sans condition.
 ; Cf. ADR 2026-05-22-Feat-tutorial-docx-generated-onboarding.
 Source: "payload\MathCursor-Tutoriel-fr.docx"; DestDir: "{userdocs}\MathCursor"; DestName: "MathCursor-Tutorial.docx"; Flags: ignoreversion uninsneveruninstall; Languages: french
-Source: "payload\MathCursor-Tutoriel-en.docx"; DestDir: "{userdocs}\MathCursor"; DestName: "MathCursor-Tutorial.docx"; Flags: ignoreversion uninsneveruninstall; Languages: english
+Source: "payload\MathCursor-Tutoriel-en.docx"; DestDir: "{userdocs}\MathCursor"; DestName: "MathCursor-Tutorial.docx"; Flags: ignoreversion uninsneveruninstall skipifsourcedoesntexist; Languages: english
 
 ; Visual C++ Redistributables x86 + x64 — requis par les DLLs natives ONNX
 ; (1 par arch). Word 32-bit a besoin du x86 ; Word 64-bit a besoin du x64.
