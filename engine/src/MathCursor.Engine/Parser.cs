@@ -320,6 +320,20 @@ internal sealed class Forest
                     combo.AddRange(rest);
                     res.Add(combo);
                 }
+            // L'espace devant une unité reste un séparateur d'args possible :
+            // le ·unit qui a traversé l'espace cède le pas, en lecture
+            // ALTERNATIVE (le Score tranche) — sinon « lim x 0 g(x) » n'aurait
+            // que les lectures « 0 grammes » et jamais \lim_{x\to 0} g(x)
+            // (ADR 2026-06-11 unit-vs-nary-arg-boundary).
+            if (m < b && _toks[m] is { Kind: "infix", Spaced: true } ju
+                && ju.Sym == Vocabulary.Role["unitOp"])
+                foreach (var first in ParseSpan(a, m))
+                    foreach (var rest in Splits(m + 1, b, K - 1, allowHoles))
+                    {
+                        var combo = new List<Node> { first };
+                        combo.AddRange(rest);
+                        res.Add(combo);
+                    }
         }
         return res;
     }

@@ -20,6 +20,7 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-06-11
+- `[molle]` Fix — [Unité vs frontière d'arguments n-aire : l'espace séparateur prime](2026-06-11-Fix-unit-vs-nary-arg-boundary.md) — `lim x 0 g(x)` ne proposait que des lectures « 0 grammes » (le `·unit` CrossSpace bloquait le découpage des args dans `Splits`) ; la découpe qui saute un `·unit` spaced devient une lecture alternative, le Score tranche ; quantités (`1 cm`, `5 m/s`) intactes, alternative « plus de collage espacé » mesurée et rejetée (tuait `2 cm + 3 cm`) ; +3 fixtures (corpus 383).
 - `[molle]` Feat — [Formes courtes des n-aires : variantes d'arité par entrée vocab](2026-06-11-Feat-nary-arity-variants.md) — `sum k f(k)`→`\sum_{k} f(k)`, `int f(x) x`→`\int f(x)\,dx`, `lim u_n`→`\lim u_{n}` ; règle no-hole (les courtes ne sont jamais complétées par des trous → squelettes/tuto préservés), règle frontière de frappe (`lim x +inf` garde son squelette), zéro changement de Score, guards déclaratifs anti-flicker (`int 0 1`, `sum k 1`, TightBody lim) ; corpus 368→378, 233 tests adapter verts.
 
 ### 2026-06-10
