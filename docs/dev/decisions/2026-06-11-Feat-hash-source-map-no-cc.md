@@ -64,14 +64,21 @@ Sondes ribbon debug (`Host/Debug/HashKeyPoc.cs`) : P1 insertion sans ZWSP/CC
 save+close+reopen et copy-paste, snapshots persistés en part), P4
 discrimination (x^2/x_2, frac/linéaire…), P5 roundtrip part + record undo.
 
-| Gate | Seuil GO |
-|---|---|
-| G1 | K2 stable 5/5 scénarios drift |
-| G2 | K1 stable 5/5 |
-| G3 | K2 départage 100 % des paires piégeuses |
-| G4 | médiane insertion ¶ vide ≤ baseline − 15 ms (baseline même jour) |
-| G5 | display/eqArr corrects sans ZWSP (patches ×2-3 → STOP) |
-| G6 | write part ≤ 10 ms @100 entrées, record undo intact |
+| Gate | Seuil GO | **Verdict mesuré (2026-06-11, test4.docx)** |
+|---|---|---|
+| G1 | K2 stable 5/5 scénarios drift | ✅ **GO** — 0 drift, y compris save+fermeture+réouverture |
+| G2 | K1 stable 5/5 | ✅ **GO** — 0 drift |
+| G3 | K2 départage 100 % des paires piégeuses | ✅ **GO** — 4/4 ; collisions K1 = les 2 prédites (x²/x₂, vec/bar) |
+| G4 | médiane insertion ¶ vide ≤ baseline − 15 ms (baseline même jour) | ⚠ **neutre** — baseline chaude 163 ms vs ultra-léger 148 ms (~15 ms, pile au seuil). L'InsertXML domine (~85 ms) dans les 2 pipelines. Le « pas fluide » initial = ancienne version installée + démarrage à froid (1er commit : 1218 ms, à traiter à part) |
+| G5 | display/eqArr corrects sans ZWSP (patches ×2-3 → STOP) | ✅ **GO** — promotion Display correcte sans ZWSP (P1b/P1d : `wdOMathDisplay, alone=True`) |
+| G6 | write part ≤ 10 ms @100 entrées, record undo intact | ✅ **GO** — write 5 ms, relecture 100/100, `recording=True` avant ET après le write (contrairement à InsertXML) |
+
+**Conclusion du gate** : faisabilité intégralement validée ; l'argument VITESSE
+est neutre. La bascule se décide sur la sobriété (plus de CC ni de caractère
+caché ; les `hygiene_orphan_delete_error E_FAIL` observés au log du jour
+disparaissent par construction) et la simplification (~AnchorHygiene + CCMeta
++ passes ZoneCleaner). Le vrai ennemi fluidité mesuré = démarrage à froid,
+chantier séparé.
 
 NO-GO G1/G2 → l'identité par contenu est impossible dans Word (ADR Limit à
 écrire) ; le canonicaliseur + fixtures restent réutilisables (conformance
