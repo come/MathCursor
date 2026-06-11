@@ -252,8 +252,20 @@ internal sealed class Forest
         }
 
         if (head.Kind == "nary")
-            foreach (var parts in Splits(i + 1, j, Vocabulary.Vocab[head.Sym!].Arity))
+        {
+            var ve = Vocabulary.Vocab[head.Sym!];
+            foreach (var parts in Splits(i + 1, j, ve.Arity))
                 outl.Add(new Node { Type = "nary", Sym = head.Sym, Spaced = head.Spaced, Parts = parts });
+            // formes courtes : jamais complétées par des trous (sinon « sum »
+            // seul perdrait son squelette complet face à \sum_□ □), et
+            // seulement à la frontière de frappe — sinon « lim x +inf »
+            // lirait (\lim x)+∞ au lieu du squelette \lim_{x\to+\infty} □
+            if (ve.Variants != null && j >= _end)
+                foreach (var v in ve.Variants)
+                    foreach (var parts in Splits(i + 1, j, v.Arity, allowHoles: false))
+                        if (v.Accept == null || v.Accept(parts))
+                            outl.Add(new Node { Type = "nary", Sym = head.Sym, Spaced = head.Spaced, Parts = parts });
+        }
 
         // opérateur infixe = sommet
         for (int k = i; k < j; k++)
@@ -263,10 +275,14 @@ internal sealed class Forest
                 if (k == j - 1 && j < _end) continue;       // trou droite : seulement à la frontière de frappe
                 if (_toks[k].Sticky && j - k - 1 != 1) continue;
                 var syms = _toks[k].Syms ?? new List<string> { _toks[k].Sym! };
+                // Choice : il restait >1 token à droite — l'opérande droite
+                // pouvait déborder (slurp) ou s'arrêter. Le Score couple ces
+                // choix entre eux (cohérence structurelle).
+                bool choice = j - k - 1 > 1;
                 foreach (var l in ParseSpan(i, k))
                     foreach (var r in ParseSpan(k + 1, j))
                         foreach (var sym in syms)
-                            outl.Add(new Node { Type = "infix", Sym = sym, Spaced = _toks[k].Spaced, Implicit = _toks[k].Implicit, Parts = new() { l, r } });
+                            outl.Add(new Node { Type = "infix", Sym = sym, Spaced = _toks[k].Spaced, Implicit = _toks[k].Implicit, Choice = choice, Parts = new() { l, r } });
             }
 
         string sg = SigOf(i, j);
@@ -275,12 +291,14 @@ internal sealed class Forest
         return outl;
     }
 
-    // découpes de [a,b) en K spans (args d'un n-aire). Complétées par des TROUS en fin.
-    private List<List<Node>> Splits(int a, int b, int K)
+    // découpes de [a,b) en K spans (args d'un n-aire). Complétées par des TROUS
+    // en fin — sauf allowHoles=false (variantes courtes) : span épuisé → échec.
+    private List<List<Node>> Splits(int a, int b, int K, bool allowHoles = true)
     {
         if (K == 0) return a == b ? new List<List<Node>> { new() } : new List<List<Node>>();
         if (a == b)
         {
+            if (!allowHoles) return new List<List<Node>>();
             var holes = new List<Node>();
             for (int t = 0; t < K; t++) holes.Add(Hole());
             return new List<List<Node>> { holes };
@@ -296,7 +314,7 @@ internal sealed class Forest
                 foreach (var x in ParseSpan(a + 1, m))
                     seq.Add(new Node { Type = "prefix", Sym = unary, Spaced = headTok.Spaced, Parts = new() { x } });
             foreach (var first in seq)
-                foreach (var rest in Splits(m, b, K - 1))
+                foreach (var rest in Splits(m, b, K - 1, allowHoles))
                 {
                     var combo = new List<Node> { first };
                     combo.AddRange(rest);

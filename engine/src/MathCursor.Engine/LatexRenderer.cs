@@ -57,6 +57,7 @@ internal static class LatexRenderer
                 return d.Render!(new[] { Child(n.Parts![0], d, cu), Render(n.Parts[1], cu) }, n);
             return d.Render!(n.Parts!.Select(c => Child(c, d, cu)).ToList(), n);
         }
-        return d.Render!(n.Parts!.Select(x => Render(x, cu)).ToList(), n); // prefix / nary
+        // prefix / nary — les n-aires dispatchent par arité (formes courtes)
+        return (d.Shape == "nary" ? d.RenderFor(n.Parts!.Count) : d.Render!)(n.Parts!.Select(x => Render(x, cu)).ToList(), n);
     }
 }

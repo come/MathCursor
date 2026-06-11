@@ -60,12 +60,33 @@ internal static class Score
         return inv;
     }
 
-    private static bool NestStrong(Node n) => IsStrong(n) && !n.Implicit;
-    private static bool ContainsNest(Node n)
+    private static bool AllAtomParts(Node n)
+    {
+        foreach (var c in Parts(n)) if (c.Type != "atom") return false;
+        return true;
+    }
+
+    // Script à opérandes atomiques (x², u_n) : une lettre habillée.
+    private static bool AtomicScript(Node n) =>
+        Decl(n) is { Sup: true } or { Sub: true } && AllAtomParts(n);
+
+    // Les décorations TIGHT (bar/vec/hat : opérande d'un seul morceau) sont
+    // visuellement atomiques — \bar{z} est une lettre décorée, pas une
+    // imbrication : elles ne déclenchent pas la pénalité de nesting (sinon
+    // « abs z-conjz » perdait la lecture large \left|z-\bar{z}\right| que
+    // « abs z+1 » propose).
+    private static bool NestStrong(Node n) =>
+        IsStrong(n) && !n.Implicit && Decl(n) is not { Tight: true };
+    // inBrackets : sous un conteneur Bracketed (fraction…), un script
+    // atomique est aplati par les accolades — x² n'y est pas une imbrication
+    // (sinon « 1/x+x2 » perd \frac{1}{x+x^2}). HORS conteneur bracketed
+    // (lim, ÷…), il compte toujours : c'est ce qui écarte les lectures
+    // absurdes \frac{\lim…1}{x} et f÷R² (mesuré, 2026-06-10).
+    private static bool ContainsNest(Node n, bool inBrackets)
     {
         if (n.Type == "atom") return false;
-        if (NestStrong(n)) return true;
-        foreach (var c in Parts(n)) if (ContainsNest(c)) return true;
+        if (NestStrong(n) && !(inBrackets && AtomicScript(n))) return true;
+        foreach (var c in Parts(n)) if (ContainsNest(c, inBrackets)) return true;
         return false;
     }
 
@@ -74,7 +95,11 @@ internal static class Score
         if (n.Type == "atom") return 0;
         int c = 0;
         foreach (var x in Parts(n)) c += Nesting(x);
-        if (NestStrong(n)) { foreach (var x in Parts(n)) if (ContainsNest(x)) { c++; break; } }
+        if (NestStrong(n))
+        {
+            bool br = Decl(n) is { Bracketed: true };
+            foreach (var x in Parts(n)) if (ContainsNest(x, br)) { c++; break; }
+        }
         return c;
     }
 
@@ -172,27 +197,83 @@ internal static class Score
         return d;
     }
 
-    // Écho de symétrie entre FRÈRES (« 1/2x + 1/2x2 ») : deux enfants dont la
-    // signature de l'un PROLONGE celle de l'autre (préfixe strict) sont la
-    // même tournure étendue par l'utilisateur — même forme de tête (/ et /)
-    // → bonus, formes divergentes (/ et ·) → malus. C'est l'analogue « à
-    // prolongement » de GlobalCoherence, qui ne couple que les signatures
-    // IDENTIQUES (1/2x + 1/2y) et laissait l'hybride
-    // \frac{1}{2x}+\frac{1}{2}x^2 gagner.
-    private static double SiblingEcho(Node n)
+    // ── Cohérence de SLURP (« la symétrie », formulation utilisateur) ──────
+    // Une fraction qui AVAIT la place de déborder (Node.Choice) a fait un
+    // CHOIX : opérande droite composite (slurp) ou atomique (minimal). Comme
+    // ModeCoherence pour R/ℝ : mélanger les choix dans une même expression
+    // coûte MODE_MIX ; un choix slurp RÉPÉTÉ obtient la remise du dupliqué
+    // (−min(Base)×(n−1), l'esprit de GlobalCoherence — un bonus fixe ne
+    // réduit pas l'écart de base, qui vaut pile le PopupGap). Les fractions
+    // SANS choix (1/2 en bord de segment) ne votent pas. Remplace les
+    // régimes géométriques SiblingEcho (prolongement/jumelles) — couvre
+    // « 1/2x + 1/2x2 », « 1/x+x2 * 1/x-x2 » ET « 1/x+x2 - 1/x-x2+x3 »
+    // sans notion de fratrie ni de longueur.
+    private static bool MinimalFrac(Node n) =>
+        n.Type != "atom" && !n.Grouped && Decl(n) is { Bracketed: true }
+        && Parts(n).Count == 2 && Parts(n)[1].Type == "atom";
+
+    // feuille la plus à gauche — le LITTÉRAL que l'œil voit en premier.
+    private static string? Leftmost(Node n)
     {
+        while (n.Type != "atom")
+        {
+            var p = n.EffectiveParts();
+            if (p.Count == 0) return null;
+            n = p[0];
+        }
+        return n.Sym;
+    }
+
+    private readonly struct FracSite
+    {
+        public readonly bool Slurp; public readonly string Key; public readonly string Sig; public readonly double B;
+        public FracSite(bool slurp, string key, string sig, double b) { Slurp = slurp; Key = key; Sig = sig; B = b; }
+    }
+
+    private static double SlurpCoherence(Node root)
+    {
+        // SITES de choix : fraction qui a débordé (Choice + opérande droite
+        // composite) = SLURP ; fraction minimale enfant gauche d'un infixe
+        // NON-espacé (le matériau à droite était slurpable) = MIN. Une
+        // fraction sans choix (bord de segment) ne vote pas.
+        List<FracSite>? sites = null;
+        void Add(Node f, bool slurp)
+        {
+            var p = Parts(f);
+            string key = (Leftmost(p[0]) ?? "?") + "/" + (Leftmost(p[1]) ?? "?");
+            (sites ??= new List<FracSite>()).Add(new FracSite(slurp, key, f.Sig ?? "", Base(f)));
+        }
+        void Walk(Node x)
+        {
+            if (x.Type == "atom") return;
+            var parts = Parts(x);
+            if (x.Type == "infix" && !x.Spaced && parts.Count == 2 && MinimalFrac(parts[0]))
+                Add(parts[0], slurp: false);
+            if (x.Choice && Decl(x) is { Bracketed: true } && parts.Count == 2 && parts[1].Type != "atom")
+                Add(x, slurp: true);
+            foreach (var c in parts) Walk(c);
+        }
+        Walk(root);
+        if (sites == null || sites.Count < 2) return 0;
+
+        // COMPARABLES = mêmes littéraux de tête (numérateur + 1re feuille du
+        // dénominateur) : l'œil voit deux « 1/x… » — \frac{3}{4} et
+        // \frac{1}{2x} n'ont rien à se dire (mesuré : un mode GLOBAL pénalise
+        // les expressions mixtes légitimes). Par paire comparable : modes
+        // mélangés → +1 ; slurps répétés à signatures DISTINCTES (les
+        // identiques sont déjà remboursées par GlobalCoherence) → remise du
+        // dupliqué −min(Base).
         double d = 0;
-        var kids = Parts(n);
-        foreach (var c in kids) d += SiblingEcho(c);
-        for (int i = 0; i < kids.Count; i++)
-            for (int k = i + 1; k < kids.Count; k++)
+        for (int i = 0; i < sites.Count; i++)
+            for (int k = i + 1; k < sites.Count; k++)
             {
-                var a = kids[i]; var b = kids[k];
-                if (a.Type == "atom" || b.Type == "atom" || a.Sig == null || b.Sig == null) continue;
-                if (a.Sig.Length == b.Sig.Length) continue; // identiques : GlobalCoherence
-                var (shorter, longer) = a.Sig.Length < b.Sig.Length ? (a, b) : (b, a);
-                if (!longer.Sig!.StartsWith(shorter.Sig!, System.StringComparison.Ordinal)) continue;
-                d += shorter.Sym == longer.Sym ? -1 : 1;
+                var a = sites[i]; var b = sites[k];
+                if (a.Key != b.Key) continue;
+                if (a.Slurp != b.Slurp) d += 1;
+                // remise du dupliqué, prudente : min des deux bases (max
+                // sur-corrige — mesuré : la paire symétrique MINIMALE de
+                // « 1/2x + 1/2x2 » sortait de la fenêtre).
+                else if (a.Slurp && a.Sig != b.Sig) d -= System.Math.Min(a.B, b.B);
             }
         return d;
     }
@@ -224,5 +305,5 @@ internal static class Score
     }
 
     public static double Cost(Node n) =>
-        Base(n) + MatrixExtra(n) + HOLE_COST * Holes(n) + GlobalCoherence(n) + ModeCoherence(n) + SiblingEcho(n) - ParentRefund(n) - DefChain(n);
+        Base(n) + MatrixExtra(n) + HOLE_COST * Holes(n) + GlobalCoherence(n) + ModeCoherence(n) + SlurpCoherence(n) - ParentRefund(n) - DefChain(n);
 }

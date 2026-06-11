@@ -18,6 +18,7 @@ internal sealed class Node
     public bool Implicit;
     public bool Grouped;
     public bool Hole;
+    public bool Choice;              // infixe qui AVAIT la place de déborder à droite (>1 token)
 
     public string? Sig;
     public string? Coh;
@@ -39,6 +40,7 @@ internal sealed class Node
         Implicit = Implicit,
         Grouped = Grouped,
         Hole = Hole,
+        Choice = Choice,
         Sig = Sig,
         Coh = Coh,
         Ai = Ai,

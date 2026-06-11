@@ -81,6 +81,13 @@ dans settings.json, case à cocher dans la fenêtre Paramètres. Relu à chaque
 tick → bascule sans redémarrage. (= mode « Manuel » du brief ergonomie ;
 le mode fin Auto/Manuel/Silent viendra si le besoin se confirme.)
 
+*Amendement 2026-06-10 (« oui vas y » — user)* : le même switch est exposé en
+**toggle ruban « Détection auto »** (groupe Conversion) pour le couper d'un
+clic pendant un cours sans maths. Ribbon `getPressed` lit `SettingsStore`,
+`onAction` persiste, et la fenêtre Paramètres resynchronise le toggle via
+`RibbonCallback.Instance.InvalidateAutoDetectToggle()`. Ctrl+Espace reste
+actif quel que soit l'état.
+
 ## Tradeoff & alternatives écartées
 
 - **Polling 200 ms permanent** (DocMath) : même réactivité mais lecture ¶ +

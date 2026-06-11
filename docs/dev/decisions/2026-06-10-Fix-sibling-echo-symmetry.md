@@ -3,7 +3,8 @@
 **Date :** 2026-06-10
 **Kind :** Fix
 **Température :** molle
-**Statut :** acté
+**Statut :** retracté
+**Superseded by :** [2026-06-10-Feat-slurp-coherence.md](2026-06-10-Feat-slurp-coherence.md)
 **Supersedes :** —
 **Lié à :** [2026-06-10-Feat-split-distance-cost-vec.md](2026-06-10-Feat-split-distance-cost-vec.md) (philosophie : le coût classe, la popup arbitre)
 

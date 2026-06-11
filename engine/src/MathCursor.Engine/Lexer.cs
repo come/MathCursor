@@ -29,7 +29,9 @@ internal static class Lexer
 
     private static readonly JoinRule[] Join =
     {
-        new() { Left = new[] { "name" }, Right = new[] { "num" }, Roles = new[] { "sup", "sub" }, Sticky = true },
+        // « x2 » → puissance SEULE (ADR 2026-06-10 sup-only : l'indice se
+        // force avec _, les suites s'écrivent u_1 — contre-cas documenté).
+        new() { Left = new[] { "name" }, Right = new[] { "num" }, Roles = new[] { "sup" }, Sticky = true },
         new() { Left = new[] { "close" }, Right = new[] { "num" }, Roles = new[] { "sup" }, Sticky = true },
         new() { Left = new[] { "unit" }, Right = new[] { "num" }, Roles = new[] { "sup" }, Sticky = true },
         new() { Left = new[] { "num" }, Right = new[] { "unit" }, Roles = new[] { "unitOp" }, Sticky = true, CrossSpace = true },
@@ -144,6 +146,10 @@ internal static class Lexer
         {
             char c = src[i];
             if (IsSpace(c)) { sawSpace = true; i++; continue; }
+            // antislash LaTeX avalé devant un mot : \sum ≡ sum, \forall ≡
+            // forall — le mot se résout ensuite par vocab + alias (les noms
+            // divergents sont des alias génériques : \infty → inf, etc.).
+            if (c == '\\' && IsAlpha(Ch(i + 1))) { i++; continue; }
             if (c == '(') { Push(new Token { Kind = "lparen" }); i++; continue; }
             if (c == ')') { Push(new Token { Kind = "rparen" }); i++; continue; }
             if (c == '[' || c == ']') { Push(new Token { Kind = "bracket", Sym = c.ToString() }); brk++; i++; continue; }

@@ -8,6 +8,16 @@ namespace MathCursor.Engine;
 // une liste à 1 élément et n = null (cf. LatexRenderer).
 internal delegate string RenderFn(IReadOnlyList<string> a, Node? n);
 
+// Variante d'arité d'un n-aire (forme courte : moins d'args que l'arité
+// canonique). Jamais complétée par des trous (ADR 2026-06-11 nary-arity-
+// variants) ; Accept = guard sur les args parsés (null = toujours accepté).
+internal sealed class NaryVariant
+{
+    public int Arity;
+    public RenderFn Render = default!;
+    public Func<IReadOnlyList<Node>, bool>? Accept;
+}
+
 internal sealed class VocabEntry
 {
     public string? Shape;          // "infix" | "prefix" | "nary" | "postfix" | "atom"
@@ -33,6 +43,15 @@ internal sealed class VocabEntry
     public List<string>? Alts;     // atom/infix : lectures multiples
     public string? Coh;            // groupe de cohérence
     public RenderFn? Render;
+    public List<NaryVariant>? Variants; // nary : arités courtes (Arity/Render = canonique)
+
+    public RenderFn RenderFor(int argc)
+    {
+        if (Variants != null)
+            foreach (var v in Variants)
+                if (v.Arity == argc) return v.Render;
+        return Render!;
+    }
 
     public VocabEntry Clone() => (VocabEntry)MemberwiseClone();
 }
@@ -108,8 +127,29 @@ internal static class Vocabulary
     private static VocabEntry Postfix(RenderFn render) => new()
     { Shape = "postfix", Class = STRONG, Looseness = POW, Render = render };
 
-    private static VocabEntry Nary(int arity, double loose, RenderFn render) => new()
-    { Shape = "nary", Arity = arity, Class = STRONG, Looseness = loose, Render = render };
+    private static VocabEntry Nary(int arity, double loose, RenderFn render, params NaryVariant[] variants) => new()
+    {
+        Shape = "nary", Arity = arity, Class = STRONG, Looseness = loose, Render = render,
+        Variants = variants.Length > 0 ? new List<NaryVariant>(variants) : null,
+    };
+
+    // ── guards des variantes courtes ────────────────────────────────────────
+    // Atome purement numérique : Sym commence par un chiffre (couvre « 1{,}5 »).
+    private static bool Numeric(Node n) =>
+        n.Type == "atom" && !n.Hole && n.Sym is { Length: > 0 } s && char.IsDigit(s[0]);
+    // Corps d'un sum/prod/lim court : tout sauf un nombre nu (protège la route
+    // de frappe vers la forme pleine « sum k 1 n f(k) »).
+    private static bool NonNumeric(Node n) => !Numeric(n);
+    // Arg différentiel d'une intégrale indéfinie : un NOM atomique (dx, dt…),
+    // pas un nombre — sinon « int 0 1 » rendrait \int 0 \, d1.
+    private static bool NameAtom(Node n) =>
+        n.Type == "atom" && !n.Hole && n.Sym is { Length: > 0 } s && !char.IsDigit(s[0]);
+    // Corps d'un lim court : doit lier plus serré que le quantificateur —
+    // « lim x +inf » reste le squelette \lim_{x\to+\infty} □ (le + explicite
+    // rend « x+∞ » parsable d'un bloc), et \lim x+\infty s'afficherait comme
+    // (\lim x)+\infty, contresens.
+    private static bool TightBody(Node n) =>
+        NonNumeric(n) && !(n.Type == "infix" && Loose(n.Sym) >= QUANT);
 
     static Vocabulary()
     {
@@ -167,6 +207,7 @@ internal static class Vocabulary
         // ── postfixes ──────────────────────────────────────────────────────
         Vocab["!"] = Postfix((a, _) => $"{a[0]}!");
         Vocab["'"] = Postfix((a, _) => $"{a[0]}'");
+        Vocab["%"] = Postfix((a, _) => $"{a[0]}\\%");
         Vocab["°"] = Postfix((a, _) => $"{a[0]}^{{\\circ}}");
         Vocab["°C"] = Postfix((a, _) => $"{a[0]}^{{\\circ}}\\mathrm{{C}}");
         Vocab["°F"] = Postfix((a, _) => $"{a[0]}^{{\\circ}}\\mathrm{{F}}");
@@ -207,6 +248,8 @@ internal static class Vocabulary
         Vocab["root"] = Nary(2, APP, (a, _) => $"\\sqrt[{a[0]}]{{{a[1]}}}");
         Vocab["floor"] = Prefix((a, _) => $"\\lfloor {a[0]}\\rfloor ");
         Vocab["ceil"] = Prefix((a, _) => $"\\lceil {a[0]}\\rceil ");
+        Vocab["pgcd"] = Fn("\\operatorname{pgcd}");
+        Vocab["ppcm"] = Fn("\\operatorname{ppcm}");
 
         // ── quantificateurs / logique ──────────────────────────────────────
         Vocab["forall"] = Quant("\\forall"); Vocab["exists"] = Quant("\\exists");
@@ -230,13 +273,24 @@ internal static class Vocabulary
         Vocab["dot"] = Nary(2, APP, (a, _) => $"\\langle {a[0]},{a[1]}\\rangle ");
 
         // ── n-aires (quantificateurs scopants) ──────────────────────────────
-        Vocab["lim"] = Nary(3, QUANT, (a, _) => $"\\lim_{{{a[0]}\\to {a[1]}}} {a[2]}");
-        Vocab["sum"] = Nary(4, QUANT, (a, _) => $"\\sum_{{{a[0]}={a[1]}}}^{{{a[2]}}} {a[3]}");
-        Vocab["prod"] = Nary(4, QUANT, (a, _) => $"\\prod_{{{a[0]}={a[1]}}}^{{{a[2]}}} {a[3]}");
-        Vocab["int"] = Nary(4, QUANT, (a, _) => $"\\int_{{{a[0]}}}^{{{a[1]}}} {a[2]} \\, d{a[3]}");
-        Vocab["iint"] = Nary(5, QUANT, (a, _) => $"\\iint_{{{a[0]}}}^{{{a[1]}}} {a[2]} \\, d{a[3]}\\,d{a[4]}");
-        Vocab["iiint"] = Nary(6, QUANT, (a, _) => $"\\iiint_{{{a[0]}}}^{{{a[1]}}} {a[2]} \\, d{a[3]}\\,d{a[4]}\\,d{a[5]}");
+        // Formes courtes (ADR 2026-06-11 nary-arity-variants) : \lim u_n,
+        // \sum_k f(k), intégrales indéfinies. Jamais de trous sur les courtes.
+        Vocab["lim"] = Nary(3, QUANT, (a, _) => $"\\lim_{{{a[0]}\\to {a[1]}}} {a[2]}",
+            new NaryVariant { Arity = 1, Render = (a, _) => $"\\lim {a[0]}", Accept = p => TightBody(p[0]) });
+        Vocab["sum"] = Nary(4, QUANT, (a, _) => $"\\sum_{{{a[0]}={a[1]}}}^{{{a[2]}}} {a[3]}",
+            new NaryVariant { Arity = 2, Render = (a, _) => $"\\sum_{{{a[0]}}} {a[1]}", Accept = p => NonNumeric(p[1]) });
+        Vocab["prod"] = Nary(4, QUANT, (a, _) => $"\\prod_{{{a[0]}={a[1]}}}^{{{a[2]}}} {a[3]}",
+            new NaryVariant { Arity = 2, Render = (a, _) => $"\\prod_{{{a[0]}}} {a[1]}", Accept = p => NonNumeric(p[1]) });
+        Vocab["int"] = Nary(4, QUANT, (a, _) => $"\\int_{{{a[0]}}}^{{{a[1]}}} {a[2]} \\, d{a[3]}",
+            new NaryVariant { Arity = 2, Render = (a, _) => $"\\int {a[0]} \\, d{a[1]}", Accept = p => NameAtom(p[1]) });
+        Vocab["iint"] = Nary(5, QUANT, (a, _) => $"\\iint_{{{a[0]}}}^{{{a[1]}}} {a[2]} \\, d{a[3]}\\,d{a[4]}",
+            new NaryVariant { Arity = 3, Render = (a, _) => $"\\iint {a[0]} \\, d{a[1]}\\,d{a[2]}", Accept = p => NameAtom(p[1]) && NameAtom(p[2]) });
+        Vocab["iiint"] = Nary(6, QUANT, (a, _) => $"\\iiint_{{{a[0]}}}^{{{a[1]}}} {a[2]} \\, d{a[3]}\\,d{a[4]}\\,d{a[5]}",
+            new NaryVariant { Arity = 4, Render = (a, _) => $"\\iiint {a[0]} \\, d{a[1]}\\,d{a[2]}\\,d{a[3]}", Accept = p => NameAtom(p[1]) && NameAtom(p[2]) && NameAtom(p[3]) });
         Vocab["binom"] = Nary(2, APP, (a, _) => $"\\binom{{{a[0]}}}{{{a[1]}}}");
+        // « k parmi n » → n en HAUT (l'oral français inverse l'écrit).
+        // bracketed : le binôme groupe déjà, pas de parenthèses sur n+1.
+        Vocab["·parmi"] = Infix(PROD, STRONG, (a, _) => $"\\binom{{{a[1]}}}{{{a[0]}}}", bracketed: true);
 
         // ── opérateurs-mots infixes ─────────────────────────────────────────
         Vocab["mod"] = Infix(PROD, STRONG, (a, _) => $"{a[0]} \\bmod {a[1]}");
@@ -248,6 +302,17 @@ internal static class Vocabulary
         Vocab["ump"] = Prefix((a, _) => $"\\mp {a[0]}");
         Vocab["parallel"] = Infix(SUM, WEAK, (a, _) => $"{a[0]} \\mathbin{{/\\!/}} {a[1]}");
         Vocab["//"] = Vocab["parallel"]; // notation symbole (le match opérateur 2-chars prime sur "/")
+        Vocab["+-"] = Vocab["pm"]; Vocab["-+"] = Vocab["mp"]; // second degré : -b +- racine delta
+
+        // ── symboles Unicode collés-copiés (énoncés, manuels) ───────────────
+        Vocab["≤"] = Vocab["<="];   // ≤
+        Vocab["≥"] = Vocab[">="];   // ≥
+        Vocab["≠"] = Vocab["!="];   // ≠
+        Vocab["×"] = Vocab["*"];    // ×
+        Vocab["÷"] = Vocab["·div"]; // ÷
+        Vocab["∘"] = Vocab["circ"]; // ∘
+        Vocab["±"] = Vocab["pm"];   // ±
+        Vocab["·"] = Vocab["."];    // · (point médian → \cdot)
         Vocab["mapsto"] = Infix(REL, WEAK, (a, _) => $"{a[0]}\\mapsto {a[1]}", cut: true, mapping: true);
 
         // ── ALIAS (lexicaux, rangés par culture) ────────────────────────────
@@ -266,10 +331,24 @@ internal static class Vocabulary
             ["cap"] = "inter", ["Inter"] = "inter",
             ["V"] = "·forallWord",
             ["exist"] = "exists", ["nexist"] = "nexists",
+            // noms LaTeX nus — « pour que les latexiens soient pas perdus »
+            // (le lexer avale aussi l'antislash : \infty ≡ infty).
+            ["infty"] = "inf", ["neq"] = "!=", ["leq"] = "<=", ["geq"] = ">=",
+            ["wedge"] = "and", ["vee"] = "or", ["cdot"] = ".", ["times"] = "*",
+            ["varnothing"] = "emptyset",
+            // divers
+            ["plusminus"] = "pm", ["angle"] = "hat",
+            ["gcd"] = "pgcd", ["lcm"] = "ppcm",
+            // sync table ZoneRefiner.DefaultMathPrefixKeywords (2026-06-11) :
+            // une zone auto-détectée étendue sur ces mots tuait la popup
+            // (moteur en erreur sur le mot inconnu).
+            ["integral"] = "int", ["lmt"] = "lim",
         };
         var aliasFrOnly = new Dictionary<string, string>
         {
             ["somme"] = "sum", ["som"] = "sum",
+            ["integrale"] = "int", ["integ"] = "int",
+            ["limite"] = "lim",
             ["racine"] = "sqrt", ["rac"] = "sqrt", ["racn"] = "root",
             ["pourtout"] = "forall",
             ["ilexiste"] = "exists", ["existe"] = "exists", ["nexiste"] = "nexists",
@@ -280,6 +359,8 @@ internal static class Vocabulary
             ["pasdans"] = "notin", ["nappartient"] = "notin", ["napp"] = "notin",
             ["rond"] = "circ", ["conj"] = "bar",
             ["module"] = "abs",
+            ["plusmoins"] = "pm",
+            ["parmi"] = "·parmi",
         };
         var aliasEnOnly = new Dictionary<string, string>(); // à enrichir
 
