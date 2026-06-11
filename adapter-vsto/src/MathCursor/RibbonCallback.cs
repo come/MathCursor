@@ -235,6 +235,29 @@ namespace MathCursor
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
+        // ---------- POC hash-source-map (groupe debug temporaire) ----------
+        // ADR 2026-06-11-Feat-hash-source-map-no-cc — sondes G1-G6, à retirer
+        // après verdict.
+
+        public void OnPocBaselineClicked(IRibbonControl control) => RunPoc("P1a", Host.Debug.HashKeyPoc.RunInsertBaseline);
+        public void OnPocNoAnchorClicked(IRibbonControl control) => RunPoc("P1b", Host.Debug.HashKeyPoc.RunInsertNoAnchor);
+        public void OnPocEqArrClicked(IRibbonControl control) => RunPoc("P1c", (app, log) => Host.Blocks.ChainEqArrPoc.Run(app, log));
+        public void OnPocSnapshotClicked(IRibbonControl control) => RunPoc("P2", Host.Debug.HashKeyPoc.RunSnapshotKeys);
+        public void OnPocVerifyClicked(IRibbonControl control) => RunPoc("P3", Host.Debug.HashKeyPoc.RunVerifyDrift);
+        public void OnPocDiscriminationClicked(IRibbonControl control) => RunPoc("P4", Host.Debug.HashKeyPoc.RunDiscrimination);
+        public void OnPocPartClicked(IRibbonControl control) => RunPoc("P5", Host.Debug.HashKeyPoc.RunPartRoundtrip);
+
+        private static void RunPoc(string name, Action<Microsoft.Office.Interop.Word.Application, Action<string>> probe)
+        {
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null) { LogDebug($"poc_{name}: app null"); return; }
+                probe(app, null);
+            }
+            catch (Exception ex) { LogDebug($"poc_{name}_error: " + ex.Message); }
+        }
+
         // ---------- Internals ----------
 
         private static string CurrentVersion()

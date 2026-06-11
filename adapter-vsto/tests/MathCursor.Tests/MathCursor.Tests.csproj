@@ -75,6 +75,10 @@
     <Compile Include="..\..\src\MathCursor\Host\Blocks\RelationLineDetector.cs" Link="adapter-sources\Host\Blocks\RelationLineDetector.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Blocks\LatexTopLevelSplit.cs" Link="adapter-sources\Host\Blocks\LatexTopLevelSplit.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Blocks\ChainComposer.cs" Link="adapter-sources\Host\Blocks\ChainComposer.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\SourceMap\EquationSource.cs" Link="adapter-sources\Host\SourceMap\EquationSource.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\SourceMap\OmmlCanonicalizer.cs" Link="adapter-sources\Host\SourceMap\OmmlCanonicalizer.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\SourceMap\SourceMapXml.cs" Link="adapter-sources\Host\SourceMap\SourceMapXml.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\SourceMap\Sha1Helper.cs" Link="adapter-sources\Host\SourceMap\Sha1Helper.cs" />
   </ItemGroup>
 
 </Project>

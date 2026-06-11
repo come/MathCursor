@@ -66,6 +66,31 @@
                   imageMso="ApplicationOptionsDialog"
                   onAction="OnSettingsClicked" />
         </group>
+        <!-- POC hash-source-map (ADR 2026-06-11-Feat-hash-source-map-no-cc) :
+             sondes G1-G6, groupe TEMPORAIRE à retirer après verdict. -->
+        <group id="MathCursorPocGroup" label="POC hash (debug)">
+          <button id="PocBaselineButton" label="P1a baseline"
+                  screentip="Insère g(x)=1/x via le pipeline ACTUEL (ZWSP+CC+Tag), timing au log. Cliquer 10× pour la médiane (G4)."
+                  size="normal" imageMso="MacroPlay" onAction="OnPocBaselineClicked" />
+          <button id="PocNoAnchorButton" label="P1b sans anchor"
+                  screentip="Insère g(x)=1/x SANS ZWSP ni CC, source en map CustomXMLParts. Timings par étape + type Display/Inline au log (G4/G5)."
+                  size="normal" imageMso="MacroPlay" onAction="OnPocNoAnchorClicked" />
+          <button id="PocEqArrButton" label="P1c eqArr nu"
+                  screentip="Bloc eqArr 3 lignes sans anchor (POC existant) — vérifier l'alignement &amp; en display (G5)."
+                  size="normal" imageMso="MacroPlay" onAction="OnPocEqArrClicked" />
+          <button id="PocSnapshotButton" label="P2 snapshot"
+                  screentip="Snapshot K1/K2 de toutes les OMaths du doc (persisté dans le docx) + timings Range.Text vs WordOpenXML."
+                  size="normal" imageMso="Camera" onAction="OnPocSnapshotClicked" />
+          <button id="PocVerifyButton" label="P3 vérif drift"
+                  screentip="Recompare les OMaths aux snapshots. À rejouer après : frappe ailleurs, caret dedans, save+reopen, copy-paste (G1/G2)."
+                  size="normal" imageMso="ReviewTrackChanges" onAction="OnPocVerifyClicked" />
+          <button id="PocDiscriminationButton" label="P4 discrimination"
+                  screentip="Insère les paires piégeuses (x² vs x₂, frac vs linéaire…) : collisions K1, départage K2 (G3)."
+                  size="normal" imageMso="Repeat" onAction="OnPocDiscriminationClicked" />
+          <button id="PocPartButton" label="P5 part roundtrip"
+                  screentip="Write/read 100 entrées en CustomXMLPart : timing + record undo intact (G6)."
+                  size="normal" imageMso="SaveAll" onAction="OnPocPartClicked" />
+        </group>
         <group id="MathCursorHelpGroup" getLabel="OnGetHelpGroupLabel">
           <button id="ReportIssueButton"
                   getLabel="OnGetReportButtonLabel"
