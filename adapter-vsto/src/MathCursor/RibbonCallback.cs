@@ -16,6 +16,20 @@ namespace MathCursor
     {
         private IRibbonUI _ribbon;
 
+        /// <summary>Dernière instance créée par VSTO — permet à la fenêtre
+        /// Paramètres de resynchroniser le toggle Détection auto du ruban.</summary>
+        internal static RibbonCallback Instance { get; private set; }
+
+        public RibbonCallback() { Instance = this; }
+
+        /// <summary>Resynchronise l'état pressé des toggles liés aux réglages
+        /// (à appeler après un changement de settings hors ruban).</summary>
+        internal void InvalidateSettingsToggles()
+        {
+            try { _ribbon?.InvalidateControl("AutoDetectToggle"); } catch { }
+            try { _ribbon?.InvalidateControl("TabValidateToggle"); } catch { }
+        }
+
         public string GetCustomUI(string ribbonID)
         {
             try
@@ -58,12 +72,20 @@ namespace MathCursor
         public string OnGetColumns4Label(IRibbonControl control) => Strings.Columns4Label;
         public string OnGetSettingsButtonLabel(IRibbonControl control) => Strings.SettingsButtonLabel;
         public string OnGetSettingsButtonScreentip(IRibbonControl control) => Strings.SettingsButtonScreentip;
+        public string OnGetAutoDetectToggleLabel(IRibbonControl control) => Strings.AutoDetectToggleLabel;
+        public string OnGetAutoDetectToggleScreentip(IRibbonControl control) => Strings.AutoDetectToggleScreentip;
+        public bool OnGetAutoDetectPressed(IRibbonControl control) => Host.Settings.SettingsStore.Current.AutoDetect;
+        public string OnGetTabValidateToggleLabel(IRibbonControl control) => Strings.TabValidateToggleLabel;
+        public string OnGetTabValidateToggleScreentip(IRibbonControl control) => Strings.TabValidateToggleScreentip;
+        public bool OnGetTabValidatePressed(IRibbonControl control) => Host.Settings.SettingsStore.Current.TabValidate;
         public string OnGetConvertButtonLabel(IRibbonControl control) => Strings.ConvertButtonLabel;
         public string OnGetConvertButtonScreentip(IRibbonControl control) => Strings.ConvertButtonScreentip;
         public string OnGetReportButtonLabel(IRibbonControl control) => Strings.ReportButtonLabel;
         public string OnGetReportButtonScreentip(IRibbonControl control) => Strings.ReportButtonScreentip;
         public string OnGetAboutButtonLabel(IRibbonControl control) => Strings.AboutButtonLabel;
         public string OnGetAboutButtonScreentip(IRibbonControl control) => Strings.AboutButtonScreentip;
+        public string OnGetTutorialButtonLabel(IRibbonControl control) => Strings.TutorialButtonLabel;
+        public string OnGetTutorialButtonScreentip(IRibbonControl control) => Strings.TutorialButtonScreentip;
 
         // ---------- Actions ----------
 
@@ -138,6 +160,36 @@ namespace MathCursor
             return 0;
         }
 
+        /// <summary>Toggle Détection auto = écrit AppSettings.AutoDetect
+        /// (persisté — même switch que la case de la fenêtre Paramètres).
+        /// Ctrl+Espace reste actif quel que soit l'état (ADR NER).</summary>
+        public void OnAutoDetectToggled(IRibbonControl control, bool pressed)
+        {
+            try
+            {
+                var s = Host.Settings.SettingsStore.Current.Clone();
+                s.AutoDetect = pressed;
+                Host.Settings.SettingsStore.Save(s);
+                LogDebug($"autodetect_toggle → {pressed}");
+            }
+            catch (Exception ex) { LogDebug("autodetect_toggle_error: " + ex.Message); }
+        }
+
+        /// <summary>Toggle « Tab valide » = AppSettings.TabValidate (persisté,
+        /// défaut OFF). Actif : Tab commit le candidat sélectionné quand la
+        /// popup est ouverte, sans propager la tabulation.</summary>
+        public void OnTabValidateToggled(IRibbonControl control, bool pressed)
+        {
+            try
+            {
+                var s = Host.Settings.SettingsStore.Current.Clone();
+                s.TabValidate = pressed;
+                Host.Settings.SettingsStore.Save(s);
+                LogDebug($"tabvalidate_toggle → {pressed}");
+            }
+            catch (Exception ex) { LogDebug("tabvalidate_toggle_error: " + ex.Message); }
+        }
+
         public void OnSettingsClicked(IRibbonControl control)
         {
             try
@@ -150,60 +202,29 @@ namespace MathCursor
             catch (Exception ex) { LogDebug("settings_clicked_error: " + ex.Message); }
         }
 
-        /// <summary>POC M0 multiligne (temporaire) : tableau invisible 2 col
-        /// avec 3 équations alignées — cf. Host/Blocks/ChainTablePoc.</summary>
-        public void OnPocChainTableClicked(IRibbonControl control)
-        {
-            try { Host.Blocks.ChainTablePoc.Run(Globals.ThisAddIn?.Application); }
-            catch (Exception ex)
-            {
-                LogDebug("poc_chain_error: " + ex.Message);
-                MessageBox.Show("POC chaîne : " + ex.Message, "MathCursor",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }
-
-        /// <summary>POC M0 multiligne (temporaire) : même chaîne en UN OMath
-        /// eqArr — cf. Host/Blocks/ChainEqArrPoc.</summary>
-        public void OnPocChainEqArrClicked(IRibbonControl control)
-        {
-            try { Host.Blocks.ChainEqArrPoc.Run(Globals.ThisAddIn?.Application); }
-            catch (Exception ex)
-            {
-                LogDebug("poc_eqarr_error: " + ex.Message);
-                MessageBox.Show("POC eqArr : " + ex.Message, "MathCursor",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }
-
-        /// <summary>POC banc undo (temporaire) : variante parsée depuis l'id
-        /// (PocUndo{1..4}Button) — cf. Host/UndoPoc.</summary>
-        public void OnPocUndoClicked(IRibbonControl control)
+        /// <summary>Réouvre le docx tutoriel installé par le setup dans
+        /// Documents\MathCursor\ (DestName universel FR/EN, cf. MathCursor.iss
+        /// + ADR 2026-05-22-Feat-tutorial-docx-generated-onboarding).</summary>
+        public void OnOpenTutorialClicked(IRibbonControl control)
         {
             try
             {
-                int variant = ParseColumnCountFromId(control?.Id);
-                Host.UndoPoc.Run(Globals.ThisAddIn?.Application, variant);
+                var path = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    "MathCursor", "MathCursor-Tutorial.docx");
+                if (!File.Exists(path))
+                {
+                    LogDebug("tutorial_missing: " + path);
+                    MessageBox.Show(
+                        Strings.TutorialMissingBody(path),
+                        Strings.TutorialMissingTitle,
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                Globals.ThisAddIn?.Application?.Documents.Open(path);
+                LogDebug("tutorial_opened");
             }
-            catch (Exception ex)
-            {
-                LogDebug("poc_undo_error: " + ex.Message);
-                MessageBox.Show("POC undo : " + ex.Message, "MathCursor",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }
-
-        /// <summary>Conformance runner du walker OMML→OMath (cf. ADR
-        /// 2026-06-10-Feat-undo-contract-omath-walker §3).</summary>
-        public void OnPocWalkerConformanceClicked(IRibbonControl control)
-        {
-            try { Host.OmathWalkerConformance.Run(Globals.ThisAddIn?.Application); }
-            catch (Exception ex)
-            {
-                LogDebug("poc_walker_error: " + ex.Message);
-                MessageBox.Show("POC walker : " + ex.Message, "MathCursor",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
+            catch (Exception ex) { LogDebug("tutorial_open_error: " + ex.Message); }
         }
 
         public void OnAboutClicked(IRibbonControl control)

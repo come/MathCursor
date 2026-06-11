@@ -60,6 +60,11 @@ namespace MathCursor.Tests.UI
             // Limites.
             { "60-limsup",                "\\limsup_{n\\to\\infty} a_n",   "Cambria Math" },
             { "61-liminf",                "\\liminf_{n\\to\\infty} a_n",   "Cambria Math" },
+
+            // Norme : \| parse mais rend une barre SIMPLE — \Vert (la subst
+            // WpfMathAdapter) doit rendre la double (retour user 2026-06-10).
+            { "70-norm-backslash-pipe",   "\\left\\|AB\\right\\|",         "Cambria Math" },
+            { "71-norm-vert",             "\\left\\Vert AB\\right\\Vert ", "Cambria Math" },
         };
 
         // Cas TextBlock pur (bypass WpfMath) pour vérifier si Cambria Math

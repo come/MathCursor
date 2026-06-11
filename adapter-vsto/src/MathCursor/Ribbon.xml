@@ -17,6 +17,26 @@
                   size="large"
                   imageMso="EquationInsertNew"
                   onAction="OnConvertClicked" />
+          <!-- Toggle détection auto (= AppSettings.AutoDetect, même switch que
+               la case des Paramètres). Off = plus de popup spontanée (cours
+               d'histoire...), Ctrl+Espace reste actif. -->
+          <toggleButton id="AutoDetectToggle"
+                        getLabel="OnGetAutoDetectToggleLabel"
+                        getScreentip="OnGetAutoDetectToggleScreentip"
+                        getPressed="OnGetAutoDetectPressed"
+                        size="large"
+                        imageMso="ControlWizards"
+                        onAction="OnAutoDetectToggled" />
+          <!-- Toggle « Tab valide » (= AppSettings.TabValidate, défaut OFF) :
+               actif, Tab commit le candidat sélectionné popup ouverte (sans
+               propager la tabulation). Cf. ADR 2026-06-10-UX-tab-validate-toggle. -->
+          <toggleButton id="TabValidateToggle"
+                        getLabel="OnGetTabValidateToggleLabel"
+                        getScreentip="OnGetTabValidateToggleScreentip"
+                        getPressed="OnGetTabValidatePressed"
+                        size="normal"
+                        imageMso="AcceptTask"
+                        onAction="OnTabValidateToggled" />
         </group>
         <group id="MathCursorLayoutGroup" getLabel="OnGetLayoutGroupLabel">
           <menu id="ColumnsMenu"
@@ -46,37 +66,6 @@
                   imageMso="ApplicationOptionsDialog"
                   onAction="OnSettingsClicked" />
         </group>
-        <!-- POC M0 multiligne (temporaire, à retirer une fois A/B tranché). -->
-        <group id="MathCursorPocGroup" label="POC">
-          <button id="PocChainTableButton"
-                  label="POC chaîne (tableau)"
-                  screentip="Insère un tableau invisible 2 colonnes avec 3 équations alignées au signe (option B du chantier multiligne). Sert au script de torture : suppression de lignes, Backspace aux bords, tableau fantôme, Ctrl+Z."
-                  size="normal"
-                  imageMso="TableInsert"
-                  onAction="OnPocChainTableClicked" />
-          <button id="PocChainEqArrButton"
-                  label="POC chaîne (eqArr)"
-                  screentip="Insère la MÊME chaîne en UN SEUL OMath multiligne (equation array natif, alignement &amp; au signe — option A-discipliné). Comparer le feel de modification avec le POC tableau : Backspace (bloc atomique), clic dedans (édition native), Ctrl+Z."
-                  size="normal"
-                  imageMso="EquationLinearFormat"
-                  onAction="OnPocChainEqArrClicked" />
-          <menu id="PocUndoMenu"
-                label="POC undo"
-                screentip="Banc d'essai groupage undo : chaque variante insère « avant [x=1/2] après » dans un custom record. Protocole : cliquer, faire UN Ctrl+Z, vérifier que tout disparaît, lire le log (sondes IsRecordingCustomRecord)."
-                size="normal"
-                imageMso="Undo">
-            <button id="PocUndo1Button" label="V1 — InsertXML direct (témoin cassé)" onAction="OnPocUndoClicked" />
-            <button id="PocUndo2Button" label="V2 — TypeText + BuildUp (témoin OK)" onAction="OnPocUndoClicked" />
-            <button id="PocUndo3Button" label="V3 — Ghost doc + FormattedText" onAction="OnPocUndoClicked" />
-            <button id="PocUndo4Button" label="V4 — OMaths.Add + Functions.Add" onAction="OnPocUndoClicked" />
-          </menu>
-          <button id="PocWalkerConformanceButton"
-                  label="POC walker (conformance)"
-                  screentip="Batterie LaTeX → walker OMML→OMath → relecture WordOpenXML → comparaison normalisée. Rapport PASS/DIFF/FALLBACK au log. À lancer dans un doc de test (insère/supprime en fin de doc)."
-                  size="normal"
-                  imageMso="ReviewCompareTwoVersions"
-                  onAction="OnPocWalkerConformanceClicked" />
-        </group>
         <group id="MathCursorHelpGroup" getLabel="OnGetHelpGroupLabel">
           <button id="ReportIssueButton"
                   getLabel="OnGetReportButtonLabel"
@@ -84,6 +73,14 @@
                   size="large"
                   imageMso="HappyFace"
                   onAction="OnReportIssueClicked" />
+          <!-- Réouvre le docx tutoriel installé dans Documents\MathCursor\
+               (nom universel FR/EN, cf. MathCursor.iss + ADR 2026-05-22). -->
+          <button id="OpenTutorialButton"
+                  getLabel="OnGetTutorialButtonLabel"
+                  getScreentip="OnGetTutorialButtonScreentip"
+                  size="normal"
+                  imageMso="FileOpen"
+                  onAction="OnOpenTutorialClicked" />
           <button id="AboutButton"
                   getLabel="OnGetAboutButtonLabel"
                   getScreentip="OnGetAboutButtonScreentip"

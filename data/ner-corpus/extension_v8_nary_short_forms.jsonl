@@ -1,0 +1,304 @@
+{"text": "Le volume vaut int cos x x.", "spans": [{"start": 15, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "n", "spans": [], "lang": "fr"}
+{"text": "On en déduit iint D f x y.", "spans": [{"start": 13, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "There exists an integer n such that u_n > M", "spans": [{"start": 36, "end": 43, "label": "MATH"}], "lang": "en"}
+{"text": "intégrale f(x) x", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "produit i a_i", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "La série intégrale f(x) x converge.", "spans": [{"start": 9, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "On note limite 1/n.", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "y", "spans": [], "lang": "fr"}
+{"text": "Let int a b f(x) x.", "spans": [{"start": 4, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "Iint 0 1 f x y", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, sum i a_i.", "spans": [{"start": 18, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Evaluate iint f x.", "spans": [{"start": 9, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "On considère iiint f.", "spans": [{"start": 13, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "5", "spans": [], "lang": "fr"}
+{"text": "We have produit", "spans": [{"start": 8, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "Somme n 1/n", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "integral", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "By definition, produit i a_i.", "spans": [{"start": 15, "end": 28, "label": "MATH"}], "lang": "en"}
+{"text": "Lim u_n", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, iint 0 +inf e^-x-y x y.", "spans": [{"start": 16, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "The interview went better than expected.", "spans": [], "lang": "en"}
+{"text": "iiint V f x y z", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculons sum", "spans": [{"start": 10, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "L'aire vaut somme", "spans": [{"start": 12, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "There exists a unique y such that g(y) = 0", "spans": [{"start": 34, "end": 42, "label": "MATH"}], "lang": "en"}
+{"text": "Pour tout x dans [0,1], x^2 <= x", "spans": [{"start": 0, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "By definition, somme n u_n.", "spans": [{"start": 15, "end": 26, "label": "MATH"}], "lang": "en"}
+{"text": "Le sprint final a été décisif.", "spans": [], "lang": "fr"}
+{"text": "We have integral", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "The paint on the wall is still wet.", "spans": [], "lang": "en"}
+{"text": "t", "spans": [], "lang": "fr"}
+{"text": "Calculer lmt x 0 1/x.", "spans": [{"start": 9, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "En somme, tout s'est bien passé.", "spans": [], "lang": "fr"}
+{"text": "integ 0 1 x dx", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout t dans R, h(t) <= 1", "spans": [{"start": 0, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer somme k f(k).", "spans": [{"start": 9, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit Pour tout t dans R, h(t) <= 1.", "spans": [{"start": 13, "end": 42, "label": "MATH"}], "lang": "fr"}
+{"text": "A large sum was donated to the school.", "spans": [], "lang": "en"}
+{"text": "On note iiint f x.", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, int 0 1 f(x) x.", "spans": [{"start": 16, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "Compute iint f(x,y) x y.", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "Calculons iint 0 1.", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "On a sum k 2^k.", "spans": [{"start": 5, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "We have limite u_n.", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "Le produit de la vente ira à l'association.", "spans": [], "lang": "fr"}
+{"text": "L'intervalle entre deux bus est de dix minutes.", "spans": [], "lang": "fr"}
+{"text": "Il pleut maintenant sur toute la côte.", "spans": [], "lang": "fr"}
+{"text": "We have somme", "spans": [{"start": 8, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "Le volume vaut Iint f x y.", "spans": [{"start": 15, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "L'aire vaut int f(x) x.", "spans": [{"start": 12, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "b", "spans": [], "lang": "fr"}
+{"text": "7", "spans": [], "lang": "fr"}
+{"text": "Calculons lim f(x).", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose prod", "spans": [{"start": 8, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculons somme", "spans": [{"start": 10, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "La dérivée de e^x est e^x", "spans": [{"start": 14, "end": 17, "label": "MATH"}, {"start": 22, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "sum", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie que Int 0 1 f(x) x.", "spans": [{"start": 15, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "Il a dormi un petit somme cet après-midi.", "spans": [], "lang": "fr"}
+{"text": "Calculons int 0 +inf e^-x x.", "spans": [{"start": 10, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "La somme versée couvre les frais de dossier.", "spans": [], "lang": "fr"}
+{"text": "sum k 2^k", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "L'aire vaut lim", "spans": [{"start": 12, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "La limite de poids est de vingt kilos par bagage.", "spans": [], "lang": "fr"}
+{"text": "int f(x) x", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "The volume equals Iiint f x y z.", "spans": [{"start": 18, "end": 31, "label": "MATH"}], "lang": "en"}
+{"text": "iint", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "iint f(x,y) x y", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "prod", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "L'aire vaut int", "spans": [{"start": 12, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Let Somme n 1/n.", "spans": [{"start": 4, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "On a sum n 1/n.", "spans": [{"start": 5, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit iiint 0 1 f x y z.", "spans": [{"start": 13, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "The derivative of tan(x) is 1+tan(x)^2", "spans": [{"start": 18, "end": 24, "label": "MATH"}, {"start": 28, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "Int f(x) x", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère somme i a_i.", "spans": [{"start": 13, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "somme n u_n", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Il existe au moins un x tel que h(x) < 0", "spans": [{"start": 32, "end": 40, "label": "MATH"}], "lang": "fr"}
+{"text": "k", "spans": [], "lang": "fr"}
+{"text": "Étudier la convergence de pour tout n >= 0, 3^n > n.", "spans": [{"start": 26, "end": 51, "label": "MATH"}], "lang": "fr"}
+{"text": "Compute prod n u_n.", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "Il existe un entier n tel que u_n > M", "spans": [{"start": 30, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "C'est un point intéressant à débattre.", "spans": [], "lang": "fr"}
+{"text": "The volume equals Int 0 1 f(x) x.", "spans": [{"start": 18, "end": 32, "label": "MATH"}], "lang": "en"}
+{"text": "L'aire vaut Pour tout x dans [0,1], x^2 <= x.", "spans": [{"start": 12, "end": 44, "label": "MATH"}], "lang": "fr"}
+{"text": "Evaluate int e^x x.", "spans": [{"start": 9, "end": 18, "label": "MATH"}], "lang": "en"}
+{"text": "Calculons lim u_n.", "spans": [{"start": 10, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "integral f(x) dx", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "On a iint 0.", "spans": [{"start": 5, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "The area equals Sum k 1 n f(k).", "spans": [{"start": 16, "end": 30, "label": "MATH"}], "lang": "en"}
+{"text": "iint 0 1 f x y", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "On a intégrale", "spans": [{"start": 5, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère integrale a b x^2 x.", "spans": [{"start": 13, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "L'aire vaut sum", "spans": [{"start": 12, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose limite u_n.", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "7", "spans": [], "lang": "fr"}
+{"text": "On vérifie que produit i a_i.", "spans": [{"start": 15, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "produit k 1 n (2k+1)", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "The derivative of cos(x) is -sin(x)", "spans": [{"start": 18, "end": 24, "label": "MATH"}, {"start": 28, "end": 35, "label": "MATH"}], "lang": "en"}
+{"text": "La primitive de cos(x) est sin(x)", "spans": [{"start": 16, "end": 22, "label": "MATH"}, {"start": 27, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "intégrale", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "iint f x", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "limite", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "iint D f x y", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "The area equals prod", "spans": [{"start": 16, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "x", "spans": [], "lang": "fr"}
+{"text": "Il existe un réel a tel que f(a) = a", "spans": [{"start": 28, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "som k u_k", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "sum n 1/n", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculons int e^x x.", "spans": [{"start": 10, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "iiint f", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "Int 0 1 f(x) x", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "L'interphone de l'immeuble est en panne.", "spans": [], "lang": "fr"}
+{"text": "iiint 0 1 f x y z", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit limite", "spans": [{"start": 13, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "On note iiint 0 1 x*y*z x y z.", "spans": [{"start": 8, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "2", "spans": [], "lang": "fr"}
+{"text": "int 0 1 f(x) x", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout n dans N, u_n <= u_n+1", "spans": [{"start": 0, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "The area equals sum k u_k.", "spans": [{"start": 16, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "iiint f x y", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "limite u_n", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "integrale", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit iiint", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "On note Iiint f x y z.", "spans": [{"start": 8, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit prod i a_i.", "spans": [{"start": 5, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "He listened to the integral recordings of Bach.", "spans": [], "lang": "en"}
+{"text": "sum k f(k)", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer Pour tout y dans R, g(y) > 0.", "spans": [{"start": 9, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie que integral a b f(x) dx.", "spans": [{"start": 15, "end": 35, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider for all m >= 1, 2^m > m.", "spans": [{"start": 9, "end": 32, "label": "MATH"}], "lang": "en"}
+{"text": "limite 1/n", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit lim v_n.", "spans": [{"start": 5, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "La dérivée de cos(x) est -sin(x)", "spans": [{"start": 14, "end": 20, "label": "MATH"}, {"start": 25, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "The volume equals produit k 1 n (2k+1).", "spans": [{"start": 18, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "Calculer prod n u_n.", "spans": [{"start": 9, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie que somme n u_n.", "spans": [{"start": 15, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "On a integral", "spans": [{"start": 5, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit integ 0 1 x dx.", "spans": [{"start": 5, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "n", "spans": [], "lang": "fr"}
+{"text": "lim f(x)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "lim v_n", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "iint f", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit Pour tout n dans N, u_n <= u_n+1.", "spans": [{"start": 13, "end": 45, "label": "MATH"}], "lang": "fr"}
+{"text": "La version intégrale du roman compte mille pages.", "spans": [], "lang": "fr"}
+{"text": "Soit iint f.", "spans": [{"start": 5, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "lmt x 0 1/x", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "La série iint 0 1 f(x,y) x y converge.", "spans": [{"start": 9, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "int 0 +inf e^-x x", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "sum k u_k", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "y", "spans": [], "lang": "fr"}
+{"text": "Calculons iint", "spans": [{"start": 10, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "By definition, Iint 0 1 f x y.", "spans": [{"start": 15, "end": 29, "label": "MATH"}], "lang": "en"}
+{"text": "L'aire vaut lim u_n = l.", "spans": [{"start": 12, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculons integral", "spans": [{"start": 10, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "sum i a_i", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose int u'(t) t.", "spans": [{"start": 8, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "The volume equals integrale 0 1 f(x) x.", "spans": [{"start": 18, "end": 38, "label": "MATH"}], "lang": "en"}
+{"text": "a", "spans": [], "lang": "fr"}
+{"text": "Étudier la convergence de produit n u_n.", "spans": [{"start": 26, "end": 39, "label": "MATH"}], "lang": "fr"}
+{"text": "lim", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "The area equals integrale", "spans": [{"start": 16, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "b", "spans": [], "lang": "fr"}
+{"text": "The volume equals prod k (1+x_k).", "spans": [{"start": 18, "end": 32, "label": "MATH"}], "lang": "en"}
+{"text": "In sum, the meeting was a success.", "spans": [], "lang": "en"}
+{"text": "int a b f(x) x", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "integrale 0 1 f(x) x", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "prod i a_i", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "On note limite x 0 f(x).", "spans": [{"start": 8, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Étudier la convergence de Somme n 1/n.", "spans": [{"start": 26, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "int f(x) dx", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "He paid in full at the print shop.", "spans": [], "lang": "en"}
+{"text": "Ce produit nettoie toutes les surfaces.", "spans": [], "lang": "fr"}
+{"text": "Par définition, sum n 1/n^2.", "spans": [{"start": 16, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit int f(x) dx.", "spans": [{"start": 13, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "pour tout n >= 0, 3^n > n", "spans": [{"start": 0, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "limite x 0 f(x)", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie que iiint f x y z.", "spans": [{"start": 15, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "somme k f(k)", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "x", "spans": [], "lang": "fr"}
+{"text": "On en déduit int", "spans": [{"start": 13, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "She finished the sprint in record time.", "spans": [], "lang": "en"}
+{"text": "intégrale 0 1 x dx", "spans": [{"start": 0, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "a", "spans": [], "lang": "fr"}
+{"text": "iint 0 1 f(x,y) x y", "spans": [{"start": 0, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Let Iint f x y.", "spans": [{"start": 4, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "On a iint 0 1 f x y.", "spans": [{"start": 5, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Iiint f x y z", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "integrale a b x^2 x", "spans": [{"start": 0, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "iint 0 +inf e^-x-y x y", "spans": [{"start": 0, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Iint f x y", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "iiint 0 1 x*y*z x y z", "spans": [{"start": 0, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit limite", "spans": [{"start": 13, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "2", "spans": [], "lang": "fr"}
+{"text": "sum n x^n", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "for all m >= 1, 2^m > m", "spans": [{"start": 0, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "Elle a peint le mur en bleu hier.", "spans": [], "lang": "fr"}
+{"text": "3", "spans": [], "lang": "fr"}
+{"text": "Sum k f(k)", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Le volume vaut Iint 0 1 f x y.", "spans": [{"start": 15, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "lim u_n", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit lmt u_n.", "spans": [{"start": 13, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "int cos x x", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose int a b f(x) x.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "On a integral f(x) dx.", "spans": [{"start": 5, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "The series For all t in R, h(t) >= -1 converges.", "spans": [{"start": 11, "end": 37, "label": "MATH"}], "lang": "en"}
+{"text": "int u'(t) t", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "int 2x+1 x", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "L'aire vaut intégrale", "spans": [{"start": 12, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider int f(x) dx.", "spans": [{"start": 9, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "5", "spans": [], "lang": "fr"}
+{"text": "We have somme k f(k).", "spans": [{"start": 8, "end": 20, "label": "MATH"}], "lang": "en"}
+{"text": "By definition, integral a b f(x) dx.", "spans": [{"start": 15, "end": 35, "label": "MATH"}], "lang": "en"}
+{"text": "Consider lim v_n.", "spans": [{"start": 9, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "L'aire vaut Sum k 1 n f(k).", "spans": [{"start": 12, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "For all y in R, g(y) > 0", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "Le saint patron du village est fêté en mai.", "spans": [], "lang": "fr"}
+{"text": "iiint", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculons som k u_k.", "spans": [{"start": 10, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "u", "spans": [], "lang": "fr"}
+{"text": "L'aire vaut integrale f(x) x.", "spans": [{"start": 12, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "integrale f(x) x", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "There is a weight limit on this bridge.", "spans": [], "lang": "en"}
+{"text": "Le volume vaut int x^2 x.", "spans": [{"start": 15, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "lmt u_n", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "Étudier la convergence de int 2x+1 x.", "spans": [{"start": 26, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "La série Int f(x) x converge.", "spans": [{"start": 9, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "int x^2 x", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère sum k f(k).", "spans": [{"start": 13, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "prod k (1+x_k)", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Pour tout y dans R, g(y) > 0", "spans": [{"start": 0, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "The volume equals integrale f(x) x.", "spans": [{"start": 18, "end": 34, "label": "MATH"}], "lang": "en"}
+{"text": "int e^x x", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "iint 0", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Il existe un unique y tel que g(y) = 0", "spans": [{"start": 30, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "We have iiint f x.", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "Let iiint 0 1 x*y*z x y z.", "spans": [{"start": 4, "end": 25, "label": "MATH"}], "lang": "en"}
+{"text": "L'aire vaut lim", "spans": [{"start": 12, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "We have limite", "spans": [{"start": 8, "end": 14, "label": "MATH"}], "lang": "en"}
+{"text": "Étudier la convergence de intégrale 0 1 x dx.", "spans": [{"start": 26, "end": 44, "label": "MATH"}], "lang": "fr"}
+{"text": "Prod i a_i", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "On a produit", "spans": [{"start": 5, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "On note Prod i a_i.", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "L'aire vaut integrale", "spans": [{"start": 12, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose iiint f x y.", "spans": [{"start": 8, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "For all t in R, h(t) >= -1", "spans": [{"start": 0, "end": 26, "label": "MATH"}], "lang": "en"}
+{"text": "iiint f x y z", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit Sum k f(k).", "spans": [{"start": 5, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "iint f x y", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère prod k (1+x_k).", "spans": [{"start": 13, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit integrale 0 1 f(x) x.", "spans": [{"start": 13, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "Sum k 1 n f(k)", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère sum n x^n.", "spans": [{"start": 13, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "The product launch is scheduled for May.", "spans": [], "lang": "en"}
+{"text": "Il a écouté l'intégrale des symphonies de Beethoven.", "spans": [], "lang": "fr"}
+{"text": "Calculons prod", "spans": [{"start": 10, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose produit k 1 n (2k+1).", "spans": [{"start": 8, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "The area equals sum", "spans": [{"start": 16, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "prod n u_n", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider iiint 0 1 f x y z.", "spans": [{"start": 9, "end": 26, "label": "MATH"}], "lang": "en"}
+{"text": "lim u_n = l", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "iiint f x", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "By definition, lim u_n.", "spans": [{"start": 15, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "Compute For all y in R, g(y) > 0.", "spans": [{"start": 8, "end": 32, "label": "MATH"}], "lang": "en"}
+{"text": "Son maintien était irréprochable pendant l'oral.", "spans": [], "lang": "fr"}
+{"text": "Par définition, Lim u_n.", "spans": [{"start": 16, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit produit", "spans": [{"start": 13, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère iint f(x,y) x y.", "spans": [{"start": 13, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "3", "spans": [], "lang": "fr"}
+{"text": "On en déduit iiint V f x y z.", "spans": [{"start": 13, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Par définition, iint 0 1 x+y x y.", "spans": [{"start": 16, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "sum n 1/n^2", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "int", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "By definition, sum n 1/n.", "spans": [{"start": 15, "end": 24, "label": "MATH"}], "lang": "en"}
+{"text": "On pose pour tout k >= 2, k^2 > k.", "spans": [{"start": 8, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "iint 0 1 x+y x y", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculons integrale", "spans": [{"start": 10, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "produit n u_n", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "pour tout k >= 2, k^2 > k", "spans": [{"start": 0, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit iiint 0 1 f.", "spans": [{"start": 13, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "The series sum n 1/n^2 converges.", "spans": [{"start": 11, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "t", "spans": [], "lang": "fr"}
+{"text": "On pose iint", "spans": [{"start": 8, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "iint 0 1", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "The volume equals limite 1/n.", "spans": [{"start": 18, "end": 28, "label": "MATH"}], "lang": "en"}
+{"text": "J'ai éteint la lumière avant de sortir.", "spans": [], "lang": "fr"}
+{"text": "produit", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "somme i a_i", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit lim 1/n.", "spans": [{"start": 13, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "k", "spans": [], "lang": "fr"}
+{"text": "u", "spans": [], "lang": "fr"}
+{"text": "This is an interesting point indeed.", "spans": [], "lang": "en"}
+{"text": "lim 1/n", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "iiint 0 1 f", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose iiint", "spans": [{"start": 8, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "On vérifie que iint f x.", "spans": [{"start": 15, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "Évaluer iint f x y.", "spans": [{"start": 8, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "somme", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "On en déduit sum k u_k.", "spans": [{"start": 13, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "integral a b f(x) dx", "spans": [{"start": 0, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "We have iint 0 1 f x y.", "spans": [{"start": 8, "end": 22, "label": "MATH"}], "lang": "en"}
+{"text": "The integral of cos(x) is sin(x)", "spans": [{"start": 16, "end": 22, "label": "MATH"}, {"start": 26, "end": 32, "label": "MATH"}], "lang": "en"}
+{"text": "Il connaît ses limites en escalade.", "spans": [], "lang": "fr"}

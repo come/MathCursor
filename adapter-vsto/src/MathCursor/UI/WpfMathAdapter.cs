@@ -209,6 +209,10 @@ namespace MathCursor.UI
             // arrive ici avec un \mathbin{/\!/} (cas niché \frac{…}), on
             // dégrade en ∥ vertical — \mathbin et \! inconnus de WpfMath.
             ("\\mathbin{/\\!/}", "\\parallel "),
+            // Norme ‖x‖ : WpfMath PARSE \| mais le rend en barre SIMPLE
+            // (retour user 2026-06-10) — \Vert rend la vraie double barre.
+            // Couvre aussi \left\| / \right\| (remplacement dans la chaîne).
+            ("\\|", "\\Vert "),
             // Non-appartenance : \notin inconnu → composition \not\in.
             ("\\notin", "\\not\\in"),
             // Intégrales multiples AVEC bornes (\iint_{a}^{b}) : le ∬ Unicode

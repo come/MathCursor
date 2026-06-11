@@ -30,6 +30,12 @@ namespace MathCursor.Host.Settings
         /// 2026-06-10-Feat-ner-auto-detection-debounce.</summary>
         public bool AutoDetect { get; set; } = true;
 
+        /// <summary>Tab valide le candidat sélectionné (= le 1er sans nav)
+        /// quand la popup est ouverte, sans propager le Tab. Défaut OFF :
+        /// Tab reste une tabulation Word normale. Cf. ADR
+        /// 2026-06-10-UX-tab-validate-toggle.</summary>
+        public bool TabValidate { get; set; }
+
         /// <summary>Preset moteur de la culture de base.</summary>
         public EngineCulture BaseCulture =>
             Culture == CultureUs ? EngineCulture.Us : EngineCulture.Fr;

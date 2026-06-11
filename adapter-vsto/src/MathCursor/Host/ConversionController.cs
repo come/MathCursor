@@ -493,9 +493,19 @@ namespace MathCursor.Host
         {
             try
             {
+                // Screenshot AVANT d'ouvrir le dialog (même ordre validé que
+                // OnReportIssueClicked côté ruban) : la popup de suggestion
+                // visible fait partie du contexte du bug, le dialog lui ne
+                // doit JAMAIS être dans l'image. Sans cette pré-capture, le
+                // fallback de FeedbackDialog capture au moment d'Envoyer,
+                // dialog ouvert en plein milieu de l'écran.
+                byte[] preScreenshot = null;
+                try { preScreenshot = FeedbackBundle.CaptureScreenshotPng(); } catch { }
                 var report = _buildFeedbackReport?.Invoke() ?? new Feedback.FeedbackReport();
                 report.NerText = _zone?.Text ?? "";
                 report.RecognizedFormula = _popup?.SelectedLatex ?? "";
+                if (preScreenshot != null && preScreenshot.Length > 0)
+                    report.ScreenshotPngBase64 = Convert.ToBase64String(preScreenshot);
                 var sender = Feedback.FeedbackSenderFactory.Create();
                 new FeedbackDialog(report, sender).ShowDialog();
             }

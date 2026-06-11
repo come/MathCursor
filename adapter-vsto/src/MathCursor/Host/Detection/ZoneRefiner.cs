@@ -25,12 +25,28 @@ namespace MathCursor.Host.Detection
             new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "lim", "limite", "lmt",
-                "sqrt", "rac", "racine",
-                "int", "integrale", "integ", "integral",
-                "sum", "somme",
-                "forall", "qq", "qqe",
-                "exists", "existe",
+                "sqrt", "rac", "racine", "racn", "root",
+                // iint/iiint : absents du corpus NER — le modèle détecte la
+                // queue (« f x y ») sans le mot-clé, l'extension arrière le
+                // récupère (retour user 2026-06-11).
+                "int", "iint", "iiint", "integrale", "integ", "integral",
+                "sum", "somme", "som", "prod", "produit",
+                "forall", "qq", "qqe", "pourtout",
+                "exists", "existe", "ilexiste",
                 "vec", "vect", "vecteur",
+                // Sync vocabulaire moteur 2026-06-10. La table est insensible
+                // à la casse : « Norm u » (autocapitalisé par Word — cellules
+                // du tuto = débuts de phrase) marche dès que « norm » est là.
+                "norm", "abs", "module", "conj",
+                "cos", "sin", "tan", "ln", "log", "exp",
+                "angle", "pgcd", "ppcm", "binom",
+                "floor", "ceil",
+                // lettres grecques (« pi x », « Delta = … » : la popup ne se
+                // déclenchait pas, retour tuto 2026-06-10)
+                "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta",
+                "theta", "iota", "kappa", "lambda", "mu", "nu", "xi",
+                "omicron", "pi", "rho", "sigma", "tau", "upsilon", "phi",
+                "chi", "psi", "omega",
             };
 
         /// <summary>

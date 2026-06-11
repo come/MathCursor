@@ -28,11 +28,31 @@ de l'entraînement, dans le notebook (`tokenize_and_align`).
 | `extension_en.jsonl` | 1000 lignes EN | Extension synthétique EN équivalente |
 | `dataset_v2_all.jsonl` | ~8200 lignes | Concat de tout (train + val + test + extensions) |
 
-Les fichiers `extension_v3_*.jsonl` seront ajoutés par les scripts de
-génération v3 (voir `tools/ner-training/build_v3_*.py`) :
+Les fichiers `extension_v3_*.jsonl` et suivants sont générés par les scripts
+`tools/ner-training/build_v*.py` (un script par extension, sauf v7 dont le
+script n'a pas été retrouvé lors du rapatriement DocMath → MathCursor) :
 - `extension_v3_fixtures.jsonl` — fixtures `specs/test-fixtures/phase1-zone-detection.json`
 - `extension_v3_superscript2.jsonl` — cas du caractère AZERTY `²`
 - `extension_v3_false_positives.jsonl` — contre-exemples pour réduire les FP
+- `extension_v4_keywords.jsonl` — keyword math en tête de zone (somme, frac…)
+- `extension_v5_quant_letters.jsonl` — quantificateurs lettres (V x, E x…)
+- `extension_v6_recent_features.jsonl` + `v6_1_targeted` — vecteurs, coordonnées
+- `extension_v7_conjunction_at_start.jsonl` — conjonction en début de zone
+- `extension_v8_nary_short_forms.jsonl` — **iint/iiint (0 occurrence avant v8),
+  formes courtes des n-aires (`sum k f(k)`, `int f(x) x`, `lim u_n`), mots-clés
+  NUS en fin de frappe (`int` seul → squelette, parité avec `lim`),
+  autocapitalisation Word (`Iint 0 1…`). Rev2 (post-bench du 2026-06-11,
+  gold distilmult tombé à 0.9323) : + conventions gold (quantifié français =
+  UN span, quantifieur 100 % prose = formule seule, deux formules = deux
+  spans) + négatifs token-seul (`x`/`2` seuls ≠ math — la rev1 faisait
+  prédire `x`@0.91). Rev3 : + variantes ALIAS moteur (integrale/intégrale/
+  integ/integral, limite/lmt, produit/som — sync Vocabulary 2026-06-11,
+  `produit` était un chemin mort moteur+refiner). 304 lignes. Baseline
+  distilmult-v5 sur rev3 : F1 0.865 (P 0.933, R 0.806, FN=50) — cible
+  post-retrain ≥ 0.95 ET gold ≥ 0.99.
+  ⚠️ Le moteur CRASHE sur les accents (« caractère inattendu: é ») : les
+  positifs `intégrale …` (déjà dans v4) font des zones NER que le moteur ne
+  sait pas lire tant que le lexer n'a pas de tolérance aux diacritiques.
 
 ## Provenance
 

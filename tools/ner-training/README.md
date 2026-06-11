@@ -13,6 +13,29 @@ Colab (GPU T4 gratuit) avec les .jsonl de `data/ner-corpus/`.
 | `build_v3_fixtures.py` | v3 — convertit `specs/test-fixtures/phase1-zone-detection.json` en JSONL |
 | `build_v3_superscript2.py` | v3 — génère les cas `x²`, `(x+1)²`… (absents du corpus v2) |
 | `build_v3_false_positives.py` | v3 — génère des contre-exemples pour réduire les faux positifs |
+| `build_v4_keywords.py` | v4 — keyword math en tête de zone inclus dans le span (somme, frac…) |
+| `build_v5_quant_letters.py` | v5 — quantificateurs lettres |
+| `build_v6_recent_features.py` / `build_v6_1_targeted.py` | v6 — vecteurs, coordonnées |
+| `build_regression_v1_gold.py` | corpus gold du test F1 anti-rechute (`MathNerInferenceTests`) |
+| `build_v8_nary_short_forms.py` | v8 — iint/iiint, formes courtes n-aires, mots-clés nus, autocap Word (2026-06-11) |
+
+> Dossier rapatrié de `D:\Software\DocMath\tools\ner-training` le 2026-06-11.
+> Le script de `extension_v7_conjunction_at_start.jsonl` n'a pas été retrouvé
+> (l'extension existe dans `data/ner-corpus/`, le générateur est perdu).
+
+## Quel notebook pour ré-entraîner ?
+
+**Le modèle déployé (`distilmult-v5`, DistilBERT multilingue WordPiece) sort de
+`train_mathcursor_benchmark.ipynb`** — c'est lui qu'il faut relancer pour un
+retrain de prod (il entraîne XLM-R + DistilBERT, compare, et zippe le gagnant
+en `mathcursor-ner-v6-<short>.zip`). Le notebook « principal » ci-dessous est
+la baseline XLM-R historique. Les deux sont à jour corpus v8 (2026-06-11) :
+déposer TOUS les `.jsonl` de `data/ner-corpus/` dans le Drive, la cellule 1
+échoue si un fichier manque.
+
+Après retrain : dézipper en `distilmult-v6` et bumper le nom de dossier dans
+`ThisAddIn.TryFindModelDir` + `NerCorpusFixture` (ils cherchent `distilmult-v5`
+en dur), puis relancer `MathNerInferenceTests` (seuils F1 anti-rechute).
 
 ## Lancer un entraînement (notebook principal)
 

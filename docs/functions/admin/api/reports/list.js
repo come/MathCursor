@@ -35,8 +35,15 @@ export async function onRequestGet({ env, request }) {
     if (hit) return hit;
   }
 
-  // 1) LIST via API REST (R2 binding ne supporte pas list avec metadata size complète)
-  const objects = await listAllObjects(env);
+  // 1) LIST via API REST (R2 binding ne supporte pas list avec metadata size complète).
+  // try/catch obligatoire : sans lui, un token expiré remonte en exception
+  // worker → page d'erreur Cloudflare 1101 illisible côté dashboard.
+  let objects;
+  try {
+    objects = await listAllObjects(env);
+  } catch (e) {
+    return jsonError(`Listing R2 inaccessible : ${e.message}`, 502);
+  }
 
   // Set des PNG keys connues pour tester l'existence rapide
   const pngKeys = new Set(objects.filter(o => o.key.endsWith('.png')).map(o => o.key));

@@ -54,7 +54,7 @@
 
         <div class="cta-row" style="margin: 24px 0 40px;">
           <a href="/download/latest.exe" class="button button--primary" download data-i18n="dl_cta_latest">
-            Télécharger la dernière version (0.5.8)
+            Télécharger la dernière version (0.7.1)
           </a>
           <a href="index.html#installation" class="button button--secondary" data-i18n="dl_cta_guide">
             Guide d'installation
@@ -64,7 +64,37 @@
         <h2 data-i18n="dl_history_h">Historique des versions</h2>
 
         <article class="card" style="margin-bottom: 20px;">
-          <h3>0.5.8 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_058_date">— 7 mai 2026</span></h3>
+          <h3>0.7.1 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_071_date">— 11 juin 2026</span></h3>
+          <p data-i18n="dl_071_intro"><strong>Moteur de reconnaissance entièrement réécrit</strong>, validé par un corpus de 360+ cas de test, avec un système d'alias multilingue, de nouveaux symboles lycée, et un tutoriel interactif pour démarrer.</p>
+          <ul>
+            <li data-i18n="dl_071_1"><strong>Moteur réécrit de zéro</strong> — propositions plus cohérentes sur tous les domaines du lycée :
+              <ul>
+                <li><em>Fractions</em> : <code>1/x+1</code>, <code>x+1 / x+2</code></li>
+                <li><em>Puissances et indices</em> : <code>x2</code> → x², <code>U_n+1</code></li>
+                <li><em>Lettres grecques</em> : <code>pi</code>, <code>Delta</code>, <code>2pir</code></li>
+                <li><em>Racines et fonctions</em> : <code>sqrt x</code>, <code>cos x+1</code>, <code>e^x</code></li>
+                <li><em>Vecteurs et géométrie</em> : <code>vec AB</code>, <code>norm vec AB</code>, <code>(AB) // (CD)</code>, <code>angle ABC</code></li>
+                <li><em>Ensembles et logique</em> : <code>x dans R</code>, <code>pourtout x</code>, <code>A union B</code>, <code>R/{-1}</code></li>
+                <li><em>Intervalles</em> : <code>[0;1]</code>, <code>]0;1[</code>, <code>[0;1] U [2;3]</code></li>
+                <li><em>Suites et limites</em> : <code>lim n inf u_n = 0</code>, <code>lim x 0+ 1/x = +inf</code></li>
+                <li><em>Sommes, intégrales, dénombrement</em> : <code>sum k 1 n f(k)</code>, <code>int 0 1 f(x) x</code>, <code>k parmi n</code>, <code>pgcd(12,18)</code></li>
+                <li><em>Nombres complexes</em> : <code>conjz</code>, <code>module z</code>, <code>rexp(itheta)</code></li>
+                <li><em>Nombres, unités, dérivées</em> : <code>4,5 cm</code>, <code>5 m/s</code>, <code>50%</code>, <code>f'(x)</code></li>
+                <li><em>Matrices</em> : <code>(a,b,c;d,e,f)</code>, <code>(a;b;c)</code></li>
+              </ul>
+            </li>
+            <li data-i18n="dl_071_2"><strong>Alias multilingues</strong> : chaque notion s'écrit en français comme en anglais — <code>somme</code> ≡ <code>sum</code>, <code>pourtout</code> ≡ <code>forall</code>, <code>racine</code> ≡ <code>sqrt</code>… La majuscule de début de phrase est tolérée (<code>Somme</code> → somme), et les espaces insécables que Word insère en typographie française ne cassent plus la reconnaissance.</li>
+            <li data-i18n="dl_071_3"><strong>Entrée LaTeX et Unicode</strong> : si tu connais LaTeX, ça marche directement — <code>\sum</code>, <code>\forall</code>, <code>leq</code>, <code>infty</code>, <code>neq</code>, <code>times</code>… avec ou sans antislash. Les symboles collés depuis un autre document (≤ ≥ ≠ × ÷ ±) sont reconnus aussi.</li>
+            <li data-i18n="dl_071_4"><strong>Symboles lycée complétés</strong> : <code>+-</code> → ±, <code>angle ABC</code> → angle chapeau, <code>pgcd</code>/<code>ppcm</code>, <code>%</code>, et les objets géométriques <code>(AB)</code> droite, <code>[AB]</code> segment.</li>
+            <li data-i18n="dl_071_5"><strong>Paramètres et mise en page</strong> : fenêtre Paramètres avec culture FR/US (virgule décimale, séparateur d'intervalle, matrices <code>( )</code>/<code>[ ]</code>), retour du menu Colonnes, et toggle « Tab valide » (opt-in) pour valider la proposition au Tab.</li>
+            <li data-i18n="dl_071_6"><strong>Tutoriel interactif</strong> : un document Word de prise en main (16 sections, 66 exercices — chaque exemple garanti par les tests du moteur) s'ouvre à la fin de l'installation, et se rouvre à tout moment via le bouton « Réouvrir le tutoriel » du ruban.</li>
+            <li data-i18n="dl_071_7"><strong>Performances revues pour les gros documents</strong> : l'add-in reste fluide sur des cours de 100 pages et plus — plus de ralentissement de la frappe au fil du document.</li>
+          </ul>
+          <a href="/download/MathCursor-Setup-0.7.1.exe" class="button button--secondary" download data-i18n="dl_071_btn">Télécharger 0.7.1</a>
+        </article>
+
+        <article class="card" style="margin-bottom: 20px;">
+          <h3>0.5.8<span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_058_date">— 7 mai 2026</span></h3>
           <p data-i18n="dl_058_intro">Hotfix pour le crash au démarrage sur Word 32 bits, log de diagnostic, et fix de duplication du marker (<code>{</code>, <code>=</code>, <code>&lt;=&gt;</code>) en cas d'édition/redo.</p>
           <ul>
             <li data-i18n="dl_058_1"><strong>Fix crash au démarrage Word 32 bits</strong> : résolution robuste du chemin natif ONNX (multi-candidats + copie de secours dans le dossier de l'add-in) pour les configurations où le sous-dossier <code>onnxruntime-x86</code> n'était pas trouvé.</li>
@@ -72,7 +102,7 @@
             <li data-i18n="dl_058_3"><strong>Visual C++ Redist redéployés systématiquement</strong> : l'installer relance les redists x86 + x64 à chaque mise à jour (silencieux, no-op si déjà à jour).</li>
             <li data-i18n="dl_058_4"><strong>Fix duplication du marker en édit/redo</strong> : éditer puis revalider une chaîne <code>=</code> / <code>&lt;=&gt;</code> ou un système <code>{</code> ne duplique plus le caractère marker en début de ligne.</li>
           </ul>
-          <a href="/download/MathCursor-Setup-0.5.8.exe" class="button button--secondary" download data-i18n="dl_058_btn">Télécharger 0.5.8</a>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.7.1 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -112,7 +142,7 @@
             <li data-i18n="dl_055_2"><strong>Plus de WhatsApp / email manuel</strong> : le bundle (logs + source brute + LaTeX rendu) est packagé et envoyé automatiquement. Toujours opt-in : on n'envoie rien sans ton clic explicite sur le bouton.</li>
             <li data-i18n="dl_055_3"><strong>Confidentialité préservée</strong> : aucun contenu du document n'est envoyé — uniquement la zone math en cours et les logs techniques nécessaires au diagnostic.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.8 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.7.1 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -128,7 +158,7 @@
             <li data-i18n="dl_054_7"><strong>Fix NER post-équation</strong> : quand une équation est déjà placée avant, les conjonctions (<code>et</code>, <code>donc</code>…) ne sont plus aspirées dans la zone math suivante.</li>
             <li data-i18n="dl_054_8"><strong>Fix fonction trigo + exposant</strong> : <code>cos2(x)+1</code> rend <code>$\cos(x)^2+1$</code> sans aspirer la suite.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.8 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.7.1 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -142,7 +172,7 @@
             <li data-i18n="dl_053_5"><strong>Désambiguïsation popup</strong> : <code>f(1, 2)</code> propose function call (défaut) ou vecteur en alt ; <code>u*v</code> propose <code>u·v</code> (défaut) ou <code>$\vec{u} \cdot \vec{v}$</code> (produit scalaire) en alt.</li>
             <li data-i18n="dl_053_6"><strong>Fix critique installer</strong> : déploiement de la DLL native <code>onnxruntime.dll</code> qui manquait sur certaines machines (l'add-in plantait au démarrage avec une <code>TypeInitializationException</code>).</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.8 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.7.1 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -151,7 +181,7 @@
             <li data-i18n="dl_05x_1"><strong>0.5.2</strong> : fix critique <code>\int</code> rendu <code>∈t</code> au lieu de <code>∫</code>. Ordre des règles dans <code>LatexToUnicodeMath</code> qui appliquait <code>\in → ∈</code> avant <code>\int → ∫</code>.</li>
             <li data-i18n="dl_05x_2"><strong>0.5.1</strong> : numéro de version dynamique dans le ruban Word, icône « Signaler » distincte, ruban en français/anglais selon la locale Word.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.8 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.7.1 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -170,7 +200,7 @@
             <li data-i18n="dl_050_10"><strong>ABC → angle / triangle</strong> en désambig.</li>
             <li data-i18n="dl_050_11"><strong>Fix NBSP</strong> : les espaces insécables collés par Word ne cassent plus la conversion.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.8 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.7.1 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -182,7 +212,7 @@
             <li data-i18n="dl_040_3"><strong>Détection plus précise</strong> : nouveau modèle NER (DistilBERT-multilingual) entraîné sur corpus enrichi.</li>
             <li data-i18n="dl_040_4"><strong>Compat matérielle élargie</strong> : Bay Trail 2014+, VC++ Redist embarqué.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.5.8 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.7.1 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -232,7 +262,18 @@
         dl_h1: "Downloads",
         dl_lead: "MathCursor installer for Windows + Word Desktop. The <code>latest.exe</code> link always points to the current stable release.",
         dl_beta_banner: "<strong>Beta in progress:</strong> hit a bug or a case that doesn't work? Click <strong>\"Report an issue\"</strong> in the MathCursor popup — one click is enough, your feedback is sent automatically and helps us fix things fast.",
-        dl_cta_latest: "Download the latest version (0.5.8)",
+        dl_cta_latest: "Download the latest version (0.7.1)",
+
+        dl_071_date: "— June 11, 2026",
+        dl_071_intro: "<strong>Completely rewritten recognition engine</strong>, validated by a corpus of 360+ test cases, with a multilingual alias system, new high-school symbols, and an interactive tutorial to get started.",
+        dl_071_1: "<strong>Engine rewritten from scratch</strong> — more consistent suggestions across every high-school domain:<ul><li><em>Fractions</em>: <code>1/x+1</code>, <code>x+1 / x+2</code></li><li><em>Powers and subscripts</em>: <code>x2</code> → x², <code>U_n+1</code></li><li><em>Greek letters</em>: <code>pi</code>, <code>Delta</code>, <code>2pir</code></li><li><em>Roots and functions</em>: <code>sqrt x</code>, <code>cos x+1</code>, <code>e^x</code></li><li><em>Vectors and geometry</em>: <code>vec AB</code>, <code>norm vec AB</code>, <code>(AB) // (CD)</code>, <code>angle ABC</code></li><li><em>Sets and logic</em>: <code>x in R</code>, <code>forall x</code>, <code>A union B</code>, <code>R/{-1}</code></li><li><em>Intervals</em>: <code>[0;1]</code>, <code>]0;1[</code>, <code>[0;1] U [2;3]</code></li><li><em>Sequences and limits</em>: <code>lim n inf u_n = 0</code>, <code>lim x 0+ 1/x = +inf</code></li><li><em>Sums, integrals, counting</em>: <code>sum k 1 n f(k)</code>, <code>int 0 1 f(x) x</code>, <code>binom n k</code>, <code>pgcd(12,18)</code></li><li><em>Complex numbers</em>: <code>conjz</code>, <code>module z</code>, <code>rexp(itheta)</code></li><li><em>Numbers, units, derivatives</em>: <code>4,5 cm</code>, <code>5 m/s</code>, <code>50%</code>, <code>f'(x)</code></li><li><em>Matrices</em>: <code>(a,b,c;d,e,f)</code>, <code>(a;b;c)</code></li></ul>",
+        dl_071_2: "<strong>Multilingual aliases</strong>: every notion can be typed in French or English — <code>somme</code> ≡ <code>sum</code>, <code>pourtout</code> ≡ <code>forall</code>, <code>racine</code> ≡ <code>sqrt</code>… Sentence-start capitals are tolerated (<code>Somme</code> → somme), and the non-breaking spaces Word inserts in French typography no longer break recognition.",
+        dl_071_3: "<strong>LaTeX and Unicode input</strong>: if you know LaTeX, it just works — <code>\\sum</code>, <code>\\forall</code>, <code>leq</code>, <code>infty</code>, <code>neq</code>, <code>times</code>… with or without backslash. Symbols pasted from another document (≤ ≥ ≠ × ÷ ±) are recognized too.",
+        dl_071_4: "<strong>High-school symbols completed</strong>: <code>+-</code> → ±, <code>angle ABC</code> → hat angle, <code>pgcd</code>/<code>ppcm</code> (gcd/lcm), <code>%</code>, and geometric objects <code>(AB)</code> line, <code>[AB]</code> segment.",
+        dl_071_5: "<strong>Settings and layout</strong>: Settings window with FR/US culture (decimal comma, interval separator, matrices <code>( )</code>/<code>[ ]</code>), the Columns menu is back, and an opt-in « Tab confirms » toggle to commit the suggestion with Tab.",
+        dl_071_6: "<strong>Interactive tutorial</strong>: a getting-started Word document (16 sections, 66 exercises — every example guaranteed by the engine's tests) opens at the end of installation, and can be reopened any time via the « Reopen the tutorial » ribbon button.",
+        dl_071_7: "<strong>Performance reworked for large documents</strong>: the add-in stays smooth on lessons of 100 pages and more — no more typing slowdown as the document grows.",
+        dl_071_btn: "Download 0.7.1",
 
         dl_058_date: "— May 7, 2026",
         dl_058_intro: "Hotfix for the Word 32-bit startup crash, with a diagnostic log, plus a fix for the marker character (<code>{</code>, <code>=</code>, <code>&lt;=&gt;</code>) being duplicated on edit/redo.",
@@ -329,7 +370,7 @@
         dl_01x_date: "— April 22-23, 2026",
         dl_01x_1: "First internal betas: NER zone detection, popup, OMath insertion, Ctrl+Space, report-an-issue, alignment, render fixes.",
 
-        dl_retired: "Archived version — use 0.5.8 which includes these changes.",
+        dl_retired: "Archived version — use 0.7.1 which includes these changes.",
         dl_note: "One-click install: no account, no cloud, no document is sent anywhere. See the <a href=\"index.html#installation\">install guide</a> for details.",
         dl_foot: "© 2026 MathCursor · <a href=\"mailto:come2percin@gmail.com\">Contact</a>"
       }

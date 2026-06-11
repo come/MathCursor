@@ -73,6 +73,7 @@ namespace MathCursor.Host.Settings
             if (s.MatrixEnvOverride != null)
                 sb.Append(",\"matrix_env\":\"").Append(s.MatrixEnvOverride).Append('"');
             sb.Append(",\"auto_detect\":").Append(s.AutoDetect ? "true" : "false");
+            sb.Append(",\"tab_validate\":").Append(s.TabValidate ? "true" : "false");
             sb.Append('}');
             return sb.ToString();
         }
@@ -96,6 +97,10 @@ namespace MathCursor.Host.Settings
             // Clé absente (settings.json antérieur) → défaut true.
             var auto = ExtractBool(json, "auto_detect");
             if (auto.HasValue) s.AutoDetect = auto.Value;
+
+            // Clé absente → défaut false (Tab = tabulation normale).
+            var tab = ExtractBool(json, "tab_validate");
+            if (tab.HasValue) s.TabValidate = tab.Value;
 
             return s;
         }

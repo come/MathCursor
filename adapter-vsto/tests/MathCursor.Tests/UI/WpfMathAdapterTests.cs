@@ -29,6 +29,14 @@ namespace MathCursor.Tests.UI
         public void Plain_latex_unchanged()
             => Assert.Equal("x + 1", WpfMathAdapter.Adapt("x + 1"));
 
+        // ---- norme : \| → \Vert (WpfMath parse \| mais le rend en barre
+        //      SIMPLE ; \Vert rend la double — probes PNG 70/71, user 2026-06-10) ----
+
+        [Fact]
+        public void Norm_backslash_pipe_becomes_Vert()
+            => Assert.Equal("\\left\\Vert AB\\right\\Vert ",
+                WpfMathAdapter.Adapt("\\left\\|AB\\right\\|"));
+
         // ---- \mathbb{X} → |X (pseudo-blackboard popup) ----
 
         [Theory]

@@ -30,6 +30,7 @@ namespace MathCursor.UI
         private readonly ComboBox _intervalSepBox;
         private readonly ComboBox _matrixBox;
         private readonly CheckBox _autoDetectBox;
+        private readonly CheckBox _tabValidateBox;
         private readonly TextBlock _intervalSepHint;
         private readonly TextBlock _matrixHint;
         private readonly TextBlock _preview;
@@ -41,7 +42,7 @@ namespace MathCursor.UI
 
             Title = Strings.SettingsWindowTitle;
             Width = 560;
-            Height = 540;
+            Height = 580;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             ResizeMode = ResizeMode.NoResize;
             ShowInTaskbar = false;
@@ -94,6 +95,16 @@ namespace MathCursor.UI
             _autoDetectBox.Unchecked += (_, __) => { if (!_loading) _draft.AutoDetect = false; };
             root.Children.Add(_autoDetectBox);
 
+            _tabValidateBox = new CheckBox
+            {
+                Content = Strings.SettingsTabValidateLabel,
+                FontSize = 12,
+                Margin = new Thickness(0, 0, 0, 14),
+            };
+            _tabValidateBox.Checked += (_, __) => { if (!_loading) _draft.TabValidate = true; };
+            _tabValidateBox.Unchecked += (_, __) => { if (!_loading) _draft.TabValidate = false; };
+            root.Children.Add(_tabValidateBox);
+
             // ── Aperçu ───────────────────────────────────────────────────
             root.Children.Add(SectionHeader(Strings.SettingsPreviewLabel));
             _preview = new TextBlock
@@ -129,6 +140,7 @@ namespace MathCursor.UI
             _intervalSepBox.SelectedIndex = effective.IntervalSep == "," ? 1 : 0;
             _matrixBox.SelectedIndex = effective.MatrixEnv == "bmatrix" ? 1 : 0;
             _autoDetectBox.IsChecked = _draft.AutoDetect;
+            _tabValidateBox.IsChecked = _draft.TabValidate;
             _loading = false;
             RefreshHintsAndPreview();
         }
@@ -172,6 +184,8 @@ namespace MathCursor.UI
             if (!SettingsStore.Save(_draft))
                 MessageBox.Show(Strings.SettingsSaveFailed, Strings.SettingsWindowTitle,
                     MessageBoxButton.OK, MessageBoxImage.Warning);
+            // Les toggles ruban lisent les mêmes switches : resync.
+            RibbonCallback.Instance?.InvalidateSettingsToggles();
             DialogResult = true;
             Close();
         }

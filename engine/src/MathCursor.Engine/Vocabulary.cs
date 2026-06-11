@@ -347,6 +347,7 @@ internal static class Vocabulary
         var aliasFrOnly = new Dictionary<string, string>
         {
             ["somme"] = "sum", ["som"] = "sum",
+            ["produit"] = "prod",
             ["integrale"] = "int", ["integ"] = "int",
             ["limite"] = "lim",
             ["racine"] = "sqrt", ["rac"] = "sqrt", ["racn"] = "root",

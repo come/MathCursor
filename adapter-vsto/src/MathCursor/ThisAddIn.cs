@@ -213,6 +213,9 @@ namespace MathCursor
         // l'utilisateur n'a pas navigué). Sinon pass-through.
         private bool HandleTabPressed()
         {
+            // Opt-in (toggle ruban « Tab valide », défaut OFF) : sans lui,
+            // Tab reste une tabulation Word même popup ouverte.
+            if (!Host.Settings.SettingsStore.Current.TabValidate) return false;
             if (_conversion?.IsPopupVisible != true) return false;
             return _conversion.CommitSelected();
         }

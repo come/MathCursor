@@ -192,6 +192,36 @@ namespace MathCursor
             _    => "MathCursor preferences: culture (FR/US), interval separator, matrix display.",
         };
 
+        public static string AutoDetectToggleLabel => Lang switch
+        {
+            "fr" => "Détection auto",
+            _    => "Auto detection",
+        };
+
+        public static string AutoDetectToggleScreentip => Lang switch
+        {
+            "fr" => "Activée : MathCursor propose tout seul pendant la frappe. Désactivée (cours sans maths) : plus aucune popup spontanée — Ctrl+Espace reste disponible pour convertir à la demande.",
+            _    => "On: MathCursor makes suggestions as you type. Off (no-math classes): no more spontaneous popup — Ctrl+Space stays available to convert on demand.",
+        };
+
+        public static string TabValidateToggleLabel => Lang switch
+        {
+            "fr" => "Tab valide",
+            _    => "Tab confirms",
+        };
+
+        public static string TabValidateToggleScreentip => Lang switch
+        {
+            "fr" => "Activé : quand la popup est ouverte, Tab insère la proposition sélectionnée (la première par défaut) au lieu d'une tabulation. Désactivé : Tab reste une tabulation Word normale.",
+            _    => "On: when the popup is open, Tab inserts the selected suggestion (the first by default) instead of a tabulation. Off: Tab stays a normal Word tabulation.",
+        };
+
+        public static string SettingsTabValidateLabel => Lang switch
+        {
+            "fr" => "Tab valide la proposition quand la popup est ouverte",
+            _    => "Tab confirms the suggestion when the popup is open",
+        };
+
         // ---------- Fenêtre Paramètres (SettingsWindow.cs, ADR 2026-06-10) ----------
 
         public static string SettingsWindowTitle => Lang switch
@@ -681,6 +711,36 @@ namespace MathCursor
         {
             "fr" => "Proposer automatiquement pendant la frappe (le raccourci Ctrl+Espace reste toujours actif)",
             _    => "Suggest automatically while typing (the Ctrl+Space shortcut always stays active)",
+        };
+
+        // ---------- Bouton « Réouvrir le tutoriel » (groupe Aide) ----------
+
+        public static string TutorialButtonLabel => Lang switch
+        {
+            "fr" => "Réouvrir le tutoriel",
+            _    => "Reopen the tutorial",
+        };
+
+        public static string TutorialButtonScreentip => Lang switch
+        {
+            "fr" => "Rouvre le document tutoriel de prise en main (Documents\\MathCursor).",
+            _    => "Reopens the getting-started tutorial document (Documents\\MathCursor).",
+        };
+
+        public static string TutorialMissingTitle => Lang switch
+        {
+            "fr" => "MathCursor — Tutoriel",
+            _    => "MathCursor — Tutorial",
+        };
+
+        public static string TutorialMissingBody(string path) => Lang switch
+        {
+            "fr" =>
+                "Le document tutoriel est introuvable :\n" + path + "\n\n" +
+                "Il a peut-être été déplacé ou supprimé. Réinstaller MathCursor le remettra en place.",
+            _ =>
+                "The tutorial document could not be found:\n" + path + "\n\n" +
+                "It may have been moved or deleted. Reinstalling MathCursor will restore it.",
         };
 
         public static string ConvertNothingRecognized => Lang switch

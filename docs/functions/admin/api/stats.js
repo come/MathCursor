@@ -31,8 +31,12 @@ export async function onRequestGet({ env, request }) {
     if (hit) return hit;
   }
 
-  // Lance les 6 queries en parallèle
-  const [total, versions, countries, days, referers, recent] = await Promise.all([
+  // Lance les 6 queries en parallèle. try/catch obligatoire : sans lui, un
+  // runSql qui throw (token expiré, AE down) remonte en exception worker
+  // → page d'erreur Cloudflare 1101 illisible côté dashboard.
+  let total, versions, countries, days, referers, recent;
+  try {
+    [total, versions, countries, days, referers, recent] = await Promise.all([
     runSql(env, `SELECT count() AS total FROM mathcursor_downloads
                  WHERE timestamp > NOW() - INTERVAL '30' DAY`),
     runSql(env, `SELECT blob1 AS file, count() AS downloads
@@ -57,7 +61,10 @@ export async function onRequestGet({ env, request }) {
                         blob4 AS colo, blob5 AS user_agent
                  FROM mathcursor_downloads
                  ORDER BY timestamp DESC LIMIT 10`),
-  ]);
+    ]);
+  } catch (e) {
+    return jsonError(`Analytics Engine inaccessible : ${e.message}`, 502);
+  }
 
   // Fill : `days` ne contient que les jours avec ≥1 DL. Sans ça, Chart.js
   // lisse entre 2 points distants en sautant les 0 → trompeur. On insère
