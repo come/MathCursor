@@ -76,6 +76,77 @@ namespace MathCursor.Host.Debug
             Status(app, $"POC {tag} baseline{(freeze ? " écran gelé" : "")} : {sw.ElapsedMilliseconds} ms");
         }
 
+        // ── P1g — WALKER NU : la cible undo. OmmlToOMathBuilder (OMaths.Add
+        // + Functions.Add, AUCUN InsertXML) + pas d'anchor + Record map.
+        // Sondes record undo à chaque étape : si recording=True à la fin,
+        // 1 Ctrl+Z = tout le commit (contrat ADR 2026-06-10 undo-contract).
+        // Après le clic : faire UN Ctrl+Z et vérifier que TOUT disparaît.
+        public static void RunInsertWalker(Word.Application app, Action<string> log = null)
+        {
+            log = log ?? LogDiag;
+            const string tag = "P1g";
+            var doc = app.ActiveDocument; var sel = app.Selection;
+            if (doc == null || sel == null) { log($"poc-hash {tag}: pas de doc/sel"); return; }
+
+            var sw = Stopwatch.StartNew();
+            int s0 = sel.Start;
+            sel.TypeText("g(x)=1/x");
+            int s1 = sel.Start;
+            long tType = sw.ElapsedMilliseconds;
+
+            XElement oMathEl;
+            try { oMathEl = MathCursor.Serialization.LatexToOmml.Convert("g(x)=\\frac{1}{x}"); }
+            catch (Exception ex) { log($"poc-hash {tag}: LatexToOmml KO: " + ex.Message); return; }
+            if (!OmmlToOMathBuilder.IsSupported(oMathEl, out string why))
+            { log($"poc-hash {tag}: hors whitelist walker — {why}"); return; }
+
+            using (new UndoRecordScope(app, "MathCursor : POC walker"))
+            {
+                sel.SetRange(s0, s0); int internalStart = sel.Start;
+                sel.SetRange(s1, s1); int internalEnd = sel.Start;
+                try { doc.Range(internalStart, internalEnd).Delete(); }
+                catch (Exception ex) { log($"poc-hash {tag}: delete KO: " + ex.Message); return; }
+                UndoRecordScope.Probe(app, tag + " après Delete");
+                long tClear = sw.ElapsedMilliseconds;
+
+                var om = OmmlToOMathBuilder.Build(doc, internalStart, oMathEl, log);
+                UndoRecordScope.Probe(app, tag + " après walker Build");
+                long tBuild = sw.ElapsedMilliseconds;
+                if (om == null) { log($"poc-hash {tag}: walker Build null"); return; }
+
+                bool alone = ParagraphAloneWithOMath(om);
+                if (alone)
+                {
+                    try { om.Type = Word.WdOMathType.wdOMathDisplay; }
+                    catch (Exception exT) { log($"poc-hash {tag}: Type=Display KO: " + exT.Message); }
+                }
+                UndoRecordScope.Probe(app, tag + " après typing");
+
+                try
+                {
+                    sel.SetRange(om.Range.End, om.Range.End);
+                    sel.MoveRight(Word.WdUnits.wdCharacter, 1, Word.WdMovementType.wdMove);
+                }
+                catch { }
+                long tCaret = sw.ElapsedMilliseconds;
+
+                var store = new SourceMapStore(log);
+                var entry = store.Record(doc, om, "g(x)=1/x", "g(x)=\\frac{1}{x}", null,
+                    "eq_" + Guid.NewGuid().ToString("N").Substring(0, 12));
+                UndoRecordScope.Probe(app, tag + " après Record (FIN — recording doit être True)");
+                sw.Stop();
+
+                log($"poc-hash {tag} WALKER: total={sw.ElapsedMilliseconds}ms — TypeText={tType} | "
+                    + $"clear=+{tClear - tType} | build=+{tBuild - tClear} | caret=+{tCaret - tBuild} | "
+                    + $"record=+{sw.ElapsedMilliseconds - tCaret} | alone={alone} | recordOk={entry != null}");
+                Status(app, $"POC {tag} walker : {sw.ElapsedMilliseconds} ms — faire UN Ctrl+Z : tout doit disparaître");
+            }
+        }
+
+        // ── P6 — conformance walker : quels mappings divergent ? ───────────
+        public static void RunWalkerConformance(Word.Application app, Action<string> log = null)
+            => OmathWalkerConformance.Run(app);
+
         // ── P1b — variante NUE : ni ZWSP, ni CC, ni Tag ; Record() en map ──
         public static void RunInsertNoAnchor(Word.Application app, Action<string> log = null)
             => RunNoAnchorCore(app, log ?? LogDiag, ultraLean: false);

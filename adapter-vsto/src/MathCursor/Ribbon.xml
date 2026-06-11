@@ -96,6 +96,12 @@
           <button id="PocDiscriminationButton" label="P4 discrimination"
                   screentip="Insère les paires piégeuses (x² vs x₂, frac vs linéaire…) : collisions K1, départage K2 (G3)."
                   size="normal" imageMso="Repeat" onAction="OnPocDiscriminationClicked" />
+          <button id="PocWalkerButton" label="P1g walker nu"
+                  screentip="Insertion via OMaths.Add+Functions.Add (AUCUN InsertXML) + map. Après le clic : UN Ctrl+Z doit TOUT effacer (contrat undo)."
+                  size="normal" imageMso="MacroPlay" onAction="OnPocWalkerClicked" />
+          <button id="PocConformanceButton" label="P6 conformance"
+                  screentip="Batterie de 24 LaTeX via le walker : PASS/DIFF par construction au log. Identifie les mappings à corriger (exposant mangé…)."
+                  size="normal" imageMso="ReviewTrackChanges" onAction="OnPocConformanceClicked" />
           <button id="PocPartButton" label="P5 part roundtrip"
                   screentip="Write/read 100 entrées en CustomXMLPart : timing + record undo intact (G6)."
                   size="normal" imageMso="SaveAll" onAction="OnPocPartClicked" />
