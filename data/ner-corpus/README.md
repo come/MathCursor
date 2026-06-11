@@ -47,12 +47,23 @@ script n'a pas été retrouvé lors du rapatriement DocMath → MathCursor) :
   spans) + négatifs token-seul (`x`/`2` seuls ≠ math — la rev1 faisait
   prédire `x`@0.91). Rev3 : + variantes ALIAS moteur (integrale/intégrale/
   integ/integral, limite/lmt, produit/som — sync Vocabulary 2026-06-11,
-  `produit` était un chemin mort moteur+refiner). 304 lignes. Baseline
-  distilmult-v5 sur rev3 : F1 0.865 (P 0.933, R 0.806, FN=50) — cible
+  `produit` était un chemin mort moteur+refiner). 298 lignes. Baseline
+  distilmult-v5 (rev3 à 304 lignes, avant fold) : F1 0.865 — cible
   post-retrain ≥ 0.95 ET gold ≥ 0.99.
-  ⚠️ Le moteur CRASHE sur les accents (« caractère inattendu: é ») : les
-  positifs `intégrale …` (déjà dans v4) font des zones NER que le moteur ne
-  sait pas lire tant que le lexer n'a pas de tolérance aux diacritiques.
+
+## Accents : FOLDÉS partout (décision 2026-06-11)
+
+Le lexer moteur jette « caractère inattendu: é » → plutôt que d'apprendre
+les diacritiques au lexer, les accents sont **strippés en amont** (mapping
+1:1, offsets préservés) :
+- **prod** : `AutocorrectNormalizer.FoldDiacritic` (appliqué par
+  `WordContextReader`, donc avant NER + refiner + moteur) ;
+- **entraînement** : table `FOLD` au chargement des `.jsonl` dans les deux
+  notebooks (`load_jsonl`) — le modèle voit la même distribution que le
+  runtime ; les fichiers corpus restent accentués (lisibles), inutile de
+  les régénérer ;
+- **tests locaux** : `NerCorpusFixture.LoadCorpus` folde pareil.
+× et ÷ ne sont jamais foldés (opérateurs du vocabulaire moteur).
 
 ## Provenance
 

@@ -72,8 +72,9 @@ IINT_EXPRESSIONS = [
 ]
 
 # Intégrale simple : formes indéfinies (nouvelles) + rappel bornées,
-# avec les ALIAS moteur (integrale/integ/integral — sync Vocabulary 2026-06-11)
-# et la forme accentuée que Word impose par autocorrection.
+# avec les ALIAS moteur (integrale/integ/integral — sync Vocabulary 2026-06-11).
+# Pas de forme accentuée : les accents sont FOLDÉS en amont du NER
+# (AutocorrectNormalizer en prod, FOLD au chargement dans les notebooks).
 INT_EXPRESSIONS = [
     "int f(x) x",
     "int f(x) dx",
@@ -88,8 +89,7 @@ INT_EXPRESSIONS = [
     "integrale f(x) x",
     "integrale 0 1 f(x) x",
     "integrale a b x^2 x",
-    "intégrale f(x) x",
-    "intégrale 0 1 x dx",
+    "integrale 0 1 x dx",
     "integ 0 1 x dx",
     "integral f(x) dx",
     "integral a b f(x) dx",
@@ -144,7 +144,6 @@ BARE_KEYWORDS = [
     "lim",       # déjà couvert mais maintient l'acquis
     "limite",
     "integrale",
-    "intégrale",
     "integral",
 ]
 

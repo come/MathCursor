@@ -57,7 +57,7 @@ namespace MathCursor.Tests.Host
         [InlineData("’", "'")] // right single (= apostrophe typo)
         [InlineData("‚", "'")] // low single
         [InlineData("′", "'")] // prime (')
-        [InlineData("l’élève", "l'élève")] // l'élève
+        [InlineData("l’élève", "l'eleve")] // apostrophe + accents foldés (2026-06-11)
         public void SingleQuotes_NormalizedToApostrophe(string input, string expected)
         {
             Assert.Equal(expected, AutocorrectNormalizer.Normalize(input));
@@ -112,14 +112,27 @@ namespace MathCursor.Tests.Host
 
         // ─── Caractères non-ciblés préservés ──────────────────────────────
 
-        [Theory(DisplayName = "Caractères non-ciblés (NBSP, accents, math) préservés")]
+        // (accents : foldés depuis le 2026-06-11 — « on peut les strip avant
+        // d'envoyer au NER » — le lexer jette « caractère inattendu: é »)
+        [Theory(DisplayName = "Caractères non-ciblés (NBSP, math, grec) préservés")]
         [InlineData(" ", " ")]   // NBSP géré côté Lexer, pas ici
-        [InlineData("éèê", "éèê")] // éèê
         [InlineData("∀x ∈ R", "∀x ∈ R")] // ∀ ∈ : math, pas autocorrect
         [InlineData("α+β=γ", "α+β=γ")] // α+β=γ
+        [InlineData("a×b", "a×b")] // × = opérateur du vocab moteur, pas foldé
+        [InlineData("8÷2", "8÷2")] // ÷ idem
         public void NonTargetedChars_Preserved(string input, string expected)
         {
             Assert.Equal(expected, AutocorrectNormalizer.Normalize(input));
+        }
+
+        [Theory(DisplayName = "Accents foldés vers la lettre nue (1:1, avant NER/moteur)")]
+        [InlineData("éèê", "eee")]
+        [InlineData("Évaluer où ça converge", "Evaluer ou ca converge")]
+        public void Accents_FoldedToBareLetter(string input, string expected)
+        {
+            var output = AutocorrectNormalizer.Normalize(input);
+            Assert.Equal(expected, output);
+            Assert.Equal(input.Length, output.Length);
         }
 
         // ─── Mix réaliste ──────────────────────────────────────────────────
@@ -129,7 +142,7 @@ namespace MathCursor.Tests.Host
         {
             // « L'élève a écrit "a – b = c" dans son cahier. »
             const string input = "L’élève a écrit “a – b = c” dans son cahier.";
-            const string expected = "L'élève a écrit \"a - b = c\" dans son cahier.";
+            const string expected = "L'eleve a ecrit \"a - b = c\" dans son cahier.";
 
             Assert.Equal(expected, AutocorrectNormalizer.Normalize(input));
         }

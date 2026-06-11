@@ -21,7 +21,12 @@ namespace MathCursor.Host
     {
         /// <summary>
         /// Normalise les caractères "smart" Word AutoCorrect vers leur
-        /// équivalent ASCII. NBSP est laissé intact (traité côté Lexer).
+        /// équivalent ASCII, et FOLD les lettres accentuées (« intégrale » →
+        /// « integrale ») — décision 2026-06-11 : on strip les accents en
+        /// amont du NER/moteur plutôt que d'apprendre les diacritiques au
+        /// lexer (qui jette « caractère inattendu: é »). × et ÷ ne sont PAS
+        /// foldés (opérateurs du vocabulaire moteur). NBSP est laissé intact
+        /// (traité côté Lexer).
         /// </summary>
         public static string Normalize(string s)
         {
@@ -40,7 +45,8 @@ namespace MathCursor.Host
                 if (c == '–' || c == '—' || c == '−'
                     || c == '‘' || c == '’' || c == '‚' || c == '′'
                     || c == '“' || c == '”' || c == '„' || c == '″'
-                    || c == '\a' || c == '\b' || c == '\v' || c == '\f')
+                    || c == '\a' || c == '\b' || c == '\v' || c == '\f'
+                    || FoldDiacritic(c) != c)
                 { needs = true; break; }
             }
             if (!needs) return s;
@@ -68,10 +74,40 @@ namespace MathCursor.Host
                     case '\b': sb.Append(' '); break; // backspace (rare)
                     case '\v': sb.Append(' '); break; // <w:br/> line break
                     case '\f': sb.Append(' '); break; // page break (rare)
-                    default: sb.Append(c); break;
+                    default: sb.Append(FoldDiacritic(c)); break;
                 }
             }
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Lettre latine accentuée → lettre nue (1 char → 1 char, invariant
+        /// d'offsets respecté). Les ligatures œ/æ ne sont PAS foldées
+        /// (2 lettres, casserait l'invariant) — hors mots-clés math de toute
+        /// façon. × (U+00D7) et ÷ (U+00F7) sont exclus volontairement.
+        /// </summary>
+        private static char FoldDiacritic(char c)
+        {
+            switch (c)
+            {
+                case 'à': case 'á': case 'â': case 'ã': case 'ä': case 'å': return 'a';
+                case 'è': case 'é': case 'ê': case 'ë': return 'e';
+                case 'ì': case 'í': case 'î': case 'ï': return 'i';
+                case 'ò': case 'ó': case 'ô': case 'õ': case 'ö': return 'o';
+                case 'ù': case 'ú': case 'û': case 'ü': return 'u';
+                case 'ç': return 'c';
+                case 'ñ': return 'n';
+                case 'ý': case 'ÿ': return 'y';
+                case 'À': case 'Á': case 'Â': case 'Ã': case 'Ä': case 'Å': return 'A';
+                case 'È': case 'É': case 'Ê': case 'Ë': return 'E';
+                case 'Ì': case 'Í': case 'Î': case 'Ï': return 'I';
+                case 'Ò': case 'Ó': case 'Ô': case 'Õ': case 'Ö': return 'O';
+                case 'Ù': case 'Ú': case 'Û': case 'Ü': return 'U';
+                case 'Ç': return 'C';
+                case 'Ñ': return 'N';
+                case 'Ý': return 'Y';
+                default: return c;
+            }
         }
     }
 }

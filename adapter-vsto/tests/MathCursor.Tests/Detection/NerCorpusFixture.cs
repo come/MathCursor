@@ -104,7 +104,12 @@ namespace MathCursor.Tests.Detection
             {
                 if (string.IsNullOrWhiteSpace(line)) continue;
                 var ex = NerCorpusExample.Parse(line);
-                if (ex != null) examples.Add(ex);
+                // Fold accents/smart chars comme en prod (WordContextReader →
+                // AutocorrectNormalizer avant le NER) : les tests F1 doivent
+                // exercer la même distribution que le runtime. 1:1 → spans valides.
+                if (ex != null)
+                    examples.Add(new NerCorpusExample(
+                        MathCursor.Host.AutocorrectNormalizer.Normalize(ex.Text), ex.Spans, ex.Lang));
                 if (limit.HasValue && examples.Count >= limit.Value) break;
             }
             return examples;
