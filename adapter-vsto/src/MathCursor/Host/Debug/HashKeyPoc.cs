@@ -38,10 +38,21 @@ namespace MathCursor.Host.Debug
 
         // ── P1a — baseline : pipeline ACTUEL (ZWSP + CC + Tag) ─────────────
         public static void RunInsertBaseline(Word.Application app, Action<string> log = null)
+            => RunBaselineCore(app, log ?? LogDiag, freeze: false);
+
+        // ── P1f — baseline + ÉCRAN GELÉ : isole le jank visuel ─────────────
+        // « Ça accroche » = on VOIT les étapes (texte → □ → repaint InsertXML
+        // → wrap CC). ScreenUpdating=false pendant la séquence : l'utilisateur
+        // ne voit que l'état initial et l'équation finale. Si P1f suffit à la
+        // fluidité perçue, ce levier est shippable sur beta-clean SANS bascule.
+        public static void RunInsertBaselineFrozen(Word.Application app, Action<string> log = null)
+            => RunBaselineCore(app, log ?? LogDiag, freeze: true);
+
+        private static void RunBaselineCore(Word.Application app, Action<string> log, bool freeze)
         {
-            log = log ?? LogDiag;
+            string tag = freeze ? "P1f" : "P1a";
             var doc = app.ActiveDocument; var sel = app.Selection;
-            if (doc == null || sel == null) { log("poc-hash P1a: pas de doc/sel"); return; }
+            if (doc == null || sel == null) { log($"poc-hash {tag}: pas de doc/sel"); return; }
 
             var sw = Stopwatch.StartNew();
             int s0 = sel.Start;
@@ -50,19 +61,42 @@ namespace MathCursor.Host.Debug
             long tType = sw.ElapsedMilliseconds;
 
             var inserter = new OMathInserter(app, log);
-            using (new UndoRecordScope(app, "MathCursor : POC baseline"))
-                inserter.Insert(s0, s1, "g(x)=\\frac{1}{x}", "g(x)=1/x");
+            if (freeze) { try { app.ScreenUpdating = false; } catch { } }
+            try
+            {
+                using (new UndoRecordScope(app, "MathCursor : POC " + tag))
+                    inserter.Insert(s0, s1, "g(x)=\\frac{1}{x}", "g(x)=1/x");
+            }
+            finally
+            {
+                if (freeze) { try { app.ScreenUpdating = true; } catch { } }
+            }
             sw.Stop();
-            log($"poc-hash P1a BASELINE: total={sw.ElapsedMilliseconds}ms (dont TypeText={tType}ms)");
-            Status(app, $"POC P1a baseline : {sw.ElapsedMilliseconds} ms (log pour le détail)");
+            log($"poc-hash {tag} BASELINE{(freeze ? "+GEL" : "")}: total={sw.ElapsedMilliseconds}ms (dont TypeText={tType}ms)");
+            Status(app, $"POC {tag} baseline{(freeze ? " écran gelé" : "")} : {sw.ElapsedMilliseconds} ms");
         }
 
         // ── P1b — variante NUE : ni ZWSP, ni CC, ni Tag ; Record() en map ──
         public static void RunInsertNoAnchor(Word.Application app, Action<string> log = null)
+            => RunNoAnchorCore(app, log ?? LogDiag, ultraLean: false);
+
+        // ── P1d — ULTRA-LÉGER : Delete simple au lieu de ZoneCleaner ───────
+        // Chemin nominal de frappe : la zone = la sténo fraîchement tapée,
+        // texte vierge (ni CC ni OMath dedans) — les 3 passes de ZoneCleaner
+        // n'existaient que pour les anchors. Compare le timing à P1b.
+        // ⚠ sonde : à NE PAS jouer sur une zone contenant déjà une équation.
+        public static void RunInsertUltraLean(Word.Application app, Action<string> log = null)
+            => RunNoAnchorCore(app, log ?? LogDiag, ultraLean: true, freeze: false);
+
+        // ── P1e — ultra-léger + ÉCRAN GELÉ : la cible « envoi instantané » ──
+        public static void RunInsertUltraLeanFrozen(Word.Application app, Action<string> log = null)
+            => RunNoAnchorCore(app, log ?? LogDiag, ultraLean: true, freeze: true);
+
+        private static void RunNoAnchorCore(Word.Application app, Action<string> log, bool ultraLean, bool freeze = false)
         {
-            log = log ?? LogDiag;
+            string tag = ultraLean ? (freeze ? "P1e" : "P1d") : "P1b";
             var doc = app.ActiveDocument; var sel = app.Selection;
-            if (doc == null || sel == null) { log("poc-hash P1b: pas de doc/sel"); return; }
+            if (doc == null || sel == null) { log($"poc-hash {tag}: pas de doc/sel"); return; }
 
             var sw = Stopwatch.StartNew();
             int s0 = sel.Start;
@@ -70,25 +104,35 @@ namespace MathCursor.Host.Debug
             int s1 = sel.Start;
             long tType = sw.ElapsedMilliseconds;
 
-            using (new UndoRecordScope(app, "MathCursor : POC no-anchor"))
+            if (freeze) { try { app.ScreenUpdating = false; } catch { } }
+            try
+            {
+            using (new UndoRecordScope(app, "MathCursor : POC " + tag))
             {
                 // 1. Normalisation bornes (SetRange + readback).
                 sel.SetRange(s0, s0); int internalStart = sel.Start;
                 sel.SetRange(s1, s1); int internalEnd = sel.Start;
                 long tNorm = sw.ElapsedMilliseconds;
 
-                // 2. Cleanup structurel.
-                int pos = ZoneCleaner.ClearZone(doc, internalStart, internalEnd, log);
+                // 2. Cleanup : structurel (P1b) ou Delete nu (P1d).
+                int pos;
+                if (ultraLean)
+                {
+                    try { doc.Range(internalStart, internalEnd).Delete(); } catch (Exception ex) { log($"poc-hash {tag}: delete KO: " + ex.Message); return; }
+                    pos = internalStart;
+                }
+                else
+                    pos = ZoneCleaner.ClearZone(doc, internalStart, internalEnd, log);
                 sel.SetRange(pos, pos);
                 long tClear = sw.ElapsedMilliseconds;
 
                 // 3. OMML chirurgical (placeholder 1-char), AUCUN ZWSP avant.
                 XElement oMathEl;
                 try { oMathEl = MathCursor.Serialization.LatexToOmml.Convert("g(x)=\\frac{1}{x}"); }
-                catch (Exception ex) { log("poc-hash P1b: LatexToOmml KO: " + ex.Message); return; }
+                catch (Exception ex) { log($"poc-hash {tag}: LatexToOmml KO: " + ex.Message); return; }
                 Word.OMath om = InsertOmmlAt(doc, sel, oMathEl, pos, log);
                 long tOmml = sw.ElapsedMilliseconds;
-                if (om == null) { log("poc-hash P1b: OMath introuvable post-InsertXML"); return; }
+                if (om == null) { log($"poc-hash {tag}: OMath introuvable post-InsertXML"); return; }
 
                 // 4. Typage Display/Inline — SANS ZWSP dans le ¶ (sonde G5 :
                 //    la promotion display reposait-elle sur l'anchor ?).
@@ -96,7 +140,7 @@ namespace MathCursor.Host.Debug
                 if (alone)
                 {
                     try { om.Type = Word.WdOMathType.wdOMathDisplay; }
-                    catch (Exception exT) { log("poc-hash P1b: Type=Display KO: " + exT.Message); }
+                    catch (Exception exT) { log($"poc-hash {tag}: Type=Display KO: " + exT.Message); }
                 }
                 Word.WdOMathType finalType;
                 try { finalType = om.Type; } catch { finalType = Word.WdOMathType.wdOMathInline; }
@@ -117,11 +161,16 @@ namespace MathCursor.Host.Debug
                     "eq_" + Guid.NewGuid().ToString("N").Substring(0, 12));
                 sw.Stop();
 
-                log($"poc-hash P1b NO-ANCHOR: total={sw.ElapsedMilliseconds}ms — TypeText={tType} | "
+                log($"poc-hash {tag} {(ultraLean ? "ULTRA-LÉGER" : "NO-ANCHOR")}: total={sw.ElapsedMilliseconds}ms — TypeText={tType} | "
                     + $"norm=+{tNorm - tType} | clear=+{tClear - tNorm} | omml=+{tOmml - tClear} | "
                     + $"typing=+{tTyping - tOmml} | caret=+{tCaret - tTyping} | record=+{sw.ElapsedMilliseconds - tCaret} "
                     + $"| type={finalType} (alone={alone}) | recordOk={entry != null}");
-                Status(app, $"POC P1b no-anchor : {sw.ElapsedMilliseconds} ms, type={finalType}");
+                Status(app, $"POC {tag} : {sw.ElapsedMilliseconds} ms, type={finalType}");
+            }
+            }
+            finally
+            {
+                if (freeze) { try { app.ScreenUpdating = true; } catch { } }
             }
         }
 

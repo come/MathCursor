@@ -241,6 +241,9 @@ namespace MathCursor
 
         public void OnPocBaselineClicked(IRibbonControl control) => RunPoc("P1a", Host.Debug.HashKeyPoc.RunInsertBaseline);
         public void OnPocNoAnchorClicked(IRibbonControl control) => RunPoc("P1b", Host.Debug.HashKeyPoc.RunInsertNoAnchor);
+        public void OnPocUltraLeanClicked(IRibbonControl control) => RunPoc("P1d", Host.Debug.HashKeyPoc.RunInsertUltraLean);
+        public void OnPocUltraLeanFrozenClicked(IRibbonControl control) => RunPoc("P1e", Host.Debug.HashKeyPoc.RunInsertUltraLeanFrozen);
+        public void OnPocBaselineFrozenClicked(IRibbonControl control) => RunPoc("P1f", Host.Debug.HashKeyPoc.RunInsertBaselineFrozen);
         public void OnPocEqArrClicked(IRibbonControl control) => RunPoc("P1c", (app, log) => Host.Blocks.ChainEqArrPoc.Run(app, log));
         public void OnPocSnapshotClicked(IRibbonControl control) => RunPoc("P2", Host.Debug.HashKeyPoc.RunSnapshotKeys);
         public void OnPocVerifyClicked(IRibbonControl control) => RunPoc("P3", Host.Debug.HashKeyPoc.RunVerifyDrift);

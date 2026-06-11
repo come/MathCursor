@@ -75,6 +75,15 @@
           <button id="PocNoAnchorButton" label="P1b sans anchor"
                   screentip="Insère g(x)=1/x SANS ZWSP ni CC, source en map CustomXMLParts. Timings par étape + type Display/Inline au log (G4/G5)."
                   size="normal" imageMso="MacroPlay" onAction="OnPocNoAnchorClicked" />
+          <button id="PocUltraLeanButton" label="P1d ultra-léger"
+                  screentip="Comme P1b mais Delete simple au lieu de ZoneCleaner (chemin nominal : zone = texte vierge). Timing comparé."
+                  size="normal" imageMso="MacroPlay" onAction="OnPocUltraLeanClicked" />
+          <button id="PocUltraLeanFrozenButton" label="P1e ultra + gelé"
+                  screentip="P1d + ScreenUpdating=false pendant la séquence : aucune étape visible, que l'état final. La cible « envoi instantané »."
+                  size="normal" imageMso="MacroPlay" onAction="OnPocUltraLeanFrozenClicked" />
+          <button id="PocBaselineFrozenButton" label="P1f baseline gelé"
+                  screentip="Pipeline ACTUEL + écran gelé : isole le jank visuel. Si la fluidité perçue vient de là, ce levier est shippable sans bascule."
+                  size="normal" imageMso="MacroPlay" onAction="OnPocBaselineFrozenClicked" />
           <button id="PocEqArrButton" label="P1c eqArr nu"
                   screentip="Bloc eqArr 3 lignes sans anchor (POC existant) — vérifier l'alignement &amp; en display (G5)."
                   size="normal" imageMso="MacroPlay" onAction="OnPocEqArrClicked" />
