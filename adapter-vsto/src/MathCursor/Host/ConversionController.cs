@@ -427,50 +427,6 @@ namespace MathCursor.Host
             }
         }
 
-        /// <summary>
-        /// Ctrl+Z intercepté : si un commit simple vient d'avoir lieu, joue
-        /// l'undo, VÉRIFIE que la sténo restaurée est bien là (sinon Redo
-        /// intégral + passe-à-Word — garde-fou de l'ADR undo-grab e77ea07),
-        /// et replace le caret en FIN de la saisie restaurée (e381bf1).
-        /// One-shot : un seul grab par commit ; tout Ctrl+Z suivant est natif.
-        /// </summary>
-        public bool TryGrabUndo()
-        {
-            var grab = _undoGrab;
-            if (grab == null) return false;
-            _undoGrab = null;   // one-shot
-            try
-            {
-                var doc = _app.ActiveDocument;
-                if (doc == null) return false;
-                HidePopup();
-
-                bool undone = false;
-                try { undone = doc.Undo(); } catch { }
-                if (!undone) return false;
-
-                // Garde-fou : la sténo doit être revenue à sa position — si
-                // l'utilisateur a fait autre chose entre temps, l'undo a
-                // annulé CETTE action-là → Redo intégral et undo Word natif.
-                var para = doc.Range(grab.Value.absStart, grab.Value.absStart).Paragraphs[1].Range;
-                string text = para.Text ?? "";
-                int idx = text.IndexOf(grab.Value.steno, StringComparison.Ordinal);
-                if (idx < 0)
-                {
-                    try { doc.Redo(); } catch { }
-                    _log("undo-grab: pas de match, redo intégral → undo natif");
-                    return false;
-                }
-
-                int caretPos = Detection.ParagraphPositionTranslator.StringPosToInternal(
-                    para, idx + grab.Value.steno.Length);
-                _app.Selection.SetRange(caretPos, caretPos);
-                _log($"undo-grab: sténo restaurée, caret en fin ({caretPos})");
-                return true;
-            }
-            catch (Exception ex) { _log("undo_grab_error: " + ex.Message); return false; }
-        }
-
         // ── Navigation popup (déléguée par le hook clavier) ─────────────
 
         public void EnterNavMode() => _popup?.EnterNavMode();
@@ -494,6 +450,45 @@ namespace MathCursor.Host
         {
             if (_committing) return;
             if (IsPopupVisible) HidePopup();
+            TryApplyUndoGrab();
+        }
+
+        /// <summary>
+        /// Undo-grab RÉACTIF (UX 2026-06-12 — « pas d'interception de
+        /// Ctrl+Z, c'est dégueu ») : l'undo reste 100 % NATIF (Ctrl+Z,
+        /// ribbon, pile undo intacte). Après coup, au SelectionChange, si
+        /// l'équation du dernier commit a disparu et que la sténo est revenue
+        /// à sa position, le caret est poussé en FIN de la saisie restaurée.
+        /// One-shot, et seulement au voisinage de la zone (pas de lecture du
+        /// ¶ sur les clics lointains).
+        /// </summary>
+        private void TryApplyUndoGrab()
+        {
+            var grab = _undoGrab;
+            if (grab == null) return;
+            try
+            {
+                var doc = _app.ActiveDocument;
+                var sel = _app.Selection;
+                if (doc == null || sel == null) return;
+                if (Math.Abs(sel.Start - grab.Value.absStart) > grab.Value.steno.Length + 16) return;
+
+                // L'équation du commit est-elle toujours là ? (rien à faire)
+                int probeEnd = Math.Min(doc.Content.End, grab.Value.absStart + 2);
+                if (doc.Range(Math.Max(0, grab.Value.absStart - 1), probeEnd).OMaths.Count > 0) return;
+
+                var para = doc.Range(grab.Value.absStart, grab.Value.absStart).Paragraphs[1].Range;
+                string text = para.Text ?? "";
+                int idx = text.IndexOf(grab.Value.steno, StringComparison.Ordinal);
+                if (idx < 0) { _undoGrab = null; return; }   // état divergé (suppression manuelle…) → désarme
+
+                _undoGrab = null;   // one-shot
+                int caretPos = Detection.ParagraphPositionTranslator.StringPosToInternal(
+                    para, idx + grab.Value.steno.Length);
+                sel.SetRange(caretPos, caretPos);
+                _log($"undo-grab: undo natif détecté, caret en fin de sténo ({caretPos})");
+            }
+            catch (Exception ex) { _log("undo_grab_error: " + ex.Message); }
         }
 
         /// <summary>
