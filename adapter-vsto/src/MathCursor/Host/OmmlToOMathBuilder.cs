@@ -168,6 +168,17 @@ namespace MathCursor.Host
             {
                 var omRange = doc.OMaths.Add(doc.Range(position, position));
                 om = omRange.OMaths[1];
+                // OMaths.Add peut insérer le prompt « Tapez une équation
+                // ici. » comme VRAI texte dans l'équation (mesuré 2026-06-12,
+                // diag P1g : il restait collé derrière le contenu construit).
+                // Le vider AVANT de construire — locale-indépendant.
+                try
+                {
+                    string prompt = null;
+                    try { prompt = om.Range.Text; } catch { }
+                    if (!string.IsNullOrEmpty(prompt)) om.Range.Text = string.Empty;
+                }
+                catch (Exception exP) { log?.Invoke("walker_prompt_clear_error: " + exP.Message); }
                 BuildSequence(doc, om, om.Range.Start, oMathEl.Elements());
                 return om;
             }
