@@ -1,4 +1,4 @@
-﻿; MathCursor — Inno Setup script (VSTO Word Add-in)
+; MathCursor — Inno Setup script (VSTO Word Add-in)
 ;
 ; Build :
 ;   1. msbuild adapter-vsto\src\MathCursor\MathCursor.csproj /p:Configuration=Release
@@ -14,7 +14,7 @@
 ;   - Visual Studio Tools for Office Runtime (livré avec Office 2016+)
 
 #define MyAppName "MathCursor"
-#define MyAppVersion "0.7.2"
+#define MyAppVersion "0.8.1"
 #define MyAppPublisher "MathCursor"
 #define MyAppExeName "MathCursor.dll"
 #define MyAppId "{{6E4B3A1E-7F2D-4B8C-9A0E-2C5D6F7A8B90}"
