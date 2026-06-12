@@ -26,7 +26,7 @@ namespace MathCursor
     {
         private ConversionController _conversion;
         private EditModeController _editMode;
-        private AnchorHygiene _hygiene;
+        private EquationDeletionGuard _deletionGuard;
         private AutoDetectController _autoDetect;
         private Detection.MathNerDetector _ner;
         private KeyboardInterceptor _keyboard;
@@ -53,14 +53,16 @@ namespace MathCursor
 
                 _editMode = new EditModeController(
                     this.Application,
+                    _conversion.Resolver,
                     hideSuggestionPopup: () => _conversion?.HidePopup(),
                     getCaretScreenPos: CaretScreenPositionReader.Read,
                     log: LogStartup);
 
-                // Hygiène de suppression des anchors CC (ADR 2026-06-10-Fix-
-                // anchor-cc-deletion-hygiene) : suppression atomique, balayage
-                // d'orphelines, anti-piège caret.
-                _hygiene = new AnchorHygiene(this.Application);
+                // Suppression atomique Backspace/Suppr (héritier minimal de
+                // l'ex-AnchorHygiene H1 ; H2/H3 caducs sans CC — ADR
+                // hash-source-map).
+                _deletionGuard = new EquationDeletionGuard(
+                    this.Application, _conversion.Resolver, LogStartup);
 
                 // Auto-détection NER en cours de frappe (ADR 2026-06-10-Feat-
                 // ner-auto-detection-debounce). Inerte tant que le modèle
@@ -79,8 +81,8 @@ namespace MathCursor
                     OnUpPressed = HandleUpPressed,
                     OnDownPressed = HandleDownPressed,
                     OnEscapePressed = HandleEscapePressed,
-                    OnBackspacePressed = () => _hygiene?.TrySelectEquationBeforeCaret() ?? false,
-                    OnDeletePressed = () => _hygiene?.TrySelectEquationAfterCaret() ?? false,
+                    OnBackspacePressed = () => _deletionGuard?.TrySelectEquationBeforeCaret() ?? false,
+                    OnDeletePressed = () => _deletionGuard?.TrySelectEquationAfterCaret() ?? false,
                     OnTextKeyTyped = () => _autoDetect?.OnTextKeyTyped(),
                 };
                 _keyboard.Install();
@@ -184,7 +186,6 @@ namespace MathCursor
             try
             {
                 if (_conversion?.IsCommitting == true) return;
-                _hygiene?.OnSelectionChanged();
                 _conversion?.OnSelectionChanged();
 
                 Word.OMath omAtCaret = null;

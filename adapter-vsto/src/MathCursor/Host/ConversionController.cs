@@ -59,7 +59,12 @@ namespace MathCursor.Host
             _contextReader = new WordContextReader(app);
             _inserter = new OMathInserter(app, _log);
             _chain = new Blocks.ChainController(app, _inserter, _log);
+            Resolver = new SourceMap.SourceMapResolver(_inserter.SourceMap);
         }
+
+        /// <summary>Résolveur équation→source partagé (map CustomXMLParts) —
+        /// consommé par EditModeController et EquationDeletionGuard.</summary>
+        internal SourceMap.SourceMapResolver Resolver { get; }
 
         public bool IsPopupVisible => _popup?.IsVisible == true;
         public bool IsNavMode => _popup?.IsNavMode == true;
