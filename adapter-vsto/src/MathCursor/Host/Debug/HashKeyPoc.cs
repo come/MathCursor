@@ -149,6 +149,10 @@ namespace MathCursor.Host.Debug
                     try { om.Type = Word.WdOMathType.wdOMathDisplay; }
                     catch (Exception exT) { log($"poc-hash {tag}: Type=Display KO: " + exT.Message); }
                 }
+                // Aligné à GAUCHE par défaut (Word centre le display) — même
+                // règle que le pipeline normal (OMathInserter).
+                try { om.Justification = Word.WdOMathJc.wdOMathJcLeft; }
+                catch (Exception exJ) { log($"poc-hash {tag}: Jc=Left KO: " + exJ.Message); }
                 UndoRecordScope.Probe(app, tag + " après typing");
 
                 try
@@ -303,6 +307,7 @@ namespace MathCursor.Host.Debug
                         om = OmmlToOMathBuilder.Build(doc, a, el, log);
                         if (om == null) { ko++; log($"poc-hash P7 \"{steno}\": Build null"); continue; }
                         try { om.Type = Word.WdOMathType.wdOMathDisplay; } catch { }
+                        try { om.Justification = Word.WdOMathJc.wdOMathJcLeft; } catch { }
                         try
                         {
                             sel.SetRange(om.Range.End, om.Range.End);
