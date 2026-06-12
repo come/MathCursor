@@ -178,6 +178,12 @@ namespace MathCursor.Host
                 case "degHide": return parent == "radPr" && (val == "0" || val == "off");
                 case "limLoc": return parent == "naryPr" && val == "undOvr";
                 case "type": return parent == "fPr" && val == "bar";
+                // Matrices : Word AJOUTE m:mPr/mcs au stockage (« N colonnes,
+                // centrées ») — count est dérivable des lignes (comparées),
+                // center est le défaut. Les chaînes mcPr/mc/mcs/mPr vidées
+                // tombent ensuite par la règle « élément vide sans attribut ».
+                case "count": return parent == "mcPr";
+                case "mcJc": return parent == "mcPr" && val == "center";
                 default: return false;
             }
         }
