@@ -52,6 +52,7 @@ namespace MathCursor.Host.Blocks
             if (!zone.TryToInternal(doc, out int zStart, out int zEnd)) return false;
 
             var above = FindOurEquationAbove(doc, zStart);
+            if (!IsAloneOnItsLine(doc, zStart)) above = null;   // ligne mixte → repli autonome
             if (above == null || (above.Value.Source.Type != null && above.Value.Source.Type != BlockTypes.Chain))
             {
                 // Repli autonome (rien à nous au-dessus, ou bloc d'un autre type).
@@ -84,6 +85,7 @@ namespace MathCursor.Host.Blocks
             if (!zone.TryToInternal(doc, out int zStart, out int zEnd)) return false;
 
             var above = FindOurEquationAbove(doc, zStart);
+            if (!IsAloneOnItsLine(doc, zStart)) above = null;   // ligne mixte → création autonome
             if (above != null && above.Value.Source.Type == BlockTypes.System)
             {
                 var (om, source) = above.Value;
@@ -115,6 +117,7 @@ namespace MathCursor.Host.Blocks
             try
             {
                 if (!zone.TryToInternal(doc, out int zStart, out _)) return null;
+                if (!IsAloneOnItsLine(doc, zStart)) return null;   // aperçu cohérent avec le commit
                 var above = FindOurEquationAbove(doc, zStart);
                 if (above == null) return null;
                 var source = above.Value.Source;
@@ -174,6 +177,37 @@ namespace MathCursor.Host.Blocks
         // eqArr), pas d'un résidu de suppression — preuve docx sautdeligne
         // 2026-06-10 (suppression amont removed=N/N parfaite, et pourtant
         // un <w:p> vide sans run au-dessus du bloc).
+
+        /// <summary>
+        /// Le marqueur de chaîne ne FUSIONNE que depuis une ligne AUTONOME
+        /// (retour user 2026-06-12) : de la prose ou une OMath AVANT la zone
+        /// dans le MÊME ¶ = ligne mixte → repli autonome (marqueur rendu).
+        /// La fusion étant destructive (l'ancien bloc est remplacé), le
+        /// doute (probe KO) répond FAUX — l'autonome est toujours bénin.
+        /// </summary>
+        private bool IsAloneOnItsLine(Word.Document doc, int zStart)
+        {
+            try
+            {
+                var para = doc.Range(zStart, zStart).Paragraphs[1].Range;
+                int paraStart = para.Start;
+                if (zStart <= paraStart) return true;
+                var before = doc.Range(paraStart, zStart);
+                if (before.OMaths.Count > 0)
+                {
+                    _log($"chain: OMath avant la zone dans le ¶ [{paraStart},{zStart}) → ligne mixte");
+                    return false;
+                }
+                string lead = (before.Text ?? "").Replace("\r", "").Replace("\n", "").Trim();
+                if (lead.Length > 0)
+                {
+                    _log($"chain: prose avant la zone (\"{lead}\") → ligne mixte");
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception ex) { _log("chain: alone_probe_error: " + ex.Message); return false; }
+        }
 
         /// <summary>L'équation/le bloc À NOUS porté par le ¶ qui précède
         /// IMMÉDIATEMENT le ¶ de la zone (adjacence stricte). Identification
