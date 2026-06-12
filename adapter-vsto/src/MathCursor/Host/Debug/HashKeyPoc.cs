@@ -108,20 +108,19 @@ namespace MathCursor.Host.Debug
                 sel.SetRange(s0, s0); int internalStart = sel.Start;
                 sel.SetRange(s1, s1); int internalEnd = sel.Start;
 
-                // Build AVANT le Delete de la sténo (anti « carré blanc
-                // flippant », retour user 2026-06-11) : si Word segmente le
-                // record autour d'OMaths.Add, l'état intermédiaire du replay
-                // undo montre la SAISIE + le squelette — jamais un doc qui a
-                // l'air vidé.
-                om = OmmlToOMathBuilder.Build(doc, internalEnd, oMathEl, log);
-                UndoRecordScope.Probe(app, tag + " après walker Build");
-                tBuild = sw.ElapsedMilliseconds;
-                if (om == null) { log($"poc-hash {tag}: walker Build null"); return; }
-
+                // Delete PUIS Build dans l'espace libéré (ordre validé : le
+                // Build-avant-Delete, collé à la sténo, laissait un squelette
+                // « Tapez une équation ici » — mesuré 2026-06-12). Le replay
+                // undo reste UNE entrée : le Record est hors du scope.
                 try { doc.Range(internalStart, internalEnd).Delete(); }
                 catch (Exception ex) { log($"poc-hash {tag}: delete KO: " + ex.Message); return; }
                 UndoRecordScope.Probe(app, tag + " après Delete sténo");
                 tClear = sw.ElapsedMilliseconds;
+
+                om = OmmlToOMathBuilder.Build(doc, internalStart, oMathEl, log);
+                UndoRecordScope.Probe(app, tag + " après walker Build");
+                tBuild = sw.ElapsedMilliseconds;
+                if (om == null) { log($"poc-hash {tag}: walker Build null"); return; }
 
                 alone = ParagraphAloneWithOMath(om);
                 if (alone)
@@ -151,7 +150,7 @@ namespace MathCursor.Host.Debug
                 "eq_" + Guid.NewGuid().ToString("N").Substring(0, 12));
             sw.Stop();
             log($"poc-hash {tag} WALKER: total={sw.ElapsedMilliseconds}ms — TypeText={tType} | "
-                + $"build=+{tBuild - tType} | clear=+{tClear - tBuild} | caret=+{tCaret - tClear} | "
+                + $"clear=+{tClear - tType} | build=+{tBuild - tClear} | caret=+{tCaret - tBuild} | "
                 + $"record(post-scope)=+{sw.ElapsedMilliseconds - tCaret} | alone={alone} | recordOk={entry != null}");
             Status(app, $"POC {tag} walker : {sw.ElapsedMilliseconds} ms — faire UN Ctrl+Z : tout doit disparaître");
         }
