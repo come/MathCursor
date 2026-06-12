@@ -215,8 +215,13 @@ namespace MathCursor.Host
                     try { om.Type = omType; }
                     catch (Exception exType) { _log("insert_omath_type_error: " + exType.Message); }
                 }
-                try { om.Justification = omJc; }
-                catch (Exception exJc) { _log("insert_omath_jc_error: " + exJc.Message); }
+                // Justification : seulement en display (sans objet en inline,
+                // et le setter y jette « Impossible de définir l'alignement »).
+                if (omType == Word.WdOMathType.wdOMathDisplay)
+                {
+                    try { om.Justification = omJc; }
+                    catch (Exception exJc) { _log("insert_omath_jc_error: " + exJc.Message); }
+                }
             }
             try { newStart = om.Range.Start; newEnd = om.Range.End; } catch { }
 

@@ -75,8 +75,11 @@ namespace MathCursor.Host
                     foreach (Word.Range ch in om.Range.Characters)
                         if (ch.Text == "¤") seeds.Add(ch);
                     if (seeds.Count != 2) log?.Invoke($"walker_seeds: {seeds.Count}/2 retrouvés");
-                    for (int k = seeds.Count - 1; k >= 0; k--)
-                        seeds[k].Delete();
+                    // Seuls le PREMIER et le DERNIER sont nos seeds — un ¤
+                    // au milieu serait du contenu (jamais émis aujourd'hui,
+                    // mais on ne mange pas le contenu par principe).
+                    if (seeds.Count >= 2) { seeds[seeds.Count - 1].Delete(); seeds[0].Delete(); }
+                    else if (seeds.Count == 1) seeds[0].Delete();
                 }
                 catch (Exception exS) { log?.Invoke("walker_seed_delete_error: " + exS.Message); }
                 return om;
