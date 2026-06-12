@@ -169,17 +169,19 @@ namespace MathCursor.Host
                 var omRange = doc.OMaths.Add(doc.Range(position, position));
                 om = omRange.OMaths[1];
                 // OMaths.Add peut insérer le prompt « Tapez une équation
-                // ici. » comme VRAI texte dans l'équation (mesuré 2026-06-12,
-                // diag P1g : il restait collé derrière le contenu construit).
-                // Le vider AVANT de construire — locale-indépendant.
-                try
-                {
-                    string prompt = null;
-                    try { prompt = om.Range.Text; } catch { }
-                    if (!string.IsNullOrEmpty(prompt)) om.Range.Text = string.Empty;
-                }
-                catch (Exception exP) { log?.Invoke("walker_prompt_clear_error: " + exP.Message); }
+                // ici. » comme VRAI texte dans l'équation (diag 2026-06-12).
+                // NE PAS vider la zone avant de construire (zone vide =
+                // frame fantôme + premier write éjecté hors math, mesuré) :
+                // on construit DEVANT le prompt — validé — puis on coupe le
+                // prompt en queue, par sa longueur (locale-indépendant).
+                int promptLen = 0;
+                try { promptLen = (om.Range.Text ?? "").Length; } catch { }
                 BuildSequence(doc, om, om.Range.Start, oMathEl.Elements());
+                if (promptLen > 0)
+                {
+                    try { doc.Range(om.Range.End - promptLen, om.Range.End).Delete(); }
+                    catch (Exception exP) { log?.Invoke("walker_prompt_trim_error: " + exP.Message); }
+                }
                 return om;
             }
             catch (Exception ex)

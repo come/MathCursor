@@ -180,6 +180,78 @@ namespace MathCursor.Host.Debug
         public static void RunWalkerConformance(Word.Application app, Action<string> log = null)
             => OmathWalkerConformance.Run(app);
 
+        // ── P7 — BATTERIE walker : 12 formules lycée insérées une par ¶,
+        // laissées dans le doc pour contrôle VISUEL (rendu, pas de prompt
+        // fantôme, pas de résidu). Chaque ligne = même chemin que P1g.
+        public static void RunInsertBattery(Word.Application app, Action<string> log = null)
+        {
+            log = log ?? LogDiag;
+            var doc = app.ActiveDocument; var sel = app.Selection;
+            if (doc == null || sel == null) { log("poc-hash P7: pas de doc/sel"); return; }
+
+            var cases = new (string Steno, string Latex)[]
+            {
+                ("g(x)=1/x", "g(x)=\\frac{1}{x}"),
+                ("x2", "x^{2}"),
+                ("u_n+1", "u_{n+1}"),
+                ("rac x+1", "\\sqrt{x+1}"),
+                ("sum k 1 n k2", "\\sum_{k=1}^{n}k^{2}"),
+                ("int 0 1 x dx", "\\int_{0}^{1}x\\,dx"),
+                ("lim x 0 1/x+1", "\\lim_{x\\to 0}\\frac{1}{x+1}"),
+                ("vec AB", "\\vec{AB}"),
+                ("(x+1)2", "\\left(x+1\\right)^{2}"),
+                ("binom n k", "\\binom{n}{k}"),
+                ("abs z-1", "\\left|z-1\\right|"),
+                ("matrice", "\\begin{pmatrix}a & b \\\\ c & d\\end{pmatrix}"),
+            };
+
+            int ok = 0, ko = 0;
+            var store = new SourceMapStore(log);
+            foreach (var (steno, latex) in cases)
+            {
+                try
+                {
+                    XElement el;
+                    try { el = MathCursor.Serialization.LatexToOmml.Convert(latex); }
+                    catch (Exception exC) { ko++; log($"poc-hash P7 \"{steno}\": LatexToOmml KO: " + exC.Message); continue; }
+                    if (!OmmlToOMathBuilder.IsSupported(el, out string why))
+                    { ko++; log($"poc-hash P7 \"{steno}\": hors whitelist — {why}"); continue; }
+
+                    // ¶ frais en fin de doc, sténo tapée puis convertie (même
+                    // chemin que P1g : Delete → Build walker → Display → caret).
+                    sel.SetRange(doc.Content.End - 1, doc.Content.End - 1);
+                    sel.TypeParagraph();
+                    int s0 = sel.Start;
+                    sel.TypeText(steno);
+                    int s1 = sel.Start;
+
+                    Word.OMath om;
+                    using (new UndoRecordScope(app, "MathCursor : POC batterie"))
+                    {
+                        sel.SetRange(s0, s0); int a = sel.Start;
+                        sel.SetRange(s1, s1); int b = sel.Start;
+                        doc.Range(a, b).Delete();
+                        om = OmmlToOMathBuilder.Build(doc, a, el, log);
+                        if (om == null) { ko++; log($"poc-hash P7 \"{steno}\": Build null"); continue; }
+                        try { om.Type = Word.WdOMathType.wdOMathDisplay; } catch { }
+                        try
+                        {
+                            sel.SetRange(om.Range.End, om.Range.End);
+                            sel.MoveRight(Word.WdUnits.wdCharacter, 1, Word.WdMovementType.wdMove);
+                        }
+                        catch { }
+                    }
+                    var entry = store.Record(doc, om, steno, latex, null,
+                        "eq_" + Guid.NewGuid().ToString("N").Substring(0, 12));
+                    ok++;
+                    log($"poc-hash P7 \"{steno}\": OK (record={(entry != null)})");
+                }
+                catch (Exception ex) { ko++; log($"poc-hash P7 \"{steno}\": EXCEPTION " + ex.Message); }
+            }
+            log($"poc-hash P7 BATTERIE: {ok} OK, {ko} KO / {cases.Length}");
+            Status(app, $"POC batterie : {ok} OK, {ko} KO / {cases.Length} — contrôler le rendu à l'œil");
+        }
+
         // ── P1b — variante NUE : ni ZWSP, ni CC, ni Tag ; Record() en map ──
         public static void RunInsertNoAnchor(Word.Application app, Action<string> log = null)
             => RunNoAnchorCore(app, log ?? LogDiag, ultraLean: false);
