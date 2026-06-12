@@ -166,26 +166,26 @@ namespace MathCursor.Host
             Word.OMath om = null;
             try
             {
-                var omRange = doc.OMaths.Add(doc.Range(position, position));
+                // JAMAIS d'Add à VIDE : Word y insère un w:sdt placeholder
+                // « Tapez une équation ici. » (temporary/showingPlcHdr, XML
+                // taper.docx 2026-06-12) qui est INVISIBLE pour
+                // om.Range.ContentControls (count=0 mesuré) → insupprimable
+                // proprement. Recette DocMath : Add SUR un caractère seed —
+                // ce mode ne crée pas de placeholder. Le seed (¤, jamais émis
+                // par LatexToOmml) est retiré après construction.
+                doc.Range(position, position).Text = "¤";
+                var omRange = doc.OMaths.Add(doc.Range(position, position + 1));
                 om = omRange.OMaths[1];
                 BuildSequence(doc, om, om.Range.Start, oMathEl.Elements());
-                // Le prompt « Tapez une équation ici. » est un w:sdt NATIF
-                // (placeholder temporary/showingPlcHdr) que OMaths.Add insère
-                // DANS l'équation quand la range est vide (XML vérifié,
-                // taper.docx 2026-06-12 — DocMath n'avait jamais le souci :
-                // il ne faisait Add que SUR du texte). Supprimer le CONTRÔLE
-                // après construction — trimmer son texte le ré-affiche, et
-                // vider la zone avant éjecte le contenu (mesurés tous deux).
                 try
                 {
-                    var ccs = om.Range.ContentControls;
-                    for (int k = ccs.Count; k >= 1; k--)
-                    {
-                        try { ccs[k].Delete(true); }
-                        catch (Exception exC) { log?.Invoke("walker_placeholder_delete_error: " + exC.Message); }
-                    }
+                    Word.Range seed = null;
+                    foreach (Word.Range ch in om.Range.Characters)
+                        if (ch.Text == "¤") seed = ch;          // le DERNIER (contenu posé devant)
+                    if (seed != null) seed.Delete();
+                    else log?.Invoke("walker_seed_introuvable (¤ absent de la zone)");
                 }
-                catch (Exception exS) { log?.Invoke("walker_placeholder_scan_error: " + exS.Message); }
+                catch (Exception exS) { log?.Invoke("walker_seed_delete_error: " + exS.Message); }
                 return om;
             }
             catch (Exception ex)

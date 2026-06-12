@@ -198,7 +198,7 @@ namespace MathCursor.Host.Debug
             // Tentative de bascule du mode de conversion en LaTeX via idMso
             // (noms candidats — celui qui prend est loggé ; sinon bascule
             // manuelle : ruban Équation → {} LaTeX).
-            foreach (var idMso in new[] { "EquationLaTeXFormat", "EquationLatexFormat", "EquationFormatLaTeX" })
+            foreach (var idMso in new[] { "EquationLaTeX", "EquationLinearFormatLaTeX", "EquationLaTeXFormat", "EquationConvertLaTeX" })
             {
                 try { app.CommandBars.ExecuteMso(idMso); log($"poc-hash {tag}: ExecuteMso({idMso}) OK"); break; }
                 catch (Exception) { /* candidat suivant */ }
