@@ -196,6 +196,16 @@ namespace MathCursor
                 }
                 catch { }
                 _editMode?.Sync(omAtCaret, inPostCommitCooldown: false);
+
+                // QOL 2026-06-12 : un CLIC dans du texte (sélection réduite,
+                // hors OMath) relance la détection — la popup se (re)propose
+                // sur une expression existante, ou se ferme si rien au caret.
+                try
+                {
+                    if (omAtCaret == null && sel != null && sel.Start == sel.End)
+                        _autoDetect?.OnCaretMoved();
+                }
+                catch { }
             }
             catch { }
         }
