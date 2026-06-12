@@ -76,6 +76,7 @@ namespace MathCursor
                 _keyboard = new KeyboardInterceptor
                 {
                     OnCtrlSpacePressed = HandleCtrlSpacePressed,
+                    OnCtrlZPressed = () => _conversion?.TryGrabUndo() ?? false,
                     OnTabPressed = HandleTabPressed,
                     OnEnterPressed = HandleEnterPressed,
                     OnUpPressed = HandleUpPressed,

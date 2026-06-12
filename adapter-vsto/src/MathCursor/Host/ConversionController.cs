@@ -40,6 +40,12 @@ namespace MathCursor.Host
         private ZoneSpan _zone;          // span en cours (état d'extension itérative)
         private bool _committing;        // supprime la réaction aux SelectionChange induits
 
+        // Undo-grab (UX 2026-06-12, reconstruit sur le pipeline walker) :
+        // un Ctrl+Z juste après un commit SIMPLE replace le caret en FIN de
+        // la sténo restaurée. One-shot, armé au commit, garde-fou « match ou
+        // Redo intégral » (cf. TryGrabUndo).
+        private (int absStart, string steno)? _undoGrab;
+
         // Pré-détection BLOC (M2 multiligne) : la zone committée commence par
         // un marqueur de chaîne ou un « { » → le moteur n'a vu que le RESTE,
         // la popup affichait le marqueur en préfixe, le commit route vers
@@ -378,7 +384,13 @@ namespace MathCursor.Host
                     else if (_pendingChainMatch != null)
                         _chain.CommitChainLine(doc, zone, _pendingChainMatch, latex);
                     else
+                    {
                         _inserter.Insert(absStart, absEnd, latex, zone.Text);
+                        // Arme l'undo-grab (commits simples seulement — le
+                        // restore multiligne d'un bloc est déjà tracké à part).
+                        string needle = (zone.Text ?? "").Trim();
+                        if (needle.Length > 0) _undoGrab = (absStart, needle);
+                    }
 
                     // M4 — flow multiligne (validé user 2026-06-10) : la ligne
                     // committée portait un séparateur → on ouvre la ligne
@@ -413,6 +425,50 @@ namespace MathCursor.Host
                 HidePopup();
                 _committing = false;
             }
+        }
+
+        /// <summary>
+        /// Ctrl+Z intercepté : si un commit simple vient d'avoir lieu, joue
+        /// l'undo, VÉRIFIE que la sténo restaurée est bien là (sinon Redo
+        /// intégral + passe-à-Word — garde-fou de l'ADR undo-grab e77ea07),
+        /// et replace le caret en FIN de la saisie restaurée (e381bf1).
+        /// One-shot : un seul grab par commit ; tout Ctrl+Z suivant est natif.
+        /// </summary>
+        public bool TryGrabUndo()
+        {
+            var grab = _undoGrab;
+            if (grab == null) return false;
+            _undoGrab = null;   // one-shot
+            try
+            {
+                var doc = _app.ActiveDocument;
+                if (doc == null) return false;
+                HidePopup();
+
+                bool undone = false;
+                try { undone = doc.Undo(); } catch { }
+                if (!undone) return false;
+
+                // Garde-fou : la sténo doit être revenue à sa position — si
+                // l'utilisateur a fait autre chose entre temps, l'undo a
+                // annulé CETTE action-là → Redo intégral et undo Word natif.
+                var para = doc.Range(grab.Value.absStart, grab.Value.absStart).Paragraphs[1].Range;
+                string text = para.Text ?? "";
+                int idx = text.IndexOf(grab.Value.steno, StringComparison.Ordinal);
+                if (idx < 0)
+                {
+                    try { doc.Redo(); } catch { }
+                    _log("undo-grab: pas de match, redo intégral → undo natif");
+                    return false;
+                }
+
+                int caretPos = Detection.ParagraphPositionTranslator.StringPosToInternal(
+                    para, idx + grab.Value.steno.Length);
+                _app.Selection.SetRange(caretPos, caretPos);
+                _log($"undo-grab: sténo restaurée, caret en fin ({caretPos})");
+                return true;
+            }
+            catch (Exception ex) { _log("undo_grab_error: " + ex.Message); return false; }
         }
 
         // ── Navigation popup (déléguée par le hook clavier) ─────────────

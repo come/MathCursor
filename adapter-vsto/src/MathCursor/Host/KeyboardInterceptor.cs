@@ -43,6 +43,10 @@ namespace MathCursor.Host
         public Func<bool> OnEscapePressed { get; set; }
         public Func<bool> OnCtrlSpacePressed { get; set; }
 
+        /// <summary>Ctrl+Z : undo-grab (caret replacé en FIN de la sténo
+        /// restaurée juste après un commit). Retourner false = undo Word natif.</summary>
+        public Func<bool> OnCtrlZPressed { get; set; }
+
         /// <summary>Backspace / Suppr : hygiène anchor CC (sélection atomique
         /// équation+anchor, cf. ADR 2026-06-10-Fix-anchor-cc-deletion-hygiene).
         /// Retourner false = la touche passe à Word normalement.</summary>
@@ -92,6 +96,7 @@ namespace MathCursor.Host
                     Func<bool> handler = null;
 
                     if (vkCode == VK_SPACE && ctrlDown) handler = OnCtrlSpacePressed;
+                    else if (vkCode == 0x5A && ctrlDown && !shiftDown) handler = OnCtrlZPressed;   // Ctrl+Z
                     else if (vkCode == VK_TAB && !shiftDown) handler = OnTabPressed;
                     else if (vkCode == VK_RETURN && !shiftDown) handler = OnEnterPressed;
                     else if (vkCode == VK_UP) handler = OnUpPressed;

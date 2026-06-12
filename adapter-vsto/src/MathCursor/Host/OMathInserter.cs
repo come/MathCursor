@@ -238,6 +238,11 @@ namespace MathCursor.Host
                 // PROLONGE alors la zone math sur la puce suivante (le « f( »
                 // tapé naissait dans un oMath neuf). Re-saute tant que la
                 // sélection rapporte une OMath (cap 3, hops loggés).
+                // TODO(escape-liste) : FONCTIONNE (validé user 2026-06-12)
+                // mais à réévaluer — une alternative à MoveRight (type
+                // MoveEnd) avait été essayée dans cette version d'après
+                // l'utilisateur ; retrouver ce banc et comparer avant de
+                // considérer cette boucle comme définitive.
                 if (isInList)
                 {
                     int hops = 0;
