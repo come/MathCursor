@@ -79,6 +79,9 @@
           <button id="PocConformanceButton" label="Conformance"
                   screentip="Batterie de 24 LaTeX via le walker, comparée au rendu attendu : verdict PASS/DIFF dans la barre d'état + log."
                   size="large" imageMso="ReviewTrackChanges" onAction="OnPocConformanceClicked" />
+          <button id="PocBuildUpLatexButton" label="BuildUp LaTeX"
+                  screentip="Tape le LaTeX en texte puis OMaths.Add + BuildUp (parseur LaTeX natif de Word). Si le rendu est faux : ruban Équation → {} LaTeX, puis recliquer."
+                  size="large" imageMso="EquationInsertNew" onAction="OnPocBuildUpLatexClicked" />
         </group>
         <group id="MathCursorHelpGroup" getLabel="OnGetHelpGroupLabel">
           <button id="ReportIssueButton"

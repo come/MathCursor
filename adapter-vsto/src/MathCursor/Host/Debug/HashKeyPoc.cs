@@ -180,6 +180,75 @@ namespace MathCursor.Host.Debug
         public static void RunWalkerConformance(Word.Application app, Action<string> log = null)
             => OmathWalkerConformance.Run(app);
 
+        // ── P8 — BuildUp depuis le LaTeX natif (idée user 2026-06-12) ──────
+        // Word 2016+ sait parser le LaTeX en mode équation LaTeX. Recette :
+        // TypeText(latex) → OMaths.Add SUR le texte → BuildUp. Jamais de
+        // placeholder (Add sur texte, recette DocMath) et record undo intact
+        // (témoin V2). ⚠ Le mode LaTeX est un réglage Word : si le résultat
+        // est faux, passer l'équation en mode LaTeX (ruban Équation →
+        // Conversions → {} LaTeX) et recliquer.
+        public static void RunBuildUpLatex(Word.Application app, Action<string> log = null)
+        {
+            log = log ?? LogDiag;
+            const string tag = "P8";
+            const string latex = "g(x)=\\frac{1}{x}";
+            var doc = app.ActiveDocument; var sel = app.Selection;
+            if (doc == null || sel == null) { log($"poc-hash {tag}: pas de doc/sel"); return; }
+
+            // Tentative de bascule du mode de conversion en LaTeX via idMso
+            // (noms candidats — celui qui prend est loggé ; sinon bascule
+            // manuelle : ruban Équation → {} LaTeX).
+            foreach (var idMso in new[] { "EquationLaTeXFormat", "EquationLatexFormat", "EquationFormatLaTeX" })
+            {
+                try { app.CommandBars.ExecuteMso(idMso); log($"poc-hash {tag}: ExecuteMso({idMso}) OK"); break; }
+                catch (Exception) { /* candidat suivant */ }
+            }
+
+            var sw = Stopwatch.StartNew();
+            using (new UndoRecordScope(app, "MathCursor : POC BuildUp LaTeX"))
+            {
+                int s0 = sel.Start;
+                sel.TypeText(latex);
+                int s1 = sel.Start;
+                UndoRecordScope.Probe(app, tag + " après TypeText latex");
+
+                Word.Range built;
+                try { built = doc.OMaths.Add(doc.Range(s0, s1)); }
+                catch (Exception ex) { log($"poc-hash {tag}: OMaths.Add KO: " + ex.Message); return; }
+                UndoRecordScope.Probe(app, tag + " après OMaths.Add");
+
+                try { built.OMaths.BuildUp(); }
+                catch (Exception ex) { log($"poc-hash {tag}: BuildUp KO: " + ex.Message); return; }
+                UndoRecordScope.Probe(app, tag + " après BuildUp (FIN — recording doit être True)");
+
+                // Fidélité : canonique du résultat vs canonique du LatexToOmml.
+                try
+                {
+                    Word.OMath om = null;
+                    foreach (Word.OMath o in doc.Range(s0, Math.Min(doc.Content.End, s0 + 200)).OMaths) { om = o; break; }
+                    if (om != null)
+                    {
+                        string got = OmmlCanonicalizer.Canonicalize(om.Range.WordOpenXML);
+                        string expected = OmmlCanonicalizer.Canonicalize(
+                            new XDocument(MathCursor.Serialization.LatexToOmml.Convert(latex)).ToString());
+                        log($"poc-hash {tag} fidélité: {(got == expected ? "IDENTIQUE à LatexToOmml" : "DIFFÉRENT")}"
+                            + (got == expected ? "" : $"\n  attendu : {expected}\n  obtenu  : {got}"));
+                        try
+                        {
+                            sel.SetRange(om.Range.End, om.Range.End);
+                            sel.MoveRight(Word.WdUnits.wdCharacter, 1, Word.WdMovementType.wdMove);
+                        }
+                        catch { }
+                    }
+                    else log($"poc-hash {tag}: pas d'OMath au re-probe (BuildUp n'a rien construit ?)");
+                }
+                catch (Exception ex) { log($"poc-hash {tag}: fidélité KO: " + ex.Message); }
+            }
+            sw.Stop();
+            log($"poc-hash {tag} BUILDUP-LATEX: total={sw.ElapsedMilliseconds}ms");
+            Status(app, $"POC {tag} BuildUp LaTeX : {sw.ElapsedMilliseconds} ms — vérifier le rendu + fidélité au log. Si faux : ruban Équation → {{}} LaTeX, puis recliquer");
+        }
+
         // ── P7 — BATTERIE walker : 12 formules lycée insérées une par ¶,
         // laissées dans le doc pour contrôle VISUEL (rendu, pas de prompt
         // fantôme, pas de résidu). Chaque ligne = même chemin que P1g.

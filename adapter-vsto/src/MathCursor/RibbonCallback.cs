@@ -252,6 +252,7 @@ namespace MathCursor
         public void OnPocWalkerClicked(IRibbonControl control) => RunPoc("P1g", Host.Debug.HashKeyPoc.RunInsertWalker);
         public void OnPocBatteryClicked(IRibbonControl control) => RunPoc("P7", Host.Debug.HashKeyPoc.RunInsertBattery);
         public void OnPocConformanceClicked(IRibbonControl control) => RunPoc("P6", Host.Debug.HashKeyPoc.RunWalkerConformance);
+        public void OnPocBuildUpLatexClicked(IRibbonControl control) => RunPoc("P8", Host.Debug.HashKeyPoc.RunBuildUpLatex);
 
         private static void RunPoc(string name, Action<Microsoft.Office.Interop.Word.Application, Action<string>> probe)
         {
