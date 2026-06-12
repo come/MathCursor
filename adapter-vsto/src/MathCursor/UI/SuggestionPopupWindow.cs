@@ -129,10 +129,11 @@ namespace MathCursor.UI
         /// <summary>
         /// Affiche la liste des candidats, ancrée en DIP : bord gauche à
         /// <paramref name="anchorX"/>, haut à <paramref name="anchorYBelow"/>
-        /// (= juste sous la ligne de la zone). Si la popup déborde en bas
-        /// d'écran, elle bascule AU-DESSUS de la ligne (son bas posé à
-        /// <paramref name="anchorYAbove"/>). Clampée horizontalement à
-        /// l'écran. <paramref name="sourceText"/> = texte source (footer).
+        /// (= TOUJOURS juste sous la ligne de la zone — jamais au-dessus,
+        /// règle UX 2026-06-12 : la bascule au-dessus perturbait le flow).
+        /// Clampée horizontalement à l'écran.
+        /// <paramref name="anchorYAbove"/> est conservé pour compat mais
+        /// IGNORÉ. <paramref name="sourceText"/> = texte source (footer).
         /// </summary>
         public void ShowCandidates(IReadOnlyList<string> candidates, double anchorX,
             double anchorYBelow, double anchorYAbove, string sourceText = "",
@@ -141,13 +142,15 @@ namespace MathCursor.UI
             _mergeKind = mergeKind;
             _mergePrevLines = (mergePrevLines != null && mergePrevLines.Count > 0) ? mergePrevLines : null;
             // Rafraîchissement d'une popup DÉJÀ ouverte (frappe continue,
-            // extension Ctrl+Espace…) : on PRÉSERVE le nav mode, la sélection
-            // (index clampé à la nouvelle liste) et l'état déplié — l'utilisateur
-            // ne perd jamais où il en était (retour user 2026-06-10).
+            // extension Ctrl+Espace…) : on PRÉSERVE le nav mode et la
+            // sélection (index clampé). L'état DÉPLIÉ ne persiste qu'EN
+            // NAVIGATION (règle UX 2026-06-12 : en frappe continue, chaque
+            // rafraîchissement revient au repli 2 + « N de plus » — un dépli
+            // passé ne doit pas saccager le visuel des popups suivantes).
             bool wasVisible = IsVisible;
             bool preserveNav = wasVisible && _navMode;
             int prevIndex = _selectedIndex;
-            bool prevExpanded = wasVisible && _expanded;
+            bool prevExpanded = preserveNav && _expanded;
 
             _candidates = candidates ?? Array.Empty<string>();
             _navMode = preserveNav;
@@ -169,10 +172,11 @@ namespace MathCursor.UI
             UpdateLayout();
             var wa = SystemParameters.WorkArea;
             double w = ActualWidth > 0 ? ActualWidth : Width;
-            double h = ActualHeight > 0 ? ActualHeight : 120;
             if (anchorX + w > wa.Right - 4) Left = Math.Max(wa.Left + 4, wa.Right - 4 - w);
-            if (anchorYBelow + h > wa.Bottom - 4 && !double.IsNaN(anchorYAbove))
-                Top = Math.Max(wa.Top + 4, anchorYAbove - h); // bascule au-dessus de la ligne
+            // JAMAIS de bascule au-dessus de la ligne (règle UX 2026-06-12) :
+            // en bas d'écran la popup peut mordre la zone barre des tâches,
+            // c'est préférable à un saut au-dessus qui casse le flow. Le
+            // repli à 2 candidats la garde courte de toute façon.
 
             BeginAnimation(OpacityProperty,
                 new DoubleAnimation(_navMode ? NavOpacity : DisplayOpacity, TimeSpan.FromMilliseconds(FadeMs)));
@@ -317,7 +321,25 @@ namespace MathCursor.UI
                     Background = Brushes.Transparent,
                 };
                 var container = new Grid { Margin = new Thickness(8, 4, 12, 4) };
+                container.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                container.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 container.Children.Add(BuildCandidateContent(_candidates[i]));
+                // Badge discret quand le RENDU d'aperçu ne distingue pas le
+                // candidat (matrice ligne aplatie ≈ tuple) — cf. CandidateHints.
+                string hint = CandidateHints.GetHint(_candidates[i]);
+                if (hint != null)
+                {
+                    var badge = new TextBlock
+                    {
+                        Text = hint,
+                        FontSize = 10,
+                        Foreground = new SolidColorBrush(Color.FromRgb(150, 150, 150)),
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Margin = new Thickness(10, 0, 0, 0),
+                    };
+                    Grid.SetColumn(badge, 1);
+                    container.Children.Add(badge);
+                }
                 cell.Child = container;
 
                 int idx = i;
