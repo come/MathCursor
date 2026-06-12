@@ -178,6 +178,16 @@ namespace MathCursor.Host
                 {
                     try { om.Range.Delete(); }
                     catch (Exception exD) { log?.Invoke("walker_cleanup_error: " + exD.Message); }
+                    // L'OMath créée par OMaths.Add peut survivre au Delete en
+                    // squelette vide (« Tapez une équation ici », vu
+                    // 2026-06-11) — re-probe local et suppression du résidu.
+                    try
+                    {
+                        int probeEnd = Math.Min(doc.Content.End, position + 4);
+                        foreach (Word.OMath rest in doc.Range(Math.Max(0, position - 1), probeEnd).OMaths)
+                        { rest.Range.Delete(); break; }
+                    }
+                    catch (Exception exR) { log?.Invoke("walker_residual_cleanup_error: " + exR.Message); }
                 }
                 return null;
             }
@@ -306,11 +316,17 @@ namespace MathCursor.Host
                     int cols = rows[0].Elements(M + "e").Count();
                     fn = om.Functions.Add(at, Word.WdOMathFunctionType.wdOMathFunctionMat,
                         rows.Count, cols);
+                    // Word peut ignorer NumArgs/NumCols à l'Add (mesuré
+                    // 2026-06-11 : « le membre de la collection requis
+                    // n'existe pas » au Cell[2,…]) — compléter à la main.
+                    var mat = fn.Mat;
+                    while (mat.Rows.Count < rows.Count) mat.Rows.Add();
+                    while (mat.Cols.Count < cols) mat.Cols.Add();
                     for (int ri = 0; ri < rows.Count; ri++)
                     {
                         var cells = rows[ri].Elements(M + "e").ToList();
                         for (int ci = 0; ci < cells.Count; ci++)
-                            FillArg(doc, fn.Mat.Cell[ri + 1, ci + 1], cells[ci]);
+                            FillArg(doc, mat.Cell[ri + 1, ci + 1], cells[ci]);
                     }
                     break;
                 }

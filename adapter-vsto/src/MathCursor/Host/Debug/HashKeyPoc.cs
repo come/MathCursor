@@ -100,6 +100,9 @@ namespace MathCursor.Host.Debug
             if (!OmmlToOMathBuilder.IsSupported(oMathEl, out string why))
             { log($"poc-hash {tag}: hors whitelist walker — {why}"); return; }
 
+            Word.OMath om = null;
+            long tClear = 0, tBuild = 0, tCaret = 0;
+            bool alone = false;
             using (new UndoRecordScope(app, "MathCursor : POC walker"))
             {
                 sel.SetRange(s0, s0); int internalStart = sel.Start;
@@ -107,14 +110,14 @@ namespace MathCursor.Host.Debug
                 try { doc.Range(internalStart, internalEnd).Delete(); }
                 catch (Exception ex) { log($"poc-hash {tag}: delete KO: " + ex.Message); return; }
                 UndoRecordScope.Probe(app, tag + " après Delete");
-                long tClear = sw.ElapsedMilliseconds;
+                tClear = sw.ElapsedMilliseconds;
 
-                var om = OmmlToOMathBuilder.Build(doc, internalStart, oMathEl, log);
+                om = OmmlToOMathBuilder.Build(doc, internalStart, oMathEl, log);
                 UndoRecordScope.Probe(app, tag + " après walker Build");
-                long tBuild = sw.ElapsedMilliseconds;
+                tBuild = sw.ElapsedMilliseconds;
                 if (om == null) { log($"poc-hash {tag}: walker Build null"); return; }
 
-                bool alone = ParagraphAloneWithOMath(om);
+                alone = ParagraphAloneWithOMath(om);
                 if (alone)
                 {
                     try { om.Type = Word.WdOMathType.wdOMathDisplay; }
@@ -128,19 +131,23 @@ namespace MathCursor.Host.Debug
                     sel.MoveRight(Word.WdUnits.wdCharacter, 1, Word.WdMovementType.wdMove);
                 }
                 catch { }
-                long tCaret = sw.ElapsedMilliseconds;
-
-                var store = new SourceMapStore(log);
-                var entry = store.Record(doc, om, "g(x)=1/x", "g(x)=\\frac{1}{x}", null,
-                    "eq_" + Guid.NewGuid().ToString("N").Substring(0, 12));
-                UndoRecordScope.Probe(app, tag + " après Record (FIN — recording doit être True)");
-                sw.Stop();
-
-                log($"poc-hash {tag} WALKER: total={sw.ElapsedMilliseconds}ms — TypeText={tType} | "
-                    + $"clear=+{tClear - tType} | build=+{tBuild - tClear} | caret=+{tCaret - tBuild} | "
-                    + $"record=+{sw.ElapsedMilliseconds - tCaret} | alone={alone} | recordOk={entry != null}");
-                Status(app, $"POC {tag} walker : {sw.ElapsedMilliseconds} ms — faire UN Ctrl+Z : tout doit disparaître");
+                tCaret = sw.ElapsedMilliseconds;
+                UndoRecordScope.Probe(app, tag + " après caret (FIN du scope — recording doit être True)");
             }
+
+            // Record HORS du scope undo (mesuré 2026-06-11 : la lecture
+            // WordOpenXML / le franchissement ferme le record custom ; la map
+            // n'est de toute façon PAS annulable — la garder dans le record
+            // n'apportait rien). Le record contient Delete+Build+typing :
+            // UN Ctrl+Z restaure la sténo.
+            var store = new SourceMapStore(log);
+            var entry = store.Record(doc, om, "g(x)=1/x", "g(x)=\\frac{1}{x}", null,
+                "eq_" + Guid.NewGuid().ToString("N").Substring(0, 12));
+            sw.Stop();
+            log($"poc-hash {tag} WALKER: total={sw.ElapsedMilliseconds}ms — TypeText={tType} | "
+                + $"clear=+{tClear - tType} | build=+{tBuild - tClear} | caret=+{tCaret - tBuild} | "
+                + $"record(post-scope)=+{sw.ElapsedMilliseconds - tCaret} | alone={alone} | recordOk={entry != null}");
+            Status(app, $"POC {tag} walker : {sw.ElapsedMilliseconds} ms — faire UN Ctrl+Z : tout doit disparaître");
         }
 
         // ── P6 — conformance walker : quels mappings divergent ? ───────────
