@@ -231,6 +231,26 @@ namespace MathCursor.Host
             {
                 sel.SetRange(om.Range.End, om.Range.End);
                 sel.MoveRight(Word.WdUnits.wdCharacter, 1, Word.WdMovementType.wdMove);
+
+                // Post-condition LISTE (litest.docx 2026-06-12) : équation
+                // dernier contenu de la puce → le MoveRight peut laisser le
+                // caret sur la frontière INTÉRIEURE de la zone — Entrée y
+                // PROLONGE alors la zone math sur la puce suivante (le « f( »
+                // tapé naissait dans un oMath neuf). Re-saute tant que la
+                // sélection rapporte une OMath (cap 3, hops loggés).
+                if (isInList)
+                {
+                    int hops = 0;
+                    while (hops < 3)
+                    {
+                        bool inMath = false;
+                        try { inMath = sel.OMaths != null && sel.OMaths.Count > 0; } catch { }
+                        if (!inMath) break;
+                        sel.MoveRight(Word.WdUnits.wdCharacter, 1, Word.WdMovementType.wdMove);
+                        hops++;
+                    }
+                    if (hops > 0) _log($"caret_escape_liste: +{hops} hop(s) pour sortir de la zone math");
+                }
             }
             catch { }
 
