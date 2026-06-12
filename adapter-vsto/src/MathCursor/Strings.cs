@@ -420,15 +420,12 @@ namespace MathCursor
                 "  Entrée       → valider la proposition sélectionnée (en mode nav)\n" +
                 "  Échap        → masquer la popup\n" +
                 "  Clic souris  → clic sur une alt = la résoudre, clic sur la finale = commit\n\n" +
-                "REVENIR SUR UNE ÉQUATION\n" +
-                "  Replace ton curseur DANS une équation déjà insérée : la popup se rouvre avec\n" +
-                "  les variantes. Valide pour remplacer, ou clique ailleurs pour garder.\n\n" +
                 "UN SOUCI ? UNE IDÉE ?\n" +
                 "  Bouton \"Signaler un souci\" à gauche → génère un rapport prêt à envoyer\n" +
                 "  (WhatsApp ou email). Ton feedback fait avancer le produit !\n\n" +
                 "Logs techniques : %AppData%\\MathCursor\\logs\\mathcursor.log\n\n" +
                 "MERCI AUX TESTEURS ET CONTRIBUTEURS\n" +
-                "  V. de Salaberry — Collège Le Sacré-Cœur, Vannes",
+                "  V. de Salaberry — Collège Le Sacré-Cœur, Vannes, France",
             _ =>
                 "MathCursor — Math notation at the keyboard for Word\n" +
                 $"Version {version} — beta\n\n" +
@@ -444,15 +441,12 @@ namespace MathCursor
                 "  Enter        → confirm the selected suggestion (nav mode)\n" +
                 "  Escape       → hide the popup\n" +
                 "  Mouse click  → click an alt to resolve it, click the final to commit\n\n" +
-                "EDITING AN EQUATION\n" +
-                "  Place your cursor INSIDE an existing equation: the popup reopens with\n" +
-                "  variants. Confirm to replace, or click elsewhere to keep.\n\n" +
                 "ISSUE? IDEA?\n" +
                 "  \"Report an issue\" button on the left → generates a ready-to-send report\n" +
                 "  (WhatsApp or email). Your feedback drives the product forward!\n\n" +
                 "Technical logs: %AppData%\\MathCursor\\logs\\mathcursor.log\n\n" +
                 "THANKS TO OUR TESTERS AND CONTRIBUTORS\n" +
-                "  V. de Salaberry — Collège Le Sacré-Cœur, Vannes",
+                "  V. de Salaberry — Collège Le Sacré-Cœur, Vannes, France",
         };
 
         // ---------- Dialog Report ----------
