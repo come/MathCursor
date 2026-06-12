@@ -57,20 +57,26 @@ namespace MathCursor.Host
                 // « Tapez une équation ici. » (temporary/showingPlcHdr, XML
                 // taper.docx 2026-06-12) qui est INVISIBLE pour
                 // om.Range.ContentControls (count=0 mesuré) → insupprimable
-                // proprement. Recette DocMath : Add SUR un caractère seed —
-                // ce mode ne crée pas de placeholder. Le seed (¤, jamais émis
-                // par LatexToOmml) est retiré après construction.
-                doc.Range(position, position).Text = "¤";
-                var omRange = doc.OMaths.Add(doc.Range(position, position + 1));
+                // proprement. Recette DocMath : Add SUR du texte seed.
+                //
+                // DEUX seeds ¤¤ (mesuré 2026-06-12, « soit f(x)=1/x ») : une
+                // écriture à om.Range.Start est AMBIGUË quand de la prose
+                // précède (frontière prose/math : le run atterrissait côté
+                // prose, l'équation ne contenait que la fraction). Tout le
+                // contenu s'insère ENTRE les deux seeds — positions
+                // INTÉRIEURES garanties — puis les seeds sont retirés.
+                doc.Range(position, position).Text = "¤¤";
+                var omRange = doc.OMaths.Add(doc.Range(position, position + 2));
                 om = omRange.OMaths[1];
-                BuildSequence(doc, om, om.Range.Start, oMathEl.Elements());
+                BuildSequence(doc, om, om.Range.Start + 1, oMathEl.Elements());
                 try
                 {
-                    Word.Range seed = null;
+                    var seeds = new List<Word.Range>();
                     foreach (Word.Range ch in om.Range.Characters)
-                        if (ch.Text == "¤") seed = ch;          // le DERNIER (contenu posé devant)
-                    if (seed != null) seed.Delete();
-                    else log?.Invoke("walker_seed_introuvable (¤ absent de la zone)");
+                        if (ch.Text == "¤") seeds.Add(ch);
+                    if (seeds.Count != 2) log?.Invoke($"walker_seeds: {seeds.Count}/2 retrouvés");
+                    for (int k = seeds.Count - 1; k >= 0; k--)
+                        seeds[k].Delete();
                 }
                 catch (Exception exS) { log?.Invoke("walker_seed_delete_error: " + exS.Message); }
                 return om;
