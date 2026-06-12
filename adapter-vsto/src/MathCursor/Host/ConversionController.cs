@@ -553,6 +553,11 @@ namespace MathCursor.Host
         {
             try
             {
+                // Popup déjà créée = déjà chaude par usage réel — et surtout
+                // ne JAMAIS écraser une popup en cours d'utilisation (mesuré
+                // 2026-06-12 : l'idle est arrivé 30 s après le boot, en
+                // pleine frappe — la popup live partait à −10000 puis Hide).
+                if (_popup != null) { _log("warmup: popup déjà créée, skip"); return; }
                 EnsurePopup();
                 _popup.ShowCandidates(
                     new[] { "f(x)=\\frac{1}{2}x^{2}+\\sqrt{x}" },

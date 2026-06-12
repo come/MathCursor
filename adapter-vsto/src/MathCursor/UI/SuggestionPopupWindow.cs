@@ -154,7 +154,13 @@ namespace MathCursor.UI
 
             _candidates = candidates ?? Array.Empty<string>();
             _navMode = preserveNav;
-            _expanded = _candidates.Count <= MaxCandidatesCollapsed || prevExpanded;
+            // _expanded = INTENTION UTILISATEUR uniquement (clic « + N autres »
+            // ou flèche au-delà du repli), préservée en nav. L'ancien
+            // « count <= Max ⇒ déplié » marquait déplié les petites listes
+            // sans effet visuel… puis FUYAIT vers la liste suivante via le
+            // hover-nav (mesuré 2026-06-12 : 5 candidats affichés). Le rendu
+            // des petites listes n'en a pas besoin (visibleCount = min).
+            _expanded = prevExpanded;
             _selectedIndex = preserveNav
                 ? Math.Max(0, Math.Min(prevIndex, _candidates.Count - 1))
                 : 0;
