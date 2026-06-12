@@ -541,6 +541,30 @@ namespace MathCursor.Host
 
         // ── Internals ────────────────────────────────────────────────────
 
+        /// <summary>
+        /// Préchauffage (UX 2026-06-12 : « la première apparition fait tout
+        /// lagguer ») : paye UNE fois, au démarrage, les coûts de première
+        /// popup — création du HWND WPF, layout, premier rendu WpfMath (JIT
+        /// + fontes) — en jouant le chemin complet HORS ÉCRAN. À appeler à
+        /// priorité idle sur le thread UI. Le moteur et le sérialiseur sont
+        /// chauffés à part (thread de fond, cf. ThisAddIn).
+        /// </summary>
+        public void WarmUpPopup()
+        {
+            try
+            {
+                EnsurePopup();
+                _popup.ShowCandidates(
+                    new[] { "f(x)=\\frac{1}{2}x^{2}+\\sqrt{x}" },
+                    anchorX: -10000, anchorYBelow: -10000, anchorYAbove: -10000,
+                    sourceText: "");
+                _popup.HidePopup();
+                _zone = null;
+                _log("warmup: popup préchauffée (HWND + WpfMath)");
+            }
+            catch (Exception ex) { _log("warmup_popup_error: " + ex.Message); }
+        }
+
         private void EnsurePopup()
         {
             if (_popup != null) return;

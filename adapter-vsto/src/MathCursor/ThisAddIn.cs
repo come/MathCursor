@@ -96,6 +96,24 @@ namespace MathCursor
                 // suggestion quand le caret bouge. Pas de polling.
                 this.Application.WindowSelectionChange += OnWindowSelectionChange;
 
+                // Préchauffage (UX 2026-06-12) : la PREMIÈRE popup payait HWND
+                // WPF + JIT WpfMath (~1 s de lag perçu). Hors écran, à
+                // priorité idle (après le boot de Word), sur le thread UI.
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
+                    System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+                    new Action(() => _conversion?.WarmUpPopup()));
+
+                // Moteur + sérialiseur : chauffe JIT en tâche de fond (purs).
+                System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        MathCursor.Engine.ForestEngine.Analyze("f(x)=1/x");
+                        MathCursor.Serialization.LatexToOmml.Convert("f(x)=\\frac{1}{x}");
+                    }
+                    catch (Exception exW) { LogStartup("warmup_engine_error: " + exW.Message); }
+                });
+
                 this.Application.StatusBar = "MathCursor prêt";
             }
             catch (Exception ex)
@@ -151,7 +169,7 @@ namespace MathCursor
         }
 
         /// <summary>
-        /// Cherche <c>distilmult-v5</c> (model_quantized.onnx + vocab.txt)
+        /// Cherche <c>distilmult-v6</c> (model_quantized.onnx + vocab.txt)
         /// dans les emplacements standards. Null si absent (le modèle
         /// ~129 Mo n'est pas dans git ; l'installer le déploie, et en dev le
         /// fallback DocMath s'applique).
@@ -170,7 +188,7 @@ namespace MathCursor
             foreach (var root in roots)
             {
                 if (string.IsNullOrEmpty(root)) continue;
-                var p = Path.Combine(root, "distilmult-v5");
+                var p = Path.Combine(root, "distilmult-v6");
                 if (Directory.Exists(p)
                     && File.Exists(Path.Combine(p, "model_quantized.onnx"))
                     && File.Exists(Path.Combine(p, "vocab.txt")))
