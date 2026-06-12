@@ -215,6 +215,7 @@
     <Compile Include="Host\SourceMap\SourceMapXml.cs" />
     <Compile Include="Host\SourceMap\Sha1Helper.cs" />
     <Compile Include="Host\SourceMap\SourceMapStore.cs" />
+    <Compile Include="Host\SourceMap\OmmlWalkerWhitelist.cs" />
     <Compile Include="Host\Debug\HashKeyPoc.cs" />
     <Compile Include="Host\Caret\CaretScreenPositionReader.cs" />
     <Compile Include="Host\EditMode\EditModeController.cs" />

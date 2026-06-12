@@ -79,6 +79,7 @@
     <Compile Include="..\..\src\MathCursor\Host\SourceMap\OmmlCanonicalizer.cs" Link="adapter-sources\Host\SourceMap\OmmlCanonicalizer.cs" />
     <Compile Include="..\..\src\MathCursor\Host\SourceMap\SourceMapXml.cs" Link="adapter-sources\Host\SourceMap\SourceMapXml.cs" />
     <Compile Include="..\..\src\MathCursor\Host\SourceMap\Sha1Helper.cs" Link="adapter-sources\Host\SourceMap\Sha1Helper.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\SourceMap\OmmlWalkerWhitelist.cs" Link="adapter-sources\Host\SourceMap\OmmlWalkerWhitelist.cs" />
   </ItemGroup>
 
 </Project>

@@ -396,6 +396,10 @@ namespace MathCursor.Host
                         catch (Exception exF) { _log("flow_next_line_error: " + exF.Message); }
                     }
                 }
+                // Source en map APRÈS la fermeture du record undo (la lecture
+                // WordOpenXML du Record fermerait le record — mesuré
+                // 2026-06-12, ADR hash-source-map amendé).
+                _inserter.FlushPendingRecord();
                 return true;
             }
             catch (Exception ex) { _log("commit_error: " + ex.Message); return false; }

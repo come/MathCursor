@@ -84,6 +84,30 @@ NO-GO G1/G2 → l'identité par contenu est impossible dans Word (ADR Limit à
 écrire) ; le canonicaliseur + fixtures restent réutilisables (conformance
 runner). NO-GO G4 → la fluidité ne venait pas de la CC ; profil affiné.
 
+## Amendement 2026-06-12 — véhicule d'insertion : walker SEUL, pas de repli
+
+> « je veux pas de solution de repli, je veux le truc propre ! ne rajoute pas
+> de fallback ou quoi » — utilisateur, 2026-06-12.
+
+Le POC walker (P1g/P6/P7) a démontré : record undo INTACT (1 Ctrl+Z = 1
+commit, jamais atteint par InsertXML), 24/24 conformance (matrices comprises),
+~110-150 ms. Leçons durement gagnées, dans le code :
+- **JAMAIS `OMaths.Add` à vide** : Word y insère un sdt placeholder « Tapez
+  une équation ici » (temporary/showingPlcHdr) INVISIBLE pour
+  `om.Range.ContentControls` (count=0 mesuré) → insupprimable proprement.
+  Recette : Add SUR un seed `¤` retiré après construction.
+- **`Record()` (lecture WordOpenXML) HORS du scope undo** — il ferme le
+  record custom ; la map n'est pas annulable de toute façon.
+- Word OMET les propriétés OMML à valeur par défaut au stockage et AJOUTE
+  les `mPr/mcs` des matrices — repli des deux côtés dans toute comparaison.
+
+Décision : `InsertXML` DISPARAÎT du pipeline d'insertion. Couverture totale
+vérifiée : la whitelist du walker ⊇ tout ce que `LatexToOmml` émet (audit
+2026-06-12) + `eqArr` (blocs). Verrou : test xUnit pure-compute « tout
+candidat du corpus fixtures → IsSupported » (l'`IsSupported` est extrait en
+classe pure pour être testable). Inconstructible (impossible par construction)
+= échec franc : rollback sténo, jamais de demi-équation.
+
 ## Tradeoff & alternatives écartées
 
 - **K2 seul** : ~60 ms par atterrissage caret (WindowSelectionChange) — tue
