@@ -426,7 +426,9 @@ namespace MathCursor
                 "UN SOUCI ? UNE IDÉE ?\n" +
                 "  Bouton \"Signaler un souci\" à gauche → génère un rapport prêt à envoyer\n" +
                 "  (WhatsApp ou email). Ton feedback fait avancer le produit !\n\n" +
-                "Logs techniques : %AppData%\\MathCursor\\logs\\mathcursor.log",
+                "Logs techniques : %AppData%\\MathCursor\\logs\\mathcursor.log\n\n" +
+                "MERCI AUX TESTEURS ET CONTRIBUTEURS\n" +
+                "  V. de Salaberry — Collège Le Sacré-Cœur, Vannes",
             _ =>
                 "MathCursor — Math notation at the keyboard for Word\n" +
                 $"Version {version} — beta\n\n" +
@@ -448,7 +450,9 @@ namespace MathCursor
                 "ISSUE? IDEA?\n" +
                 "  \"Report an issue\" button on the left → generates a ready-to-send report\n" +
                 "  (WhatsApp or email). Your feedback drives the product forward!\n\n" +
-                "Technical logs: %AppData%\\MathCursor\\logs\\mathcursor.log",
+                "Technical logs: %AppData%\\MathCursor\\logs\\mathcursor.log\n\n" +
+                "THANKS TO OUR TESTERS AND CONTRIBUTORS\n" +
+                "  V. de Salaberry — Collège Le Sacré-Cœur, Vannes",
         };
 
         // ---------- Dialog Report ----------
