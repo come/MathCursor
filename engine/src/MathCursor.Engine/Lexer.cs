@@ -174,6 +174,21 @@ internal static class Lexer
                 while (i < src.Length && IsAlpha(src[i])) sb.Append(src[i++]);
                 string s = sb.ToString();
                 bool sp = Spaced(st - 1, i);
+                // raccourcis dots « v... » / « d... » / « c... » (et formes
+                // autocorrigées « v… ») : le mot absorbe les points qui
+                // suivent si l'ALIAS « mot... » existe (table aliasGeneric,
+                // résolue via Canon — pas un mot, d'où le lookahead). Repli
+                // minuscule pour l'autocapitalisation Word (« V... »).
+                int dotsLen = StartsWithAt("...", i) ? 3 : Ch(i) == '…' ? 1 : 0;
+                if (dotsLen > 0
+                    && (Vocabulary.Vocab.TryGetValue(culture.Canon(s + "..."), out var dotsV)
+                        || Vocabulary.Vocab.TryGetValue(culture.Canon(s.ToLowerInvariant() + "..."), out dotsV))
+                    && dotsV.Shape == "atom")
+                {
+                    Push(new Token { Kind = "atom", Sym = dotsV.Lower });
+                    i += dotsLen;
+                    continue;
+                }
                 // canonicaliser AUSSI ici : « existe » contient « xi » (ξ,
                 // Splittable) et ne survit au découpage que si l'alias le
                 // rend « connu » dans la culture courante.
@@ -212,13 +227,17 @@ internal static class Lexer
                 continue;
             }
 
-            // opérateur infixe / postfixe : PLUS-LONG-MATCH (2 puis 1)
+            // opérateur infixe / postfixe / symbole-atome : PLUS-LONG-MATCH (3, 2 puis 1)
             bool matched = false;
-            foreach (int len in new[] { 2, 1 })
+            foreach (int len in new[] { 3, 2, 1 })
             {
                 if (i + len > src.Length) continue;
                 string op = src.Substring(i, len);
-                if (!Vocabulary.Vocab.TryGetValue(op, out var v) || (v.Shape != "infix" && v.Shape != "postfix")) continue;
+                if (!Vocabulary.Vocab.TryGetValue(op, out var v)
+                    || (v.Shape != "infix" && v.Shape != "postfix" && v.Shape != "atom")) continue;
+                // symbole-atome (« ... » 3 chars, « … » autocorrigé par Word →
+                // \ldots) : poussé comme un mot-atome, Sym = LaTeX du Lit.
+                if (v.Shape == "atom") { Push(new Token { Kind = "atom", Sym = v.Lower }); i += len; matched = true; break; }
                 if (v.Shape == "postfix") { Push(new Token { Kind = "postfix", Sym = op }); i += len; matched = true; break; }
 
                 var prev = Last();

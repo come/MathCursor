@@ -151,7 +151,48 @@ public sealed class ForestEngine
         var win = ranked.Where(r => r.Cost < best + PopupGap).ToList();
         var kept = win.Take(MaxShow).ToList();
         bool hasNote = note != null || win.Count > MaxShow;
+        kept = PairSkeletons(all, kept);
         return new AnalyzeResult(kept.Count > 1 ? "popup" : "auto", kept, hasNote);
+    }
+
+    // Paire de squelettes (ADR 2026-06-12 nary-skeleton-pair-preselection) :
+    // si le MEILLEUR parse est un n-aire À TROUS directs dont l'entrée vocab a
+    // des variantes, le squelette frère (autre arité, à trous, même tête) est
+    // proposé AUSSI — forme LONGUE en tête (présélection = comportement
+    // historique), décision popup. Pas de frère (guards, pas assez d'unités)
+    // → rien ne change. Règle de PRÉSENTATION : le Score n'est pas touché.
+    private List<EngineCandidate> PairSkeletons(List<(Node N, double Off)> all, List<EngineCandidate> kept)
+    {
+        var bestP = all[0]; double bestC = double.PositiveInfinity;
+        foreach (var p in all)
+        {
+            double c = Score.Cost(p.N) + p.Off;
+            if (c < bestC) { bestC = c; bestP = p; }
+        }
+        var n = bestP.N;
+        if (n.Type != "nary" || n.Sym == null || n.Parts == null) return kept;
+        if (!n.Parts.Any(c => c.Hole)) return kept;
+        if (Vocabulary.Vocab[n.Sym].Variants == null) return kept;
+
+        (Node N, double Off) sib = default; double sibC = double.PositiveInfinity;
+        foreach (var p in all)
+        {
+            var m = p.N;
+            if (m.Type != "nary" || m.Sym != n.Sym || m.Parts == null) continue;
+            if (m.Parts.Count == n.Parts.Count || !m.Parts.Any(c => c.Hole)) continue;
+            double c = Score.Cost(p.N) + p.Off;
+            if (c < sibC) { sibC = c; sib = p; }
+        }
+        if (sib.N == null) return kept;
+
+        var pair = new[] { (P: bestP, C: bestC), (P: sib, C: sibC) }
+            .OrderByDescending(x => x.P.N.Parts!.Count)        // forme LONGUE d'abord
+            .Select(x => new EngineCandidate(LatexRenderer.Render(x.P.N, _culture), x.C))
+            .ToList();
+        var outk = new List<EngineCandidate>(pair);
+        foreach (var k in kept)
+            if (outk.All(o => o.Latex != k.Latex)) outk.Add(k);
+        return outk.Take(MaxShow).ToList();
     }
 
     // callback de parsing d'un intérieur de parenthèse : MÊME pipeline (récursif).

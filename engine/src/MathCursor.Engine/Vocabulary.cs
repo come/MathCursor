@@ -141,9 +141,11 @@ internal static class Vocabulary
     // de frappe vers la forme pleine « sum k 1 n f(k) »).
     private static bool NonNumeric(Node n) => !Numeric(n);
     // Arg différentiel d'une intégrale indéfinie : un NOM atomique (dx, dt…),
-    // pas un nombre — sinon « int 0 1 » rendrait \int 0 \, d1.
+    // pas un nombre — sinon « int 0 1 » rendrait \int 0 \, d1. Un TROU passe :
+    // un arg pas-encore-tapé n'est pas invalide (squelette court en popup,
+    // ADR 2026-06-12 nary-skeleton-pair).
     private static bool NameAtom(Node n) =>
-        n.Type == "atom" && !n.Hole && n.Sym is { Length: > 0 } s && !char.IsDigit(s[0]);
+        n.Hole || (n.Type == "atom" && n.Sym is { Length: > 0 } s && !char.IsDigit(s[0]));
     // Corps d'un lim court : doit lier plus serré que le quantificateur —
     // « lim x +inf » reste le squelette \lim_{x\to+\infty} □ (le + explicite
     // rend « x+∞ » parsable d'un bloc), et \lim x+\infty s'afficherait comme
@@ -267,6 +269,15 @@ internal static class Vocabulary
         Vocab["setminus"] = SetOp("\\setminus", SUM);
         Vocab["emptyset"] = Lit("\\emptyset "); Vocab["inf"] = Lit("\\infty ");
 
+        // ── points de suspension (ADR 2026-06-12 dots-ellipsis-atoms) ───────
+        // « ... »/« … » → points BAS partout (choix user : zéro popup en plus,
+        // les centrés se demandent par cdots). Atomes ordinaires : opérande,
+        // cellule de matrice, parenthèses.
+        Vocab["dots"] = Lit("\\ldots ");
+        Vocab["cdots"] = Lit("\\cdots ");
+        Vocab["vdots"] = Lit("\\vdots ");
+        Vocab["ddots"] = Lit("\\ddots ");
+
         Vocab["partial"] = Prefix((a, _) => $"\\partial {a[0]}", tight: true);
         Vocab["nabla"] = Prefix((a, _) => $"\\nabla {a[0]}", tight: true);
         Vocab["det"] = Op("\\det"); Vocab["dim"] = Op("\\dim");
@@ -313,6 +324,8 @@ internal static class Vocabulary
         Vocab["∘"] = Vocab["circ"]; // ∘
         Vocab["±"] = Vocab["pm"];   // ±
         Vocab["·"] = Vocab["."];    // · (point médian → \cdot)
+        Vocab["..."] = Vocab["dots"]; // trois points tapés
+        Vocab["…"] = Vocab["dots"];   // U+2026 (autocorrection Word de « ... »)
         Vocab["mapsto"] = Infix(REL, WEAK, (a, _) => $"{a[0]}\\mapsto {a[1]}", cut: true, mapping: true);
 
         // ── ALIAS (lexicaux, rangés par culture) ────────────────────────────
@@ -333,7 +346,11 @@ internal static class Vocabulary
             ["exist"] = "exists", ["nexist"] = "nexists",
             // noms LaTeX nus — « pour que les latexiens soient pas perdus »
             // (le lexer avale aussi l'antislash : \infty ≡ infty).
-            ["infty"] = "inf", ["neq"] = "!=", ["leq"] = "<=", ["geq"] = ">=",
+            ["infty"] = "inf", ["ldots"] = "dots",
+            // raccourcis lettre+points — pas des mots (le lexer normalise le
+            // lookahead « v… »/« v... » en clé « v... » et résout via Canon)
+            ["v..."] = "vdots", ["d..."] = "ddots", ["c..."] = "cdots",
+            ["neq"] = "!=", ["leq"] = "<=", ["geq"] = ">=",
             ["wedge"] = "and", ["vee"] = "or", ["cdot"] = ".", ["times"] = "*",
             ["varnothing"] = "emptyset",
             // divers

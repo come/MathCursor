@@ -238,6 +238,14 @@ namespace MathCursor.UI
             ("\\liminf", "\\lim\\inf"),
             // Modulo : texte droit espacé
             ("\\bmod", "\\,\\mathrm{mod}\\,"),
+            // Points de suspension verticaux/diagonaux : inconnus de WpfMath
+            // (ni la commande ni les caractères ⋮/⋱ — sondé 2026-06-12), et
+            // inextractibles en TextBlock Unicode (ils vivent DANS les
+            // cellules de matrice). Dégradation APERÇU seulement : « : »
+            // (deux points verticaux) et \cdots — Word reçoit les vrais
+            // glyphes ⋮/⋱ via la table Symbols de LatexToOmml.
+            ("\\vdots", ":"),
+            ("\\ddots", "\\cdots"),
         };
     }
 }

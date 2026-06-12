@@ -25,17 +25,23 @@ Colab (GPU T4 gratuit) avec les .jsonl de `data/ner-corpus/`.
 
 ## Quel notebook pour ré-entraîner ?
 
-**Le modèle déployé (`distilmult-v5`, DistilBERT multilingue WordPiece) sort de
-`train_mathcursor_benchmark.ipynb`** — c'est lui qu'il faut relancer pour un
-retrain de prod (il entraîne XLM-R + DistilBERT, compare, et zippe le gagnant
-en `mathcursor-ner-v6-<short>.zip`). Le notebook « principal » ci-dessous est
-la baseline XLM-R historique. Les deux sont à jour corpus v8 (2026-06-11) :
+**Le modèle déployé (`distilmult-v6` depuis le 2026-06-12, DistilBERT
+multilingue WordPiece) sort de `train_mathcursor_benchmark.ipynb`** — c'est
+lui qu'il faut relancer pour un retrain de prod (il entraîne XLM-R +
+DistilBERT, compare, et zippe le gagnant). Le notebook « principal »
+ci-dessous est la baseline XLM-R historique. Les deux sont à jour corpus v8 :
 déposer TOUS les `.jsonl` de `data/ner-corpus/` dans le Drive, la cellule 1
 échoue si un fichier manque.
 
-Après retrain : dézipper en `distilmult-v6` et bumper le nom de dossier dans
-`ThisAddIn.TryFindModelDir` + `NerCorpusFixture` (ils cherchent `distilmult-v5`
-en dur), puis relancer `MathNerInferenceTests` (seuils F1 anti-rechute).
+Après retrain : bumper le nom d'archive dans la cellule 10 du benchmark
+(`mathcursor-ner-v7-…`), dézipper en `distilmult-v7` et bumper le nom de
+dossier dans `ThisAddIn.TryFindModelDir`, `NerCorpusFixture`,
+`installer/build.ps1` et le payload installer (4 endroits cherchent le nom
+en dur), puis relancer `MathNerInferenceTests` (seuils F1 anti-rechute,
+dont `Nary_short_forms_corpus_f1_above_threshold` ≥ 0.93).
+
+Historique : v6 (2026-06-12, corpus v8) — F1 test 0.9981, gold 1.000,
+extension_v8 0.984 (v5 : 0.865). v5 (2026-04-30, corpus v6.1).
 
 ## Lancer un entraînement (notebook principal)
 

@@ -520,6 +520,7 @@ namespace MathCursor.Serialization
             {"lfloor","⌊"},{"rfloor","⌋"},{"lceil","⌈"},{"rceil","⌉"},
             {"ast","∗"},{"cong","≅"},{"nexists","∄"},{"bmod","mod"},{"square","□"},
             {"infty","∞"},{"to","→"},{"mapsto","↦"},{"times","×"},{"cdot","⋅"},
+            {"ldots","…"},{"cdots","⋯"},{"vdots","⋮"},{"ddots","⋱"},
             {"div","÷"},{"pm","±"},{"mp","∓"},{"leq","≤"},{"geq","≥"},{"neq","≠"},
             {"approx","≈"},{"equiv","≡"},{"sim","∼"},{"propto","∝"},
             {"in","∈"},{"notin","∉"},{"subset","⊂"},{"subseteq","⊆"},{"supset","⊃"},{"supseteq","⊇"},

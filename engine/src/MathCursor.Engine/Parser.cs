@@ -37,6 +37,42 @@ internal sealed class Forest
         && t.Sym is { Length: 2 } s
         && s[0] >= 'A' && s[0] <= 'Z' && s[1] >= 'A' && s[1] <= 'Z';
 
+    // Repère (O, ⃗ı, ⃗ȷ) : origine = 1 atome lettre MAJUSCULE, puis 2-3
+    // segments « décoration Tight + atome » (vec/bar/hat — features du
+    // vocab, aucun opérateur nommé). Matché → les lectures matrices se
+    // taisent et le tuple littéral passe en auto.
+    private bool IsRepere(List<(int A, int B)> segs)
+    {
+        if (segs.Count < 3 || segs.Count > 4) return false;
+        var (a0, b0) = segs[0];
+        if (b0 - a0 != 1) return false;
+        var o = _toks[a0];
+        if (o.Kind != "atom" || o.Syms != null
+            || o.Sym is not { Length: 1 } s0 || s0[0] < 'A' || s0[0] > 'Z') return false;
+        for (int k = 1; k < segs.Count; k++)
+        {
+            var (a, b) = segs[k];
+            if (b - a != 2) return false;
+            var p = _toks[a];
+            if (p.Kind != "prefix" || p.Sym == null
+                || !Vocabulary.Vocab.TryGetValue(p.Sym, out var pv) || !pv.Tight) return false;
+            if (_toks[a + 1].Kind != "atom") return false;
+        }
+        return true;
+    }
+
+    // Segment = un UNIQUE atome-MOT (≥ 2 lettres, pas un nombre, pas de
+    // lectures multiples) — la garde anti-prose des listes nues.
+    private bool IsWordAtomSeg(int a, int b)
+    {
+        if (b - a != 1) return false;
+        var t = _toks[a];
+        if (t.Kind != "atom" || t.Num || t.Syms != null || t.Sym is not { Length: >= 2 } s) return false;
+        foreach (var c in s)
+            if (!char.IsLetter(c)) return false;
+        return true;
+    }
+
     private int MatchClose(int i)
     {
         int d = 0;
@@ -135,14 +171,40 @@ internal sealed class Forest
             bool pair = j - i == 3 && IsPointPair(_toks[i + 1]);
             if (pair)
                 outl.Add(new Node { Type = "atom", Sym = "(" + _toks[i + 1].Sym + ")", Coh = "geo", Ai = 1 });
-            List<Node> interior = _onGroup != null ? _onGroup(_toks.GetRange(i + 1, j - 1 - (i + 1))) : ParseSpan(i + 1, j - 1);
-            foreach (var e in interior)
+            // TUPLE : intérieur à VIRGULES profondeur 0 → lecture littérale
+            // « (e1, e2, …) » émise AVANT les matrices (à coût égal, la
+            // virgule tapée penche « éléments écrits » ; le ; reste la voie
+            // grille — ADR 2026-06-12 comma-tuples-bare-lists-repere).
+            // L'intérieur n'est pas groupé dans ce cas : un intérieur à
+            // virgules ne parse pas d'un bloc, et la liste nue y ferait un
+            // doublon SANS parenthèses.
+            var tupleSegs = CommaSegs(i + 1, j - 1);
+            if (tupleSegs != null)
             {
-                var g = e.Clone(); g.Grouped = true;
-                if (pair && g.Type == "atom") { g.Coh = "geo"; g.Ai = 0; }
-                outl.Add(g);
+                var tlists = new List<List<Node>>();
+                foreach (var (a, b) in tupleSegs) tlists.Add(ParseSpan(a, b));
+                foreach (var combo in Cartesian(tlists))
+                {
+                    var parts = new List<Node>();
+                    foreach (var e in combo) { var g = e.Clone(); g.Grouped = true; parts.Add(g); }
+                    outl.Add(new Node { Type = "tuple", Parts = parts });
+                }
             }
-            foreach (var m in Matrices(i + 1, j - 1)) outl.Add(m);
+            else
+            {
+                List<Node> interior = _onGroup != null ? _onGroup(_toks.GetRange(i + 1, j - 1 - (i + 1))) : ParseSpan(i + 1, j - 1);
+                foreach (var e in interior)
+                {
+                    var g = e.Clone(); g.Grouped = true;
+                    if (pair && g.Type == "atom") { g.Coh = "geo"; g.Ai = 0; }
+                    outl.Add(g);
+                }
+            }
+            // REPÈRE (O, ⃗ı, ⃗ȷ) : pattern matché → les lectures matrices se
+            // taisent, le tuple reste seul dans la fenêtre → AUTO, à toute
+            // profondeur d'imbrication.
+            if (tupleSegs == null || !IsRepere(tupleSegs))
+                foreach (var m in Matrices(i + 1, j - 1)) outl.Add(m);
         }
 
         // [AB] = segment (même pattern ; la voie intervalle ci-dessous exige
@@ -185,6 +247,23 @@ internal sealed class Forest
                 var parts = new List<Node>();
                 foreach (var e in combo) { var g = e.Clone(); g.Grouped = true; parts.Add(g); }
                 outl.Add(new Node { Type = "set", Parts = parts });
+            }
+        }
+
+        // LISTE NUE : virgules à profondeur 0 hors délimiteurs — « x, y »,
+        // « u_1, u_2, ..., u_n ». Garde anti-prose : aucun segment ne doit
+        // être un unique atome-MOT (« oui, non » reste une erreur — les
+        // zones NER qui débordent sur de la prose ne popent pas).
+        var bareSegs = CommaSegs(i, j);
+        if (bareSegs != null && !bareSegs.Exists(sg => IsWordAtomSeg(sg.A, sg.B)))
+        {
+            var blists = new List<List<Node>>();
+            foreach (var (a, b) in bareSegs) blists.Add(ParseSpan(a, b));
+            foreach (var combo in Cartesian(blists))
+            {
+                var parts = new List<Node>();
+                foreach (var e in combo) { var g = e.Clone(); g.Grouped = true; parts.Add(g); }
+                outl.Add(new Node { Type = "list", Parts = parts });
             }
         }
 
@@ -256,13 +335,15 @@ internal sealed class Forest
             var ve = Vocabulary.Vocab[head.Sym!];
             foreach (var parts in Splits(i + 1, j, ve.Arity))
                 outl.Add(new Node { Type = "nary", Sym = head.Sym, Spaced = head.Spaced, Parts = parts });
-            // formes courtes : jamais complétées par des trous (sinon « sum »
-            // seul perdrait son squelette complet face à \sum_□ □), et
-            // seulement à la frontière de frappe — sinon « lim x +inf »
-            // lirait (\lim x)+∞ au lieu du squelette \lim_{x\to+\infty} □
+            // formes courtes : trous autorisés comme l'arité canonique — la
+            // décision force la PAIRE de squelettes en popup au lieu d'un
+            // arbitrage silencieux (ADR 2026-06-12 nary-skeleton-pair, qui
+            // amende la règle no-hole). Toujours seulement à la frontière de
+            // frappe — sinon « lim x +inf » lirait (\lim x)+∞ au lieu du
+            // squelette \lim_{x\to+\infty} □
             if (ve.Variants != null && j >= _end)
                 foreach (var v in ve.Variants)
-                    foreach (var parts in Splits(i + 1, j, v.Arity, allowHoles: false))
+                    foreach (var parts in Splits(i + 1, j, v.Arity))
                         if (v.Accept == null || v.Accept(parts))
                             outl.Add(new Node { Type = "nary", Sym = head.Sym, Spaced = head.Spaced, Parts = parts });
         }
@@ -291,14 +372,12 @@ internal sealed class Forest
         return outl;
     }
 
-    // découpes de [a,b) en K spans (args d'un n-aire). Complétées par des TROUS
-    // en fin — sauf allowHoles=false (variantes courtes) : span épuisé → échec.
-    private List<List<Node>> Splits(int a, int b, int K, bool allowHoles = true)
+    // découpes de [a,b) en K spans (args d'un n-aire). Complétées par des TROUS en fin.
+    private List<List<Node>> Splits(int a, int b, int K)
     {
         if (K == 0) return a == b ? new List<List<Node>> { new() } : new List<List<Node>>();
         if (a == b)
         {
-            if (!allowHoles) return new List<List<Node>>();
             var holes = new List<Node>();
             for (int t = 0; t < K; t++) holes.Add(Hole());
             return new List<List<Node>> { holes };
@@ -314,7 +393,7 @@ internal sealed class Forest
                 foreach (var x in ParseSpan(a + 1, m))
                     seq.Add(new Node { Type = "prefix", Sym = unary, Spaced = headTok.Spaced, Parts = new() { x } });
             foreach (var first in seq)
-                foreach (var rest in Splits(m, b, K - 1, allowHoles))
+                foreach (var rest in Splits(m, b, K - 1))
                 {
                     var combo = new List<Node> { first };
                     combo.AddRange(rest);
@@ -328,7 +407,7 @@ internal sealed class Forest
             if (m < b && _toks[m] is { Kind: "infix", Spaced: true } ju
                 && ju.Sym == Vocabulary.Role["unitOp"])
                 foreach (var first in ParseSpan(a, m))
-                    foreach (var rest in Splits(m + 1, b, K - 1, allowHoles))
+                    foreach (var rest in Splits(m + 1, b, K - 1))
                     {
                         var combo = new List<Node> { first };
                         combo.AddRange(rest);
