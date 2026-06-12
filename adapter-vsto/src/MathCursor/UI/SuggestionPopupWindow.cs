@@ -31,7 +31,7 @@ namespace MathCursor.UI
         private const double DisplayOpacity = 0.5;
         private const double NavOpacity = 0.9;
         private const int FadeMs = 150;
-        private const int MaxCandidatesCollapsed = 2;
+        private const int MaxCandidatesCollapsed = 3;   // 2 → 3 (retour user 2026-06-12)
 
         private readonly StackPanel _rows;
         private readonly TextBlock _debugFooter;
