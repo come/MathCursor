@@ -168,20 +168,24 @@ namespace MathCursor.Host
             {
                 var omRange = doc.OMaths.Add(doc.Range(position, position));
                 om = omRange.OMaths[1];
-                // OMaths.Add peut insérer le prompt « Tapez une équation
-                // ici. » comme VRAI texte dans l'équation (diag 2026-06-12).
-                // NE PAS vider la zone avant de construire (zone vide =
-                // frame fantôme + premier write éjecté hors math, mesuré) :
-                // on construit DEVANT le prompt — validé — puis on coupe le
-                // prompt en queue, par sa longueur (locale-indépendant).
-                int promptLen = 0;
-                try { promptLen = (om.Range.Text ?? "").Length; } catch { }
                 BuildSequence(doc, om, om.Range.Start, oMathEl.Elements());
-                if (promptLen > 0)
+                // Le prompt « Tapez une équation ici. » est un w:sdt NATIF
+                // (placeholder temporary/showingPlcHdr) que OMaths.Add insère
+                // DANS l'équation quand la range est vide (XML vérifié,
+                // taper.docx 2026-06-12 — DocMath n'avait jamais le souci :
+                // il ne faisait Add que SUR du texte). Supprimer le CONTRÔLE
+                // après construction — trimmer son texte le ré-affiche, et
+                // vider la zone avant éjecte le contenu (mesurés tous deux).
+                try
                 {
-                    try { doc.Range(om.Range.End - promptLen, om.Range.End).Delete(); }
-                    catch (Exception exP) { log?.Invoke("walker_prompt_trim_error: " + exP.Message); }
+                    var ccs = om.Range.ContentControls;
+                    for (int k = ccs.Count; k >= 1; k--)
+                    {
+                        try { ccs[k].Delete(true); }
+                        catch (Exception exC) { log?.Invoke("walker_placeholder_delete_error: " + exC.Message); }
+                    }
                 }
+                catch (Exception exS) { log?.Invoke("walker_placeholder_scan_error: " + exS.Message); }
                 return om;
             }
             catch (Exception ex)
