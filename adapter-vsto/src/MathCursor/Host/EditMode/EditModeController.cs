@@ -1,5 +1,5 @@
 using System;
-using MathCursor.Host.CCMeta;
+using MathCursor.Host.SourceMap;
 using MathCursor.HostContract;
 using MathCursor.UI;
 using Word = Microsoft.Office.Interop.Word;
@@ -10,23 +10,23 @@ namespace MathCursor.Host.EditMode
     /// Bounded context "édition d'une équation existante" (DDD).
     ///
     /// <para>Pilote le cycle complet quand le caret atterrit sur l'une de
-    /// NOS OMaths (identifiée par CC MathCursor + cc.Tag MCMeta) :</para>
+    /// NOS OMaths — identifiée par la MAP hash→source (ADR hash-source-map,
+    /// plus d'anchor CC) :</para>
     /// <list type="number">
     /// <item>Détection au polling : <see cref="Sync"/> est appelé à chaque
     /// tick. Ouvre la popup edit si le caret est sur une OMath à nous,
-    /// la ferme quand le caret en sort.</item>
+    /// la ferme quand le caret en sort. Coût nominal : K1 (Range.Text).</item>
     /// <item>Garde "déjà géré" : <see cref="_editingOMathStart"/> empêche
     /// le respawn de la popup tant que le caret reste sur la même OMath.</item>
     /// <item>Action revert : <see cref="OnRevertRequested"/> remplace
-    /// l'OMath par la source brute (lue depuis cc.Tag).</item>
+    /// l'OMath par la source brute — CONFIRMÉE par K2 (opération
+    /// destructive, jamais sur un simple match K1).</item>
     /// </list>
-    ///
-    /// <para>Phase B (2026-05-18) : identification + source via CC.Tag
-    /// au lieu de bookmark + IEquationStore.</para>
     /// </summary>
     internal sealed class EditModeController
     {
         private readonly Word.Application _app;
+        private readonly SourceMapResolver _resolver;
         private readonly Action _hideSuggestionPopup;
         private readonly Func<(double x, double y)> _getCaretScreenPos;
         private readonly Action<string> _log;
@@ -52,11 +52,13 @@ namespace MathCursor.Host.EditMode
 
         public EditModeController(
             Word.Application app,
+            SourceMapResolver resolver,
             Action hideSuggestionPopup,
             Func<(double x, double y)> getCaretScreenPos,
             Action<string> log)
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
+            _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
             _hideSuggestionPopup = hideSuggestionPopup ?? (() => { });
             _getCaretScreenPos = getCaretScreenPos ?? throw new ArgumentNullException(nameof(getCaretScreenPos));
             _log = log ?? (s => { });
@@ -110,11 +112,11 @@ namespace MathCursor.Host.EditMode
 
         private bool TryEnter(Word.OMath om)
         {
-            var (_, meta) = CcMetaResolver.ResolveAt(om);
-            if (meta == null || string.IsNullOrEmpty(meta.HandleId)) return false;
+            var source = _resolver.ResolveAt(_app.ActiveDocument, om);
+            if (source == null) return false;
 
             _hideSuggestionPopup();
-            _editHandle = new EquationHandle(meta.HandleId);
+            _editHandle = new EquationHandle(source.HandleId ?? OMathInserter.NewHandleId());
 
             if (_popup == null)
             {
@@ -122,11 +124,42 @@ namespace MathCursor.Host.EditMode
                 _popup.RevertRequested += OnRevertRequested;
             }
 
-            const double OMathExtraHeightDip = 18.0;
-            var caretPos = _getCaretScreenPos();
-            _popup.ShowAt(caretPos.x, caretPos.y + OMathExtraHeightDip, alignRight: true);
-            _log($"edit mode: handle={meta.HandleId} popup at caret-rightaligned ({caretPos.x:F0},{caretPos.y + OMathExtraHeightDip:F0})");
+            // Panneau ancré au DÉBUT de la formule (demande user 2026-06-11) :
+            // bord gauche du popup = bord gauche de l'OMath, juste dessous.
+            // Repli : ancien comportement caret-rightaligned si GetPoint échoue.
+            if (TryGetOMathScreenAnchor(om, out double ax, out double ay))
+            {
+                _popup.ShowAt(ax, ay, alignRight: false);
+                _log($"edit mode: handle={_editHandle.Id} popup at omath-start ({ax:F0},{ay:F0})");
+            }
+            else
+            {
+                const double OMathExtraHeightDip = 18.0;
+                var caretPos = _getCaretScreenPos();
+                _popup.ShowAt(caretPos.x, caretPos.y + OMathExtraHeightDip, alignRight: true);
+                _log($"edit mode: handle={_editHandle.Id} popup at caret-rightaligned fallback ({caretPos.x:F0},{caretPos.y + OMathExtraHeightDip:F0})");
+            }
             return true;
+        }
+
+        /// <summary>Coin bas-gauche de la formule en DIP via Window.GetPoint
+        /// (coordonnées écran pixels → DIP par le scale DPI partagé).</summary>
+        private bool TryGetOMathScreenAnchor(Word.OMath om, out double x, out double y)
+        {
+            x = y = 0;
+            try
+            {
+                var win = _app.ActiveWindow;
+                if (win == null) return false;
+                int left, top, width, height;
+                win.GetPoint(out left, out top, out width, out height, om.Range);
+                if (height <= 0) return false;
+                double scale = Caret.CaretScreenPositionReader.GetDpiScale();
+                x = left / scale;
+                y = (top + height) / scale + 4;
+                return true;
+            }
+            catch { return false; }
         }
 
         // ── Action revert ────────────────────────────────────────────
@@ -140,14 +173,16 @@ namespace MathCursor.Host.EditMode
             var om = FindOMathAtCaret();
             if (om == null) { _log("revert: no OMath at caret, abort"); return; }
 
-            // 2. Lit le CC + parse Tag → sténo initiale.
-            var (cc, meta) = CcMetaResolver.ResolveAt(om);
-            if (meta == null || string.IsNullOrEmpty(meta.Steno))
+            // 2. Source CONFIRMÉE par K2 (opération destructive : jamais sur
+            //    un simple match K1 — un faux positif détruirait la mauvaise
+            //    équation). Lookup miss = équation éditée à la main, acté ADR.
+            var sourceEntry = _resolver.ResolveConfirmed(_app.ActiveDocument, om);
+            if (sourceEntry == null || string.IsNullOrEmpty(sourceEntry.Steno))
             {
-                _log($"revert: source introuvable pour handle {handle.Id} (CC manquant ou tag corrompu)");
+                _log($"revert: source introuvable pour handle {handle.Id} (pas en map ou K2 non confirmée)");
                 return;
             }
-            string source = meta.Steno;
+            string source = sourceEntry.Steno;
             string revertText = source.Replace("\n", "\r");
 
             try
@@ -155,31 +190,16 @@ namespace MathCursor.Host.EditMode
                 var sel = _app.Selection;
                 var doc = _app.ActiveDocument;
 
-                // 3. Sélectionne TOUT l'OMath (et son CC s'il y en a un).
-                int selStart = cc?.Range.Start ?? om.Range.Start;
+                // 3. Sélectionne TOUT l'OMath (plus d'anchor : l'OMath EST l'unité).
+                int selStart = om.Range.Start;
                 int selEnd = om.Range.End;
                 sel.SetRange(selStart, selEnd);
                 _log($"revert: select [{selStart},{selEnd}) post-snap sel=[{sel.Start},{sel.End})");
-
-                // Unlock CC anchor (LockContentControl peut bloquer).
-                if (cc != null)
-                {
-                    try { cc.LockContents = false; } catch { }
-                    try { cc.LockContentControl = false; } catch { }
-                }
 
                 // 4. Remplace : Delete + TypeText avec la sténo brute.
                 sel.Delete();
                 sel.TypeText(revertText);
                 int newEnd = sel.Start;
-
-                // 5. Dispose le CC wrapper (= devenu un wrapper « ghost »
-                //    que Word préserve après le sel.Delete).
-                //    cc.Delete(false) = wrapper-only, contenu préservé.
-                if (cc != null)
-                {
-                    try { cc.Delete(false); } catch (Exception exCc) { _log("revert_cc_dispose_error: " + exCc.Message); }
-                }
 
                 int afterPos = selStart;
 

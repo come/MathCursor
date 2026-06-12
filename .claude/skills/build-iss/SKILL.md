@@ -21,7 +21,7 @@ Working dir : `D:/Software/MathCursor`. Tous les chemins sont relatifs à cette 
 - `onnxruntime-x86/onnxruntime.dll` (PE Machine = 0x014c)
 - `onnxruntime-x64/onnxruntime.dll` (PE Machine = 0x8664)
 - `vc_redist.x86.exe` + `vc_redist.x64.exe`
-- Modèle NER `distilmult-v5` complet
+- Modèle NER `distilmult-v6` complet
 - Tous les binaires .NET requis
 - `MathCursor-Tutoriel-fr.docx` (généré par `tools/TutorialBuilder/` ; EN optionnel, spec non portée)
 
@@ -69,7 +69,7 @@ Ce script :
 2. Copie les binaires dans `adapter-vsto/installer/payload/`
 3. Copie les natifs ONNX dans `payload/onnxruntime-x86/` et `payload/onnxruntime-x64/`
 4. Bundle `vc_redist.x86.exe` + `vc_redist.x64.exe` (téléchargés depuis aka.ms si absents du cache)
-5. Copie le modèle NER `distilmult-v5`
+5. Copie le modèle NER `distilmult-v6`
 6. Lance ISCC pour produire l'EXE final dans `adapter-vsto/installer/output/`
 
 Si exit code ≠ 0 → stop, montre l'erreur.

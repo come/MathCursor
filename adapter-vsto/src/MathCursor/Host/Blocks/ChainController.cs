@@ -1,13 +1,12 @@
 using System;
 using System.IO;
 using System.Linq;
-using MathCursor.Host.CCMeta;
 using MathCursor.Host.Detection;
 using Word = Microsoft.Office.Interop.Word;
 
 namespace MathCursor.Host.Blocks
 {
-    /// <summary>Types de bloc (valeur du Tag <see cref="MCMeta.Type"/>).</summary>
+    /// <summary>Types de bloc (valeur de <c>EquationSource.Type</c> en map).</summary>
     internal static class BlockTypes
     {
         public const string Chain = "chain";
@@ -31,12 +30,14 @@ namespace MathCursor.Host.Blocks
     {
         private readonly Word.Application _app;
         private readonly OMathInserter _inserter;
+        private readonly SourceMap.SourceMapResolver _resolver;
         private readonly Action<string> _log;
 
         public ChainController(Word.Application app, OMathInserter inserter, Action<string> log = null)
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
             _inserter = inserter ?? throw new ArgumentNullException(nameof(inserter));
+            _resolver = new SourceMap.SourceMapResolver(inserter.SourceMap);
             _log = log ?? LogDiag;
         }
 
@@ -51,7 +52,8 @@ namespace MathCursor.Host.Blocks
             if (!zone.TryToInternal(doc, out int zStart, out int zEnd)) return false;
 
             var above = FindOurEquationAbove(doc, zStart);
-            if (above == null || (above.Value.Meta.Type != null && above.Value.Meta.Type != BlockTypes.Chain))
+            if (!IsAloneOnItsLine(doc, zStart)) above = null;   // ligne mixte → repli autonome
+            if (above == null || (above.Value.Source.Type != null && above.Value.Source.Type != BlockTypes.Chain))
             {
                 // Repli autonome (rien à nous au-dessus, ou bloc d'un autre type).
                 _log($"chain: repli autonome \"{match.MarkerTyped} {restLatex}\"");
@@ -59,14 +61,14 @@ namespace MathCursor.Host.Blocks
                 return true;
             }
 
-            var (om, cc, meta) = above.Value;
-            string steno = (meta.Steno ?? "") + "\n" + zone.Text.Trim();
-            string latexJoined = (meta.Latex ?? "") + "\n" + (restLatex ?? "");
+            var (om, source) = above.Value;
+            string steno = (source.Steno ?? "") + "\n" + zone.Text.Trim();
+            string latexJoined = (source.Latex ?? "") + "\n" + (restLatex ?? "");
             var oMath = ChainComposer.ComposeChain(steno.Split('\n'), latexJoined.Split('\n'));
 
-            int repStart = ReplaceStart(doc, cc, om);
-            _log($"chain: {(meta.Type == null ? "CRÉATION" : "EXTENSION")} bloc [{repStart},{zEnd}) lignes={steno.Split('\n').Length}");
-            int removed = RemoveOldBlock(doc, cc, om, repStart, zStart);
+            int repStart = ReplaceStart(doc, om);
+            _log($"chain: {(source.Type == null ? "CRÉATION" : "EXTENSION")} bloc [{repStart},{zEnd}) lignes={steno.Split('\n').Length}");
+            int removed = RemoveOldBlock(doc, repStart, zStart);
             var (s, e, h) = _inserter.InsertBlock(repStart, zEnd - removed, oMath, latexJoined, steno, BlockTypes.Chain);
             return h != null || s != e;
         }
@@ -83,16 +85,17 @@ namespace MathCursor.Host.Blocks
             if (!zone.TryToInternal(doc, out int zStart, out int zEnd)) return false;
 
             var above = FindOurEquationAbove(doc, zStart);
-            if (above != null && above.Value.Meta.Type == BlockTypes.System)
+            if (!IsAloneOnItsLine(doc, zStart)) above = null;   // ligne mixte → création autonome
+            if (above != null && above.Value.Source.Type == BlockTypes.System)
             {
-                var (om, cc, meta) = above.Value;
-                string steno = (meta.Steno ?? "") + "\n" + zone.Text.Trim();
-                string latexJoined = (meta.Latex ?? "") + "\n" + (restLatex ?? "");
+                var (om, source) = above.Value;
+                string steno = (source.Steno ?? "") + "\n" + zone.Text.Trim();
+                string latexJoined = (source.Latex ?? "") + "\n" + (restLatex ?? "");
                 var oMathExt = ChainComposer.ComposeSystem(latexJoined.Split('\n'));
 
-                int repStart = ReplaceStart(doc, cc, om);
+                int repStart = ReplaceStart(doc, om);
                 _log($"system: EXTENSION, total={steno.Split('\n').Length}");
-                int removed = RemoveOldBlock(doc, cc, om, repStart, zStart);
+                int removed = RemoveOldBlock(doc, repStart, zStart);
                 _inserter.InsertBlock(repStart, zEnd - removed, oMathExt, latexJoined, steno, BlockTypes.System);
                 return true;
             }
@@ -114,11 +117,12 @@ namespace MathCursor.Host.Blocks
             try
             {
                 if (!zone.TryToInternal(doc, out int zStart, out _)) return null;
+                if (!IsAloneOnItsLine(doc, zStart)) return null;   // aperçu cohérent avec le commit
                 var above = FindOurEquationAbove(doc, zStart);
                 if (above == null) return null;
-                var meta = above.Value.Meta;
-                var lines = (meta.Latex ?? "").Split('\n');
-                return (meta.Type ?? "", lines);
+                var source = above.Value.Source;
+                var lines = (source.Latex ?? "").Split('\n');
+                return (source.Type ?? "", lines);
             }
             catch { return null; }
         }
@@ -126,30 +130,19 @@ namespace MathCursor.Host.Blocks
         // ── Internals ────────────────────────────────────────────────────
 
         /// <summary>
-        /// Supprime l'ancien bloc (anchor CC + ZWSP + OMath + marque de ¶,
-        /// = tout <c>[repStart, zoneStart)</c>) par la recette SÉLECTION
-        /// validée (word-api-helpers §7 revert, hygiène H1) : <c>sel.SetRange
-        /// + sel.Delete()</c> puis <c>cc.Delete(false)</c> pour le wrapper
-        /// fantôme. PAS <c>cc.Delete(true)</c> : observé no-op silencieux sur
-        /// nos anchors (boucle ZoneCleaner ×20, shift=0) — le ¶ de l'ancien
-        /// bloc survivait et le bloc descendait d'une ligne à chaque merge
-        /// (retour user 2026-06-10). Renvoie le nombre de positions
+        /// Supprime l'ancien bloc (OMath + marque de ¶, = tout
+        /// <c>[repStart, zoneStart)</c>) par la recette SÉLECTION validée :
+        /// <c>sel.SetRange + sel.Delete()</c>. Plus de CC ni de ZWSP caché
+        /// (ADR hash-source-map) — les pathologies « cc.Delete no-op » et
+        /// « texte masqué insupprimable » sont caduques par construction ;
+        /// les diagnostics removed=N/N sont GARDÉS (preuve paras-diag).
+        /// L'entrée map de l'ancien bloc devient une entrée morte (politique
+        /// ADR : pas de GC, cap+éviction). Renvoie le nombre de positions
         /// réellement supprimées (mesuré via <c>doc.Content.End</c>).
         /// </summary>
-        private int RemoveOldBlock(Word.Document doc, Word.ContentControl cc, Word.OMath om,
-            int repStart, int zoneStart)
+        private int RemoveOldBlock(Word.Document doc, int repStart, int zoneStart)
         {
             if (zoneStart <= repStart) return 0;
-            try { cc.LockContents = false; } catch { }
-            try { cc.LockContentControl = false; } catch { }
-
-            // DÉMASQUER avant de supprimer : le ZWSP anchor est en
-            // Font.Hidden et Word REFUSE silencieusement de supprimer du
-            // texte caché quand « afficher le texte masqué » est décoché —
-            // c'est ce qui faisait no-oper cc.Delete(true) (boucle ×20) puis
-            // survivre 2 chars au sel.Delete (removed=22/24 au log, le ¶ de
-            // l'ancien bloc restait → ligne fantôme par merge).
-            try { doc.Range(repStart, zoneStart).Font.Hidden = 0; } catch { }
 
             int before = doc.Content.End;
             try
@@ -159,7 +152,6 @@ namespace MathCursor.Host.Blocks
                 sel.Delete();
             }
             catch (Exception ex) { _log("chain: remove_old_block_error: " + ex.Message); }
-            try { cc.Delete(false); } catch { } // wrapper fantôme éventuel
             int removed = before - doc.Content.End;
             int expected = zoneStart - repStart;
             _log($"chain: ancien bloc supprimé [{repStart},{zoneStart}) removed={removed}/{expected}");
@@ -186,9 +178,41 @@ namespace MathCursor.Host.Blocks
         // 2026-06-10 (suppression amont removed=N/N parfaite, et pourtant
         // un <w:p> vide sans run au-dessus du bloc).
 
+        /// <summary>
+        /// Le marqueur de chaîne ne FUSIONNE que depuis une ligne AUTONOME
+        /// (retour user 2026-06-12) : de la prose ou une OMath AVANT la zone
+        /// dans le MÊME ¶ = ligne mixte → repli autonome (marqueur rendu).
+        /// La fusion étant destructive (l'ancien bloc est remplacé), le
+        /// doute (probe KO) répond FAUX — l'autonome est toujours bénin.
+        /// </summary>
+        private bool IsAloneOnItsLine(Word.Document doc, int zStart)
+        {
+            try
+            {
+                var para = doc.Range(zStart, zStart).Paragraphs[1].Range;
+                int paraStart = para.Start;
+                if (zStart <= paraStart) return true;
+                var before = doc.Range(paraStart, zStart);
+                if (before.OMaths.Count > 0)
+                {
+                    _log($"chain: OMath avant la zone dans le ¶ [{paraStart},{zStart}) → ligne mixte");
+                    return false;
+                }
+                string lead = (before.Text ?? "").Replace("\r", "").Replace("\n", "").Trim();
+                if (lead.Length > 0)
+                {
+                    _log($"chain: prose avant la zone (\"{lead}\") → ligne mixte");
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception ex) { _log("chain: alone_probe_error: " + ex.Message); return false; }
+        }
+
         /// <summary>L'équation/le bloc À NOUS porté par le ¶ qui précède
-        /// IMMÉDIATEMENT le ¶ de la zone (adjacence stricte). Null sinon.</summary>
-        private (Word.OMath Om, Word.ContentControl Cc, MCMeta Meta)? FindOurEquationAbove(
+        /// IMMÉDIATEMENT le ¶ de la zone (adjacence stricte). Identification
+        /// par la map (resolver bi-clé). Null sinon.</summary>
+        private (Word.OMath Om, SourceMap.EquationSource Source)? FindOurEquationAbove(
             Word.Document doc, int zoneStart)
         {
             try
@@ -202,40 +226,34 @@ namespace MathCursor.Host.Blocks
                 foreach (Word.OMath o in prevPara.Range.OMaths) last = o;
                 if (last == null) return null;
 
-                var (cc, meta) = CcMetaResolver.ResolveAt(last);
-                if (cc == null || meta == null) return null;
-                return (last, cc, meta);
+                var source = _resolver.ResolveAt(doc, last);
+                if (source == null) return null;
+                return (last, source);
             }
             catch (Exception ex) { _log("chain_probe_above_error: " + ex.Message); return null; }
         }
 
         /// <summary>
-        /// Début de la plage à remplacer : le DÉBUT DU ¶ du bloc — pas
-        /// <c>cc.Range.Start</c>. Preuve paras-diag 2026-06-10 : la frontière
-        /// structurelle du sdt vit À <c>paraStart</c>, AVANT
-        /// <c>cc.Range.Start</c> ; en supprimant depuis cc.Start, Word garde
-        /// un ¶ vide squelette <c>[paraStart, paraStart+1)</c> au-dessus
-        /// (« paras 2→2 » malgré la marque de ¶ dans la plage) → le bloc
-        /// descendait d'une ligne à chaque merge. Garde-fou : si du contenu
-        /// VISIBLE précède l'anchor dans le ¶ (équation inline dans de la
-        /// prose), on revient à cc.Start pour ne pas manger la prose.
+        /// Début de la plage à remplacer : le DÉBUT DU ¶ du bloc si rien de
+        /// visible ne précède l'OMath (¶ entier à nous — évite le ¶ squelette,
+        /// preuve paras-diag 2026-06-10), sinon <c>om.Range.Start</c> (équation
+        /// inline dans de la prose : ne pas manger la prose).
         /// </summary>
-        private int ReplaceStart(Word.Document doc, Word.ContentControl cc, Word.OMath om)
+        private int ReplaceStart(Word.Document doc, Word.OMath om)
         {
-            int ccStart;
-            try { ccStart = cc.Range.Start; }
-            catch { ccStart = om.Range.Start; }
+            int omStart;
+            try { omStart = om.Range.Start; } catch { return 0; }
             try
             {
                 int paraStart = om.Range.Paragraphs[1].Range.Start;
-                if (paraStart >= ccStart) return ccStart;
-                string lead = (doc.Range(paraStart, ccStart).Text ?? "")
+                if (paraStart >= omStart) return omStart;
+                string lead = (doc.Range(paraStart, omStart).Text ?? "")
                     .Replace("​", "").Replace("\r", "").Replace("\n", "").Trim();
                 if (lead.Length == 0) return paraStart; // ¶ entier à nous
-                _log($"chain: contenu visible avant l'anchor (\"{lead}\") → remplacement depuis cc.Start");
+                _log($"chain: contenu visible avant le bloc (\"{lead}\") → remplacement depuis om.Start");
             }
             catch (Exception ex) { _log("chain: replace_start_probe_error: " + ex.Message); }
-            return ccStart;
+            return omStart;
         }
 
         private static void LogDiag(string message)

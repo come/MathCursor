@@ -26,7 +26,7 @@ namespace MathCursor
     {
         private ConversionController _conversion;
         private EditModeController _editMode;
-        private AnchorHygiene _hygiene;
+        private EquationDeletionGuard _deletionGuard;
         private AutoDetectController _autoDetect;
         private Detection.MathNerDetector _ner;
         private KeyboardInterceptor _keyboard;
@@ -53,14 +53,16 @@ namespace MathCursor
 
                 _editMode = new EditModeController(
                     this.Application,
+                    _conversion.Resolver,
                     hideSuggestionPopup: () => _conversion?.HidePopup(),
                     getCaretScreenPos: CaretScreenPositionReader.Read,
                     log: LogStartup);
 
-                // Hygiène de suppression des anchors CC (ADR 2026-06-10-Fix-
-                // anchor-cc-deletion-hygiene) : suppression atomique, balayage
-                // d'orphelines, anti-piège caret.
-                _hygiene = new AnchorHygiene(this.Application);
+                // Suppression atomique Backspace/Suppr (héritier minimal de
+                // l'ex-AnchorHygiene H1 ; H2/H3 caducs sans CC — ADR
+                // hash-source-map).
+                _deletionGuard = new EquationDeletionGuard(
+                    this.Application, _conversion.Resolver, LogStartup);
 
                 // Auto-détection NER en cours de frappe (ADR 2026-06-10-Feat-
                 // ner-auto-detection-debounce). Inerte tant que le modèle
@@ -79,8 +81,8 @@ namespace MathCursor
                     OnUpPressed = HandleUpPressed,
                     OnDownPressed = HandleDownPressed,
                     OnEscapePressed = HandleEscapePressed,
-                    OnBackspacePressed = () => _hygiene?.TrySelectEquationBeforeCaret() ?? false,
-                    OnDeletePressed = () => _hygiene?.TrySelectEquationAfterCaret() ?? false,
+                    OnBackspacePressed = () => _deletionGuard?.TrySelectEquationBeforeCaret() ?? false,
+                    OnDeletePressed = () => _deletionGuard?.TrySelectEquationAfterCaret() ?? false,
                     OnTextKeyTyped = () => _autoDetect?.OnTextKeyTyped(),
                 };
                 _keyboard.Install();
@@ -93,6 +95,24 @@ namespace MathCursor
                 // Event natif : pilote le mode édition + ferme la popup
                 // suggestion quand le caret bouge. Pas de polling.
                 this.Application.WindowSelectionChange += OnWindowSelectionChange;
+
+                // Préchauffage (UX 2026-06-12) : la PREMIÈRE popup payait HWND
+                // WPF + JIT WpfMath (~1 s de lag perçu). Hors écran, à
+                // priorité idle (après le boot de Word), sur le thread UI.
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
+                    System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+                    new Action(() => _conversion?.WarmUpPopup()));
+
+                // Moteur + sérialiseur : chauffe JIT en tâche de fond (purs).
+                System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        MathCursor.Engine.ForestEngine.Analyze("f(x)=1/x");
+                        MathCursor.Serialization.LatexToOmml.Convert("f(x)=\\frac{1}{x}");
+                    }
+                    catch (Exception exW) { LogStartup("warmup_engine_error: " + exW.Message); }
+                });
 
                 this.Application.StatusBar = "MathCursor prêt";
             }
@@ -149,7 +169,7 @@ namespace MathCursor
         }
 
         /// <summary>
-        /// Cherche <c>distilmult-v5</c> (model_quantized.onnx + vocab.txt)
+        /// Cherche <c>distilmult-v6</c> (model_quantized.onnx + vocab.txt)
         /// dans les emplacements standards. Null si absent (le modèle
         /// ~129 Mo n'est pas dans git ; l'installer le déploie, et en dev le
         /// fallback DocMath s'applique).
@@ -168,7 +188,7 @@ namespace MathCursor
             foreach (var root in roots)
             {
                 if (string.IsNullOrEmpty(root)) continue;
-                var p = Path.Combine(root, "distilmult-v5");
+                var p = Path.Combine(root, "distilmult-v6");
                 if (Directory.Exists(p)
                     && File.Exists(Path.Combine(p, "model_quantized.onnx"))
                     && File.Exists(Path.Combine(p, "vocab.txt")))
@@ -184,7 +204,6 @@ namespace MathCursor
             try
             {
                 if (_conversion?.IsCommitting == true) return;
-                _hygiene?.OnSelectionChanged();
                 _conversion?.OnSelectionChanged();
 
                 Word.OMath omAtCaret = null;
@@ -195,6 +214,16 @@ namespace MathCursor
                 }
                 catch { }
                 _editMode?.Sync(omAtCaret, inPostCommitCooldown: false);
+
+                // QOL 2026-06-12 : un CLIC dans du texte (sélection réduite,
+                // hors OMath) relance la détection — la popup se (re)propose
+                // sur une expression existante, ou se ferme si rien au caret.
+                try
+                {
+                    if (omAtCaret == null && sel != null && sel.Start == sel.End)
+                        _autoDetect?.OnCaretMoved();
+                }
+                catch { }
             }
             catch { }
         }

@@ -267,6 +267,10 @@ namespace MathCursor.Serialization.Tests
         [InlineData(@"A\not\subset B", "A⊄B")]
         [InlineData(@"A\cup B", "A∪B")]
         [InlineData(@"x\mapsto x", "x↦x")]
+        [InlineData(@"1+2+\ldots +n", "1+2+…+n")]
+        [InlineData(@"\cdots ", "⋯")]
+        [InlineData(@"\vdots ", "⋮")]
+        [InlineData(@"\ddots ", "⋱")]
         public void Symbols_map_to_unicode(string latex, string expectedText)
             => Assert.Equal(expectedText, AllText(LatexToOmml.Convert(latex)));
 

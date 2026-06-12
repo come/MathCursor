@@ -128,6 +128,28 @@ namespace MathCursor.Tests.Detection
                 $"Les features récentes (vecteurs/coords) sont mal détectées.");
         }
 
+        // ---- Échantillon v8 (formes courtes n-aires, iint/iiint, mots-clés nus) ----
+
+        [Fact]
+        public void Nary_short_forms_corpus_f1_above_threshold()
+        {
+            if (!_fix.Available) { _log.WriteLine(_fix.SkipReason); return; }
+            var examples = _fix.LoadCorpus("extension_v8_nary_short_forms.jsonl");
+            Assert.NotEmpty(examples);
+
+            var metrics = EvaluateF1(_fix.Detector, examples);
+            _log.WriteLine($"extension_v8 ({examples.Count} ex) :" +
+                $" P={metrics.Precision:F3} R={metrics.Recall:F3} F1={metrics.F1:F3}");
+
+            // Seuil : 0.93. Baseline mesurée 2026-06-12 sur distilmult-v6
+            // (retrain corpus v8) = F1 0.984 (P 0.992 R 0.977) ; le v5 était
+            // à 0.865 (iint/iiint inconnus, mots-clés nus muets). Marge ~5 %
+            // sous la baseline, même doctrine que les autres seuils.
+            Assert.True(metrics.F1 >= 0.93,
+                $"F1 sur extension_v8 = {metrics.F1:F3} (seuil 0.93, baseline 2026-06-12 v6 ≈ 0.98). " +
+                $"Les n-aires formes courtes / iint / mots-clés nus sont mal détectés — retour v5 silencieux ?");
+        }
+
         // ---- F1 calculation helpers ----
 
         private static F1Metrics EvaluateF1(MathNerDetector detector, IReadOnlyList<NerCorpusExample> examples)

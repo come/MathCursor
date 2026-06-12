@@ -1,14 +1,15 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace MathCursor.Host.CCMeta
+namespace MathCursor.Host.SourceMap
 {
     /// <summary>
-    /// SHA1 hex utilitaire pour calculer le <c>omml_hash</c> stocké dans
-    /// <see cref="MCMeta"/>. SHA1 (et pas crypto-strong) parce qu'on
-    /// l'utilise pour détecter une édition utilisateur, pas pour de la
-    /// sécurité — collision résistance suffisante pour ce cas d'usage,
-    /// court à afficher en debug (40 hex).
+    /// SHA1 hex utilitaire pour les clés K1 (Range.Text) et K2 (OMML
+    /// canonique) de la source map. SHA1 (et pas crypto-strong) parce que
+    /// le besoin est l'identité de contenu, pas la sécurité — collision
+    /// résistance suffisante, court à afficher en debug (40 hex).
+    /// (Déménagé depuis Host/CCMeta — le dossier CCMeta disparaît avec le
+    /// pattern anchor, ADR 2026-06-11-Feat-hash-source-map-no-cc.)
     /// </summary>
     internal static class Sha1Helper
     {

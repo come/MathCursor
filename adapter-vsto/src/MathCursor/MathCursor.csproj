@@ -187,7 +187,7 @@
     <Compile Include="Host\ColumnLayoutInserter.cs" />
     <Compile Include="Host\ConversionController.cs" />
     <Compile Include="Host\AutoDetectController.cs" />
-    <Compile Include="Host\AnchorHygiene.cs" />
+    <Compile Include="Host\EquationDeletionGuard.cs" />
     <Compile Include="Host\Blocks\RelationMarkers.cs" />
     <Compile Include="Host\Blocks\RelationLineDetector.cs" />
     <Compile Include="Host\Blocks\LatexTopLevelSplit.cs" />
@@ -206,10 +206,14 @@
     <Compile Include="Host\AutocorrectNormalizer.cs" />
     <Compile Include="Host\ParagraphTextExtractor.cs" />
     <Compile Include="Host\FeedbackBundle.cs" />
-    <Compile Include="Host\CCMeta\CcMetaResolver.cs" />
-    <Compile Include="Host\CCMeta\MCMeta.cs" />
-    <Compile Include="Host\CCMeta\MCMetaJson.cs" />
-    <Compile Include="Host\CCMeta\Sha1Helper.cs" />
+    <Compile Include="Host\SourceMap\EquationSource.cs" />
+    <Compile Include="Host\SourceMap\SourceMapResolver.cs" />
+    <Compile Include="Host\SourceMap\OmmlCanonicalizer.cs" />
+    <Compile Include="Host\SourceMap\SourceMapXml.cs" />
+    <Compile Include="Host\SourceMap\Sha1Helper.cs" />
+    <Compile Include="Host\SourceMap\SourceMapStore.cs" />
+    <Compile Include="Host\SourceMap\OmmlWalkerWhitelist.cs" />
+    <Compile Include="Host\Debug\HashKeyPoc.cs" />
     <Compile Include="Host\Caret\CaretScreenPositionReader.cs" />
     <Compile Include="Host\EditMode\EditModeController.cs" />
     <Compile Include="Detection\DetectedZone.cs" />
@@ -235,6 +239,7 @@
     <Compile Include="UI\FeedbackDialog.cs" />
     <Compile Include="UI\WpfMathAdapter.cs" />
     <Compile Include="UI\MixedLatexRenderer.cs" />
+    <Compile Include="UI\CandidateHints.cs" />
     <AppDesigner Include="Properties\" />
   </ItemGroup>
   <PropertyGroup>

@@ -54,7 +54,7 @@
 
         <div class="cta-row" style="margin: 24px 0 40px;">
           <a href="/download/latest.exe" class="button button--primary" download data-i18n="dl_cta_latest">
-            Télécharger la dernière version (0.7.1)
+            Télécharger la dernière version (0.8.1)
           </a>
           <a href="index.html#installation" class="button button--secondary" data-i18n="dl_cta_guide">
             Guide d'installation
@@ -62,6 +62,30 @@
         </div>
 
         <h2 data-i18n="dl_history_h">Historique des versions</h2>
+
+        <article class="card" style="margin-bottom: 20px;">
+          <h3>0.8.1 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_081_date">— 12 juin 2026</span></h3>
+          <p data-i18n="dl_081_intro">Mise à jour du tutoriel de prise en main.</p>
+          <ul>
+            <li data-i18n="dl_081_1"><strong>Astuce ajoutée</strong> sous les lettres grecques : <code>Ctrl+Espace</code> fait venir la popup si elle n'apparaît pas toute seule.</li>
+            <li data-i18n="dl_081_2"><strong>Notation des parallèles clarifiée</strong> : seul l'exemple avec parenthèses <code>(AB) // (CD)</code> est conservé.</li>
+          </ul>
+          <a href="/download/MathCursor-Setup-0.8.1.exe" class="button button--secondary" download data-i18n="dl_081_btn">Télécharger 0.8.1</a>
+        </article>
+
+        <article class="card" style="margin-bottom: 20px;">
+          <h3>0.8.0 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_080_date">— 12 juin 2026</span></h3>
+          <p data-i18n="dl_080_intro">Grosse refonte interne de l'insertion des équations : plus rapide, plus fiable, et des documents plus propres.</p>
+          <ul>
+            <li data-i18n="dl_080_1"><strong>Nouvelle mécanique d'insertion</strong> : plus aucun caractère caché ni contrôle invisible dans vos documents.</li>
+            <li data-i18n="dl_080_2"><strong>Ctrl+Z annule une conversion en UNE frappe</strong>, et le curseur revient en fin de saisie, prêt à corriger.</li>
+            <li data-i18n="dl_080_3"><strong>Cliquer dans une expression déjà tapée</strong> la propose à la conversion.</li>
+            <li data-i18n="dl_080_4"><strong>Les longues expressions</strong> (polynômes…) ne partent plus en lecture aberrante.</li>
+            <li data-i18n="dl_080_5"><strong>Listes à puces</strong> : la ligne suivante ne reste plus coincée en mode équation.</li>
+            <li data-i18n="dl_080_6"><strong>Démarrage préchauffé</strong> : la première popup apparaît aussi vite que les suivantes.</li>
+          </ul>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.8.1 qui inclut ces changements.</div>
+        </article>
 
         <article class="card" style="margin-bottom: 20px;">
           <h3>0.7.1 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_071_date">— 11 juin 2026</span></h3>
@@ -90,7 +114,7 @@
             <li data-i18n="dl_071_6"><strong>Tutoriel interactif</strong> : un document Word de prise en main (16 sections, 66 exercices — chaque exemple garanti par les tests du moteur) s'ouvre à la fin de l'installation, et se rouvre à tout moment via le bouton « Réouvrir le tutoriel » du ruban.</li>
             <li data-i18n="dl_071_7"><strong>Performances revues pour les gros documents</strong> : l'add-in reste fluide sur des cours de 100 pages et plus — plus de ralentissement de la frappe au fil du document.</li>
           </ul>
-          <a href="/download/MathCursor-Setup-0.7.1.exe" class="button button--secondary" download data-i18n="dl_071_btn">Télécharger 0.7.1</a>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.8.1 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -102,7 +126,7 @@
             <li data-i18n="dl_058_3"><strong>Visual C++ Redist redéployés systématiquement</strong> : l'installer relance les redists x86 + x64 à chaque mise à jour (silencieux, no-op si déjà à jour).</li>
             <li data-i18n="dl_058_4"><strong>Fix duplication du marker en édit/redo</strong> : éditer puis revalider une chaîne <code>=</code> / <code>&lt;=&gt;</code> ou un système <code>{</code> ne duplique plus le caractère marker en début de ligne.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.7.1 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.8.1 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -142,7 +166,7 @@
             <li data-i18n="dl_055_2"><strong>Plus de WhatsApp / email manuel</strong> : le bundle (logs + source brute + LaTeX rendu) est packagé et envoyé automatiquement. Toujours opt-in : on n'envoie rien sans ton clic explicite sur le bouton.</li>
             <li data-i18n="dl_055_3"><strong>Confidentialité préservée</strong> : aucun contenu du document n'est envoyé — uniquement la zone math en cours et les logs techniques nécessaires au diagnostic.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.7.1 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.8.1 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -158,7 +182,7 @@
             <li data-i18n="dl_054_7"><strong>Fix NER post-équation</strong> : quand une équation est déjà placée avant, les conjonctions (<code>et</code>, <code>donc</code>…) ne sont plus aspirées dans la zone math suivante.</li>
             <li data-i18n="dl_054_8"><strong>Fix fonction trigo + exposant</strong> : <code>cos2(x)+1</code> rend <code>$\cos(x)^2+1$</code> sans aspirer la suite.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.7.1 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.8.1 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -172,7 +196,7 @@
             <li data-i18n="dl_053_5"><strong>Désambiguïsation popup</strong> : <code>f(1, 2)</code> propose function call (défaut) ou vecteur en alt ; <code>u*v</code> propose <code>u·v</code> (défaut) ou <code>$\vec{u} \cdot \vec{v}$</code> (produit scalaire) en alt.</li>
             <li data-i18n="dl_053_6"><strong>Fix critique installer</strong> : déploiement de la DLL native <code>onnxruntime.dll</code> qui manquait sur certaines machines (l'add-in plantait au démarrage avec une <code>TypeInitializationException</code>).</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.7.1 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.8.1 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -181,7 +205,7 @@
             <li data-i18n="dl_05x_1"><strong>0.5.2</strong> : fix critique <code>\int</code> rendu <code>∈t</code> au lieu de <code>∫</code>. Ordre des règles dans <code>LatexToUnicodeMath</code> qui appliquait <code>\in → ∈</code> avant <code>\int → ∫</code>.</li>
             <li data-i18n="dl_05x_2"><strong>0.5.1</strong> : numéro de version dynamique dans le ruban Word, icône « Signaler » distincte, ruban en français/anglais selon la locale Word.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.7.1 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.8.1 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -200,7 +224,7 @@
             <li data-i18n="dl_050_10"><strong>ABC → angle / triangle</strong> en désambig.</li>
             <li data-i18n="dl_050_11"><strong>Fix NBSP</strong> : les espaces insécables collés par Word ne cassent plus la conversion.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.7.1 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.8.1 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -212,7 +236,7 @@
             <li data-i18n="dl_040_3"><strong>Détection plus précise</strong> : nouveau modèle NER (DistilBERT-multilingual) entraîné sur corpus enrichi.</li>
             <li data-i18n="dl_040_4"><strong>Compat matérielle élargie</strong> : Bay Trail 2014+, VC++ Redist embarqué.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.7.1 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.8.1 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -262,7 +286,23 @@
         dl_h1: "Downloads",
         dl_lead: "MathCursor installer for Windows + Word Desktop. The <code>latest.exe</code> link always points to the current stable release.",
         dl_beta_banner: "<strong>Beta in progress:</strong> hit a bug or a case that doesn't work? Click <strong>\"Report an issue\"</strong> in the MathCursor popup — one click is enough, your feedback is sent automatically and helps us fix things fast.",
-        dl_cta_latest: "Download the latest version (0.7.1)",
+        dl_cta_latest: "Download the latest version (0.8.1)",
+
+        dl_081_date: "— June 12, 2026",
+        dl_081_intro: "Getting-started tutorial update.",
+        dl_081_1: "<strong>New tip</strong> under the Greek letters section: <code>Ctrl+Space</code> brings up the popup if it doesn't appear on its own.",
+        dl_081_2: "<strong>Parallel notation clarified</strong>: only the parenthesized example <code>(AB) // (CD)</code> is kept.",
+        dl_081_btn: "Download 0.8.1",
+
+        dl_080_date: "— June 12, 2026",
+        dl_080_intro: "Major internal overhaul of equation insertion: faster, more reliable, and cleaner documents.",
+        dl_080_1: "<strong>New insertion mechanism</strong>: no more hidden characters or invisible controls in your documents.",
+        dl_080_2: "<strong>Ctrl+Z undoes a conversion in ONE keystroke</strong>, and the cursor returns to the end of your input, ready to edit.",
+        dl_080_3: "<strong>Clicking inside an already-typed expression</strong> offers to convert it.",
+        dl_080_4: "<strong>Long expressions</strong> (polynomials…) no longer produce garbled readings.",
+        dl_080_5: "<strong>Bullet lists</strong>: the next line no longer stays stuck in equation mode.",
+        dl_080_6: "<strong>Warmed-up startup</strong>: the first popup appears as fast as the next ones.",
+        dl_080_btn: "Download 0.8.0",
 
         dl_071_date: "— June 11, 2026",
         dl_071_intro: "<strong>Completely rewritten recognition engine</strong>, validated by a corpus of 360+ test cases, with a multilingual alias system, new high-school symbols, and an interactive tutorial to get started.",
@@ -370,7 +410,7 @@
         dl_01x_date: "— April 22-23, 2026",
         dl_01x_1: "First internal betas: NER zone detection, popup, OMath insertion, Ctrl+Space, report-an-issue, alignment, render fixes.",
 
-        dl_retired: "Archived version — use 0.7.1 which includes these changes.",
+        dl_retired: "Archived version — use 0.8.1 which includes these changes.",
         dl_note: "One-click install: no account, no cloud, no document is sent anywhere. See the <a href=\"index.html#installation\">install guide</a> for details.",
         dl_foot: "© 2026 MathCursor · <a href=\"mailto:come2percin@gmail.com\">Contact</a>"
       }

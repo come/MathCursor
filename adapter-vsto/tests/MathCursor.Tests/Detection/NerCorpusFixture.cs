@@ -30,7 +30,7 @@ namespace MathCursor.Tests.Detection
                 return;
             }
 
-            var modelDir = Path.Combine(repoRoot, "models", "distilmult-v5");
+            var modelDir = Path.Combine(repoRoot, "models", "distilmult-v6");
             CorpusDir = Path.Combine(repoRoot, "data", "ner-corpus");
 
             if (!Directory.Exists(modelDir))

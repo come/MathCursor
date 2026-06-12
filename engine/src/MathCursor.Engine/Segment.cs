@@ -63,6 +63,31 @@ internal static class Segment
 
     public static int ChainLen(List<Token> seg) => SplitOperands(seg).Ops.Count;
 
+    // Coupe de REPLI : aux infixes de profondeur 0 de looseness MAXIMALE
+    // (relations > additifs > multiplicatifs > joins serrés). Sert le repli
+    // par précédence (ADR 2026-06-12-Fix-fold-by-precedence) — jamais le
+    // chemin nominal. Aucun op coupable → (seg entier, ops vides).
+    public static (List<List<Token>> Parts, List<Token> Ops) SplitLoosest(List<Token> seg)
+    {
+        double max = double.NegativeInfinity;
+        int depth = 0, brk = 0, brc = 0;
+        foreach (var t in seg)
+        {
+            if (t.Kind == "lparen" || t.Kind == "lbrace") depth++;
+            else if (t.Kind == "rparen" || t.Kind == "rbrace") depth--;
+            else if (t.Kind == "bracket") brk++;
+            else if (t.Kind == "bar") brc++;
+            else if (depth == 0 && brk % 2 == 0 && brc % 2 == 0)
+            {
+                var v = VInfix(t);
+                if (v != null && v.Looseness > max) max = v.Looseness;
+            }
+        }
+        if (double.IsNegativeInfinity(max)) return (new List<List<Token>> { seg }, new List<Token>());
+        double m = max;
+        return CutBy(seg, t => { var v = VInfix(t); return v != null && v.Looseness >= m; });
+    }
+
     // Recombinaison COHÉRENTE : segments de MÊME sig co-varient ; puis bracketings d'épine.
     public static List<Node> Combine(List<List<Node>> candsPerSeg, List<Token> ops)
     {

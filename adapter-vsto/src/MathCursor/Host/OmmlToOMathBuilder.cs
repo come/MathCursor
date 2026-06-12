@@ -17,9 +17,10 @@ namespace MathCursor.Host
     /// nœud par nœud, l'acquis de l'ADR 2026-06-02 est conservé).
     ///
     /// <para><see cref="IsSupported"/> pré-valide l'arbre ENTIER contre la
-    /// whitelist (éléments + propriétés). Tout nœud inconnu → l'appelant
-    /// retombe sur InsertXML pour l'équation entière (rendu correct, undo
-    /// dégradé, loggé) — jamais de demi-équation.</para>
+    /// whitelist pure (testée xUnit : TOUT le corpus fixtures doit être
+    /// constructible — verrou du « pas de fallback », amendement 2026-06-12).
+    /// Inconstructible = échec franc : l'appelant restaure la sténo, jamais
+    /// de demi-équation ni d'InsertXML.</para>
     ///
     /// <para>Fidélité prouvée par le conformance runner in-Word
     /// (<c>OmathWalkerConformance</c>) : build → relecture WordOpenXML →
@@ -30,135 +31,21 @@ namespace MathCursor.Host
         private static readonly XNamespace M =
             "http://schemas.openxmlformats.org/officeDocument/2006/math";
 
-        // ── Pré-validation (whitelist stricte) ───────────────────────────
+        // ── Pré-validation : déléguée à la whitelist PURE (testée xUnit,
+        // verrou de couverture corpus → « pas de fallback » prouvé en CI) ──
 
         /// <summary>Vrai si TOUT l'arbre est constructible via l'OM. Sinon
         /// <paramref name="reason"/> nomme le premier nœud refusé.</summary>
         public static bool IsSupported(XElement oMath, out string reason)
-        {
-            reason = null;
-            if (oMath == null || oMath.Name != M + "oMath") { reason = "racine ≠ m:oMath"; return false; }
-            foreach (var child in oMath.Elements())
-                if (!CheckItem(child, ref reason)) return false;
-            return true;
-        }
-
-        private static bool CheckItems(IEnumerable<XElement> items, ref string reason)
-        {
-            foreach (var it in items)
-                if (!CheckItem(it, ref reason)) return false;
-            return true;
-        }
-
-        private static bool CheckItem(XElement el, ref string reason)
-        {
-            if (el.Name.Namespace != M) { reason = "ns étranger <" + el.Name + ">"; return false; }
-            string n = el.Name.LocalName;
-            switch (n)
-            {
-                case "r":
-                    foreach (var c in el.Elements())
-                        if (c.Name != M + "t") { reason = "m:r avec <" + c.Name.LocalName + ">"; return false; }
-                    return true;
-                case "f":
-                {
-                    var fPr = el.Element(M + "fPr");
-                    if (fPr != null)
-                    {
-                        var type = fPr.Element(M + "type");
-                        // seule prop émise : type (noBar pour binom)
-                        if (fPr.Elements().Any(p => p.Name != M + "type")
-                            || (type != null && (string)type.Attribute(M + "val") != "noBar"))
-                        { reason = "m:fPr non supporté"; return false; }
-                    }
-                    return CheckArg(el, "num", ref reason) && CheckArg(el, "den", ref reason);
-                }
-                case "sSup": return CheckArg(el, "e", ref reason) && CheckArg(el, "sup", ref reason);
-                case "sSub": return CheckArg(el, "e", ref reason) && CheckArg(el, "sub", ref reason);
-                case "sSubSup":
-                    return CheckArg(el, "e", ref reason) && CheckArg(el, "sub", ref reason)
-                        && CheckArg(el, "sup", ref reason);
-                case "d":
-                {
-                    var dPr = el.Element(M + "dPr");
-                    if (dPr != null && dPr.Elements().Any(p => p.Name != M + "begChr" && p.Name != M + "endChr"))
-                    { reason = "m:dPr non supporté"; return false; }
-                    var es = el.Elements(M + "e").ToList();
-                    if (es.Count == 0) { reason = "m:d sans m:e"; return false; }
-                    foreach (var e in es)
-                        if (!CheckItems(e.Elements(), ref reason)) return false;
-                    return true;
-                }
-                case "nary":
-                {
-                    var pr = el.Element(M + "naryPr");
-                    if (pr != null && pr.Elements().Any(p =>
-                            p.Name != M + "chr" && p.Name != M + "limLoc"
-                            && p.Name != M + "subHide" && p.Name != M + "supHide"))
-                    { reason = "m:naryPr non supporté"; return false; }
-                    return CheckArg(el, "sub", ref reason) && CheckArg(el, "sup", ref reason)
-                        && CheckArg(el, "e", ref reason);
-                }
-                case "rad":
-                {
-                    var pr = el.Element(M + "radPr");
-                    if (pr != null && pr.Elements().Any(p => p.Name != M + "degHide"))
-                    { reason = "m:radPr non supporté"; return false; }
-                    return CheckArg(el, "deg", ref reason) && CheckArg(el, "e", ref reason);
-                }
-                case "func":
-                    return CheckArg(el, "fName", ref reason) && CheckArg(el, "e", ref reason);
-                case "limLow":
-                    return CheckArg(el, "e", ref reason) && CheckArg(el, "lim", ref reason);
-                case "acc":
-                {
-                    var pr = el.Element(M + "accPr");
-                    if (pr != null && pr.Elements().Any(p => p.Name != M + "chr"))
-                    { reason = "m:accPr non supporté"; return false; }
-                    return CheckArg(el, "e", ref reason);
-                }
-                case "m":
-                {
-                    var rows = el.Elements(M + "mr").ToList();
-                    if (rows.Count == 0) { reason = "m:m sans m:mr"; return false; }
-                    int cols = rows[0].Elements(M + "e").Count();
-                    foreach (var row in rows)
-                    {
-                        var cells = row.Elements(M + "e").ToList();
-                        if (cells.Count != cols) { reason = "m:m lignes inégales"; return false; }
-                        foreach (var cell in cells)
-                            if (!CheckItems(cell.Elements(), ref reason)) return false;
-                    }
-                    return true;
-                }
-                case "eqArr":
-                {
-                    var rows = el.Elements(M + "e").ToList();
-                    if (rows.Count == 0) { reason = "m:eqArr sans m:e"; return false; }
-                    foreach (var row in rows)
-                        if (!CheckItems(row.Elements(), ref reason)) return false;
-                    return true;
-                }
-                default:
-                    reason = "<m:" + n + "> hors whitelist";
-                    return false;
-            }
-        }
-
-        private static bool CheckArg(XElement parent, string argName, ref string reason)
-        {
-            var arg = parent.Element(M + argName);
-            if (arg == null) return true; // absent = vide (sub caché, deg caché…)
-            return CheckItems(arg.Elements(), ref reason);
-        }
+            => SourceMap.OmmlWalkerWhitelist.IsSupported(oMath, out reason);
 
         // ── Construction ─────────────────────────────────────────────────
 
         /// <summary>
         /// Construit l'OMath à <paramref name="position"/> (doc user) et la
         /// renvoie. Null si échec — l'OMath partielle est alors SUPPRIMÉE
-        /// (jamais de demi-équation dans le doc), l'appelant retombe sur
-        /// InsertXML.
+        /// (jamais de demi-équation dans le doc), l'appelant restaure la
+        /// sténo (pas de repli InsertXML).
         /// </summary>
         public static Word.OMath Build(Word.Document doc, int position,
             XElement oMathEl, Action<string> log)
@@ -166,9 +53,35 @@ namespace MathCursor.Host
             Word.OMath om = null;
             try
             {
-                var omRange = doc.OMaths.Add(doc.Range(position, position));
+                // JAMAIS d'Add à VIDE : Word y insère un w:sdt placeholder
+                // « Tapez une équation ici. » (temporary/showingPlcHdr, XML
+                // taper.docx 2026-06-12) qui est INVISIBLE pour
+                // om.Range.ContentControls (count=0 mesuré) → insupprimable
+                // proprement. Recette DocMath : Add SUR du texte seed.
+                //
+                // DEUX seeds ¤¤ (mesuré 2026-06-12, « soit f(x)=1/x ») : une
+                // écriture à om.Range.Start est AMBIGUË quand de la prose
+                // précède (frontière prose/math : le run atterrissait côté
+                // prose, l'équation ne contenait que la fraction). Tout le
+                // contenu s'insère ENTRE les deux seeds — positions
+                // INTÉRIEURES garanties — puis les seeds sont retirés.
+                doc.Range(position, position).Text = "¤¤";
+                var omRange = doc.OMaths.Add(doc.Range(position, position + 2));
                 om = omRange.OMaths[1];
-                BuildSequence(doc, om, om.Range.Start, oMathEl.Elements());
+                BuildSequence(doc, om, om.Range.Start + 1, oMathEl.Elements());
+                try
+                {
+                    var seeds = new List<Word.Range>();
+                    foreach (Word.Range ch in om.Range.Characters)
+                        if (ch.Text == "¤") seeds.Add(ch);
+                    if (seeds.Count != 2) log?.Invoke($"walker_seeds: {seeds.Count}/2 retrouvés");
+                    // Seuls le PREMIER et le DERNIER sont nos seeds — un ¤
+                    // au milieu serait du contenu (jamais émis aujourd'hui,
+                    // mais on ne mange pas le contenu par principe).
+                    if (seeds.Count >= 2) { seeds[seeds.Count - 1].Delete(); seeds[0].Delete(); }
+                    else if (seeds.Count == 1) seeds[0].Delete();
+                }
+                catch (Exception exS) { log?.Invoke("walker_seed_delete_error: " + exS.Message); }
                 return om;
             }
             catch (Exception ex)
@@ -178,6 +91,16 @@ namespace MathCursor.Host
                 {
                     try { om.Range.Delete(); }
                     catch (Exception exD) { log?.Invoke("walker_cleanup_error: " + exD.Message); }
+                    // L'OMath créée par OMaths.Add peut survivre au Delete en
+                    // squelette vide (« Tapez une équation ici », vu
+                    // 2026-06-11) — re-probe local et suppression du résidu.
+                    try
+                    {
+                        int probeEnd = Math.Min(doc.Content.End, position + 4);
+                        foreach (Word.OMath rest in doc.Range(Math.Max(0, position - 1), probeEnd).OMaths)
+                        { rest.Range.Delete(); break; }
+                    }
+                    catch (Exception exR) { log?.Invoke("walker_residual_cleanup_error: " + exR.Message); }
                 }
                 return null;
             }
@@ -306,11 +229,17 @@ namespace MathCursor.Host
                     int cols = rows[0].Elements(M + "e").Count();
                     fn = om.Functions.Add(at, Word.WdOMathFunctionType.wdOMathFunctionMat,
                         rows.Count, cols);
+                    // Word peut ignorer NumArgs/NumCols à l'Add (mesuré
+                    // 2026-06-11 : « le membre de la collection requis
+                    // n'existe pas » au Cell[2,…]) — compléter à la main.
+                    var mat = fn.Mat;
+                    while (mat.Rows.Count < rows.Count) mat.Rows.Add();
+                    while (mat.Cols.Count < cols) mat.Cols.Add();
                     for (int ri = 0; ri < rows.Count; ri++)
                     {
                         var cells = rows[ri].Elements(M + "e").ToList();
                         for (int ci = 0; ci < cells.Count; ci++)
-                            FillArg(doc, fn.Mat.Cell[ri + 1, ci + 1], cells[ci]);
+                            FillArg(doc, mat.Cell[ri + 1, ci + 1], cells[ci]);
                     }
                     break;
                 }

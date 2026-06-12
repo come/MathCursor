@@ -22,6 +22,8 @@ namespace MathCursor.Tests.Host.Blocks
         [InlineData("≠ 0", "≠", "\\neq ", "0")]
         [InlineData("< 1/x", "<", "<", "1/x")]
         [InlineData("> x+1", ">", ">", "x+1")]
+        [InlineData("approx 3,14", "approx", "\\approx ", "3,14")]
+        [InlineData("≈ 0,5", "≈", "\\approx ", "0,5")]
         public void Detects_marker_and_rest(string line, string typed, string latex, string rest)
         {
             var m = RelationLineDetector.TryDetect(line);
@@ -68,6 +70,7 @@ namespace MathCursor.Tests.Host.Blocks
         [InlineData("")]
         [InlineData("   ")]
         [InlineData("-> 1/x")]      // flèche de fonction : PAS un connecteur de chaîne
+        [InlineData("approximation de pi")] // frontière de mot : « approx » ne matche pas
         public void Non_chain_lines_yield_null(string line)
             => Assert.Null(RelationLineDetector.TryDetect(line));
 

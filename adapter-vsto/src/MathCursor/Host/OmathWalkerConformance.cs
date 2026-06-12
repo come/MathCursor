@@ -159,11 +159,41 @@ namespace MathCursor.Host
             return c?.ToString(SaveOptions.DisableFormatting) ?? "";
         }
 
+        // Propriétés à VALEUR PAR DÉFAUT de la spec OMML : Word les OMET au
+        // stockage (mesuré 2026-06-11, 7 faux DIFF) — émises ou omises, c'est
+        // la même équation. Repli des deux côtés de la comparaison.
+        private static bool IsDefaultProp(XElement el)
+        {
+            string parent = el.Parent?.Name.LocalName ?? "";
+            string val = (string)el.Attribute(M + "val");
+            switch (el.Name.LocalName)
+            {
+                case "begChr": return parent == "dPr" && val == "(";
+                case "endChr": return parent == "dPr" && val == ")";
+                case "chr":
+                    return (parent == "naryPr" && val == "∫")   // ∫ = défaut nary
+                        || (parent == "accPr" && val == "̂");   // ̂ = défaut acc
+                case "subHide":
+                case "supHide": return parent == "naryPr" && (val == "0" || val == "off");
+                case "degHide": return parent == "radPr" && (val == "0" || val == "off");
+                case "limLoc": return parent == "naryPr" && val == "undOvr";
+                case "type": return parent == "fPr" && val == "bar";
+                // Matrices : Word AJOUTE m:mPr/mcs au stockage (« N colonnes,
+                // centrées ») — count est dérivable des lignes (comparées),
+                // center est le défaut. Les chaînes mcPr/mc/mcs/mPr vidées
+                // tombent ensuite par la règle « élément vide sans attribut ».
+                case "count": return parent == "mcPr";
+                case "mcJc": return parent == "mcPr" && val == "center";
+                default: return false;
+            }
+        }
+
         private static XElement CanonEl(XElement el)
         {
             if (el.Name.Namespace != M) return null;
             string n = el.Name.LocalName;
             if (n == "ctrlPr" || n == "rPr") return null;
+            if (IsDefaultProp(el)) return null;
 
             var result = new XElement(el.Name);
             var val = el.Attribute(M + "val");

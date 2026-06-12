@@ -40,6 +40,12 @@ namespace MathCursor.Host
         private ZoneSpan _zone;          // span en cours (état d'extension itérative)
         private bool _committing;        // supprime la réaction aux SelectionChange induits
 
+        // Undo-grab (UX 2026-06-12, reconstruit sur le pipeline walker) :
+        // un Ctrl+Z juste après un commit SIMPLE replace le caret en FIN de
+        // la sténo restaurée. One-shot, armé au commit, garde-fou « match ou
+        // Redo intégral » (cf. TryGrabUndo).
+        private (int absStart, string steno)? _undoGrab;
+
         // Pré-détection BLOC (M2 multiligne) : la zone committée commence par
         // un marqueur de chaîne ou un « { » → le moteur n'a vu que le RESTE,
         // la popup affichait le marqueur en préfixe, le commit route vers
@@ -59,7 +65,12 @@ namespace MathCursor.Host
             _contextReader = new WordContextReader(app);
             _inserter = new OMathInserter(app, _log);
             _chain = new Blocks.ChainController(app, _inserter, _log);
+            Resolver = new SourceMap.SourceMapResolver(_inserter.SourceMap);
         }
+
+        /// <summary>Résolveur équation→source partagé (map CustomXMLParts) —
+        /// consommé par EditModeController et EquationDeletionGuard.</summary>
+        internal SourceMap.SourceMapResolver Resolver { get; }
 
         public bool IsPopupVisible => _popup?.IsVisible == true;
         public bool IsNavMode => _popup?.IsNavMode == true;
@@ -373,7 +384,13 @@ namespace MathCursor.Host
                     else if (_pendingChainMatch != null)
                         _chain.CommitChainLine(doc, zone, _pendingChainMatch, latex);
                     else
+                    {
                         _inserter.Insert(absStart, absEnd, latex, zone.Text);
+                        // Arme l'undo-grab (commits simples seulement — le
+                        // restore multiligne d'un bloc est déjà tracké à part).
+                        string needle = (zone.Text ?? "").Trim();
+                        if (needle.Length > 0) _undoGrab = (absStart, needle);
+                    }
 
                     // M4 — flow multiligne (validé user 2026-06-10) : la ligne
                     // committée portait un séparateur → on ouvre la ligne
@@ -396,6 +413,10 @@ namespace MathCursor.Host
                         catch (Exception exF) { _log("flow_next_line_error: " + exF.Message); }
                     }
                 }
+                // Source en map APRÈS la fermeture du record undo (la lecture
+                // WordOpenXML du Record fermerait le record — mesuré
+                // 2026-06-12, ADR hash-source-map amendé).
+                _inserter.FlushPendingRecord();
                 return true;
             }
             catch (Exception ex) { _log("commit_error: " + ex.Message); return false; }
@@ -429,6 +450,45 @@ namespace MathCursor.Host
         {
             if (_committing) return;
             if (IsPopupVisible) HidePopup();
+            TryApplyUndoGrab();
+        }
+
+        /// <summary>
+        /// Undo-grab RÉACTIF (UX 2026-06-12 — « pas d'interception de
+        /// Ctrl+Z, c'est dégueu ») : l'undo reste 100 % NATIF (Ctrl+Z,
+        /// ribbon, pile undo intacte). Après coup, au SelectionChange, si
+        /// l'équation du dernier commit a disparu et que la sténo est revenue
+        /// à sa position, le caret est poussé en FIN de la saisie restaurée.
+        /// One-shot, et seulement au voisinage de la zone (pas de lecture du
+        /// ¶ sur les clics lointains).
+        /// </summary>
+        private void TryApplyUndoGrab()
+        {
+            var grab = _undoGrab;
+            if (grab == null) return;
+            try
+            {
+                var doc = _app.ActiveDocument;
+                var sel = _app.Selection;
+                if (doc == null || sel == null) return;
+                if (Math.Abs(sel.Start - grab.Value.absStart) > grab.Value.steno.Length + 16) return;
+
+                // L'équation du commit est-elle toujours là ? (rien à faire)
+                int probeEnd = Math.Min(doc.Content.End, grab.Value.absStart + 2);
+                if (doc.Range(Math.Max(0, grab.Value.absStart - 1), probeEnd).OMaths.Count > 0) return;
+
+                var para = doc.Range(grab.Value.absStart, grab.Value.absStart).Paragraphs[1].Range;
+                string text = para.Text ?? "";
+                int idx = text.IndexOf(grab.Value.steno, StringComparison.Ordinal);
+                if (idx < 0) { _undoGrab = null; return; }   // état divergé (suppression manuelle…) → désarme
+
+                _undoGrab = null;   // one-shot
+                int caretPos = Detection.ParagraphPositionTranslator.StringPosToInternal(
+                    para, idx + grab.Value.steno.Length);
+                sel.SetRange(caretPos, caretPos);
+                _log($"undo-grab: undo natif détecté, caret en fin de sténo ({caretPos})");
+            }
+            catch (Exception ex) { _log("undo_grab_error: " + ex.Message); }
         }
 
         /// <summary>
@@ -480,6 +540,30 @@ namespace MathCursor.Host
         }
 
         // ── Internals ────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Préchauffage (UX 2026-06-12 : « la première apparition fait tout
+        /// lagguer ») : paye UNE fois, au démarrage, les coûts de première
+        /// popup — création du HWND WPF, layout, premier rendu WpfMath (JIT
+        /// + fontes) — en jouant le chemin complet HORS ÉCRAN. À appeler à
+        /// priorité idle sur le thread UI. Le moteur et le sérialiseur sont
+        /// chauffés à part (thread de fond, cf. ThisAddIn).
+        /// </summary>
+        public void WarmUpPopup()
+        {
+            try
+            {
+                EnsurePopup();
+                _popup.ShowCandidates(
+                    new[] { "f(x)=\\frac{1}{2}x^{2}+\\sqrt{x}" },
+                    anchorX: -10000, anchorYBelow: -10000, anchorYAbove: -10000,
+                    sourceText: "");
+                _popup.HidePopup();
+                _zone = null;
+                _log("warmup: popup préchauffée (HWND + WpfMath)");
+            }
+            catch (Exception ex) { _log("warmup_popup_error: " + ex.Message); }
+        }
 
         private void EnsurePopup()
         {

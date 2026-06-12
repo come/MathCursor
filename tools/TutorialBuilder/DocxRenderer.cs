@@ -37,6 +37,10 @@ public static class DocxRenderer
             {
                 body.AppendChild(BuildItemsTable(section.Items));
             }
+            if (!string.IsNullOrWhiteSpace(section.Note))
+            {
+                body.AppendChild(BuildNoteParagraph(section.Note!));
+            }
             body.AppendChild(BuildSpacerParagraph());
         }
 
@@ -128,6 +132,25 @@ public static class DocxRenderer
         {
             if (segment.Length == 0) continue;
             paragraph.AppendChild(BuildRun(segment, isCode));
+        }
+        return paragraph;
+    }
+
+    /// <summary>Astuce de section, SOUS le tableau : italique gris, garde le
+    /// rendu `code` des backticks (ex. `Ctrl+Espace`).</summary>
+    private static Paragraph BuildNoteParagraph(string text)
+    {
+        var paragraph = new Paragraph(
+            new ParagraphProperties(
+                new SpacingBetweenLines { Before = "80", After = "160", Line = "300", LineRule = LineSpacingRuleValues.Auto }));
+        foreach (var (segment, isCode) in SplitOnBackticks(text))
+        {
+            if (segment.Length == 0) continue;
+            var run = BuildRun(segment, isCode);
+            run.RunProperties ??= new RunProperties();
+            run.RunProperties.AppendChild(new Italic());
+            run.RunProperties.AppendChild(new Color { Val = "595959" });
+            paragraph.AppendChild(run);
         }
         return paragraph;
     }

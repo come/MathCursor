@@ -3,7 +3,8 @@
 **Date :** 2026-05-19
 **Kind :** Feat
 **Température :** forte
-**Statut :** acté
+**Statut :** retracté
+**Superseded by :** [2026-06-11-Feat-hash-source-map-no-cc](2026-06-11-Feat-hash-source-map-no-cc.md) (mergé beta-clean 2026-06-12, déployé 0.8.0 — plus aucun CC ni caractère caché, source en map CustomXMLParts)
 **Supersedes :** —
 **Lié à :** [2026-05-18-Feat-intra-omaths-merger-revival.md](2026-05-18-Feat-intra-omaths-merger-revival.md) (qui s'appuyait sur le pattern CC-wrap)
 

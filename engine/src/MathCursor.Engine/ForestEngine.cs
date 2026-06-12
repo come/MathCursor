@@ -60,7 +60,50 @@ public sealed class ForestEngine
         return best;
     }
 
-    // REPLI sur segment trop long : pliage à gauche, chaque opérande parsée à part.
+    // REPLI par PRÉCÉDENCE (ADR 2026-06-12-Fix-fold-by-precedence) : remplace
+    // le pliage à gauche aveugle — toutes précédences confondues — qui
+    // fabriquait ((((2×x+2)×x)²+3)×x)³… en candidat UNIQUE (auto !) sur
+    // « 2x+2x2+3x3+x4 » (la lecture naturelle coûtait 1,00 dans la forêt
+    // complète, mesuré). Coupe aux opérateurs les plus LÂCHES présents,
+    // assemble chaque part par le pipeline normal (récursif — les niveaux
+    // décroissent strictement, ça termine), recombine sous les caps
+    // existants ; chaîne encore trop longue à UN niveau → pli gauche PAR
+    // NIVEAU (associatif à l'affichage : a+b+c plat). Vieux Fold = repli
+    // ultime (part vide, rien d'assemblable).
+    private Asm FoldSmart(List<Token> seg)
+    {
+        var (parts, ops) = Segment.SplitLoosest(seg);
+        if (ops.Count >= 1 && parts.TrueForAll(p => p.Count > 0))
+        {
+            var lists = new List<List<Node>>();
+            bool ok = true;
+            foreach (var p in parts)
+            {
+                var r = Assemble(p);
+                if (r.Parses.Count == 0) { ok = false; break; }
+                lists.Add(r.Parses);
+            }
+            if (ok)
+            {
+                if (ops.Count < Segment.MaxChain)
+                {
+                    var rec = Recombine(lists, ops, Note_);
+                    if (rec.Parses.Count > 0) return rec;
+                }
+                else
+                {
+                    var node = Cheapest(lists[0]);
+                    for (int k = 0; k < ops.Count; k++)
+                        node = new Node { Type = "infix", Sym = ops[k].Sym, Spaced = ops[k].Spaced, Parts = new() { node, Cheapest(lists[k + 1]) } };
+                    return new Asm(new List<Node> { node }, Note_);
+                }
+            }
+        }
+        var f = Fold(seg);
+        return new Asm(f != null ? new List<Node> { f } : new List<Node>(), Note_);
+    }
+
+    // REPLI ultime : pliage à gauche, chaque opérande parsée à part.
     private Node? Fold(List<Token> seg)
     {
         var (operands, ops) = Segment.SplitOperands(seg);
@@ -108,7 +151,48 @@ public sealed class ForestEngine
         var win = ranked.Where(r => r.Cost < best + PopupGap).ToList();
         var kept = win.Take(MaxShow).ToList();
         bool hasNote = note != null || win.Count > MaxShow;
+        kept = PairSkeletons(all, kept);
         return new AnalyzeResult(kept.Count > 1 ? "popup" : "auto", kept, hasNote);
+    }
+
+    // Paire de squelettes (ADR 2026-06-12 nary-skeleton-pair-preselection) :
+    // si le MEILLEUR parse est un n-aire À TROUS directs dont l'entrée vocab a
+    // des variantes, le squelette frère (autre arité, à trous, même tête) est
+    // proposé AUSSI — forme LONGUE en tête (présélection = comportement
+    // historique), décision popup. Pas de frère (guards, pas assez d'unités)
+    // → rien ne change. Règle de PRÉSENTATION : le Score n'est pas touché.
+    private List<EngineCandidate> PairSkeletons(List<(Node N, double Off)> all, List<EngineCandidate> kept)
+    {
+        var bestP = all[0]; double bestC = double.PositiveInfinity;
+        foreach (var p in all)
+        {
+            double c = Score.Cost(p.N) + p.Off;
+            if (c < bestC) { bestC = c; bestP = p; }
+        }
+        var n = bestP.N;
+        if (n.Type != "nary" || n.Sym == null || n.Parts == null) return kept;
+        if (!n.Parts.Any(c => c.Hole)) return kept;
+        if (Vocabulary.Vocab[n.Sym].Variants == null) return kept;
+
+        (Node N, double Off) sib = default; double sibC = double.PositiveInfinity;
+        foreach (var p in all)
+        {
+            var m = p.N;
+            if (m.Type != "nary" || m.Sym != n.Sym || m.Parts == null) continue;
+            if (m.Parts.Count == n.Parts.Count || !m.Parts.Any(c => c.Hole)) continue;
+            double c = Score.Cost(p.N) + p.Off;
+            if (c < sibC) { sibC = c; sib = p; }
+        }
+        if (sib.N == null) return kept;
+
+        var pair = new[] { (P: bestP, C: bestC), (P: sib, C: sibC) }
+            .OrderByDescending(x => x.P.N.Parts!.Count)        // forme LONGUE d'abord
+            .Select(x => new EngineCandidate(LatexRenderer.Render(x.P.N, _culture), x.C))
+            .ToList();
+        var outk = new List<EngineCandidate>(pair);
+        foreach (var k in kept)
+            if (outk.All(o => o.Latex != k.Latex)) outk.Add(k);
+        return outk.Take(MaxShow).ToList();
     }
 
     // callback de parsing d'un intérieur de parenthèse : MÊME pipeline (récursif).
@@ -165,7 +249,7 @@ public sealed class ForestEngine
             // Le membre DROIT vide (« a= » → a=□), lui, reste un aperçu de
             // saisie en cours légitime.
             if (rel.Segs[0].Count == 0) return new Asm(new List<Node>(), null);
-            if (rel.Ops.Count >= Segment.MaxChain) { var f = Fold(toks); return new Asm(f != null ? new() { f } : new(), Note_); }
+            if (rel.Ops.Count >= Segment.MaxChain) return FoldSmart(toks);
             string? note = null;
             var lists = new List<List<Node>>();
             foreach (var s in rel.Segs) { var r = Assemble(s); if (r.Note != null) note = r.Note; lists.Add(r.Parses); }
@@ -178,13 +262,13 @@ public sealed class ForestEngine
 
         // 3) sinon : segmentation aux signes espacés + repli si trop long.
         var (segs, ops) = Segment.Split(toks);
-        if (ops.Count >= Segment.MaxChain) { var f = Fold(toks); return new Asm(f != null ? new() { f } : new(), Note_); }
+        if (ops.Count >= Segment.MaxChain) return FoldSmart(toks);
         string? note3 = null;
         var lists3 = new List<List<Node>>();
         foreach (var seg in segs)
         {
             if (Segment.ChainLen(seg) < Segment.MaxChain) lists3.Add(Forest.Parse(seg, OnGroup, _culture));
-            else { note3 = Note_; var f = Fold(seg); lists3.Add(f != null ? new() { f } : new()); }
+            else { note3 = Note_; lists3.Add(FoldSmart(seg).Parses); }
         }
         return Recombine(lists3, ops, note3);
     }

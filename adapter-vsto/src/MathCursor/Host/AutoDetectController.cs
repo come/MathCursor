@@ -80,6 +80,19 @@ namespace MathCursor.Host
             _timer.Start();
         }
 
+        /// <summary>Caret déplacé (clic, flèches) — QOL 2026-06-12 : même
+        /// debounce + même pipeline que la frappe. Cliquer au milieu d'une
+        /// expression déjà tapée (re)propose la popup ; cliquer dans de la
+        /// prose ferme une proposition périmée. L'appelant filtre les
+        /// sélections non réduites.</summary>
+        public void OnCaretMoved()
+        {
+            if (_detector == null) return;
+            if (!Settings.SettingsStore.Current.AutoDetect) return;
+            _timer.Stop();
+            _timer.Start();
+        }
+
         public void Dispose()
         {
             try { _timer.Stop(); } catch { }

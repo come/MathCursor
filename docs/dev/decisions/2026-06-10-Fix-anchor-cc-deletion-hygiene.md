@@ -3,7 +3,8 @@
 **Date :** 2026-06-10
 **Kind :** Fix
 **Température :** molle (mécanismes locaux, ajustables)
-**Statut :** acté
+**Statut :** retracté
+**Superseded by :** [2026-06-11-Feat-hash-source-map-no-cc](2026-06-11-Feat-hash-source-map-no-cc.md) (H1 suppression atomique réincarné en `EquationDeletionGuard` ; H2 orphelines et H3 caret piégé caducs par construction — plus de CC)
 **Supersedes :** —
 **Lié à :** [2026-05-19-Feat-anchor-cc-pattern.md](2026-05-19-Feat-anchor-cc-pattern.md) (le pattern anchor) ; [2026-06-10-Refactor-phase2-adapter-orchestration-rewrite.md](2026-06-10-Refactor-phase2-adapter-orchestration-rewrite.md) (qui a élagué `TrySelectOMathOnLeft/Right` sans les remplacer)
 

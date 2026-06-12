@@ -85,6 +85,7 @@
       "id": "lettres-grecques",
       "title": "Lettres grecques",
       "intro": "Écris leur nom en toutes lettres. La MAJUSCULE de la première lettre choisit la majuscule grecque : `pi` donne π, `Pi` donne Π.",
+      "note": "Astuce : si la popup n'apparaît pas toute seule, appuie sur `Ctrl+Espace` pour la faire venir.",
       "items": [
         {
           "instruction": "Tape `pi`.",
@@ -184,12 +185,6 @@
           "instruction": "Norme : `norm vec AB`.",
           "input": "norm vec AB",
           "expectedLatex": "\\left\\|\\overrightarrow{AB}\\right\\|",
-          "showsPopup": false
-        },
-        {
-          "instruction": "Parallèles obliques : `AB // CD`.",
-          "input": "AB // CD",
-          "expectedLatex": "AB \\mathbin{/\\!/} CD",
           "showsPopup": false
         },
         {
@@ -509,11 +504,11 @@
           "popupAlt": "\\mathbb{R} ^{\\ast }\\cup \\mathbb{N} "
         },
         {
-          "instruction": "`(a,b,c)` : ligne ou colonne ? La popup te laisse choisir.",
+          "instruction": "`(a,b,c)` : telle quelle (tuple), ligne ou colonne ? La popup te laisse choisir.",
           "input": "(a,b,c)",
-          "expectedLatex": "\\begin{pmatrix}a & b & c\\end{pmatrix}",
+          "expectedLatex": "(a,b,c)",
           "showsPopup": true,
-          "popupAlt": "\\begin{pmatrix}a \\\\ b \\\\ c\\end{pmatrix}"
+          "popupAlt": "\\begin{pmatrix}a & b & c\\end{pmatrix}"
         }
       ]
     },

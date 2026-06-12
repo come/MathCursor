@@ -35,6 +35,8 @@ internal static class LatexRenderer
                 return $"{n.Lb}{Render(n.Parts![0], cu)}{cu.IntervalSep}{Render(n.Parts[1], cu)}{n.Rb}";
             case "list":
                 return string.Join(",", n.Parts!.Select(x => Render(x, cu)));
+            case "tuple": // (e1, e2, …) — virgules et parenthèses CONSERVÉES
+                return "(" + string.Join(",", n.Parts!.Select(x => Render(x, cu))) + ")";
             case "set":
                 return "\\{" + string.Join(",", n.Parts!.Select(x => Render(x, cu))) + "\\}";
             case "delim":

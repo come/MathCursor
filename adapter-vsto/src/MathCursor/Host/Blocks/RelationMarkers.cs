@@ -24,6 +24,10 @@ namespace MathCursor.Host.Blocks
         public static readonly IReadOnlyList<(string Typed, string Latex, bool IsConnector)> Table =
             new (string, string, bool)[]
             {
+                // marqueur-MOT (frontière de mot exigée par TryMatch, sinon
+                // « approximation » matcherait) — demande user 2026-06-12 :
+                // « approx 3,14 » en début de ligne, au même titre que > etc.
+                ("approx", "\\approx ",      false),
                 ("<=>", "\\Leftrightarrow ", true),
                 ("=>",  "\\Rightarrow ",     true),
                 ("<=",  "\\leq ",            false),
@@ -36,6 +40,7 @@ namespace MathCursor.Host.Blocks
                 ("≤",   "\\leq ",            false),
                 ("≥",   "\\geq ",            false),
                 ("≠",   "\\neq ",            false),
+                ("≈",   "\\approx ",         false),
                 ("=",   "=",                 false),
                 ("<",   "<",                 false),
                 (">",   ">",                 false),
@@ -49,8 +54,15 @@ namespace MathCursor.Host.Blocks
             foreach (var entry in Table)
             {
                 if (start + entry.Typed.Length > text.Length) continue;
-                if (string.CompareOrdinal(text, start, entry.Typed, 0, entry.Typed.Length) == 0)
-                    return entry;
+                if (string.CompareOrdinal(text, start, entry.Typed, 0, entry.Typed.Length) != 0)
+                    continue;
+                // marqueur-MOT : frontière de mot exigée (« approx 3,14 » oui,
+                // « approximation » non). Sans objet pour les symboles.
+                int end = start + entry.Typed.Length;
+                if (char.IsLetter(entry.Typed[entry.Typed.Length - 1])
+                    && end < text.Length && char.IsLetter(text[end]))
+                    continue;
+                return entry;
             }
             return null;
         }
