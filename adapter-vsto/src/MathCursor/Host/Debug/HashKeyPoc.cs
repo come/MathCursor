@@ -122,6 +122,27 @@ namespace MathCursor.Host.Debug
                 tBuild = sw.ElapsedMilliseconds;
                 if (om == null) { log($"poc-hash {tag}: walker Build null"); return; }
 
+                // DIAG résidu « Tapez une équation ici » (2026-06-12) : carte
+                // réelle du ¶ post-Build — combien d'OMaths, où, quel contenu.
+                try
+                {
+                    var para = om.Range.Paragraphs[1].Range;
+                    int omCount = para.OMaths.Count;
+                    var diag = new System.Text.StringBuilder();
+                    diag.Append($"poc-hash {tag} DIAG: ¶=[{para.Start},{para.End}) oMaths={omCount} builtOm=[{om.Range.Start},{om.Range.End})");
+                    int di = 0;
+                    foreach (Word.OMath o in para.OMaths)
+                    {
+                        di++;
+                        string t; try { t = o.Range.Text ?? ""; } catch { t = "?"; }
+                        diag.Append($" | om#{di}=[{o.Range.Start},{o.Range.End}) \"{Preview(t)}\"");
+                    }
+                    string paraText = para.Text ?? "";
+                    diag.Append(" | ¶codes=[" + string.Join(",", paraText.Take(40).Select(c => ((int)c).ToString("x4"))) + "]");
+                    log(diag.ToString());
+                }
+                catch (Exception exDg) { log($"poc-hash {tag} DIAG KO: " + exDg.Message); }
+
                 alone = ParagraphAloneWithOMath(om);
                 if (alone)
                 {
