@@ -122,11 +122,42 @@ namespace MathCursor.Host.EditMode
                 _popup.RevertRequested += OnRevertRequested;
             }
 
-            const double OMathExtraHeightDip = 18.0;
-            var caretPos = _getCaretScreenPos();
-            _popup.ShowAt(caretPos.x, caretPos.y + OMathExtraHeightDip, alignRight: true);
-            _log($"edit mode: handle={meta.HandleId} popup at caret-rightaligned ({caretPos.x:F0},{caretPos.y + OMathExtraHeightDip:F0})");
+            // Panneau ancré au DÉBUT de la formule (demande user 2026-06-11) :
+            // bord gauche du popup = bord gauche de l'OMath, juste dessous.
+            // Repli : ancien comportement caret-rightaligned si GetPoint échoue.
+            if (TryGetOMathScreenAnchor(om, out double ax, out double ay))
+            {
+                _popup.ShowAt(ax, ay, alignRight: false);
+                _log($"edit mode: handle={meta.HandleId} popup at omath-start ({ax:F0},{ay:F0})");
+            }
+            else
+            {
+                const double OMathExtraHeightDip = 18.0;
+                var caretPos = _getCaretScreenPos();
+                _popup.ShowAt(caretPos.x, caretPos.y + OMathExtraHeightDip, alignRight: true);
+                _log($"edit mode: handle={meta.HandleId} popup at caret-rightaligned fallback ({caretPos.x:F0},{caretPos.y + OMathExtraHeightDip:F0})");
+            }
             return true;
+        }
+
+        /// <summary>Coin bas-gauche de la formule en DIP via Window.GetPoint
+        /// (coordonnées écran pixels → DIP par le scale DPI partagé).</summary>
+        private bool TryGetOMathScreenAnchor(Word.OMath om, out double x, out double y)
+        {
+            x = y = 0;
+            try
+            {
+                var win = _app.ActiveWindow;
+                if (win == null) return false;
+                int left, top, width, height;
+                win.GetPoint(out left, out top, out width, out height, om.Range);
+                if (height <= 0) return false;
+                double scale = Caret.CaretScreenPositionReader.GetDpiScale();
+                x = left / scale;
+                y = (top + height) / scale + 4;
+                return true;
+            }
+            catch { return false; }
         }
 
         // ── Action revert ────────────────────────────────────────────
