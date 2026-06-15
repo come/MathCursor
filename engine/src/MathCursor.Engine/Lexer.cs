@@ -158,6 +158,22 @@ internal static class Lexer
             if (c == '|') { bool norm = Ch(i + 1) == '|'; Push(new Token { Kind = "bar", Sym = norm ? "norm" : "abs" }); i += norm ? 2 : 1; continue; }
             if (Vocabulary.Sep.TryGetValue(c, out var rank)) { Push(new Token { Kind = "sep", Sym = c.ToString(), Rank = rank }); i++; continue; }
 
+            // raccourcis grecs « @ » (ADR 2026-06-15) : @ + lettre(s) → atome
+            // grec via alias. Lettre seule (@t → θ/τ popup), nom complet résolu
+            // tel quel (@theta → θ, @Delta → Δ). @ sans lettre derrière reste
+            // une erreur (chute vers le match symbole).
+            if (c == '@' && IsAlpha(Ch(i + 1)))
+            {
+                int at0 = i; i++;
+                var gb = new System.Text.StringBuilder();
+                while (i < src.Length && IsAlpha(src[i])) gb.Append(src[i++]);
+                string gr = gb.ToString();
+                bool gsp = Spaced(at0 - 1, i);
+                string gk = "@" + gr;
+                if (culture.Canon(gk) != gk) Word(gk, gsp); else Word(gr, gsp);
+                continue;
+            }
+
             // unité COMPOSÉE juste après un nombre (5 m/s)
             var pv = Last();
             if (pv is { Num: true })

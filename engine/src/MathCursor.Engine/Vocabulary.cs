@@ -328,6 +328,14 @@ internal static class Vocabulary
         Vocab["…"] = Vocab["dots"];   // U+2026 (autocorrection Word de « ... »)
         Vocab["mapsto"] = Infix(REL, WEAK, (a, _) => $"{a[0]}\\mapsto {a[1]}", cut: true, mapping: true);
 
+        // ── raccourcis grecs « @ » (ADR 2026-06-15) ─────────────────────────
+        // Lettre seule qui collisionne → atome à lectures multiples (popup, la
+        // plus courante en tête) ; les lettres uniques pointent en alias direct
+        // vers l'atome grec. Définies AVANT MergeAliases (cibles validées).
+        Vocab["·greek-t"] = new VocabEntry { Shape = "atom", Alts = new() { "\\theta ", "\\tau " } };
+        Vocab["·greek-e"] = new VocabEntry { Shape = "atom", Alts = new() { "\\epsilon ", "\\eta " } };
+        Vocab["·greek-p"] = new VocabEntry { Shape = "atom", Alts = new() { "\\pi ", "\\phi ", "\\psi " } };
+
         // ── ALIAS (lexicaux, rangés par culture) ────────────────────────────
         // mot saisi → clé canonique de Vocab. Résolus par le lexer via
         // EngineCulture.Canon ; les clés alias ne vivent plus dans Vocab.
@@ -360,6 +368,13 @@ internal static class Vocabulary
             // une zone auto-détectée étendue sur ces mots tuait la popup
             // (moteur en erreur sur le mot inconnu).
             ["integral"] = "int", ["lmt"] = "lim",
+            // raccourcis grecs « @ » (ADR 2026-06-15) : 1re lettre du nom ;
+            // collisions (t/e/p) → entrée à lectures multiples (popup).
+            ["@a"] = "alpha", ["@b"] = "beta", ["@g"] = "gamma", ["@d"] = "delta",
+            ["@z"] = "zeta", ["@i"] = "iota", ["@k"] = "kappa", ["@l"] = "lambda",
+            ["@m"] = "mu", ["@n"] = "nu", ["@x"] = "xi", ["@o"] = "omega",
+            ["@r"] = "rho", ["@s"] = "sigma", ["@u"] = "upsilon", ["@c"] = "chi",
+            ["@t"] = "·greek-t", ["@e"] = "·greek-e", ["@p"] = "·greek-p",
         };
         var aliasFrOnly = new Dictionary<string, string>
         {

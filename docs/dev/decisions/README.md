@@ -20,6 +20,7 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-06-15
+- `[molle]` Feat — [Raccourcis grecs au clavier : `@` + lettre → lettre grecque](2026-06-15-Feat-at-greek-shortcuts.md) — `@a`→α, `@t`→[θ,τ] (popup, θ présélectionné), `@p`→[π,φ,ψ] ; lettre = 1re lettre du nom, collisions (t/e/p) en popup via le mécanisme de lectures multiples existant (comme `R`→[R,ℝ]), nom complet gratuit (`@theta`→θ, `@Delta`→Δ) ; `@o`→ω (omicron écarté, `\omicron` non standard) ; branche `@` dans le lexer + 3 entrées synthétiques `·greek-*` à `Alts` + 19 alias génériques ; +8 fixtures (corpus 421), sérialisation OMML couvre toutes les grecques.
 - `[molle]` Refactor — [Barres `|x|`/`||v||` rendues via l'opérateur vocab `abs`/`norm` (fin du nœud `delim`)](2026-06-15-Refactor-abs-norm-bar-via-vocab.md) — le rendu de la valeur absolue existait en double (délégué vocab `abs`/`norm` pour la forme-mot, `case "delim"` + champ `Dk` codés en dur dans `LatexRenderer` pour la forme-barre) ; le parser émet désormais un `prefix abs`/`norm` au lieu d'un nœud `delim` maison → une seule source de vérité, plus aucun code spécifique aux barres dans le renderer ; `·mid` (barre au milieu) inchangé ; LaTeX identique au caractère près, gardé par les 5 fixtures à barres.
 
 ### 2026-06-12
