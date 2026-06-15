@@ -227,14 +227,17 @@ namespace MathCursor.Host
                 {
                     var rows = el.Elements(M + "mr").ToList();
                     int cols = rows[0].Elements(M + "e").Count();
+                    // Functions.Add(Mat) : NumArgs DOIT égaler NumColumns,
+                    // sinon Word jette « Le nombre doit être compris entre
+                    // 1 et 2 » dès l'Add (POC 2026-06-12 : Add(2,3) jette,
+                    // Add(3,3) passe et crée UNE ligne × 3 colonnes). On
+                    // crée donc 1×cols puis on ajoute les lignes — schéma
+                    // validé POC sur 2×3, 3×2, 3×1, 1×3 et 4×4.
                     fn = om.Functions.Add(at, Word.WdOMathFunctionType.wdOMathFunctionMat,
-                        rows.Count, cols);
-                    // Word peut ignorer NumArgs/NumCols à l'Add (mesuré
-                    // 2026-06-11 : « le membre de la collection requis
-                    // n'existe pas » au Cell[2,…]) — compléter à la main.
+                        cols, cols);
                     var mat = fn.Mat;
                     while (mat.Rows.Count < rows.Count) mat.Rows.Add();
-                    while (mat.Cols.Count < cols) mat.Cols.Add();
+                    while (mat.Cols.Count < cols) mat.Cols.Add(); // filet (no-op mesuré)
                     for (int ri = 0; ri < rows.Count; ri++)
                     {
                         var cells = rows[ri].Elements(M + "e").ToList();
