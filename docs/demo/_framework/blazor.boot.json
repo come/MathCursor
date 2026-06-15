@@ -1,10 +1,10 @@
 {
   "mainAssemblyName": "MathCursor.Demo.WebAssembly",
   "resources": {
-    "hash": "sha256-Slzyvf2y+zP0eCtR5mHAFLUbLbEdhKYXwsLfsT+n1es=",
+    "hash": "sha256-TSkX+nV1DKGm0iwp8FCDG19suj4bZypcTJ5wCRUQi6A=",
     "fingerprinting": {
-      "MathCursor.Demo.WebAssembly.4nfimrgwcj.wasm": "MathCursor.Demo.WebAssembly.wasm",
-      "MathCursor.Engine.r75baf2pd1.wasm": "MathCursor.Engine.wasm",
+      "MathCursor.Demo.WebAssembly.ka9rylp23c.wasm": "MathCursor.Demo.WebAssembly.wasm",
+      "MathCursor.Engine.jmm30j2o31.wasm": "MathCursor.Engine.wasm",
       "Microsoft.AspNetCore.Authorization.qe23mgxr71.wasm": "Microsoft.AspNetCore.Authorization.wasm",
       "Microsoft.AspNetCore.Components.Forms.thhw8cz9wu.wasm": "Microsoft.AspNetCore.Components.Forms.wasm",
       "Microsoft.AspNetCore.Components.flveird317.wasm": "Microsoft.AspNetCore.Components.wasm",
@@ -223,8 +223,8 @@
       "System.Runtime.InteropServices.JavaScript.ccb9zx17su.wasm": "sha256-rJh9wIpfCKorUULgleV4k5cfQ0WDM9F8YYuNo5Ri5PM="
     },
     "assembly": {
-      "MathCursor.Demo.WebAssembly.4nfimrgwcj.wasm": "sha256-UL4eDcAPBa33P0sYIFFLNW0ovM3j9m5ICoCLqjMhIjU=",
-      "MathCursor.Engine.r75baf2pd1.wasm": "sha256-JzVb/cKlssY7cOak8mWcWlcSee0qQPIfDYfJ1ww1h/w=",
+      "MathCursor.Demo.WebAssembly.ka9rylp23c.wasm": "sha256-NLJNxqZ4zS6a3nD//Miyo4O6B/jsLrRz52G0pvfen2o=",
+      "MathCursor.Engine.jmm30j2o31.wasm": "sha256-S+GX7L9CaztkGwk7H5cWFqpfSCmZuTzY6M3lbn47eoo=",
       "Microsoft.AspNetCore.Authorization.qe23mgxr71.wasm": "sha256-8hTdrmR59LAJRrDu8LLRlNn641/iWIAjzG1GcCsAhR0=",
       "Microsoft.AspNetCore.Components.Forms.thhw8cz9wu.wasm": "sha256-b7dkg8tMPT2fEN10cgvga1DuG4BElomG5PE4E8Bv5B8=",
       "Microsoft.AspNetCore.Components.flveird317.wasm": "sha256-jTpt9y+Fzn6JeLtdS0PwW+fzVCyw2aJ8kFuDQAMFdcE=",
