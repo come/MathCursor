@@ -461,6 +461,7 @@ namespace MathCursor.Serialization
                 new KeyValuePair<string, string>("\\Phi", "Φ"),
                 new KeyValuePair<string, string>("\\Psi", "Ψ"),
                 new KeyValuePair<string, string>("\\Omega", "Ω"),
+                new KeyValuePair<string, string>("\\Upsilon", "Υ"),
                 new KeyValuePair<string, string>("\\alpha", "α"),
                 new KeyValuePair<string, string>("\\beta", "β"),
                 new KeyValuePair<string, string>("\\gamma", "γ"),

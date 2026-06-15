@@ -39,3 +39,13 @@ Alternatives écartées : table 100 % déterministe (impose de mémoriser `@ta`=
 ## Validation post-feat
 
 Fixtures moteur vertes (corpus + nouvelles entrées), `@t` propose [θ, τ] avec θ présélectionné, `@a` passe en auto.
+
+## Révision (2026-06-15, même jour) — majuscules
+
+> « ah et @D => grand Delta » puis « etc » — utilisateur.
+
+La **casse de la lettre tapée** choisit minuscule/majuscule : `@D`→Δ, `@G`→Γ, `@L`→Λ, `@X`→Ξ, `@S`→Σ, `@U`→Υ, `@O`→Ω, `@T`→Θ (θ seul a une capitale ; τ non), `@P`→[Π, Φ, Ψ] (popup). Une lettre sans capitale grecque distincte (`@A`, `@E`, `@B`…) retombe sur la lettre latine majuscule (= la convention math, capitale α = A). Implémentation : champ `VocabEntry.AltsUpper` sur les entrées ambiguës + casse gérée dans la branche `@` du lexer (plus de délégation à `Word` pour le cas lettre-seule).
+
+**Trou de sérialisation comblé au passage** : `LatexToOmml` ne connaissait ni `\upsilon` ni `\Upsilon` (et `LatexToUnicodeMath` manquait `\Upsilon`) — donc `@u` (déjà livré) cassait en OMML. Ajoutés aux deux tables. Verrouillé par `OmmlCoverageTests` (fixtures `@u`/`@U`).
+
+Corpus 428.

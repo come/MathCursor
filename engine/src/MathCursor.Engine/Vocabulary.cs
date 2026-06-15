@@ -41,6 +41,7 @@ internal sealed class VocabEntry
     public string? Lower;          // atom
     public string? Upper;          // atom
     public List<string>? Alts;     // atom/infix : lectures multiples
+    public List<string>? AltsUpper;// atom : lectures multiples en MAJUSCULE (raccourci grec @T/@P)
     public string? Coh;            // groupe de cohérence
     public RenderFn? Render;
     public List<NaryVariant>? Variants; // nary : arités courtes (Arity/Render = canonique)
@@ -332,9 +333,11 @@ internal static class Vocabulary
         // Lettre seule qui collisionne → atome à lectures multiples (popup, la
         // plus courante en tête) ; les lettres uniques pointent en alias direct
         // vers l'atome grec. Définies AVANT MergeAliases (cibles validées).
-        Vocab["·greek-t"] = new VocabEntry { Shape = "atom", Alts = new() { "\\theta ", "\\tau " } };
+        // AltsUpper = jeu MAJUSCULE (@T → Θ seul, tau n'a pas de capitale grecque ;
+        // @P → [Π, Φ, Ψ] ; @E n'en a pas → @E retombe sur la lettre latine).
+        Vocab["·greek-t"] = new VocabEntry { Shape = "atom", Alts = new() { "\\theta ", "\\tau " }, AltsUpper = new() { "\\Theta " } };
         Vocab["·greek-e"] = new VocabEntry { Shape = "atom", Alts = new() { "\\epsilon ", "\\eta " } };
-        Vocab["·greek-p"] = new VocabEntry { Shape = "atom", Alts = new() { "\\pi ", "\\phi ", "\\psi " } };
+        Vocab["·greek-p"] = new VocabEntry { Shape = "atom", Alts = new() { "\\pi ", "\\phi ", "\\psi " }, AltsUpper = new() { "\\Pi ", "\\Phi ", "\\Psi " } };
 
         // ── ALIAS (lexicaux, rangés par culture) ────────────────────────────
         // mot saisi → clé canonique de Vocab. Résolus par le lexer via
