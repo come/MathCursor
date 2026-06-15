@@ -337,7 +337,7 @@ internal static class Vocabulary
         // @P → [Π, Φ, Ψ] ; @E n'en a pas → @E retombe sur la lettre latine).
         Vocab["·greek-t"] = new VocabEntry { Shape = "atom", Alts = new() { "\\theta ", "\\tau " }, AltsUpper = new() { "\\Theta " } };
         Vocab["·greek-e"] = new VocabEntry { Shape = "atom", Alts = new() { "\\epsilon ", "\\eta " } };
-        Vocab["·greek-p"] = new VocabEntry { Shape = "atom", Alts = new() { "\\pi ", "\\phi ", "\\psi " }, AltsUpper = new() { "\\Pi ", "\\Phi ", "\\Psi " } };
+        Vocab["·greek-p"] = new VocabEntry { Shape = "atom", Alts = new() { "\\pi ", "\\phi ", "\\varphi ", "\\psi " }, AltsUpper = new() { "\\Pi ", "\\Phi ", "\\Psi " } };
 
         // ── ALIAS (lexicaux, rangés par culture) ────────────────────────────
         // mot saisi → clé canonique de Vocab. Résolus par le lexer via

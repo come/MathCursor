@@ -483,7 +483,7 @@ namespace MathCursor.Serialization
                 new KeyValuePair<string, string>("\\tau", "τ"),
                 new KeyValuePair<string, string>("\\upsilon", "υ"),
                 new KeyValuePair<string, string>("\\phi", "φ"),
-                new KeyValuePair<string, string>("\\varphi", "φ"),
+                new KeyValuePair<string, string>("\\varphi", "ϕ"),
                 new KeyValuePair<string, string>("\\chi", "χ"),
                 new KeyValuePair<string, string>("\\psi", "ψ"),
                 new KeyValuePair<string, string>("\\omega", "ω"),

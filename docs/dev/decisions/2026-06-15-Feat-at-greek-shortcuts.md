@@ -49,3 +49,9 @@ La **casse de la lettre tapée** choisit minuscule/majuscule : `@D`→Δ, `@G`�
 **Trou de sérialisation comblé au passage** : `LatexToOmml` ne connaissait ni `\upsilon` ni `\Upsilon` (et `LatexToUnicodeMath` manquait `\Upsilon`) — donc `@u` (déjà livré) cassait en OMML. Ajoutés aux deux tables. Verrouillé par `OmmlCoverageTests` (fixtures `@u`/`@U`).
 
 Corpus 428.
+
+## Révision (2026-06-15) — `\varphi` dans `@p`
+
+> « et rajoute le phivar ou varphi dans @P stp » — utilisateur.
+
+`@p` propose désormais [π, φ (`\phi`), ϕ (`\varphi`), ψ]. Pour que le choix soit utile **dans Word** (et pas seulement dans l'aperçu), les deux phis sont rendus en glyphes distincts : `\phi`→φ (U+03C6), `\varphi`→ϕ (U+03D5) dans `LatexToOmml` et `LatexToUnicodeMath` (auparavant les deux → φ). `@P` majuscule reste [Π, Φ, Ψ] (pas de capitale varphi).
