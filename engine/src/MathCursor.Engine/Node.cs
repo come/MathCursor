@@ -4,7 +4,7 @@ namespace MathCursor.Engine;
 
 // ── Node : nœud de la FORÊT (AST). Portage des objets JS dynamiques de forest/.
 // Types : "atom" | "infix" | "prefix" | "nary" | "postfix" | "matrix" | "interval"
-//         | "list" | "set" | "delim" | "tuple".
+//         | "list" | "set" | "tuple".
 // Tous les champs sont portés tels quels ; un Clone() shallow reproduit le spread
 // JS `{...e, grouped:true}` (la liste Parts est partagée par référence, comme en JS).
 internal sealed class Node
@@ -28,7 +28,6 @@ internal sealed class Node
     public bool Alt;                 // matrix : orientation non-défaut
     public string? Lb;               // interval : crochet gauche
     public string? Rb;               // interval : crochet droit
-    public string? Dk;               // delim : "abs" | "norm"
 
     public Node Clone() => new Node
     {
@@ -48,7 +47,6 @@ internal sealed class Node
         Alt = Alt,
         Lb = Lb,
         Rb = Rb,
-        Dk = Dk,
     };
 
     // parts(n) de score.js : matrix → cellules aplaties ; sinon Parts ; sinon vide.

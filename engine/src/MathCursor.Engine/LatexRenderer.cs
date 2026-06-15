@@ -39,10 +39,6 @@ internal static class LatexRenderer
                 return "(" + string.Join(",", n.Parts!.Select(x => Render(x, cu))) + ")";
             case "set":
                 return "\\{" + string.Join(",", n.Parts!.Select(x => Render(x, cu))) + "\\}";
-            case "delim":
-                return n.Dk == "norm"
-                    ? $"\\left\\|{Render(n.Parts![0], cu)}\\right\\|"
-                    : $"\\left|{Render(n.Parts![0], cu)}\\right|";
             case "postfix":
             {
                 var c = n.Parts![0];

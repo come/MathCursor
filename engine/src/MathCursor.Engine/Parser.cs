@@ -278,11 +278,15 @@ internal sealed class Forest
                 else if (t.Kind == "rparen") depth--;
                 else if (depth == 0 && t.Kind == "bar") ok = false;
             }
+            // Réutilise l'opérateur vocab abs/norm (head.Sym) plutôt qu'un nœud
+            // maison : le rendu \left|…\right| / \left\|…\right\| vit en UN seul
+            // endroit (Vocabulary), pas dupliqué dans le renderer. Enfant Grouped :
+            // les barres bracketent visuellement (ADR 2026-06-15-Refactor-abs-norm-bar-via-vocab).
             if (ok)
                 foreach (var a in ParseSpan(i + 1, j - 1))
                 {
                     var g = a.Clone(); g.Grouped = true;
-                    outl.Add(new Node { Type = "delim", Dk = head.Sym, Parts = new() { g } });
+                    outl.Add(new Node { Type = "prefix", Sym = head.Sym, Parts = new() { g } });
                 }
         }
 

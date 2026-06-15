@@ -19,6 +19,9 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-06-15
+- `[molle]` Refactor — [Barres `|x|`/`||v||` rendues via l'opérateur vocab `abs`/`norm` (fin du nœud `delim`)](2026-06-15-Refactor-abs-norm-bar-via-vocab.md) — le rendu de la valeur absolue existait en double (délégué vocab `abs`/`norm` pour la forme-mot, `case "delim"` + champ `Dk` codés en dur dans `LatexRenderer` pour la forme-barre) ; le parser émet désormais un `prefix abs`/`norm` au lieu d'un nœud `delim` maison → une seule source de vérité, plus aucun code spécifique aux barres dans le renderer ; `·mid` (barre au milieu) inchangé ; LaTeX identique au caractère près, gardé par les 5 fixtures à barres.
+
 ### 2026-06-12
 - `[molle]` Feat — [Enchaînements de virgules : tuples littéraux, listes nues, repère en auto](2026-06-12-Feat-comma-tuples-bare-lists-repere.md) — `(O, veci, vecj)` → AUTO `(O, ⃗ı, ⃗ȷ)` (pattern repère = suppression des lectures matrices), virgule = éléments écrits (tuple en tête de popup pour `(1, 2)`, `A(1, 2)`, `f(x, y)`) vs `;` = grille (colonne auto inchangée), listes nues top-level gardées anti-prose (`u_1, u_2, ..., u_n` ✓, « oui, non » reste erreur) ; zéro changement de Score (ordre d'émission + tri stable, précédent geo) ; retourne la fixture-limite `1, 2, ..., n` de l'ADR dots.
 - `[molle]` Feat — [Points de suspension mathématiques : … ⋯ ⋮ ⋱ (atomes)](2026-06-12-Feat-dots-ellipsis-atoms.md) — `...`/`…`/`dots`→`\ldots` partout (l'autocorrection Word `...`→`…` jetait « caractère inattendu »), `cdots`/`vdots`/`ddots` pour ⋯ ⋮ ⋱ ; lexer : scan symbole {3,2,1} + shape atom ; table OMML +4 ; v1 atomes seulement — la liste top-level `1, 2, ..., n` reste une erreur (Limit, fixture documentée), à re-discuter sur retour beta.
