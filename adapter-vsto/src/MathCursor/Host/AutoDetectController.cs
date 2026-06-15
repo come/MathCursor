@@ -161,17 +161,30 @@ namespace MathCursor.Host
                 zone = ZoneRefiner.TryExtendForwardWhitespace(text, zone, effCaret);
                 if (effCaret < zone.Start || effCaret > zone.End) { HideAuto(); return; }
 
-                // « limite », « racine »… juste avant la zone → inclus.
-                zone = ZoneRefiner.ExtendBackwardWithKeyword(text, zone, ZoneRefiner.DefaultMathPrefixKeywords);
+                // Le NER fragmente parfois UNE formule en zones adjacentes
+                // (mesuré 2026-06-12 : « (a b c d ; | e (sum x 0 1 ») et le
+                // morceau au caret seul est imparsable → on tente la FUSION
+                // blancs-seulement d'abord, la zone seule en repli si le
+                // moteur refuse la fusion.
+                var merged = ZoneRefiner.MergeWhitespaceAdjacent(filtered, text, zone);
+                var attempts = (merged.Start != zone.Start || merged.End != zone.End)
+                    ? new[] { merged, zone }
+                    : new[] { zone };
 
-                int spanStart = zone.Start, spanEnd = zone.End;
-                while (spanStart < spanEnd && char.IsWhiteSpace(text[spanStart])) spanStart++;
-                while (spanEnd > spanStart && char.IsWhiteSpace(text[spanEnd - 1])) spanEnd--;
-                if (spanEnd <= spanStart) { HideAuto(); return; }
+                foreach (var attempt in attempts)
+                {
+                    // « limite », « racine »… juste avant la zone → inclus.
+                    var z2 = ZoneRefiner.ExtendBackwardWithKeyword(text, attempt, ZoneRefiner.DefaultMathPrefixKeywords);
 
-                var span = new ZoneSpan(paragraph.ParagraphAbsStart, spanStart, spanEnd, text, paragraph.OMathRegions);
-                _log($"auto: zone NER [{spanStart},{spanEnd}] conf={zone.Confidence:F2} → \"{Preview(span.Text)}\"");
-                _conversion.TryProposeAuto(span);
+                    int spanStart = z2.Start, spanEnd = z2.End;
+                    while (spanStart < spanEnd && char.IsWhiteSpace(text[spanStart])) spanStart++;
+                    while (spanEnd > spanStart && char.IsWhiteSpace(text[spanEnd - 1])) spanEnd--;
+                    if (spanEnd <= spanStart) continue;
+
+                    var span = new ZoneSpan(paragraph.ParagraphAbsStart, spanStart, spanEnd, text, paragraph.OMathRegions);
+                    _log($"auto: zone NER [{spanStart},{spanEnd}] conf={z2.Confidence:F2} → \"{Preview(span.Text)}\"");
+                    if (_conversion.TryProposeAuto(span)) return;
+                }
             }
             catch (Exception ex) { _log("auto_detect_error: " + ex.Message); }
         }

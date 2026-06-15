@@ -151,6 +151,50 @@ namespace MathCursor.Tests.Host.Detection
             Assert.Equal(10, best.Start);
         }
 
+        // ── MergeWhitespaceAdjacent (fragmentation NER, 2026-06-12) ────
+
+        [Fact]
+        public void Merge_joins_zones_separated_by_single_space()
+        {
+            // « (a b c d ; | e (sum x 0 1 » : le NER coupe la formule en 2 —
+            // la fusion redonne la zone entière, parsable par le moteur.
+            var text = "(a b c d ; e (sum x 0 1";
+            var zones = new[] { Zone(0, 10, "(a b c d ;"), Zone(11, 23, "e (sum x 0 1") };
+            var merged = ZoneRefiner.MergeWhitespaceAdjacent(zones, text, zones[1]);
+            Assert.Equal(0, merged.Start);
+            Assert.Equal(23, merged.End);
+            Assert.Equal("(a b c d ; e (sum x 0 1".Substring(0, 23), merged.Text);
+        }
+
+        [Fact]
+        public void Merge_does_not_join_across_prose()
+        {
+            // « x=1 et y=2 » : le gap contient des lettres → pas de fusion.
+            var text = "x=1 et y=2";
+            var zones = new[] { Zone(0, 3, "x=1"), Zone(7, 10, "y=2") };
+            var merged = ZoneRefiner.MergeWhitespaceAdjacent(zones, text, zones[1]);
+            Assert.Same(zones[1], merged);
+        }
+
+        [Fact]
+        public void Merge_chains_multiple_adjacent_zones()
+        {
+            var text = "aa bb cc";
+            var zones = new[] { Zone(0, 2, "aa"), Zone(3, 5, "bb"), Zone(6, 8, "cc") };
+            var merged = ZoneRefiner.MergeWhitespaceAdjacent(zones, text, zones[1]);
+            Assert.Equal(0, merged.Start);
+            Assert.Equal(8, merged.End);
+        }
+
+        [Fact]
+        public void Merge_respects_max_gap()
+        {
+            var text = "aa      bb"; // 6 espaces > maxGap 3
+            var zones = new[] { Zone(0, 2, "aa"), Zone(8, 10, "bb") };
+            var merged = ZoneRefiner.MergeWhitespaceAdjacent(zones, text, zones[0]);
+            Assert.Same(zones[0], merged);
+        }
+
         [Fact]
         public void PickNearestZone_caret_after_picks_closest()
         {

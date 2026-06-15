@@ -50,6 +50,44 @@ namespace MathCursor.Host.Detection
             };
 
         /// <summary>
+        /// Fusionne les zones ADJACENTES séparées uniquement par des blancs
+        /// (gap ≤ <paramref name="maxGap"/>) en partant de la zone pivot. Le
+        /// NER fragmente parfois UNE formule en deux zones (mesuré 2026-06-12 :
+        /// « (a b c d ; | e (sum x 0 1 ») et le morceau au caret seul est
+        /// imparsable — l'appelant essaie la fusion d'abord, la zone seule en
+        /// repli. Retourne le pivot tel quel si rien à fusionner.
+        /// </summary>
+        public static DetectedZone MergeWhitespaceAdjacent(IReadOnlyList<DetectedZone> zones,
+            string text, DetectedZone pivot, int maxGap = 3)
+        {
+            if (zones == null || pivot == null || string.IsNullOrEmpty(text)) return pivot;
+            int start = pivot.Start, end = pivot.End;
+            bool grew = true;
+            while (grew)
+            {
+                grew = false;
+                foreach (var z in zones)
+                {
+                    if (z.End <= start && IsWhitespaceGap(text, z.End, start, maxGap) && z.Start < start)
+                    { start = z.Start; grew = true; }
+                    else if (z.Start >= end && IsWhitespaceGap(text, end, z.Start, maxGap) && z.End > end)
+                    { end = z.End; grew = true; }
+                }
+            }
+            if (start == pivot.Start && end == pivot.End) return pivot;
+            end = Math.Min(end, text.Length);
+            return new DetectedZone(start, end, text.Substring(start, end - start), pivot.Confidence);
+        }
+
+        private static bool IsWhitespaceGap(string text, int from, int to, int maxGap)
+        {
+            if (to < from || to - from > maxGap) return false;
+            for (int i = from; i < to && i < text.Length; i++)
+                if (!char.IsWhiteSpace(text[i])) return false;
+            return true;
+        }
+
+        /// <summary>
         /// Si le caret est juste après la zone avec UNIQUEMENT du whitespace
         /// entre, on pousse l'end de la zone jusqu'au caret (l'user a tapé
         /// un espace pour continuer la formule).
