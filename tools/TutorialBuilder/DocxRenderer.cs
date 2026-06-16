@@ -27,6 +27,8 @@ public static class DocxRenderer
         body.AppendChild(BuildProseParagraph(spec.Intro));
         body.AppendChild(BuildSpacerParagraph());
 
+        var tryHere = string.IsNullOrWhiteSpace(spec.TryHere) ? "↑ Essaie ici ↑" : spec.TryHere!;
+
         foreach (var section in spec.Sections)
         {
             body.AppendChild(BuildHeading(section.Title, level: 2));
@@ -35,7 +37,7 @@ public static class DocxRenderer
             // de tableau d'exercices.
             if (section.Items.Count > 0)
             {
-                body.AppendChild(BuildItemsTable(section.Items));
+                body.AppendChild(BuildItemsTable(section.Items, tryHere));
             }
             if (!string.IsNullOrWhiteSpace(section.Note))
             {
@@ -177,7 +179,7 @@ public static class DocxRenderer
         }
     }
 
-    private static Table BuildItemsTable(IReadOnlyList<TutorialItem> items)
+    private static Table BuildItemsTable(IReadOnlyList<TutorialItem> items, string tryHere)
     {
         var table = new Table(
             new TableProperties(
@@ -190,7 +192,7 @@ public static class DocxRenderer
 
         foreach (var item in items)
         {
-            table.AppendChild(BuildItemRow(item));
+            table.AppendChild(BuildItemRow(item, tryHere));
         }
         return table;
     }
@@ -207,7 +209,7 @@ public static class DocxRenderer
             new InsideVerticalBorder { Val = BorderValues.Single, Size = size, Color = "BFBFBF" });
     }
 
-    private static TableRow BuildItemRow(TutorialItem item)
+    private static TableRow BuildItemRow(TutorialItem item, string tryHere)
     {
         return new TableRow(
             new TableRowProperties(
@@ -216,7 +218,7 @@ public static class DocxRenderer
                 new TableRowHeight { Val = 1500, HeightType = HeightRuleValues.AtLeast },
                 new CantSplit()),
             BuildInstructionCell(item),
-            BuildTryCell());
+            BuildTryCell(tryHere));
     }
 
     private static TableCellProperties CellProperties(int widthDxa, TableVerticalAlignmentValues vAlign)
@@ -234,9 +236,33 @@ public static class DocxRenderer
 
     private static TableCell BuildInstructionCell(TutorialItem item)
     {
-        return new TableCell(
+        var cell = new TableCell(
             CellProperties(5500, TableVerticalAlignmentValues.Center),
             BuildProseParagraph(item.Instruction));
+        // Astuce optionnelle SOUS la consigne (gris italique, ex. « ou : @p »).
+        if (!string.IsNullOrWhiteSpace(item.Tip))
+            cell.AppendChild(BuildTipParagraph(item.Tip!));
+        return cell;
+    }
+
+    /// <summary>Ligne d'astuce sous la consigne : gris italique, plus petite,
+    /// garde le rendu `code` des backticks. Display only (non validé moteur).</summary>
+    private static Paragraph BuildTipParagraph(string text)
+    {
+        var paragraph = new Paragraph(
+            new ParagraphProperties(
+                new SpacingBetweenLines { Before = "60", After = "0" }));
+        foreach (var (segment, isCode) in SplitOnBackticks(text))
+        {
+            if (segment.Length == 0) continue;
+            var run = BuildRun(segment, isCode);
+            run.RunProperties ??= new RunProperties();
+            run.RunProperties.AppendChild(new Italic());
+            run.RunProperties.AppendChild(new Color { Val = "7A7A7A" });
+            run.RunProperties.AppendChild(new FontSize { Val = "18" });   // 9 pt
+            paragraph.AppendChild(run);
+        }
+        return paragraph;
     }
 
     /// <summary>
@@ -245,13 +271,13 @@ public static class DocxRenderer
     /// + hint <c>↑ Essaie ici ↑</c> en gris italique centré en bas. Le hint
     /// reste affiché tant que l'utilisateur écrit dans le paragraphe du dessus.
     /// </summary>
-    private static TableCell BuildTryCell()
+    private static TableCell BuildTryCell(string tryHere)
     {
         var hintRun = new Run(
             new RunProperties(
                 new Italic(),
                 new Color { Val = "BFBFBF" }),
-            new Text("↑ Essaie ici ↑"));
+            new Text(tryHere) { Space = SpaceProcessingModeValues.Preserve });
 
         var hintParagraph = new Paragraph(
             new ParagraphProperties(

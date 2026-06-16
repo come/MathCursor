@@ -3,6 +3,7 @@
   "lang": "fr",
   "title": "MathCursor — Prise en main",
   "intro": "Pour chaque consigne, essaie dans la case à droite. Tape, regarde, recommence. L'espace a un sens dans MathCursor : il sépare ce qui est groupé. Chaque exemple de ce document est vérifié automatiquement contre le moteur — ce que tu lis est exactement ce que tu obtiendras.",
+  "tryHere": "↑ Essaie ici ↑",
   "sections": [
     {
       "id": "popup",
@@ -91,25 +92,29 @@
           "instruction": "Tape `pi`.",
           "input": "pi",
           "expectedLatex": "\\pi ",
-          "showsPopup": false
+          "showsPopup": false,
+          "tip": "ou le raccourci : `@p`"
         },
         {
           "instruction": "Avec la majuscule : `Pi`.",
           "input": "Pi",
           "expectedLatex": "\\Pi ",
-          "showsPopup": false
+          "showsPopup": false,
+          "tip": "ou le raccourci : `@P`"
         },
         {
           "instruction": "Tape `alpha`.",
           "input": "alpha",
           "expectedLatex": "\\alpha ",
-          "showsPopup": false
+          "showsPopup": false,
+          "tip": "ou le raccourci : `@a`"
         },
         {
           "instruction": "Le discriminant : `Delta`.",
           "input": "Delta",
           "expectedLatex": "\\Delta ",
-          "showsPopup": false
+          "showsPopup": false,
+          "tip": "ou le raccourci : `@D`"
         },
         {
           "instruction": "Collé, ça se démêle — le périmètre du cercle : `2pir`.",

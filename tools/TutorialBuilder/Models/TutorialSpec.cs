@@ -9,7 +9,8 @@ public sealed record TutorialSpec(
     string Lang,
     string Title,
     string Intro,
-    IReadOnlyList<TutorialSection> Sections);
+    IReadOnlyList<TutorialSection> Sections,
+    string? TryHere = null);   // libellé localisé de la cellule d'essai (défaut FR)
 
 public sealed record TutorialSection(
     string Id,
@@ -23,7 +24,9 @@ public sealed record TutorialItem(
     string Input,
     string ExpectedLatex,
     bool ShowsPopup,
-    string? PopupAlt);
+    string? PopupAlt,
+    string? Tip = null);   // ligne d'astuce affichée SOUS la consigne (display only,
+                           // non validée contre le moteur — ex. « ou : @p »)
 
 public static class TutorialSpecLoader
 {

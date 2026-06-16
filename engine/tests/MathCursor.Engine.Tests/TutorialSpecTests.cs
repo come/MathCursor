@@ -27,40 +27,48 @@ public sealed class TutorialSpecTests
     [Fact]
     public void ChaqueConsigneDuTuto_EstUneFixtureExacte()
     {
-        var specPath = Path.Combine(RepoRoot(), "tools", "TutorialBuilder", "tutorial-spec.fr.json");
-        Assert.True(File.Exists(specPath), "spec tutoriel introuvable : " + specPath);
-        using var spec = JsonDocument.Parse(File.ReadAllText(specPath));
-
+        // index (entrée → fixture) : culture FR ou générique (les entrées EN du
+        // tuto — sum, sqrt, in, forall… — sont génériques dans le corpus).
         using var fixtures = JsonDocument.Parse(
             File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "fixtures.json")));
-        // index (entrée FR → fixture)
         var byInput = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
         foreach (var f in fixtures.RootElement.EnumerateArray())
             if (!f.TryGetProperty("culture", out var cu) || cu.GetString() == "fr")
                 byInput[f.GetProperty("in").GetString()!] = f;
 
+        // TOUS les specs présents (fr + en) sont validés : un tuto qui ment au
+        // lecteur casse le build, quelle que soit la langue.
+        var specDir = Path.Combine(RepoRoot(), "tools", "TutorialBuilder");
+        var specs = Directory.GetFiles(specDir, "tutorial-spec.*.json");
+        Assert.True(specs.Length >= 1, "aucun spec tutoriel dans " + specDir);
+
         var fails = new List<string>();
-        foreach (var section in spec.RootElement.GetProperty("sections").EnumerateArray())
-            foreach (var item in section.GetProperty("items").EnumerateArray())
-            {
-                string input = item.GetProperty("input").GetString()!;
-                string expected = item.GetProperty("expectedLatex").GetString()!;
-                bool showsPopup = item.GetProperty("showsPopup").GetBoolean();
-                string? alt = item.TryGetProperty("popupAlt", out var a) ? a.GetString() : null;
+        foreach (var specPath in specs)
+        {
+            string lang = Path.GetFileName(specPath);
+            using var spec = JsonDocument.Parse(File.ReadAllText(specPath));
+            foreach (var section in spec.RootElement.GetProperty("sections").EnumerateArray())
+                foreach (var item in section.GetProperty("items").EnumerateArray())
+                {
+                    string input = item.GetProperty("input").GetString()!;
+                    string expected = item.GetProperty("expectedLatex").GetString()!;
+                    bool showsPopup = item.GetProperty("showsPopup").GetBoolean();
+                    string? alt = item.TryGetProperty("popupAlt", out var a) ? a.GetString() : null;
 
-                if (!byInput.TryGetValue(input, out var fx))
-                { fails.Add($"\"{input}\" : ABSENTE du corpus fixtures.json"); continue; }
+                    if (!byInput.TryGetValue(input, out var fx))
+                    { fails.Add($"[{lang}] \"{input}\" : ABSENTE du corpus fixtures.json"); continue; }
 
-                var cands = fx.GetProperty("cands").EnumerateArray().Select(c => c.GetString()).ToList();
-                string decision = fx.GetProperty("decision").GetString()!;
+                    var cands = fx.GetProperty("cands").EnumerateArray().Select(c => c.GetString()).ToList();
+                    string decision = fx.GetProperty("decision").GetString()!;
 
-                if ((decision == "popup") != showsPopup)
-                    fails.Add($"\"{input}\" : showsPopup={showsPopup} mais décision moteur = {decision}");
-                if (cands.Count == 0 || cands[0] != expected)
-                    fails.Add($"\"{input}\" : expectedLatex \"{expected}\" ≠ top moteur \"{(cands.Count > 0 ? cands[0] : "(aucun)")}\"");
-                if (alt != null && !cands.Contains(alt))
-                    fails.Add($"\"{input}\" : popupAlt \"{alt}\" absent des candidats [{string.Join(" ; ", cands)}]");
-            }
+                    if ((decision == "popup") != showsPopup)
+                        fails.Add($"[{lang}] \"{input}\" : showsPopup={showsPopup} mais décision moteur = {decision}");
+                    if (cands.Count == 0 || cands[0] != expected)
+                        fails.Add($"[{lang}] \"{input}\" : expectedLatex \"{expected}\" ≠ top moteur \"{(cands.Count > 0 ? cands[0] : "(aucun)")}\"");
+                    if (alt != null && !cands.Contains(alt))
+                        fails.Add($"[{lang}] \"{input}\" : popupAlt \"{alt}\" absent des candidats [{string.Join(" ; ", cands)}]");
+                }
+        }
 
         Assert.True(fails.Count == 0,
             $"{fails.Count} consigne(s) du tuto périmée(s) :\n" + string.Join("\n", fails));

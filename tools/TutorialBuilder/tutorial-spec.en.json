@@ -1,0 +1,516 @@
+{
+  "version": "2.0",
+  "lang": "en",
+  "title": "MathCursor — Getting started",
+  "intro": "For each instruction, try it in the box on the right. Type, look, repeat. Spaces mean something in MathCursor: they separate what's grouped. Every example in this document is checked automatically against the engine — what you read is exactly what you'll get.",
+  "tryHere": "↑ Try here ↑",
+  "sections": [
+    {
+      "id": "popup",
+      "title": "How the popup works",
+      "intro": "As soon as MathCursor recognizes a notation, a small window appears above the cursor with the main conversion (preselected) and the possible alternatives. `Enter` accepts the selected suggestion. `Down arrow` then `Enter` picks an alternative. `Esc` closes the popup without inserting anything. If nothing shows up, `Ctrl + Space` forces the popup to appear — and a second `Ctrl + Space` extends the zone leftward.",
+      "items": []
+    },
+    {
+      "id": "fractions",
+      "title": "Fractions",
+      "intro": "Type the `/` operator. The space decides where the fraction stops.",
+      "items": [
+        {
+          "instruction": "With a space, the fraction stops before the `+`. Type `1/x +1`.",
+          "input": "1/x +1",
+          "expectedLatex": "\\frac{1}{x}+1",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Glued, MathCursor keeps the standard reading but offers the extension as an alternative. Type `1/x+1`.",
+          "input": "1/x+1",
+          "expectedLatex": "\\frac{1}{x}+1",
+          "showsPopup": true,
+          "popupAlt": "\\frac{1}{x+1}"
+        },
+        {
+          "instruction": "Spaces around the `/` group each side. Type `x+1 / x+2`.",
+          "input": "x+1 / x+2",
+          "expectedLatex": "\\frac{x+1}{x+2}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "`1/2x`: the denominator absorbs the `2x` — the popup also offers one-half times x. Type `1/2x`.",
+          "input": "1/2x",
+          "expectedLatex": "\\frac{1}{2x}",
+          "showsPopup": true,
+          "popupAlt": "\\frac{1}{2}x"
+        }
+      ]
+    },
+    {
+      "id": "puissances",
+      "title": "Powers and subscripts",
+      "intro": "A digit glued to a letter makes a POWER: `x2` gives x². For a SUBSCRIPT, type `_`: `u_n`. That's the rule to remember for sequences.",
+      "items": [
+        {
+          "instruction": "Type `x2` — the power inserts directly, no popup.",
+          "input": "x2",
+          "expectedLatex": "x^{2}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Works after a parenthesis too. Type `(x+1)2`.",
+          "input": "(x+1)2",
+          "expectedLatex": "(x+1)^{2}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "The subscript is forced with `_`. Type `x_2`.",
+          "input": "x_2",
+          "expectedLatex": "x_{2}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "For sequences: `U_n`.",
+          "input": "U_n",
+          "expectedLatex": "U_{n}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "`U_n+1` is ambiguous — the popup offers U_{n+1} as an alternative.",
+          "input": "U_n+1",
+          "expectedLatex": "U_{n}+1",
+          "showsPopup": true,
+          "popupAlt": "U_{n+1}"
+        }
+      ]
+    },
+    {
+      "id": "lettres-grecques",
+      "title": "Greek letters",
+      "intro": "Write their name in full. The CAPITAL of the first letter picks the uppercase Greek letter: `pi` gives π, `Pi` gives Π.",
+      "note": "Tip: if the popup doesn't appear on its own, press `Ctrl+Space` to bring it up.",
+      "items": [
+        {
+          "instruction": "Type `pi`.",
+          "input": "pi",
+          "expectedLatex": "\\pi ",
+          "showsPopup": false,
+          "tip": "or the shortcut: `@p`"
+        },
+        {
+          "instruction": "Uppercase: `Pi`.",
+          "input": "Pi",
+          "expectedLatex": "\\Pi ",
+          "showsPopup": false,
+          "tip": "or the shortcut: `@P`"
+        },
+        {
+          "instruction": "Type `alpha`.",
+          "input": "alpha",
+          "expectedLatex": "\\alpha ",
+          "showsPopup": false,
+          "tip": "or the shortcut: `@a`"
+        },
+        {
+          "instruction": "The discriminant: `Delta`.",
+          "input": "Delta",
+          "expectedLatex": "\\Delta ",
+          "showsPopup": false,
+          "tip": "or the shortcut: `@D`"
+        },
+        {
+          "instruction": "Glued, it untangles — the perimeter of a circle: `2pir`.",
+          "input": "2pir",
+          "expectedLatex": "2\\pi r",
+          "showsPopup": false
+        },
+        {
+          "instruction": "And the area: `pir2` — the popup lets you choose between πr² and (πr)².",
+          "input": "pir2",
+          "expectedLatex": "\\pi r^{2}",
+          "showsPopup": true,
+          "popupAlt": "(\\pi r)^{2}"
+        }
+      ]
+    },
+    {
+      "id": "racines-fonctions",
+      "title": "Roots and functions",
+      "intro": "Functions are written as words: `sqrt`, `cos`, `sin`, `ln`… Glued or spaced, both work: `cosx` ≡ `cos x`.",
+      "items": [
+        {
+          "instruction": "Type `sqrt x`.",
+          "input": "sqrt x",
+          "expectedLatex": "\\sqrt{x}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Type `cos x`.",
+          "input": "cos x",
+          "expectedLatex": "\\cos(x)",
+          "showsPopup": false
+        },
+        {
+          "instruction": "`cos x+1` glued: the popup offers to extend the argument.",
+          "input": "cos x+1",
+          "expectedLatex": "\\cos(x)+1",
+          "showsPopup": true,
+          "popupAlt": "\\cos(x+1)"
+        },
+        {
+          "instruction": "Exponential: `e^x` or `exp(x)` give the same thing. Type `e^x`.",
+          "input": "e^x",
+          "expectedLatex": "e^{x}",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "vecteurs-geometrie",
+      "title": "Vectors and geometry",
+      "intro": "`vec` adds the arrow — glued or spaced. Uppercase point pairs are understood: lines `(AB)`, segments `[AB]`, parallel `//`.",
+      "items": [
+        {
+          "instruction": "Type `vec AB` — wide arrow over both letters.",
+          "input": "vec AB",
+          "expectedLatex": "\\overrightarrow{AB}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Glued works too: `vecAB`.",
+          "input": "vecAB",
+          "expectedLatex": "\\overrightarrow{AB}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Dot product: `vec AB . vec BC`.",
+          "input": "vec AB . vec BC",
+          "expectedLatex": "\\overrightarrow{AB}\\cdot \\overrightarrow{BC}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Norm: `norm vec AB`.",
+          "input": "norm vec AB",
+          "expectedLatex": "\\left\\|\\overrightarrow{AB}\\right\\|",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Lines keep their parentheses: `(AB) // (CD)`.",
+          "input": "(AB) // (CD)",
+          "expectedLatex": "(AB) \\mathbin{/\\!/} (CD)",
+          "showsPopup": true,
+          "popupAlt": "AB \\mathbin{/\\!/} CD"
+        },
+        {
+          "instruction": "Perpendicular, in line notation: `(AB) perp (CD)`.",
+          "input": "(AB) perp (CD)",
+          "expectedLatex": "(AB) \\perp (CD)",
+          "showsPopup": true,
+          "popupAlt": "AB \\perp CD"
+        },
+        {
+          "instruction": "Angle: `angle ABC` (or the shortcut `^ABC`) adds the wide hat.",
+          "input": "angle ABC",
+          "expectedLatex": "\\widehat{ABC}",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "ensembles-logique",
+      "title": "Sets and logic",
+      "intro": "English words work: `in`, `forall`, `exists`, `union`, `inter`, `subset`. Number sets are chosen in the popup (R variable or ℝ set).",
+      "items": [
+        {
+          "instruction": "Type `x in R` — the popup offers the double-struck ℝ version.",
+          "input": "x in R",
+          "expectedLatex": "x\\in R",
+          "showsPopup": true,
+          "popupAlt": "x\\in \\mathbb{R} "
+        },
+        {
+          "instruction": "Universal quantifier: `forall x,y in R`.",
+          "input": "forall x,y in R",
+          "expectedLatex": "\\forall x,y\\in R",
+          "showsPopup": true,
+          "popupAlt": "\\forall x,y\\in \\mathbb{R} "
+        },
+        {
+          "instruction": "`exists x,y` adds the existential quantifier.",
+          "input": "exists x,y",
+          "expectedLatex": "\\exists x,y",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Union: `A union B` (or `A U B`).",
+          "input": "A union B",
+          "expectedLatex": "A\\cup B",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Inclusion: `A subset B`.",
+          "input": "A subset B",
+          "expectedLatex": "A\\subset B",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Minus a set: `R/{-1}`.",
+          "input": "R/{-1}",
+          "expectedLatex": "R\\setminus \\{-1\\}",
+          "showsPopup": true,
+          "popupAlt": "\\mathbb{R} \\setminus \\{-1\\}"
+        }
+      ]
+    },
+    {
+      "id": "intervalles",
+      "title": "Intervals",
+      "intro": "Brackets + semicolon: `[a;b]`. Open brackets work both ways.",
+      "items": [
+        {
+          "instruction": "Type `[0;1]`.",
+          "input": "[0;1]",
+          "expectedLatex": "[0;1]",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Open: `]0;1[`.",
+          "input": "]0;1[",
+          "expectedLatex": "]0;1[",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Union of intervals: `[0;1] U [2;3]`.",
+          "input": "[0;1] U [2;3]",
+          "expectedLatex": "[0;1]\\cup [2;3]",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Membership: `x in [0;1[`.",
+          "input": "x in [0;1[",
+          "expectedLatex": "x\\in [0;1[",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "suites-limites",
+      "title": "Sequences and limits",
+      "intro": "`lim` takes the variable, the bound, then the expression — separated by spaces. `inf` is infinity.",
+      "items": [
+        {
+          "instruction": "Type `lim x -inf 1/x`.",
+          "input": "lim x -inf 1/x",
+          "expectedLatex": "\\lim_{x\\to -\\infty } \\frac{1}{x}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "With a sequence: `lim n inf u_n = 0`.",
+          "input": "lim n inf u_n = 0",
+          "expectedLatex": "\\lim_{n\\to \\infty } u_{n}=0",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Right-hand limit: `lim x 0+ 1/x = +inf`.",
+          "input": "lim x 0+ 1/x = +inf",
+          "expectedLatex": "\\lim_{x\\to 0^{+}} \\frac{1}{x}=+\\infty ",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "sommes-integrales",
+      "title": "Sums, integrals, counting",
+      "intro": "`sum` takes the index, the bounds, then the expression. `int` takes the bounds, the expression, the variable.",
+      "items": [
+        {
+          "instruction": "Type `sum k 1 n f(k)`.",
+          "input": "sum k 1 n f(k)",
+          "expectedLatex": "\\sum_{k=1}^{n} f(k)",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Integral: `int 0 1 f(x) x`.",
+          "input": "int 0 1 f(x) x",
+          "expectedLatex": "\\int_{0}^{1} f(x) \\, dx",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Same word + parameters logic for the n-th root: `root 3 8`.",
+          "input": "root 3 8",
+          "expectedLatex": "\\sqrt[3]{8}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Binomial coefficient: `binom n k`.",
+          "input": "binom n k",
+          "expectedLatex": "\\binom{n}{k}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "GCD: `gcd(12,18)`.",
+          "input": "gcd(12,18)",
+          "expectedLatex": "\\operatorname{pgcd}(12{,}18)",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "complexes",
+      "title": "Complex numbers",
+      "intro": "`conj` adds the conjugation bar, `abs` the single bars — glued or spaced.",
+      "items": [
+        {
+          "instruction": "Conjugate: type `conjz` — glued or spaced (`conj z`), both work.",
+          "input": "conjz",
+          "expectedLatex": "\\bar{z}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Modulus: `abs z`.",
+          "input": "abs z",
+          "expectedLatex": "\\left|z\\right|",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Finally, all glued untangles: `rexp(itheta)` — r, exponential, i and theta.",
+          "input": "rexp(itheta)",
+          "expectedLatex": "re^{i\\theta }",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "nombres-unites",
+      "title": "Numbers, units, percentages",
+      "intro": "The French decimal comma is understood. A unit after a number is set in roman type.",
+      "items": [
+        {
+          "instruction": "Type `4.5` (or `4,5` — same result).",
+          "input": "4.5",
+          "expectedLatex": "4{,}5",
+          "showsPopup": false
+        },
+        {
+          "instruction": "With a unit: `4,5 cm`.",
+          "input": "4,5 cm",
+          "expectedLatex": "4{,}5\\,\\mathrm{cm}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Compound units: `5 m/s`.",
+          "input": "5 m/s",
+          "expectedLatex": "5\\,\\mathrm{m/s}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Percentage: `50%`.",
+          "input": "50%",
+          "expectedLatex": "50\\%",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Factorial: `n!`. Derivative: `f'(x)`.",
+          "input": "f'(x)",
+          "expectedLatex": "f'(x)",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "matrices",
+      "title": "Matrices",
+      "intro": "Inside parentheses: a comma OR a space separates columns, the semicolon separates rows.",
+      "items": [
+        {
+          "instruction": "Type `(a,b,c;d,e,f)` — a 2×3 matrix.",
+          "input": "(a,b,c;d,e,f)",
+          "expectedLatex": "\\begin{pmatrix}a & b & c \\\\ d & e & f\\end{pmatrix}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Spaces work too: `(a b c; d e f)`.",
+          "input": "(a b c; d e f)",
+          "expectedLatex": "\\begin{pmatrix}a & b & c \\\\ d & e & f\\end{pmatrix}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Column vector: `(a;b;c)`.",
+          "input": "(a;b;c)",
+          "expectedLatex": "\\begin{pmatrix}a \\\\ b \\\\ c\\end{pmatrix}",
+          "showsPopup": false
+        },
+        {
+          "instruction": "A complex term slips into a cell with parentheses: `(1 2 3;4 (sum k 1 n f(k)) 5)`.",
+          "input": "(1 2 3;4 (sum k 1 n f(k)) 5)",
+          "expectedLatex": "\\begin{pmatrix}1 & 2 & 3 \\\\ 4 & \\sum_{k=1}^{n} f(k) & 5\\end{pmatrix}",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "symboles-latex",
+      "title": "Symbols and LaTeX input",
+      "intro": "`+-` gives ±. If you know LaTeX, your habits work: `\\sum`, `\\forall`, `\\leq`, `infty`… with or without the backslash.",
+      "items": [
+        {
+          "instruction": "Plus-or-minus: `a pm b`.",
+          "input": "a pm b",
+          "expectedLatex": "a\\pm b",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Comparison: `x leq y` (or `x <= y`).",
+          "input": "x leq y",
+          "expectedLatex": "x\\leq y",
+          "showsPopup": false
+        },
+        {
+          "instruction": "Direct LaTeX: `\\forall x \\in R` — with or without the `\\`, as you prefer.",
+          "input": "\\forall x \\in R",
+          "expectedLatex": "\\forall x\\in R",
+          "showsPopup": true,
+          "popupAlt": "\\forall x\\in \\mathbb{R} "
+        },
+        {
+          "instruction": "Even glued symbols pasted from a problem statement: `x ≤ y`.",
+          "input": "x ≤ y",
+          "expectedLatex": "x\\leq y",
+          "showsPopup": false
+        }
+      ]
+    },
+    {
+      "id": "desambiguisation",
+      "title": "The popup, your ally",
+      "intro": "When several readings are equally valid, MathCursor offers them ALL — and it's consistent: if you repeat the same pattern, it reads it the same way on both sides.",
+      "items": [
+        {
+          "instruction": "Type `1/x+1 +1/x+2` — both readings stay symmetric.",
+          "input": "1/x+1 +1/x+2",
+          "expectedLatex": "\\frac{1}{x}+1+\\frac{1}{x}+2",
+          "showsPopup": true,
+          "popupAlt": "\\frac{1}{x+1}+\\frac{1}{x+2}"
+        },
+        {
+          "instruction": "`R* U N`: star and sets, several readings offered.",
+          "input": "R* U N",
+          "expectedLatex": "R^{\\ast }\\cup N",
+          "showsPopup": true,
+          "popupAlt": "\\mathbb{R} ^{\\ast }\\cup \\mathbb{N} "
+        },
+        {
+          "instruction": "`(a,b,c)`: as is (tuple), row or column? The popup lets you choose.",
+          "input": "(a,b,c)",
+          "expectedLatex": "(a,b,c)",
+          "showsPopup": true,
+          "popupAlt": "\\begin{pmatrix}a & b & c\\end{pmatrix}"
+        }
+      ]
+    },
+    {
+      "id": "multiligne",
+      "title": "Chaining a calculation over several lines",
+      "intro": "To unfold a calculation (solving an equation, a chain of equivalences), go to a new line and start with `=` or `<=>`: the new line aligns under the previous one, in the same equation block. The block stays ONE clean Word equation — you can keep extending it line after line.",
+      "items": []
+    }
+  ]
+}
