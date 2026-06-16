@@ -228,7 +228,7 @@ code {
 main {
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 64px var(--margin);
+  padding: 24px var(--margin) 64px;
 }
 
 section + section { margin-top: 96px; }
@@ -243,7 +243,7 @@ section + section { margin-top: 96px; }
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
   gap: 48px;
   align-items: center;
-  margin-top: 32px;
+  margin-top: 0;
 }
 
 .hero-content { min-width: 0; }
