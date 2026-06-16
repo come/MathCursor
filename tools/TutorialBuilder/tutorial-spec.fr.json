@@ -86,48 +86,53 @@
       "id": "lettres-grecques",
       "title": "Lettres grecques",
       "intro": "Écris leur nom en toutes lettres. La MAJUSCULE de la première lettre choisit la majuscule grecque : `pi` donne π, `Pi` donne Π.",
-      "note": "Astuce : si la popup n'apparaît pas toute seule, appuie sur `Ctrl+Espace` pour la faire venir.",
       "items": [
         {
           "instruction": "Tape `pi`.",
           "input": "pi",
           "expectedLatex": "\\pi ",
           "showsPopup": false,
-          "tip": "ou le raccourci : `@p`"
+          "tip": "ou le raccourci : `@p`",
+          "note": "(note : `Ctrl+Espace` pour ouvrir la popup si elle ne vient pas toute seule)"
         },
         {
           "instruction": "Avec la majuscule : `Pi`.",
           "input": "Pi",
           "expectedLatex": "\\Pi ",
           "showsPopup": false,
-          "tip": "ou le raccourci : `@P`"
+          "tip": "ou le raccourci : `@P`",
+          "note": "(note : `Ctrl+Espace` pour ouvrir la popup si elle ne vient pas toute seule)"
         },
         {
           "instruction": "Tape `alpha`.",
           "input": "alpha",
           "expectedLatex": "\\alpha ",
           "showsPopup": false,
-          "tip": "ou le raccourci : `@a`"
+          "tip": "ou le raccourci : `@a`",
+          "note": "(note : `Ctrl+Espace` pour ouvrir la popup si elle ne vient pas toute seule)"
         },
         {
           "instruction": "Le discriminant : `Delta`.",
           "input": "Delta",
           "expectedLatex": "\\Delta ",
           "showsPopup": false,
-          "tip": "ou le raccourci : `@D`"
+          "tip": "ou le raccourci : `@D`",
+          "note": "(note : `Ctrl+Espace` pour ouvrir la popup si elle ne vient pas toute seule)"
         },
         {
           "instruction": "Collé, ça se démêle — le périmètre du cercle : `2pir`.",
           "input": "2pir",
           "expectedLatex": "2\\pi r",
-          "showsPopup": false
+          "showsPopup": false,
+          "note": "(note : `Ctrl+Espace` pour ouvrir la popup si elle ne vient pas toute seule)"
         },
         {
           "instruction": "Et l'aire : `pir2` — la popup te laisse choisir entre πr² et (πr)².",
           "input": "pir2",
           "expectedLatex": "\\pi r^{2}",
           "showsPopup": true,
-          "popupAlt": "(\\pi r)^{2}"
+          "popupAlt": "(\\pi r)^{2}",
+          "note": "(note : `Ctrl+Espace` pour ouvrir la popup si elle ne vient pas toute seule)"
         }
       ]
     },
@@ -398,7 +403,8 @@
           "instruction": "Tape `4,5` (ou `4.5` — même résultat).",
           "input": "4,5",
           "expectedLatex": "4{,}5",
-          "showsPopup": false
+          "showsPopup": false,
+          "note": "(note : `Ctrl+Espace` marche aussi — appuie plusieurs fois : le premier s'arrête à la virgule et ne renvoie que `5` dans la popup)"
         },
         {
           "instruction": "Avec unité : `4,5 cm`.",

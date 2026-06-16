@@ -25,8 +25,10 @@ public sealed record TutorialItem(
     string ExpectedLatex,
     bool ShowsPopup,
     string? PopupAlt,
-    string? Tip = null);   // ligne d'astuce affichée SOUS la consigne (display only,
+    string? Tip = null,    // ligne d'astuce affichée SOUS la consigne (display only,
                            // non validée contre le moteur — ex. « ou : @p »)
+    string? Note = null);  // 2e ligne grise SOUS la consigne (après le Tip) — display
+                           // only — ex. « (note : Ctrl+Espace pour ouvrir la popup…) »
 
 public static class TutorialSpecLoader
 {

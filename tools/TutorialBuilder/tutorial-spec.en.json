@@ -86,48 +86,53 @@
       "id": "lettres-grecques",
       "title": "Greek letters",
       "intro": "Write their name in full. The CAPITAL of the first letter picks the uppercase Greek letter: `pi` gives π, `Pi` gives Π.",
-      "note": "Tip: if the popup doesn't appear on its own, press `Ctrl+Space` to bring it up.",
       "items": [
         {
           "instruction": "Type `pi`.",
           "input": "pi",
           "expectedLatex": "\\pi ",
           "showsPopup": false,
-          "tip": "or the shortcut: `@p`"
+          "tip": "or the shortcut: `@p`",
+          "note": "(note: press `Ctrl+Space` to open the popup if it doesn't appear on its own)"
         },
         {
           "instruction": "Uppercase: `Pi`.",
           "input": "Pi",
           "expectedLatex": "\\Pi ",
           "showsPopup": false,
-          "tip": "or the shortcut: `@P`"
+          "tip": "or the shortcut: `@P`",
+          "note": "(note: press `Ctrl+Space` to open the popup if it doesn't appear on its own)"
         },
         {
           "instruction": "Type `alpha`.",
           "input": "alpha",
           "expectedLatex": "\\alpha ",
           "showsPopup": false,
-          "tip": "or the shortcut: `@a`"
+          "tip": "or the shortcut: `@a`",
+          "note": "(note: press `Ctrl+Space` to open the popup if it doesn't appear on its own)"
         },
         {
           "instruction": "The discriminant: `Delta`.",
           "input": "Delta",
           "expectedLatex": "\\Delta ",
           "showsPopup": false,
-          "tip": "or the shortcut: `@D`"
+          "tip": "or the shortcut: `@D`",
+          "note": "(note: press `Ctrl+Space` to open the popup if it doesn't appear on its own)"
         },
         {
           "instruction": "Glued, it untangles — the perimeter of a circle: `2pir`.",
           "input": "2pir",
           "expectedLatex": "2\\pi r",
-          "showsPopup": false
+          "showsPopup": false,
+          "note": "(note: press `Ctrl+Space` to open the popup if it doesn't appear on its own)"
         },
         {
           "instruction": "And the area: `pir2` — the popup lets you choose between πr² and (πr)².",
           "input": "pir2",
           "expectedLatex": "\\pi r^{2}",
           "showsPopup": true,
-          "popupAlt": "(\\pi r)^{2}"
+          "popupAlt": "(\\pi r)^{2}",
+          "note": "(note: press `Ctrl+Space` to open the popup if it doesn't appear on its own)"
         }
       ]
     },
@@ -387,7 +392,8 @@
           "instruction": "Type `4.5` (or `4,5` — same result).",
           "input": "4.5",
           "expectedLatex": "4{,}5",
-          "showsPopup": false
+          "showsPopup": false,
+          "note": "(note: `Ctrl+Space` works here too — press it several times: the first one stops at the comma and only returns `5` in the popup)"
         },
         {
           "instruction": "With a unit: `4,5 cm`.",

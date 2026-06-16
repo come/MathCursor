@@ -23,7 +23,7 @@ Working dir : `D:/Software/MathCursor`. Tous les chemins sont relatifs à cette 
 - `vc_redist.x86.exe` + `vc_redist.x64.exe`
 - Modèle NER `distilmult-v6` complet
 - Tous les binaires .NET requis
-- `MathCursor-Tutoriel-fr.docx` (généré par `tools/TutorialBuilder/` ; EN optionnel, spec non portée)
+- `MathCursor-Tutoriel-fr.docx` **+ `MathCursor-Tutoriel-en.docx`** (générés par `tools/TutorialBuilder/` depuis `tutorial-spec.{fr,en}.json` ; EN porté depuis la 0.10.1)
 
 Si **n'importe quel** check échoue → stop, montre l'erreur, ne lance pas la suite. Pas de "best-effort" sur l'installer : un payload incomplet finit en crash chez les users.
 
@@ -154,7 +154,7 @@ foreach ($f in @('MathCursor.dll', 'MathCursor.vsto', 'MathCursor.dll.manifest',
 }
 
 # 5bis) Tutoriels FR + EN .docx (ADR 2026-05-22-Feat-tutorial-docx-generated-onboarding)
-foreach ($lang in @('fr')) {  # EN : spec non portée en beta-clean (skipifsourcedoesntexist dans l'iss)
+foreach ($lang in @('fr', 'en')) {  # EN porté depuis la 0.10.1 (tutorial-spec.en.json)
     $tuto = Join-Path $Payload "MathCursor-Tutoriel-$lang.docx"
     if (-not (Test-Path $tuto)) {
         $problems += "MANQUANT : $tuto (généré par tools/TutorialBuilder/)"
@@ -165,7 +165,7 @@ foreach ($lang in @('fr')) {  # EN : spec non portée en beta-clean (skipifsourc
 }
 
 # 5) Modèle NER
-foreach ($f in @('models/distilmult-v5/model_quantized.onnx', 'models/distilmult-v5/vocab.txt')) {
+foreach ($f in @('models/distilmult-v6/model_quantized.onnx', 'models/distilmult-v6/vocab.txt')) {
     $p = Join-Path $Payload $f
     if (-not (Test-Path $p)) { $problems += "MANQUANT : $p" }
     else {
@@ -206,7 +206,7 @@ Format court, pas de blabla :
 ```
 ✓ Tests : engine (N OK) + serialization (M OK) + adapter (P OK)
 ✓ Build : payload OK + ISCC OK
-✓ Payload : feedback.url, onnxruntime x86+x64, vc_redist x86+x64, modèle NER, MathCursor.{dll,vsto,manifest} + Engine + Serialization, MathCursor-Tutoriel-fr.docx
+✓ Payload : feedback.url, onnxruntime x86+x64, vc_redist x86+x64, modèle NER, MathCursor.{dll,vsto,manifest} + Engine + Serialization, MathCursor-Tutoriel-fr.docx + en.docx
 ✓ Installer : adapter-vsto/installer/output/MathCursor-Setup-<VERSION>.exe (XX Mo)
 
 → Prêt pour /deploy-prod <VERSION>

@@ -242,6 +242,9 @@ public static class DocxRenderer
         // Astuce optionnelle SOUS la consigne (gris italique, ex. « ou : @p »).
         if (!string.IsNullOrWhiteSpace(item.Tip))
             cell.AppendChild(BuildTipParagraph(item.Tip!));
+        // 2e ligne grise SOUS le tip (ex. « (note : Ctrl+Espace…) ») — même style.
+        if (!string.IsNullOrWhiteSpace(item.Note))
+            cell.AppendChild(BuildTipParagraph(item.Note!));
         return cell;
     }
 
