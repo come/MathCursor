@@ -57,46 +57,6 @@ namespace MathCursor.Tests.Host.Detection
             Assert.Same(z, result);
         }
 
-        // ── TryExtendForwardDelimiters ────────────────────────────────
-
-        [Fact]
-        public void TryExtendForwardDelimiters_trailing_open_bracket_halfopen_interval()
-        {
-            // "[0;1[" : le NER s'arrête à "[0;1" (zone [0,4]), caret en 5, gap "["
-            // → absorbé → "[0;1[" (sinon auto-fermé en "[0;1]")
-            var z = Zone(0, 4, "[0;1");
-            var result = ZoneRefiner.TryExtendForwardDelimiters("[0;1[", z, caret: 5);
-            Assert.Equal(5, result.End);
-            Assert.Equal("[0;1[", result.Text);
-        }
-
-        [Fact]
-        public void TryExtendForwardDelimiters_trailing_close_bracket()
-        {
-            // "[a]" : zone [0,2]="[a", caret en 3, gap "]" → "[a]" (plus de résidu)
-            var z = Zone(0, 2, "[a");
-            var result = ZoneRefiner.TryExtendForwardDelimiters("[a]", z, caret: 3);
-            Assert.Equal(3, result.End);
-            Assert.Equal("[a]", result.Text);
-        }
-
-        [Fact]
-        public void TryExtendForwardDelimiters_non_delimiter_blocks_extension()
-        {
-            // gap contient une lettre → pas étendu
-            var z = Zone(0, 2, "[a");
-            var result = ZoneRefiner.TryExtendForwardDelimiters("[ab", z, caret: 3);
-            Assert.Same(z, result);
-        }
-
-        [Fact]
-        public void TryExtendForwardDelimiters_caret_at_zone_end_returns_unchanged()
-        {
-            var z = Zone(0, 3, "[a]");
-            var result = ZoneRefiner.TryExtendForwardDelimiters("[a]", z, caret: 3);
-            Assert.Same(z, result);
-        }
-
         // ── ExtendBackwardWithKeyword ─────────────────────────────────
 
         [Fact]

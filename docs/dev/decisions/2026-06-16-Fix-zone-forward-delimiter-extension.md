@@ -3,7 +3,15 @@
 **Date :** 2026-06-16
 **Kind :** Fix
 **Température :** molle
-**Statut :** acté
+**Statut :** retracté
+**Superseded by :** [2026-06-16-Fix-keyboard-hook-altgr-debounce.md](2026-06-16-Fix-keyboard-hook-altgr-debounce.md)
+
+> **Rétracté le 2026-06-16** : ce fix traitait un SYMPTÔME. La vraie cause racine
+> était le hook clavier qui n'armait pas le debounce d'auto-détection sur les
+> frappes AltGr (= Ctrl+Alt) — donc sur AZERTY `[`/`]` (AltGr+5 / AltGr+°) ne
+> re-déclenchaient jamais la détection, le `[` final n'atteignait jamais le
+> texte analysé. `TryExtendForwardDelimiters` (extension de zone) a été révoqué :
+> méthode, câblage, tests et entrée README retirés. Voir l'ADR qui supersede.
 
 ## Citation acté
 

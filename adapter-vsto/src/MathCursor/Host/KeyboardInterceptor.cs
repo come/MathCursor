@@ -120,13 +120,17 @@ namespace MathCursor.Host
                     // Touche texte laissée passer (handler absent OU passthru,
                     // ex. Backspace sans équation adjacente) → réarme le
                     // debounce de l'auto-détection NER.
-                    if (!ctrlDown && IsTextKey(vkCode))
+                    // Réarme AUSSI sur AltGr (= Ctrl+Alt) : sur clavier AZERTY,
+                    // « [ ] @ { } | \ € … » sont des compositeurs AltGr. Sans ça,
+                    // taper un crochet ne réarmait pas l'auto-détection → la zone
+                    // ne re-détectait jamais le « [ » final de « [0;1[ » (ADR
+                    // 2026-06-16-Fix-keyboard-hook-altgr-debounce). On ignore
+                    // Ctrl-seul / Alt-seul (vrais raccourcis), pas AltGr.
+                    bool altDown = (GetKeyState(VK_MENU) & 0x8000) != 0;
+                    bool altGr = ctrlDown && altDown;
+                    if (IsTextKey(vkCode) && (altGr || (!ctrlDown && !altDown)))
                     {
-                        bool altDown = (GetKeyState(VK_MENU) & 0x8000) != 0;
-                        if (!altDown)
-                        {
-                            try { OnTextKeyTyped?.Invoke(); } catch { }
-                        }
+                        try { OnTextKeyTyped?.Invoke(); } catch { }
                     }
                 }
             }

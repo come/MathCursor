@@ -159,10 +159,6 @@ namespace MathCursor.Host
                 // aussi ce qui est APRÈS le caret (retour user 2026-06-10).
                 // Les blancs entre zone et caret sont absorbés (≤ 5).
                 zone = ZoneRefiner.TryExtendForwardWhitespace(text, zone, effCaret);
-                // Délimiteur de fermeture tapé (`[0;1[`, `[a]`) que le NER a
-                // laissé hors zone → l'absorber, sinon auto-fermeture parasite
-                // + résidu (ADR 2026-06-16-Fix-zone-forward-delimiter-extension).
-                zone = ZoneRefiner.TryExtendForwardDelimiters(text, zone, effCaret);
                 if (effCaret < zone.Start || effCaret > zone.End) { HideAuto(); return; }
 
                 // Le NER fragmente parfois UNE formule en zones adjacentes
