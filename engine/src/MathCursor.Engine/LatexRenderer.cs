@@ -11,6 +11,11 @@ internal static class LatexRenderer
     // parenthèse un enfant infixe plus lâche que son parent — sauf si le parent groupe déjà.
     private static string Child(Node c, VocabEntry parent, EngineCulture cu)
     {
+        // Nœud paren = AUTO-délimité : dissous sous un parent regroupant
+        // (fraction…) — (U_n)/2 → \frac{U_{n}}{2} — sinon rendu tel quel SANS
+        // re-parenthéser malgré son Grouped (ADR 2026-06-16).
+        if (c.Type == "paren")
+            return parent.Bracketed ? Render(c.Parts![0], cu) : Render(c, cu);
         string s = Render(c, cu);
         if (parent.Bracketed) return s;
         if (c.Type == "atom" && !parent.Apply) return s;
@@ -39,6 +44,8 @@ internal static class LatexRenderer
                 return "(" + string.Join(",", n.Parts!.Select(x => Render(x, cu))) + ")";
             case "set":
                 return "\\{" + string.Join(",", n.Parts!.Select(x => Render(x, cu))) + "\\}";
+            case "paren": // parenthèses/crochets TAPÉS conservés (ADR 2026-06-16)
+                return (n.Lb ?? "(") + Render(n.Parts![0], cu) + (n.Rb ?? ")");
             case "postfix":
             {
                 var c = n.Parts![0];
@@ -55,7 +62,10 @@ internal static class LatexRenderer
                 return d.Render!(new[] { Child(n.Parts![0], d, cu), Render(n.Parts[1], cu) }, n);
             return d.Render!(n.Parts!.Select(c => Child(c, d, cu)).ToList(), n);
         }
-        // prefix / nary — les n-aires dispatchent par arité (formes courtes)
-        return (d.Shape == "nary" ? d.RenderFor(n.Parts!.Count) : d.Render!)(n.Parts!.Select(x => Render(x, cu)).ToList(), n);
+        // prefix / nary — les n-aires dispatchent par arité (formes courtes).
+        // Une fonction/décoration fournit ses propres délimiteurs → les
+        // parenthèses tapées de l'argument se dissolvent (cos((x)) → \cos(x)).
+        return (d.Shape == "nary" ? d.RenderFor(n.Parts!.Count) : d.Render!)(
+            n.Parts!.Select(x => x.Type == "paren" ? Render(x.Parts![0], cu) : Render(x, cu)).ToList(), n);
     }
 }

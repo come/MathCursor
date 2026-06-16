@@ -201,15 +201,13 @@
           "instruction": "Les droites gardent leurs parenthèses : `(AB) // (CD)`.",
           "input": "(AB) // (CD)",
           "expectedLatex": "(AB) \\mathbin{/\\!/} (CD)",
-          "showsPopup": true,
-          "popupAlt": "AB \\mathbin{/\\!/} CD"
+          "showsPopup": false
         },
         {
           "instruction": "Perpendiculaires, en notation droites : `(AB) perp (CD)`.",
           "input": "(AB) perp (CD)",
           "expectedLatex": "(AB) \\perp (CD)",
-          "showsPopup": true,
-          "popupAlt": "AB \\perp CD"
+          "showsPopup": false
         },
         {
           "instruction": "Angle : `angle ABC` (ou le raccourci `^ABC`) pose le chapeau large.",

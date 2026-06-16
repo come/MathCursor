@@ -30,12 +30,18 @@ internal sealed class Forest
 
     private static Node Hole() => new() { Type = "atom", Sym = "\\square ", Hole = true };
 
-    // Paire de points « AB » (géométrie lycée : (AB) droite, [AB] segment).
-    // Atome unique, exactement 2 majuscules, sans lectures multiples.
-    private static bool IsPointPair(Token t) =>
-        t.Kind == "atom" && t.Syms == null
-        && t.Sym is { Length: 2 } s
-        && s[0] >= 'A' && s[0] <= 'Z' && s[1] >= 'A' && s[1] <= 'Z';
+    // Intérieur « visuellement atomique » dont un groupe délimité TAPÉ garde ses
+    // délimiteurs au rendu (ADR 2026-06-16 keep-typed-parens) : un atome, ou un
+    // INDICE (feature Sub). Lit des FEATURES, jamais un opérateur nommé. Exclut
+    // les exposants (donc les modificateurs d'ensemble (R*)/(0+), lexés en sup),
+    // les fonctions et les opérateurs lâches → leurs parenthèses restent du
+    // groupement ordinaire (dissous au rendu).
+    private static bool KeepEligible(Node e)
+    {
+        if (e.Type == "atom") return !e.Hole;
+        return e.Type == "infix" && e.Sym != null
+            && Vocabulary.Vocab.TryGetValue(e.Sym, out var v) && v.Sub;
+    }
 
     // Repère (O, ⃗ı, ⃗ȷ) : origine = 1 atome lettre MAJUSCULE, puis 2-3
     // segments « décoration Tight + atome » (vec/bar/hat — features du
@@ -164,13 +170,6 @@ internal sealed class Forest
         // ( E ) — intérieur via le callback (segmentation récursive) si fourni
         if (head.Kind == "lparen" && MatchClose(i) == j - 1)
         {
-            // (AB) = droite passant par A et B (ADR 2026-06-10-Feat-geo-point-
-            // pairs) : lecture atome littérale AVANT le groupement (à coût
-            // égal, les parenthèses tapées priment). Coh "geo" : les deux
-            // modes ne se mélangent pas dans une même expression.
-            bool pair = j - i == 3 && IsPointPair(_toks[i + 1]);
-            if (pair)
-                outl.Add(new Node { Type = "atom", Sym = "(" + _toks[i + 1].Sym + ")", Coh = "geo", Ai = 1 });
             // TUPLE : intérieur à VIRGULES profondeur 0 → lecture littérale
             // « (e1, e2, …) » émise AVANT les matrices (à coût égal, la
             // virgule tapée penche « éléments écrits » ; le ; reste la voie
@@ -195,9 +194,13 @@ internal sealed class Forest
                 List<Node> interior = _onGroup != null ? _onGroup(_toks.GetRange(i + 1, j - 1 - (i + 1))) : ParseSpan(i + 1, j - 1);
                 foreach (var e in interior)
                 {
-                    var g = e.Clone(); g.Grouped = true;
-                    if (pair && g.Type == "atom") { g.Coh = "geo"; g.Ai = 0; }
-                    outl.Add(g);
+                    // Parenthèses tapées CONSERVÉES si l'intérieur est atome/indice
+                    // (ADR 2026-06-16) — lecture UNIQUE, pas de version dissoute :
+                    // (U_n) → (U_{n}) en auto. Sinon groupement ordinaire (les
+                    // parenthèses ne fondent qu'au rendu sous un parent regroupant).
+                    if (KeepEligible(e))
+                        outl.Add(new Node { Type = "paren", Grouped = true, Parts = new() { e.Clone() } });
+                    else { var g = e.Clone(); g.Grouped = true; outl.Add(g); }
                 }
             }
             // REPÈRE (O, ⃗ı, ⃗ȷ) : pattern matché → les lectures matrices se
@@ -207,12 +210,15 @@ internal sealed class Forest
                 foreach (var m in Matrices(i + 1, j - 1)) outl.Add(m);
         }
 
-        // [AB] = segment (même pattern ; la voie intervalle ci-dessous exige
-        // un séparateur et ne s'applique donc jamais à ce span).
-        if (head.Kind == "bracket" && head.Sym == "[" && j - i == 3
-            && _toks[j - 1].Kind == "bracket" && _toks[j - 1].Sym == "]"
-            && IsPointPair(_toks[i + 1]))
-            outl.Add(new Node { Type = "atom", Sym = "[" + _toks[i + 1].Sym + "]", Coh = "geo", Ai = 1 });
+        // [AB], [a_i]… = groupe crochet TAPÉ autour d'un atome/indice → crochets
+        // conservés (ADR 2026-06-16, généralise l'ancien [AB] segment). La voie
+        // intervalle ci-dessous exige un séparateur et ne s'applique pas ici ;
+        // un intérieur non keep-eligible ([x+1]) ne produit aucune lecture.
+        if (head.Kind == "bracket" && head.Sym == "[" && j - i >= 3
+            && _toks[j - 1].Kind == "bracket" && _toks[j - 1].Sym == "]")
+            foreach (var e in ParseSpan(i + 1, j - 1))
+                if (KeepEligible(e))
+                    outl.Add(new Node { Type = "paren", Grouped = true, Lb = "[", Rb = "]", Parts = new() { e.Clone() } });
 
         // INTERVALLE : crochet … SEP … crochet
         if (head.Kind == "bracket" && _toks[j - 1].Kind == "bracket" && j - i >= 3)

@@ -118,7 +118,7 @@ internal static class Score
     {
         if (n.Type == "atom") return "a";
         var sb = new System.Text.StringBuilder();
-        sb.Append(n.Sym ?? "mat").Append('(');
+        sb.Append(n.Sym ?? n.Type).Append('(');
         var parts = Parts(n);
         for (int k = 0; k < parts.Count; k++) { if (k > 0) sb.Append(','); sb.Append(Shape(parts[k])); }
         sb.Append(')');

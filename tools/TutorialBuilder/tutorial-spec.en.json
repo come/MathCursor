@@ -201,15 +201,13 @@
           "instruction": "Lines keep their parentheses: `(AB) // (CD)`.",
           "input": "(AB) // (CD)",
           "expectedLatex": "(AB) \\mathbin{/\\!/} (CD)",
-          "showsPopup": true,
-          "popupAlt": "AB \\mathbin{/\\!/} CD"
+          "showsPopup": false
         },
         {
           "instruction": "Perpendicular, in line notation: `(AB) perp (CD)`.",
           "input": "(AB) perp (CD)",
           "expectedLatex": "(AB) \\perp (CD)",
-          "showsPopup": true,
-          "popupAlt": "AB \\perp CD"
+          "showsPopup": false
         },
         {
           "instruction": "Angle: `angle ABC` (or the shortcut `^ABC`) adds the wide hat.",

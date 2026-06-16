@@ -3,8 +3,9 @@
 **Date :** 2026-06-10
 **Kind :** Feat
 **Température :** molle
-**Statut :** acté
+**Statut :** retracté
 **Supersedes :** —
+**Superseded by :** [2026-06-16-Feat-keep-typed-parens-atom-index.md](2026-06-16-Feat-keep-typed-parens-atom-index.md) (règle générale « atome/indice » qui absorbe `(AB)`/`[AB]` ; le `Coh="geo"` et l'alternative sans-parenthèses de `(AB)//(CD)` disparaissent)
 **Lié à :** [2026-06-10-Fix-nbsp-keyword-case-tolerance.md](2026-06-10-Fix-nbsp-keyword-case-tolerance.md) (notation `//` parallèles, même usage cible)
 
 ## Citation acté
