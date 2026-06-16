@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MathCursor — Contacts</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <style>
+    :root {
+      --paper:       #faf9f6;
+      --paper-low:   #f4f3f1;
+      --paper-rim:   #e3e2e0;
+      --paper-white: #ffffff;
+      --ink:         #00236f;
+      --ink-soft:    #264191;
+      --red:         #bb0027;
+      --yellow:      #fde047;
+      --text:        #1a1c1a;
+      --text-muted:  #636571;
+      --selected:    #fff8d6;
+      --font-head:   'Space Grotesk', system-ui, sans-serif;
+      --font-body:   'Inter', system-ui, sans-serif;
+      --font-mono:   ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--paper); color: var(--text);
+      font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      grid-template-rows: 56px 1fr;
+      grid-template-areas: "topbar topbar" "list detail";
+      height: 100vh;
+    }
+    @media (max-width: 768px) {
+      .app { grid-template-columns: 1fr; grid-template-rows: 56px auto 1fr;
+             grid-template-areas: "topbar" "list" "detail"; }
+    }
+
+    .topbar {
+      grid-area: topbar;
+      display: flex; align-items: center; gap: 16px;
+      padding: 0 20px; background: var(--paper-white);
+      border-bottom: 1px solid var(--paper-rim);
+    }
+    .topbar h1 {
+      font-family: var(--font-head); color: var(--ink); margin: 0; font-size: 18px;
+    }
+    .topbar .count { color: var(--text-muted); font-size: 13px; }
+    .topbar .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .topbar input[type="text"] {
+      padding: 6px 10px; font-size: 13px;
+      border: 1px solid var(--paper-rim); border-radius: 4px;
+      width: 220px; font-family: var(--font-body);
+    }
+    .topbar button {
+      padding: 6px 12px; font-size: 13px; cursor: pointer;
+      border: 1px solid var(--paper-rim); border-radius: 4px;
+      background: var(--paper-white); font-family: var(--font-body);
+    }
+    .topbar button:hover { background: var(--paper-low); }
+    .topbar a.home { color: var(--text-muted); text-decoration: none; font-size: 13px; }
+    .topbar a.home:hover { color: var(--ink); }
+
+    .master {
+      grid-area: list;
+      background: var(--paper-white);
+      border-right: 1px solid var(--paper-rim);
+      overflow-y: auto;
+    }
+    .item {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--paper-rim);
+      cursor: pointer;
+    }
+    .item:hover { background: var(--paper-low); }
+    .item.selected { background: var(--selected); border-left: 3px solid var(--yellow); padding-left: 13px; }
+    .item-title { font-size: 14px; line-height: 1.35; margin-bottom: 4px; }
+    .item-meta {
+      font-size: 11px; color: var(--text-muted);
+      display: flex; gap: 8px; align-items: center;
+    }
+    .item-meta .em { color: var(--ink-soft); }
+    .item-empty {
+      padding: 32px 20px; text-align: center; color: var(--text-muted); font-style: italic;
+    }
+
+    .detail {
+      grid-area: detail;
+      overflow-y: auto;
+      padding: 24px 32px;
+    }
+    .detail-empty {
+      display: flex; align-items: center; justify-content: center;
+      height: 100%; color: var(--text-muted); font-style: italic;
+    }
+    .detail-head {
+      border-bottom: 1px solid var(--paper-rim); padding-bottom: 12px; margin-bottom: 16px;
+    }
+    .detail-head .ts {
+      font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); margin-bottom: 4px;
+    }
+    .detail-head h2 {
+      margin: 0 0 6px; font-family: var(--font-head); color: var(--ink); font-size: 18px;
+    }
+    .detail-head .meta { font-size: 12px; color: var(--text-muted); }
+    .detail-head .meta code { background: var(--paper-low); padding: 1px 4px; border-radius: 3px; }
+    .detail-head .meta a { color: var(--ink); }
+
+    .field { margin-bottom: 14px; }
+    .field-label {
+      font-family: var(--font-head); font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 4px;
+    }
+    .field-value {
+      font-family: var(--font-mono); font-size: 13px;
+      background: var(--paper-low); padding: 8px 10px; border-radius: 4px;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .field-value.empty { color: var(--text-muted); font-style: italic; }
+    .field-value a { color: var(--ink); }
+    .message {
+      background: #fff8d6; border-left: 3px solid var(--yellow);
+      padding: 12px 14px; border-radius: 0 4px 4px 0;
+      font-size: 14px; white-space: pre-wrap; word-break: break-word;
+    }
+
+    .loading { color: var(--text-muted); font-style: italic; padding: 16px 0; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <h1>MathCursor — Contacts</h1>
+      <span class="count" id="count">…</span>
+      <div class="actions">
+        <a class="home" href="index.html">← Admin</a>
+        <input type="text" id="filter" placeholder="Filtrer (message / email)" />
+        <button id="refresh" title="Force le rechargement (bypass cache 60s)">↻</button>
+      </div>
+    </div>
+
+    <div class="master" id="master">
+      <div class="loading">Chargement…</div>
+    </div>
+
+    <div class="detail" id="detail">
+      <div class="detail-empty">Sélectionne un message à gauche.</div>
+    </div>
+  </div>
+
+  <script>
+    let allContacts = [];
+    let selectedId = null;
+
+    async function loadList(refresh = false) {
+      const url = refresh ? '/admin/api/contacts/list?refresh=1' : '/admin/api/contacts/list';
+      const master = document.getElementById('master');
+      const count = document.getElementById('count');
+      master.innerHTML = '<div class="loading">Chargement…</div>';
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(resp.status + ' ' + await resp.text());
+        const data = await resp.json();
+        allContacts = data.items || [];
+        count.textContent = data.count + ' message(s)';
+        renderMaster();
+        const hash = location.hash.slice(1);
+        if (hash && allContacts.some(r => r.id === hash)) selectContact(hash);
+      } catch (e) {
+        master.innerHTML = '<div class="item-empty">Erreur de chargement : ' + escape(e.message) + '</div>';
+      }
+    }
+
+    function renderMaster() {
+      const master = document.getElementById('master');
+      const filter = (document.getElementById('filter').value || '').toLowerCase();
+      const filtered = filter
+        ? allContacts.filter(r => (r.title || '').toLowerCase().includes(filter)
+                              || (r.email || '').toLowerCase().includes(filter)
+                              || (r.id || '').includes(filter))
+        : allContacts;
+      if (filtered.length === 0) {
+        master.innerHTML = '<div class="item-empty">(aucun message)</div>';
+        return;
+      }
+      master.innerHTML = filtered.map(r => {
+        const dateStr = formatDate(r.date);
+        const sel = r.id === selectedId ? ' selected' : '';
+        return '<div class="item' + sel + '" data-id="' + escape(r.id) + '">'
+             + '<div class="item-title">' + escape(r.title) + '</div>'
+             + '<div class="item-meta"><span class="em">' + escape(r.email || '(pas d\'email)') + '</span> · '
+             + escape(dateStr) + '</div>'
+             + '</div>';
+      }).join('');
+      master.querySelectorAll('.item').forEach(el => {
+        el.addEventListener('click', () => selectContact(el.dataset.id));
+      });
+    }
+
+    async function selectContact(id) {
+      selectedId = id;
+      location.hash = id;
+      renderMaster();
+      const detail = document.getElementById('detail');
+      detail.innerHTML = '<div class="loading">Chargement du message…</div>';
+      try {
+        const resp = await fetch('/admin/api/contacts/get?id=' + encodeURIComponent(id));
+        if (!resp.ok) throw new Error(resp.status + ' ' + await resp.text());
+        const data = await resp.json();
+        renderDetail(data);
+      } catch (e) {
+        detail.innerHTML = '<div class="detail-empty">Erreur : ' + escape(e.message) + '</div>';
+      }
+    }
+
+    function renderDetail(r) {
+      const detail = document.getElementById('detail');
+      const ts = (r._server && r._server.received_at) || '?';
+      const country = (r._server && r._server.cf_country) || '??';
+      const colo = (r._server && r._server.cf_colo) || '??';
+      const email = r.email || '';
+      const subject = r.subject || '';
+      const message = r.message || '';
+
+      let html = '<div class="detail-head">';
+      html += '<div class="ts">' + escape(ts) + '</div>';
+      html += '<h2>' + escape(subject || truncate(message, 100) || '(sans sujet)') + '</h2>';
+      html += '<div class="meta">';
+      if (email) {
+        const subj = encodeURIComponent('Re: ' + (subject || 'ton message via MathCursor'));
+        html += '<a href="mailto:' + escape(email) + '?subject=' + subj + '">' + escape(email) + '</a> · ';
+      }
+      html += escape(country) + '/' + escape(colo);
+      html += '</div></div>';
+
+      html += '<div class="field"><div class="field-label">Message</div>';
+      html += '<div class="message">' + escape(message || '(vide)') + '</div></div>';
+
+      const renderField = (label, val) => {
+        const cls = val ? '' : ' empty';
+        return '<div class="field"><div class="field-label">' + label + '</div>' +
+               '<div class="field-value' + cls + '">' + escape(val || '(vide)') + '</div></div>';
+      };
+      html += renderField('Sujet', subject);
+      html += renderField('Email', email);
+
+      detail.innerHTML = html;
+    }
+
+    function formatDate(iso) {
+      if (!iso) return '?';
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return iso;
+      const now = new Date();
+      const diffMin = Math.floor((now - d) / 60000);
+      if (diffMin < 1) return "à l'instant";
+      if (diffMin < 60) return 'il y a ' + diffMin + ' min';
+      const diffH = Math.floor(diffMin / 60);
+      if (diffH < 24) return 'il y a ' + diffH + ' h';
+      const diffD = Math.floor(diffH / 24);
+      if (diffD < 7) return 'il y a ' + diffD + ' j';
+      return d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function escape(s) {
+      return String(s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+    }
+
+    function truncate(s, n) {
+      return s.length > n ? s.slice(0, n) + '…' : s;
+    }
+
+    document.getElementById('filter').addEventListener('input', renderMaster);
+    document.getElementById('refresh').addEventListener('click', () => loadList(true));
+    loadList();
+  </script>
+</body>
+</html>

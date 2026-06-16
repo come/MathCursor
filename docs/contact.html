@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="page_title">MathCursor — Contact</title>
+  <meta name="description" content="Une question, un bug, une idée pour MathCursor ? Écris-moi via le formulaire de contact." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="/" class="brand">MathCursor</a>
+      <nav class="nav">
+        <a href="demo/" data-i18n="nav_demo">Démo</a>
+        <a href="releases.html" data-i18n="nav_downloads">Téléchargements</a>
+        <a href="/#installation" data-i18n="nav_install">Installation</a>
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button type="button" data-lang="fr" class="active">FR</button>
+          <button type="button" data-lang="en">EN</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+
+    <section class="section">
+      <div class="container contact-wrap">
+        <h1 data-i18n="h1">Contact</h1>
+        <p class="lead" data-i18n="intro">
+          Une question, un bug, une idée, envie de tester MathCursor en classe ? Écris-moi — je lis chaque message. Pas d'entreprise derrière, juste un dev qui répond.
+        </p>
+
+        <form id="contact-form" class="form" novalidate>
+          <div class="field">
+            <label for="cf-email" data-i18n="label_email">Ton email <span class="field-hint">(pour que je puisse te répondre)</span></label>
+            <input type="email" id="cf-email" name="email" required autocomplete="email" />
+          </div>
+
+          <div class="field">
+            <label for="cf-subject" data-i18n="label_subject">Sujet <span class="field-hint">(optionnel)</span></label>
+            <input type="text" id="cf-subject" name="subject" autocomplete="off" maxlength="200" />
+          </div>
+
+          <div class="field">
+            <label for="cf-message" data-i18n="label_message">Message</label>
+            <textarea id="cf-message" name="message" rows="7" required></textarea>
+          </div>
+
+          <!-- Honeypot anti-bot : caché visuellement, doit rester vide. -->
+          <div class="hp" aria-hidden="true">
+            <label>Ne pas remplir
+              <input type="text" name="website" tabindex="-1" autocomplete="off" />
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="button button--primary" id="cf-submit" data-i18n="btn_send">Envoyer</button>
+          </div>
+
+          <p class="form-msg" id="cf-msg" role="status" aria-live="polite" hidden></p>
+        </form>
+
+        <p class="form-fallback" data-i18n="fallback">
+          Tu préfères ton client mail ? Écris directement à <a href="mailto:come2percin@gmail.com">come2percin@gmail.com</a>.
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div data-i18n="foot_copy">MathCursor · 100 % local, sans tracking, sans compte</div>
+      <nav>
+        <a href="/" data-i18n="foot_home">Accueil</a>
+        <a href="privacy.html" data-i18n="foot_privacy">Confidentialité</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- i18n FR/EN — même pattern que privacy.html : FR dans le markup, EN dans
+       le dict ci-dessous. MSG = chaînes runtime (statut d'envoi), indexées par
+       langue courante. -->
+  <script>
+    const I18N = {
+      en: {
+        page_title: "MathCursor — Contact",
+        nav_demo: "Demo",
+        nav_install: "Install",
+        nav_downloads: "Downloads",
+
+        h1: "Contact",
+        intro: "A question, a bug, an idea, want to try MathCursor in class? Write to me — I read every message. No company behind it, just a dev who replies.",
+
+        label_email: "Your email <span class=\"field-hint\">(so I can reply)</span>",
+        label_subject: "Subject <span class=\"field-hint\">(optional)</span>",
+        label_message: "Message",
+        btn_send: "Send",
+        fallback: "Prefer your own mail client? Write directly to <a href=\"mailto:come2percin@gmail.com\">come2percin@gmail.com</a>.",
+
+        foot_copy: "MathCursor · 100% local, no tracking, no account",
+        foot_home: "Home",
+        foot_privacy: "Privacy"
+      }
+    };
+
+    // Chaînes d'état runtime (pas dans le markup) — par langue.
+    const MSG = {
+      fr: {
+        sending: "Envoi…",
+        sent: "Merci ! Ton message est bien parti. Je te réponds vite.",
+        err_email: "Indique un email valide pour que je puisse te répondre.",
+        err_message: "Écris un petit message avant d'envoyer.",
+        err_generic: "Oups, l'envoi a échoué. Réessaie, ou écris-moi directement à come2percin@gmail.com."
+      },
+      en: {
+        sending: "Sending…",
+        sent: "Thanks! Your message is on its way. I'll reply soon.",
+        err_email: "Please enter a valid email so I can reply.",
+        err_message: "Please write a short message before sending.",
+        err_generic: "Oops, sending failed. Try again, or email me directly at come2percin@gmail.com."
+      }
+    };
+
+    let curLang = 'fr';
+
+    function setLang(lang) {
+      curLang = lang;
+      const dict = I18N[lang];
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        if (dict && dict[key]) {
+          if (el.tagName === 'TITLE') el.textContent = dict[key];
+          else el.innerHTML = dict[key];
+        }
+      });
+      document.querySelectorAll('.lang-toggle button').forEach(b => {
+        b.classList.toggle('active', b.dataset.lang === lang);
+      });
+      try { localStorage.setItem('mc_lang', lang); } catch (e) {}
+    }
+
+    // Snapshot FR (markup) pour pouvoir switch retour.
+    const FR_SNAPSHOT = {};
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      FR_SNAPSHOT[el.dataset.i18n] = (el.tagName === 'TITLE') ? el.textContent : el.innerHTML;
+    });
+    I18N.fr = FR_SNAPSHOT;
+
+    document.querySelectorAll('.lang-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => setLang(btn.dataset.lang));
+    });
+
+    let saved = null;
+    try { saved = localStorage.getItem('mc_lang'); } catch (e) {}
+    if (!saved) {
+      saved = (navigator.language || 'fr').toLowerCase().startsWith('en') ? 'en' : 'fr';
+    }
+    if (saved === 'en') setLang('en');
+
+    // ---- Envoi du formulaire ----
+    const form = document.getElementById('contact-form');
+    const btn = document.getElementById('cf-submit');
+    const msgEl = document.getElementById('cf-msg');
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    function showMsg(text, ok) {
+      msgEl.hidden = false;
+      msgEl.textContent = text;
+      msgEl.classList.toggle('form-msg--ok', !!ok);
+      msgEl.classList.toggle('form-msg--err', !ok);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const t = MSG[curLang] || MSG.fr;
+      const email = form.email.value.trim();
+      const subject = form.subject.value.trim();
+      const message = form.message.value.trim();
+      const website = form.website.value;  // honeypot
+
+      if (!EMAIL_RE.test(email)) { showMsg(t.err_email, false); form.email.focus(); return; }
+      if (!message) { showMsg(t.err_message, false); form.message.focus(); return; }
+
+      btn.disabled = true;
+      const sendLabel = (I18N[curLang] && I18N[curLang].btn_send) || 'Envoyer';
+      btn.textContent = t.sending;
+
+      try {
+        const resp = await fetch('/api/v1/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, subject, message, website }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (resp.ok && data.ok) {
+          showMsg(t.sent, true);
+          form.reset();
+        } else if (resp.status === 400 && data.error === 'invalid_email') {
+          showMsg(t.err_email, false);
+        } else if (resp.status === 400 && data.error === 'empty_message') {
+          showMsg(t.err_message, false);
+        } else {
+          showMsg(t.err_generic, false);
+        }
+      } catch (err) {
+        showMsg(t.err_generic, false);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = sendLabel;
+      }
+    });
+  </script>
+
+</body>
+</html>
