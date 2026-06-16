@@ -20,6 +20,7 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-06-16
+- `[molle]` Fix — [La zone NER avale le délimiteur de fermeture tapé (`[0;1[`, `[a]`)](2026-06-16-Fix-zone-forward-delimiter-extension.md) — en auto-détection `[0;1[` rendait `[0;1]` (fermé) et `[a]`/`[0;1]` laissaient un `]` en texte résidu : le NER excluait le délimiteur final tapé, le moteur auto-fermait la source amputée, le commit ne supprimait pas l'orphelin ; `ZoneRefiner.TryExtendForwardDelimiters` étend la zone jusqu'au caret sur des délimiteurs collés (`()[]{}`, gap ≤ 3) → source complète, plus d'auto-fermeture parasite ni de résidu ; +4 tests ZoneRefiner (adapter 24 verts), moteur intact (`[0;1[` déjà fixture verte).
 - `[molle]` Feat — [Parenthèses tapées conservées autour d'un atome/indice (généralise les point-pairs)](2026-06-16-Feat-keep-typed-parens-atom-index.md) — `(U_n)`→`(U_{n})` (avant : parenthèses perdues), `(a_i)`/`(x)`/`(AB)` gardent leurs délimiteurs ; règle générale « atome ou indice » via un nœud `paren` (kept-only → auto), dissous seulement sous un opérateur regroupant (`(x+1)/(x+2)`→`\frac{x+1}{x+2}`) ou une fonction (`cos(x)`→`\cos(x)`) ; remplace les cas spéciaux point-pairs `(AB)`/`[AB]` (`IsRepere` conservé, orthogonal) ; `(R*)`/`(0+)` (exposants) inchangés ; conséquence assumée : `(AB) // (CD)` et `(AB) perp (CD)` passent en auto (specs tuto FR/EN alignées) ; +6 fixtures (corpus 434).
 
 ### 2026-06-15

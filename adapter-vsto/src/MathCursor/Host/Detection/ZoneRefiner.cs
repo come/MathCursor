@@ -106,6 +106,26 @@ namespace MathCursor.Host.Detection
         }
 
         /// <summary>
+        /// Étend la zone jusqu'au caret quand le gap (≤ 3) est UNIQUEMENT des
+        /// délimiteurs collés (<c>( ) [ ] { }</c>) : l'utilisateur a tapé une
+        /// fermeture/ouverture d'intervalle (`[0;1[`, `[a]`) que le NER a
+        /// laissée HORS zone. Sans ça, la source amputée (`[0;1`) est
+        /// auto-fermée par le moteur en `[0;1]` et le délimiteur tapé reste en
+        /// résidu de texte (ADR 2026-06-16-Fix-zone-forward-delimiter-extension).
+        /// </summary>
+        public static DetectedZone TryExtendForwardDelimiters(string paragraph, DetectedZone zone, int caret)
+        {
+            if (zone == null || string.IsNullOrEmpty(paragraph)) return zone;
+            if (caret <= zone.End || caret - zone.End > 3) return zone;
+            for (int i = zone.End; i < caret && i < paragraph.Length; i++)
+                if ("()[]{}".IndexOf(paragraph[i]) < 0) return zone;
+            int newEnd = Math.Min(caret, paragraph.Length);
+            if (newEnd <= zone.End) return zone;
+            string newText = paragraph.Substring(zone.Start, newEnd - zone.Start);
+            return new DetectedZone(zone.Start, newEnd, newText, zone.Confidence);
+        }
+
+        /// <summary>
         /// Si le mot juste avant la zone est un math prefix keyword
         /// (cf. <see cref="DefaultMathPrefixKeywords"/>), l'inclut dans la
         /// zone (ex: "limite" + "x→0 f(x)" → 1 zone unique).
