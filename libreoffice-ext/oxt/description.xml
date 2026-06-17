@@ -10,7 +10,4 @@
   <publisher>
     <name xlink:href="https://mathcursor.pages.dev" lang="fr">MathCursor</name>
   </publisher>
-  <extension-description>
-    <src lang="fr" xlink:href="descr-fr.txt"/>
-  </extension-description>
 </description>

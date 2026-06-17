@@ -20,13 +20,20 @@ import os
 import sys
 
 # ── localisation du moteur Python (port P2) ──────────────────────────────────
-ENGINE_PATH = os.environ.get("MATHCURSOR_ENGINE", r"D:\Software\MathCursor\engine-python")
-if ENGINE_PATH and ENGINE_PATH not in sys.path:
-    sys.path.insert(0, ENGINE_PATH)
-
-# Si le moteur + data sont bundlés à côté de ce script (cas .oxt), décommenter :
-# from mc_engine import data as _data
-# _data.set_data_dir(os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "engine"))
+# Auto-détection : installé en .oxt (moteur + data bundlés à la racine de
+# l'extension, soit ../../ depuis Scripts/python) OU dev (variable
+# MATHCURSOR_ENGINE pointant engine-python/).
+_HERE = os.path.dirname(os.path.realpath(__file__))
+_ROOT = os.path.abspath(os.path.join(_HERE, "..", ".."))
+if os.path.isdir(os.path.join(_ROOT, "mc_engine")):
+    if _ROOT not in sys.path:
+        sys.path.insert(0, _ROOT)
+    from mc_engine import data as _data       # noqa: E402
+    _data.set_data_dir(os.path.join(_ROOT, "data", "engine"))
+else:
+    _eng = os.environ.get("MATHCURSOR_ENGINE", r"D:\Software\MathCursor\engine-python")
+    if _eng and _eng not in sys.path:
+        sys.path.insert(0, _eng)
 
 from mc_engine.engine import analyze        # noqa: E402
 from mc_engine import culture                # noqa: E402
