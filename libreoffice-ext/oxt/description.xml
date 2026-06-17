@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<description xmlns="http://openoffice.org/extensions/description/2006"
+             xmlns:xlink="http://www.w3.org/1999/xlink">
+  <identifier value="fr.mathcursor.libreoffice"/>
+  <version value="0.1.0"/>
+  <display-name>
+    <name lang="fr">MathCursor</name>
+    <name lang="en">MathCursor</name>
+  </display-name>
+  <publisher>
+    <name xlink:href="https://mathcursor.pages.dev" lang="fr">MathCursor</name>
+  </publisher>
+  <extension-description>
+    <src lang="fr" xlink:href="descr-fr.txt"/>
+  </extension-description>
+</description>
