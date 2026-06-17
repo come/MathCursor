@@ -87,8 +87,51 @@ def _insert_formula(text_range, starmath):
         pass
 
 
+def _choose(labels):
+    """Popup de choix (UNO) : liste `labels`, renvoie l'index choisi ou None.
+    Aperçu = texte (LaTeX) — UNO ne rend pas de math dans une liste."""
+    ctx = XSCRIPTCONTEXT.getComponentContext()  # noqa: F821
+    smgr = ctx.ServiceManager
+    n = min(len(labels), 8)
+    dm = smgr.createInstanceWithContext("com.sun.star.awt.UnoControlDialogModel", ctx)
+    dm.Title = "MathCursor — choisir la lecture"
+    dm.Width = 220
+    dm.Height = 22 + 11 * n + 22
+
+    def _ctrl(service, name, **props):
+        m = dm.createInstance("com.sun.star.awt." + service)
+        for k, v in props.items():
+            setattr(m, k, v)
+        dm.insertByName(name, m)
+        return m
+
+    _ctrl("UnoControlFixedTextModel", "lbl", PositionX=6, PositionY=4, Width=208, Height=10,
+          Label="Plusieurs lectures — choisis :")
+    _ctrl("UnoControlListBoxModel", "lst", PositionX=6, PositionY=16, Width=208, Height=11 * n,
+          Dropdown=False, MultiSelection=False, StringItemList=tuple(labels))
+    by = dm.Height - 18
+    _ctrl("UnoControlButtonModel", "ok", PositionX=112, PositionY=by, Width=48, Height=14,
+          Label="OK", PushButtonType=1, DefaultButton=True)
+    _ctrl("UnoControlButtonModel", "cancel", PositionX=164, PositionY=by, Width=48, Height=14,
+          Label="Annuler", PushButtonType=2)
+
+    dlg = smgr.createInstanceWithContext("com.sun.star.awt.UnoControlDialog", ctx)
+    dlg.setModel(dm)
+    toolkit = smgr.createInstanceWithContext("com.sun.star.awt.Toolkit", ctx)
+    dlg.createPeer(toolkit, None)
+    lb = dlg.getControl("lst")
+    lb.selectItemPos(0, True)
+    ret = dlg.execute()
+    idx = None
+    if ret == 1:  # OK
+        pos = lb.getSelectedItemsPos()
+        idx = pos[0] if pos else 0
+    dlg.dispose()
+    return idx
+
+
 def convert_selection(*args):
-    """Convertit la sélection courante en formule. À lier à un raccourci."""
+    """Convertit la sélection en formule. Si plusieurs lectures : popup de choix."""
     doc = XSCRIPTCONTEXT.getDocument()  # noqa: F821
     controller = doc.getCurrentController()
     sel = controller.getSelection()
@@ -102,8 +145,13 @@ def convert_selection(*args):
     # rien reconnu (prose, erreur) : on ne touche PAS au document.
     if res.decision == "erreur" or not res.ranked:
         return
-    starmath = to_starmath(res.ranked[0].node, _CULTURE)
-    _insert_formula(rng, starmath)
+    chosen = res.ranked[0]
+    if res.decision == "popup" and len(res.ranked) > 1:
+        idx = _choose([c.latex for c in res.ranked])
+        if idx is None:
+            return  # annulé
+        chosen = res.ranked[idx]
+    _insert_formula(rng, to_starmath(chosen.node, _CULTURE))
 
 
 # Fonctions exposées au Script Provider de LibreOffice.
