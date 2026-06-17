@@ -349,56 +349,13 @@ internal static class Vocabulary
         // suivie d'un espace (WordSpace) — entrée interne, convention "·".
         var fw = Vocab["forall"].Clone(); fw.WordSpace = true; Vocab["·forallWord"] = fw;
 
-        var aliasGeneric = new Dictionary<string, string>
-        {
-            ["cup"] = "union", ["U"] = "union", ["Union"] = "union",
-            ["cap"] = "inter", ["Inter"] = "inter",
-            ["V"] = "·forallWord",
-            ["exist"] = "exists", ["nexist"] = "nexists",
-            // noms LaTeX nus — « pour que les latexiens soient pas perdus »
-            // (le lexer avale aussi l'antislash : \infty ≡ infty).
-            ["infty"] = "inf", ["ldots"] = "dots",
-            // raccourcis lettre+points — pas des mots (le lexer normalise le
-            // lookahead « v… »/« v... » en clé « v... » et résout via Canon)
-            ["v..."] = "vdots", ["d..."] = "ddots", ["c..."] = "cdots",
-            ["neq"] = "!=", ["leq"] = "<=", ["geq"] = ">=",
-            ["wedge"] = "and", ["vee"] = "or", ["cdot"] = ".", ["times"] = "*",
-            ["varnothing"] = "emptyset",
-            // divers
-            ["plusminus"] = "pm", ["angle"] = "hat",
-            ["gcd"] = "pgcd", ["lcm"] = "ppcm",
-            // sync table ZoneRefiner.DefaultMathPrefixKeywords (2026-06-11) :
-            // une zone auto-détectée étendue sur ces mots tuait la popup
-            // (moteur en erreur sur le mot inconnu).
-            ["integral"] = "int", ["lmt"] = "lim",
-            // raccourcis grecs « @ » (ADR 2026-06-15) : 1re lettre du nom ;
-            // collisions (t/e/p) → entrée à lectures multiples (popup).
-            ["@a"] = "alpha", ["@b"] = "beta", ["@g"] = "gamma", ["@d"] = "delta",
-            ["@z"] = "zeta", ["@i"] = "iota", ["@k"] = "kappa", ["@l"] = "lambda",
-            ["@m"] = "mu", ["@n"] = "nu", ["@x"] = "xi", ["@o"] = "omega",
-            ["@r"] = "rho", ["@s"] = "sigma", ["@u"] = "upsilon", ["@c"] = "chi",
-            ["@t"] = "·greek-t", ["@e"] = "·greek-e", ["@p"] = "·greek-p",
-        };
-        var aliasFrOnly = new Dictionary<string, string>
-        {
-            ["somme"] = "sum", ["som"] = "sum",
-            ["produit"] = "prod",
-            ["integrale"] = "int", ["integ"] = "int",
-            ["limite"] = "lim",
-            ["racine"] = "sqrt", ["rac"] = "sqrt", ["racn"] = "root",
-            ["pourtout"] = "forall",
-            ["ilexiste"] = "exists", ["existe"] = "exists", ["nexiste"] = "nexists",
-            ["congr"] = "cong", ["congru"] = "cong",
-            ["dans"] = "in", ["appartient"] = "in", ["appt"] = "in", ["app"] = "in",
-            ["inclus"] = "subset", ["incl"] = "subset", ["inclu"] = "subset",
-            ["pasinclus"] = "notsubset", ["pasincl"] = "notsubset", ["pasinclu"] = "notsubset",
-            ["pasdans"] = "notin", ["nappartient"] = "notin", ["napp"] = "notin",
-            ["rond"] = "circ", ["conj"] = "bar",
-            ["module"] = "abs",
-            ["plusmoins"] = "pm",
-            ["parmi"] = "·parmi",
-        };
-        var aliasEnOnly = new Dictionary<string, string>(); // à enrichir
+        // Alias externalisés dans data/engine/cultures.json (source unique partagée
+        // avec le port Python, cf. ADR portable-engine-universal-vocab). MergeAliases
+        // valide toujours que chaque cible est une clé canonique de Vocab.
+        var aliasMaps = EngineData.Obj(EngineData.Obj(EngineData.Load("cultures.json"))["aliases"]);
+        var aliasGeneric = EngineData.StrMap(aliasMaps["generic"]);
+        var aliasFrOnly = EngineData.StrMap(aliasMaps["fr"]);
+        var aliasEnOnly = EngineData.StrMap(aliasMaps["en"]);
 
         AliasesFr = MergeAliases(aliasGeneric, aliasFrOnly);
         AliasesUs = MergeAliases(aliasGeneric, aliasEnOnly);

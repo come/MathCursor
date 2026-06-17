@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MathCursor.Engine;
 
@@ -48,6 +49,17 @@ public sealed class EngineCulture
             ? this
             : new EngineCulture(DecimalsIn, DecimalTex, intervalSep ?? IntervalSep, matrixEnv ?? MatrixEnv, Aliases);
 
-    public static readonly EngineCulture Fr = new(new[] { '.', ',' }, "{,}", ";", "pmatrix", Vocabulary.AliasesFr);
-    public static readonly EngineCulture Us = new(new[] { '.' }, ".", ",", "bmatrix", Vocabulary.AliasesUs);
+    public static readonly EngineCulture Fr = FromData("fr", Vocabulary.AliasesFr);
+    public static readonly EngineCulture Us = FromData("us", Vocabulary.AliasesUs);
+
+    // Réglages (décimal/intervalle/matrice) chargés depuis data/engine/cultures.json
+    // — source unique partagée avec le port Python (cf. ADR portable-engine).
+    private static EngineCulture FromData(string key, IReadOnlyDictionary<string, string> aliases)
+    {
+        var cultures = EngineData.Obj(EngineData.Obj(EngineData.Load("cultures.json"))["cultures"]);
+        var c = EngineData.Obj(cultures[key]);
+        var decimalsIn = EngineData.Arr(c["decimalsIn"]).Select(x => EngineData.Str(x)[0]).ToArray();
+        return new EngineCulture(decimalsIn, EngineData.Str(c["decimalTex"]),
+            EngineData.Str(c["intervalSep"]), EngineData.Str(c["matrixEnv"]), aliases);
+    }
 }

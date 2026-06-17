@@ -1,0 +1,47 @@
+{
+  "_comment": "Données universelles du moteur — réglages de culture + alias lexicaux (mot saisi → clé canonique du vocabulaire). Source unique C#/Python. Cf. ADR 2026-06-16-Feat-portable-engine-universal-vocab. MergeAliases (générique + langue) valide que chaque cible est une clé canonique de Vocab.",
+  "cultures": {
+    "fr": { "decimalsIn": [".", ","], "decimalTex": "{,}", "intervalSep": ";", "matrixEnv": "pmatrix" },
+    "us": { "decimalsIn": ["."],      "decimalTex": ".",   "intervalSep": ",", "matrixEnv": "bmatrix" }
+  },
+  "aliases": {
+    "generic": {
+      "cup": "union", "U": "union", "Union": "union",
+      "cap": "inter", "Inter": "inter",
+      "V": "·forallWord",
+      "exist": "exists", "nexist": "nexists",
+      "infty": "inf", "ldots": "dots",
+      "v...": "vdots", "d...": "ddots", "c...": "cdots",
+      "neq": "!=", "leq": "<=", "geq": ">=",
+      "wedge": "and", "vee": "or", "cdot": ".", "times": "*",
+      "varnothing": "emptyset",
+      "plusminus": "pm", "angle": "hat",
+      "gcd": "pgcd", "lcm": "ppcm",
+      "integral": "int", "lmt": "lim",
+      "@a": "alpha", "@b": "beta", "@g": "gamma", "@d": "delta",
+      "@z": "zeta", "@i": "iota", "@k": "kappa", "@l": "lambda",
+      "@m": "mu", "@n": "nu", "@x": "xi", "@o": "omega",
+      "@r": "rho", "@s": "sigma", "@u": "upsilon", "@c": "chi",
+      "@t": "·greek-t", "@e": "·greek-e", "@p": "·greek-p"
+    },
+    "fr": {
+      "somme": "sum", "som": "sum",
+      "produit": "prod",
+      "integrale": "int", "integ": "int",
+      "limite": "lim",
+      "racine": "sqrt", "rac": "sqrt", "racn": "root",
+      "pourtout": "forall",
+      "ilexiste": "exists", "existe": "exists", "nexiste": "nexists",
+      "congr": "cong", "congru": "cong",
+      "dans": "in", "appartient": "in", "appt": "in", "app": "in",
+      "inclus": "subset", "incl": "subset", "inclu": "subset",
+      "pasinclus": "notsubset", "pasincl": "notsubset", "pasinclu": "notsubset",
+      "pasdans": "notin", "nappartient": "notin", "napp": "notin",
+      "rond": "circ", "conj": "bar",
+      "module": "abs",
+      "plusmoins": "pm",
+      "parmi": "·parmi"
+    },
+    "en": {}
+  }
+}
