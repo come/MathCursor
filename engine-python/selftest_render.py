@@ -7,9 +7,9 @@ score arrivent ensuite (conformance fixtures)."""
 import sys
 from mc_engine.node import Node
 from mc_engine.render import render
-from mc_engine import data
+from mc_engine import culture
 
-CU = data.load("cultures.json")["cultures"]["fr"]
+CU = culture.FR
 
 
 def atom(s): return Node(type="atom", sym=s)

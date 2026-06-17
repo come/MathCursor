@@ -27,11 +27,11 @@ def render(n, cu):
     if t == "atom":
         return n.sym
     if t == "matrix":
-        env = cu["matrixEnv"]
+        env = cu.matrix_env
         body = " \\\\ ".join(" & ".join(render(x, cu) for x in row) for row in n.rows)
         return f"\\begin{{{env}}}" + body + f"\\end{{{env}}}"
     if t == "interval":
-        return f"{n.lb}{render(n.parts[0], cu)}{cu['intervalSep']}{render(n.parts[1], cu)}{n.rb}"
+        return f"{n.lb}{render(n.parts[0], cu)}{cu.interval_sep}{render(n.parts[1], cu)}{n.rb}"
     if t == "list":
         return ",".join(render(x, cu) for x in n.parts)
     if t == "tuple":

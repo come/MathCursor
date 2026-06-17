@@ -26,6 +26,17 @@ class Node:
     lb: Optional[str] = None             # interval/paren : délimiteur gauche
     rb: Optional[str] = None             # interval/paren : délimiteur droit
 
+    def effective_parts(self):
+        # parts(n) de score.js : matrix -> cellules aplaties ; sinon parts ; sinon vide.
+        if self.parts is not None:
+            return self.parts
+        if self.rows is not None:
+            flat = []
+            for row in self.rows:
+                flat.extend(row)
+            return flat
+        return []
+
 
 @dataclass
 class Token:
