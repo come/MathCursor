@@ -65,7 +65,8 @@ def _insert_formula(text, text_range, starmath):
     obj = doc.createInstance("com.sun.star.text.TextEmbeddedObject")
     obj.CLSID = _STARMATH_CLSID
     # ancrage « comme caractère » : la formule vit dans le flux de texte.
-    obj.AnchorType = uno.getConstantByName("com.sun.star.text.TextContentAnchorType.AS_CHARACTER")
+    # AS_CHARACTER est une ENUM (pas une constante) -> uno.Enum, pas getConstantByName.
+    obj.AnchorType = uno.Enum("com.sun.star.text.TextContentAnchorType", "AS_CHARACTER")
     # True = remplace la sélection par l'objet.
     text.insertTextContent(text_range, obj, True)
     # modèle Math embarqué → markup StarMath.
