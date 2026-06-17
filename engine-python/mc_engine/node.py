@@ -25,3 +25,20 @@ class Node:
     alt: bool = False
     lb: Optional[str] = None             # interval/paren : délimiteur gauche
     rb: Optional[str] = None             # interval/paren : délimiteur droit
+
+
+@dataclass
+class Token:
+    """Sortie du lexer — port de Token.cs."""
+    kind: str = ""
+    sym: Optional[str] = None
+    syms: Optional[list] = None          # lectures multiples (x2 → ^/_ ; R → [R, ℝ])
+    spaced: bool = False
+    space_before: bool = False
+    virtual: bool = False                # ) ou ] ajouté en fin de frappe
+    num: bool = False
+    sticky: bool = False
+    implicit: bool = False
+    rank: int = 0                        # sep : 0 = "," , 2 = ";"
+    unit_word: bool = False
+    coh: Optional[str] = None

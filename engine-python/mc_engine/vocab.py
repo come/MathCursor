@@ -56,6 +56,7 @@ VOCAB: dict[str, VocabEntry] = {}
 SPLITTABLE: set[str] = set()
 ROLE: dict[str, str] = {}
 SEP = {",": 0, ";": 2}
+UNITS_COMPOUND = data.load("units.json")["compound"]
 
 
 def loose(sym):
