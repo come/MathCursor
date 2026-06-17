@@ -87,9 +87,111 @@ def _insert_formula(text_range, starmath):
         pass
 
 
+def _previews(starmaths):
+    """Rend chaque StarMath en image (XGraphic) : doc Writer CACHÉ + objet Math,
+    on récupère l'image de remplacement de l'OLE. Renvoie une liste d'XGraphic
+    (None par élément si échec). Best-effort (à l'aveugle)."""
+    ctx = XSCRIPTCONTEXT.getComponentContext()  # noqa: F821
+    smgr = ctx.ServiceManager
+    from com.sun.star.beans import PropertyValue
+    hidden = PropertyValue()
+    hidden.Name = "Hidden"
+    hidden.Value = True
+    out = [None] * len(starmaths)
+    hdoc = None
+    try:
+        desktop = smgr.createInstanceWithContext("com.sun.star.frame.Desktop", ctx)
+        hdoc = desktop.loadComponentFromURL("private:factory/swriter", "_blank", 0, (hidden,))
+        text = hdoc.getText()
+        for i, sm in enumerate(starmaths):
+            try:
+                cur = text.createTextCursorByRange(text.getEnd())
+                obj = hdoc.createInstance("com.sun.star.text.TextEmbeddedObject")
+                obj.CLSID = _STARMATH_CLSID
+                text.insertTextContent(cur, obj, False)
+                obj.Component.Formula = sm
+                out[i] = obj.ReplacementGraphic
+            except Exception:
+                out[i] = None
+    except Exception:
+        pass
+    finally:
+        if hdoc is not None:
+            try:
+                hdoc.close(False)
+            except Exception:
+                pass
+    return out
+
+
+def _choose_rendered(starmaths, labels):
+    """Fenêtre de choix avec FORMULES RENDUES (image par candidat + radio).
+    Repli sur la liste texte (_choose) si aucune image n'a pu être rendue."""
+    graphics = _previews(starmaths)
+    if not any(g is not None for g in graphics):
+        return _choose(labels)  # repli texte
+
+    ctx = XSCRIPTCONTEXT.getComponentContext()  # noqa: F821
+    smgr = ctx.ServiceManager
+    n = len(starmaths)
+    row = 30
+    dm = smgr.createInstanceWithContext("com.sun.star.awt.UnoControlDialogModel", ctx)
+    dm.Title = "MathCursor — choisir la lecture"
+    dm.Width = 250
+    dm.Height = 10 + row * n + 24
+
+    def ctrl(service, name, **props):
+        m = dm.createInstance("com.sun.star.awt." + service)
+        for k, v in props.items():
+            setattr(m, k, v)
+        dm.insertByName(name, m)
+        return m
+
+    y = 6
+    for i in range(n):
+        rb = ctrl("UnoControlRadioButtonModel", "r%d" % i,
+                  PositionX=6, PositionY=y + row // 2 - 6, Width=12, Height=12, Label="")
+        if i == 0:
+            rb.State = 1
+        if graphics[i] is not None:
+            img = ctrl("UnoControlImageControlModel", "img%d" % i,
+                       PositionX=22, PositionY=y + 2, Width=222, Height=row - 6,
+                       ScaleImage=True, Border=1)
+            try:
+                img.Graphic = graphics[i]
+            except Exception:
+                pass
+        else:
+            ctrl("UnoControlFixedTextModel", "txt%d" % i,
+                 PositionX=22, PositionY=y + row // 2 - 5, Width=222, Height=12, Label=labels[i])
+        y += row
+
+    by = dm.Height - 18
+    ctrl("UnoControlButtonModel", "ok", PositionX=142, PositionY=by, Width=48, Height=14,
+         Label="OK", PushButtonType=1, DefaultButton=True)
+    ctrl("UnoControlButtonModel", "cancel", PositionX=194, PositionY=by, Width=48, Height=14,
+         Label="Annuler", PushButtonType=2)
+
+    dlg = smgr.createInstanceWithContext("com.sun.star.awt.UnoControlDialog", ctx)
+    dlg.setModel(dm)
+    toolkit = smgr.createInstanceWithContext("com.sun.star.awt.Toolkit", ctx)
+    win = XSCRIPTCONTEXT.getDocument().getCurrentController().getFrame().getContainerWindow()  # noqa: F821
+    dlg.createPeer(toolkit, win)
+    ret = dlg.execute()
+    idx = None
+    if ret == 1:
+        idx = 0
+        for i in range(n):
+            if dm.getByName("r%d" % i).State == 1:
+                idx = i
+                break
+    dlg.dispose()
+    return idx
+
+
 def _choose(labels):
     """Popup de choix (UNO) : liste `labels`, renvoie l'index choisi ou None.
-    Aperçu = texte (LaTeX) — UNO ne rend pas de math dans une liste."""
+    Aperçu = texte (LaTeX) — repli quand le rendu image échoue."""
     ctx = XSCRIPTCONTEXT.getComponentContext()  # noqa: F821
     smgr = ctx.ServiceManager
     n = min(len(labels), 8)
@@ -147,13 +249,15 @@ def convert_selection(*args):
     # rien reconnu (prose, erreur) : on ne touche PAS au document.
     if res.decision == "erreur" or not res.ranked:
         return
-    chosen = res.ranked[0]
     if res.decision == "popup" and len(res.ranked) > 1:
-        idx = _choose([c.latex for c in res.ranked])
+        starmaths = [to_starmath(c.node, _CULTURE) for c in res.ranked]
+        idx = _choose_rendered(starmaths, [c.latex for c in res.ranked])
         if idx is None:
             return  # annulé
-        chosen = res.ranked[idx]
-    _insert_formula(rng, to_starmath(chosen.node, _CULTURE))
+        chosen_sm = starmaths[idx]
+    else:
+        chosen_sm = to_starmath(res.ranked[0].node, _CULTURE)
+    _insert_formula(rng, chosen_sm)
 
 
 # Fonctions exposées au Script Provider de LibreOffice.
