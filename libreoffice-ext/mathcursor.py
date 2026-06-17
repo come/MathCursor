@@ -59,19 +59,32 @@ _STARMATH_CLSID = "078B7ABA-54FC-457F-8551-6147E776A997"
 _CULTURE = culture.FR
 
 
-def _insert_formula(text, text_range, starmath):
-    """Insère un objet formule Math (StarMath) en remplaçant text_range."""
+def _insert_formula(text_range, starmath):
+    """Remplace text_range (la sténo sélectionnée) par une formule Math StarMath,
+    à sa TAILLE NATURELLE (pas étirée)."""
     doc = XSCRIPTCONTEXT.getDocument()  # noqa: F821 (injecté par LibreOffice)
+    text = text_range.getText()
+    # 1) supprimer la sténo -> point d'insertion. Avec bAbsorb=True, l'objet
+    # héritait de la LARGEUR de la sélection (formule étirée). On insère donc
+    # à un point (bAbsorb=False) pour que la formule prenne sa taille propre.
+    text_range.setString("")
     obj = doc.createInstance("com.sun.star.text.TextEmbeddedObject")
     obj.CLSID = _STARMATH_CLSID
     # ancrage « comme caractère » : la formule vit dans le flux de texte.
     # AS_CHARACTER est une ENUM (pas une constante) -> uno.Enum, pas getConstantByName.
     obj.AnchorType = uno.Enum("com.sun.star.text.TextContentAnchorType", "AS_CHARACTER")
-    # True = remplace la sélection par l'objet.
-    text.insertTextContent(text_range, obj, True)
+    text.insertTextContent(text_range, obj, False)
     # modèle Math embarqué → markup StarMath.
     model = obj.Component
     model.Formula = starmath
+    # 2) filet de sécurité : resynchroniser la taille de l'objet sur la taille
+    # NATURELLE de la formule (1 = com.sun.star.embed.Aspects.MSOLE_CONTENT).
+    try:
+        size = model.getVisualAreaSize(1)
+        obj.Width = size.Width
+        obj.Height = size.Height
+    except Exception:
+        pass
 
 
 def convert_selection(*args):
@@ -90,7 +103,7 @@ def convert_selection(*args):
     if res.decision == "erreur" or not res.ranked:
         return
     starmath = to_starmath(res.ranked[0].node, _CULTURE)
-    _insert_formula(rng.getText(), rng, starmath)
+    _insert_formula(rng, starmath)
 
 
 # Fonctions exposées au Script Provider de LibreOffice.
