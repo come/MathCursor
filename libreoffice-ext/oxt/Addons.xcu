@@ -20,7 +20,7 @@
           <node oor:name="MenuItems">
             <node oor:name="M1" oor:op="replace">
               <prop oor:name="URL" oor:type="xs:string">
-                <value>vnd.sun.star.script:mathcursor.py$convert_selection?language=Python&amp;location=user</value>
+                <value>vnd.sun.star.script:MathCursor.oxt|Scripts|python|mathcursor.py$convert_selection?language=Python&amp;location=user:uno_packages</value>
               </prop>
               <prop oor:name="Title" oor:type="xs:string">
                 <value xml:lang="fr">MathCursor : convertir la sélection</value>

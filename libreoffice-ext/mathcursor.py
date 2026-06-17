@@ -18,18 +18,34 @@ encore d'auto-détection ni de popup de candidats (v2). La justesse StarMath
 """
 import os
 import sys
+import uno
+
+_EXT_ID = "fr.mathcursor.libreoffice"
+
+
+def _ext_root():
+    """Racine de l'extension installée. ATTENTION : dans le contexte script de
+    LibreOffice, la variable de chemin du module n'est pas définie -> on passe par
+    le PackageInformationProvider (robuste même quand le cache uno_packages change)."""
+    ctx = uno.getComponentContext()
+    pip = ctx.getValueByName("/singletons/com.sun.star.deployment.PackageInformationProvider")
+    return uno.fileUrlToSystemPath(pip.getPackageLocation(_EXT_ID))
+
 
 # ── localisation du moteur Python (port P2) ──────────────────────────────────
-# Auto-détection : installé en .oxt (moteur + data bundlés à la racine de
-# l'extension, soit ../../ depuis Scripts/python) OU dev (variable
-# MATHCURSOR_ENGINE pointant engine-python/).
-_HERE = os.path.dirname(os.path.realpath(__file__))
-_ROOT = os.path.abspath(os.path.join(_HERE, "..", ".."))
-if os.path.isdir(os.path.join(_ROOT, "mc_engine")):
-    if _ROOT not in sys.path:
-        sys.path.insert(0, _ROOT)
+# Installé en .oxt (moteur + data bundlés à la racine de l'extension) OU dev
+# (variable MATHCURSOR_ENGINE pointant engine-python/).
+_root = None
+try:
+    _root = _ext_root()
+except Exception:
+    _root = None
+
+if _root and os.path.isdir(os.path.join(_root, "mc_engine")):
+    if _root not in sys.path:
+        sys.path.insert(0, _root)
     from mc_engine import data as _data       # noqa: E402
-    _data.set_data_dir(os.path.join(_ROOT, "data", "engine"))
+    _data.set_data_dir(os.path.join(_root, "data", "engine"))
 else:
     _eng = os.environ.get("MATHCURSOR_ENGINE", r"D:\Software\MathCursor\engine-python")
     if _eng and _eng not in sys.path:
@@ -45,7 +61,6 @@ _CULTURE = culture.FR
 
 def _insert_formula(text, text_range, starmath):
     """Insère un objet formule Math (StarMath) en remplaçant text_range."""
-    import uno
     doc = XSCRIPTCONTEXT.getDocument()  # noqa: F821 (injecté par LibreOffice)
     obj = doc.createInstance("com.sun.star.text.TextEmbeddedObject")
     obj.CLSID = _STARMATH_CLSID
