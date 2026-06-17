@@ -20,11 +20,12 @@ SPLIT_PENALTY = 3.0
 
 
 class EngineCandidate:
-    __slots__ = ("latex", "cost")
+    __slots__ = ("latex", "cost", "node")
 
-    def __init__(self, latex, cost):
+    def __init__(self, latex, cost, node=None):
         self.latex = latex
         self.cost = cost
+        self.node = node      # AST du candidat (pour rendre d'autres cibles, ex. StarMath)
 
 
 class AnalyzeResult:
@@ -217,7 +218,7 @@ class _Engine:
 
         pair_src = [(best_p, best_c), (sib, sib_c)]
         pair_src.sort(key=lambda x: len(x[0][0].parts), reverse=True)  # forme LONGUE d'abord
-        pair = [(render.render(x[0][0], self._cu), x[1]) for x in pair_src]
+        pair = [(render.render(x[0][0], self._cu), x[1], x[0][0]) for x in pair_src]
         outk = list(pair)
         for k in kept:
             if all(o[0] != k[0] for o in outk):
@@ -227,21 +228,21 @@ class _Engine:
     def _finish(self, allp, note):
         if len(allp) == 0:
             return AnalyzeResult("erreur", [], False)
-        cands = [(render.render(n, self._cu), score.cost(n) + off) for (n, off) in allp]
+        cands = [(render.render(n, self._cu), score.cost(n) + off, n) for (n, off) in allp]
         cands.sort(key=lambda r: r[1])  # tri stable
         seen = set()
         ranked = []
-        for (latex, c) in cands:
+        for (latex, c, nd) in cands:
             if latex not in seen:
                 seen.add(latex)
-                ranked.append((latex, c))
+                ranked.append((latex, c, nd))
         best = ranked[0][1]
         win = [r for r in ranked if r[1] < best + POPUP_GAP]
         kept = win[:MAX_SHOW]
         has_note = (note is not None) or (len(win) > MAX_SHOW)
         kept = self._pair_skeletons(allp, kept)
         decision = "popup" if len(kept) > 1 else "auto"
-        return AnalyzeResult(decision, [EngineCandidate(l, c) for (l, c) in kept], has_note)
+        return AnalyzeResult(decision, [EngineCandidate(l, c, nd) for (l, c, nd) in kept], has_note)
 
     def run(self, src):
         self._deep_note = False
