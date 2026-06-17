@@ -16,4 +16,13 @@
     <InternalsVisibleTo Include="MathCursor.Engine.Tests" />
   </ItemGroup>
 
+  <!-- Data universelle du moteur (source unique partagée avec le port Python),
+       embarquée avec un LogicalName stable lu par EngineData.Load. Cf. ADR
+       2026-06-16-Feat-portable-engine-universal-vocab. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\..\data\engine\units.json">
+      <LogicalName>MathCursor.Engine.data.units.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

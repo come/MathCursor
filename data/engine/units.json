@@ -1,0 +1,32 @@
+{
+  "_comment": "Données universelles du moteur — table des unités. Source unique partagée par le moteur C# (EmbeddedResource) et le futur port Python. Cf. ADR 2026-06-16-Feat-portable-engine-universal-vocab.",
+  "categories": [
+    ["nm", "um", "mm", "cm", "dm", "m", "km"],
+    ["mg", "g", "kg", "t"],
+    ["ns", "us", "ms", "s", "min", "h"],
+    ["K"],
+    ["A"],
+    ["mol"],
+    ["cd"],
+    ["Hz", "Pa", "J", "W", "V", "F", "S", "Wb", "H", "T", "lm", "lx", "Bq", "Gy", "Sv"],
+    ["L", "mL", "cL", "dL"],
+    ["eV", "cal", "kcal", "Wh", "kWh"],
+    ["bar", "atm"],
+    ["rad", "deg", "grad", "sr"],
+    ["bit", "o", "ko", "Mo", "Go", "To", "B", "kB", "MB", "GB", "TB"]
+  ],
+  "compound": {
+    "m/s": "m/s",
+    "km/h": "km/h",
+    "m/s2": "m/s^2",
+    "km/s": "km/s",
+    "m.s-1": "m\\cdot s^{-1}",
+    "m.s-2": "m\\cdot s^{-2}",
+    "km.h-1": "km\\cdot h^{-1}",
+    "rad/s": "rad/s",
+    "tr/min": "tr/min",
+    "kg/m3": "kg/m^3",
+    "g/mol": "g/mol",
+    "mol/L": "mol/L"
+  }
+}
