@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace MathCursor.Engine;
 
@@ -58,15 +60,19 @@ internal sealed class VocabEntry
 }
 
 // vocabulary.js — LE SEUL fichier qui connaît des opérateurs concrets.
+// La TABLE est externalisée dans data/engine/symbols.json (source unique partagée
+// avec le port Python, cf. ADR portable-engine-universal-vocab) ; ce fichier en est
+// le BUILDER + le registre des logiques non-déclaratives (render-hooks, guards).
 internal static class Vocabulary
 {
     public const string WEAK = "WEAK";
     public const string STRONG = "STRONG";
 
     // looseness : REL au-dessus de tout, SUM lâche, QUANT entre PROD et SUM,
-    // PROD/POW serrés, APP (fonctions/décorations) très serré.
+    // PROD/POW serrés, APP (fonctions/décorations) très serré. Ces consts servent
+    // les hooks/guards (code) ; les valeurs sont aussi en data (symbols.json const)
+    // pour les entrées — les deux DOIVENT coïncider.
     private const double REL = 5, SUM = 3, QUANT = 2.5, PROD = 2, POW = 1, APP = 0;
-    private const string MUL = "\\times ";
 
     public static readonly Dictionary<string, VocabEntry> Vocab = new();
     public static readonly Dictionary<char, int> Sep = new() { [','] = 0, [';'] = 2 };
@@ -79,60 +85,10 @@ internal static class Vocabulary
     internal static readonly IReadOnlyDictionary<string, string> AliasesFr;
     internal static readonly IReadOnlyDictionary<string, string> AliasesUs;
 
+    private static readonly Dictionary<string, double> Loosenesses;
+
     public static double Loose(string? sym) =>
         sym != null && Vocab.TryGetValue(sym, out var v) ? v.Looseness : 0;
-
-    // ── factories ──────────────────────────────────────────────────────────
-    private static VocabEntry Fn(string tex) => new()
-    { Shape = "prefix", Arity = 1, Class = STRONG, Looseness = APP, Render = (a, _) => $"{tex}({a[0]})" };
-
-    private static VocabEntry Quant(string tex) => new()
-    { Shape = "prefix", Arity = 1, Class = STRONG, Looseness = APP, List = true, Render = (a, _) => $"{tex} {a[0]}" };
-
-    private static VocabEntry Deco(string wide, string narrow) => new()
-    {
-        Shape = "prefix", Arity = 1, Class = STRONG, Looseness = APP, Tight = true,
-        Render = (a, _) => a[0].Length > 1 ? $"\\{wide}{{{a[0]}}}" : $"\\{narrow}{{{a[0]}}}",
-    };
-
-    private static VocabEntry Lit(string tex) => new() { Shape = "atom", Lower = tex, Upper = tex };
-
-    private static VocabEntry Op(string tex) => new()
-    { Shape = "prefix", Arity = 1, Class = STRONG, Looseness = APP, Render = (a, _) => $"{tex} {a[0]}" };
-
-    private static VocabEntry Rel(string cmd) => new()
-    { Shape = "infix", Arity = 2, Class = WEAK, Looseness = REL, Cut = true, Render = (a, _) => $"{a[0]}{cmd} {a[1]}" };
-
-    private static VocabEntry SetOp(string cmd, double loose) => new()
-    { Shape = "infix", Arity = 2, Class = WEAK, Looseness = loose, Render = (a, _) => $"{a[0]}{cmd} {a[1]}" };
-
-    private static VocabEntry Grk(string name, string? upper = null) => new()
-    { Shape = "atom", Lower = $"\\{name} ", Upper = upper ?? $"\\{name} " };
-
-    private static VocabEntry Set(string l) => new()
-    { Shape = "atom", Alts = new() { l, $"\\mathbb{{{l}}} " }, Coh = "set" };
-
-    private static VocabEntry Infix(double loose, string cls, RenderFn render,
-        bool cut = false, bool bracketed = false, bool implicit_ = false,
-        bool sup = false, bool sub = false, bool mapping = false,
-        string? unary = null, string? postSign = null) => new()
-    {
-        Shape = "infix", Arity = 2, Class = cls, Looseness = loose, Cut = cut,
-        Bracketed = bracketed, Implicit = implicit_, Sup = sup, Sub = sub,
-        Mapping = mapping, Unary = unary, PostSign = postSign, Render = render,
-    };
-
-    private static VocabEntry Prefix(RenderFn render, bool tight = false) => new()
-    { Shape = "prefix", Arity = 1, Class = STRONG, Looseness = APP, Tight = tight, Render = render };
-
-    private static VocabEntry Postfix(RenderFn render) => new()
-    { Shape = "postfix", Class = STRONG, Looseness = POW, Render = render };
-
-    private static VocabEntry Nary(int arity, double loose, RenderFn render, params NaryVariant[] variants) => new()
-    {
-        Shape = "nary", Arity = arity, Class = STRONG, Looseness = loose, Render = render,
-        Variants = variants.Length > 0 ? new List<NaryVariant>(variants) : null,
-    };
 
     // ── guards des variantes courtes ────────────────────────────────────────
     // Atome purement numérique : Sym commence par un chiffre (couvre « 1{,}5 »).
@@ -156,209 +112,43 @@ internal static class Vocabulary
 
     static Vocabulary()
     {
-        // ── GREEK (atomes-feuilles ; render.js ressort n.Sym tel quel) ──────
-        var greek = new (string Name, string? Upper)[]
+        var root = EngineData.Obj(EngineData.Load("symbols.json"));
+        Loosenesses = new Dictionary<string, double>();
+        foreach (var kv in EngineData.Obj(EngineData.Obj(root["const"])["looseness"]))
+            Loosenesses[kv.Key] = EngineData.Num(kv.Value);
+        var symbols = EngineData.Obj(root["symbols"]);
+
+        // Pass 1 : entrées directes (hors sameAs).
+        foreach (var kv in symbols)
         {
-            ("alpha", null), ("beta", null), ("gamma", "\\Gamma "),
-            ("delta", "\\Delta "), ("epsilon", null), ("zeta", null),
-            ("eta", null), ("theta", "\\Theta "), ("iota", null),
-            ("kappa", null), ("lambda", "\\Lambda "), ("mu", null),
-            ("nu", null), ("xi", "\\Xi "), ("omicron", null),
-            ("pi", "\\Pi "), ("rho", null), ("sigma", "\\Sigma "),
-            ("tau", null), ("upsilon", "\\Upsilon "), ("phi", "\\Phi "),
-            ("chi", null), ("psi", "\\Psi "), ("omega", "\\Omega "),
-        };
-        foreach (var (name, upper) in greek) { Vocab[name] = Grk(name, upper); Splittable.Add(name); }
-        foreach (var f in new[] { "cos", "sin", "tan", "arcsin", "arccos", "arctan", "ln", "log", "exp" })
-            Splittable.Add(f);
-        // « vecAB » → \overrightarrow{AB}, « conjz » → \bar{z}. Sûrs : la
-        // distance de découpe est un coût (le mot entier reste un choix,
-        // ADR 2026-06-10-Feat-split-distance-cost-vec) et les décorations
-        // sont TIGHT (opérande = 1 morceau) — « vecteur »/« conjugue »
-        // restent des mots entiers.
-        Splittable.Add("vec");
-        Splittable.Add("conj");
-
-        // ── SETS (atomes ambigus : variable | \mathbb) ; priment sur N/C unités
-        foreach (var s in new[] { "R", "N", "Z", "Q", "C" }) Vocab[s] = Set(s);
-
-        // ── UNITS (mots-unités, actifs seulement après un nombre) ───────────
-        foreach (var w in Units.Words) Vocab[w] = new VocabEntry { UnitWord = true };
-
-        // ── connecteurs internes ────────────────────────────────────────────
-        Vocab["·unit"] = new VocabEntry
+            var j = EngineData.Obj(kv.Value);
+            if (!j.ContainsKey("sameAs")) Vocab[kv.Key] = BuildEntry(j);
+        }
+        // Pass 2 : sameAs = clone d'une entrée déjà construite + overrides
+        // (ex. ·forallWord = forall + wordSpace ; ≤ = <= ; × = * ; …).
+        foreach (var kv in symbols)
         {
-            Shape = "infix", Arity = 2, Class = STRONG, Looseness = APP, UnitOp = true, Sup = false,
-            Render = (a, n) => $"{a[0]}{(n is { Spaced: true } ? "\\," : "")}\\mathrm{{{a[1]}}}",
-        };
-        // sticky représenté via le token, pas le vocab ; mais ·unit est sticky côté token.
+            var j = EngineData.Obj(kv.Value);
+            if (!j.ContainsKey("sameAs")) continue;
+            var e = Vocab[EngineData.Str(j["sameAs"])].Clone();
+            if (j.ContainsKey("wordSpace")) e.WordSpace = EngineData.Bool(j["wordSpace"]);
+            Vocab[kv.Key] = e;
+        }
 
-        // ── arithmétique ──────────────────────────────────────────────────
-        Vocab["+"] = Infix(SUM, WEAK, (a, _) => $"{a[0]}+{a[1]}", unary: "pos", postSign: "+");
-        Vocab["-"] = Infix(SUM, WEAK, (a, _) => $"{a[0]}-{a[1]}", unary: "neg", postSign: "-");
-        Vocab["*"] = Infix(PROD, STRONG, (a, n) => n is { Implicit: true } ? $"{a[0]}{a[1]}" : $"{a[0]}{MUL}{a[1]}",
-            implicit_: true, postSign: "\\ast ");
-        Vocab["·apply"] = new VocabEntry
-        { Shape = "infix", Arity = 2, Class = STRONG, Looseness = APP, Apply = true, Render = (a, _) => $"{a[0]}{a[1]}" };
-        Vocab["."] = Infix(PROD, STRONG, (a, _) => $"{a[0]}\\cdot {a[1]}");
-        Vocab["/"] = Infix(PROD, STRONG,
-            (a, n) => n is { Parts: { Count: > 1 } p } && p[1].Type == "set" ? $"{a[0]}\\setminus {a[1]}" : $"\\frac{{{a[0]}}}{{{a[1]}}}",
-            bracketed: true);
-        Vocab["^"] = Infix(POW, STRONG, (a, _) => $"{a[0]}^{{{a[1]}}}", sup: true, unary: "hat");
-        Vocab["_"] = Infix(POW, STRONG, (a, _) => $"{a[0]}_{{{a[1]}}}", sub: true);
+        // Mots-unités (générés depuis Units.Words / units.json). Un SYMBOLE prime
+        // sur l'unité homonyme (ex. « bar » = décoration \bar, pas le bar pression) :
+        // on ne remplit que les clés non déjà définies (l'original définissait les
+        // symboles APRÈS la boucle units, qui les écrasait — même invariant).
+        foreach (var w in Units.Words)
+            if (!Vocab.ContainsKey(w)) Vocab[w] = new VocabEntry { UnitWord = true };
 
-        // ── postfixes ──────────────────────────────────────────────────────
-        Vocab["!"] = Postfix((a, _) => $"{a[0]}!");
-        Vocab["'"] = Postfix((a, _) => $"{a[0]}'");
-        Vocab["%"] = Postfix((a, _) => $"{a[0]}\\%");
-        Vocab["°"] = Postfix((a, _) => $"{a[0]}^{{\\circ}}");
-        Vocab["°C"] = Postfix((a, _) => $"{a[0]}^{{\\circ}}\\mathrm{{C}}");
-        Vocab["°F"] = Postfix((a, _) => $"{a[0]}^{{\\circ}}\\mathrm{{F}}");
+        // Splittable (liste data — inclut « conj », alias sans entrée Vocab).
+        foreach (var w in EngineData.Arr(root["splittable"])) Splittable.Add(EngineData.Str(w));
 
-        // ── relations (REL, cut) ───────────────────────────────────────────
-        Vocab["~"] = Infix(REL, WEAK, (a, _) => $"{a[0]}\\sim {a[1]}", cut: true);
-        Vocab["="] = Infix(REL, WEAK, (a, _) => $"{a[0]}={a[1]}", cut: true);
-        Vocab["<"] = Infix(REL, WEAK, (a, _) => $"{a[0]}<{a[1]}", cut: true);
-        Vocab[">"] = Infix(REL, WEAK, (a, _) => $"{a[0]}>{a[1]}", cut: true);
-        Vocab["!="] = Infix(REL, WEAK, (a, _) => $"{a[0]}\\neq {a[1]}", cut: true);
-        Vocab[">="] = Infix(REL, WEAK, (a, _) => $"{a[0]}\\geq {a[1]}", cut: true);
-        Vocab["<="] = Infix(REL, WEAK, (a, _) => $"{a[0]}\\leq {a[1]}", cut: true);
-        Vocab["->"] = Infix(REL, WEAK, (a, _) => $"{a[0]}\\to {a[1]}", cut: true, mapping: true);
-
-        // ":" ambigu (alts) → ·div | ·colon
-        Vocab[":"] = new VocabEntry { Shape = "infix", Alts = new() { "·div", "·colon" } };
-        Vocab["·div"] = Infix(PROD, STRONG, (a, _) => $"{a[0]}\\div {a[1]}");
-        Vocab["·colon"] = Infix(REL, WEAK, (a, _) => $"{a[0]}\\colon {a[1]}", cut: true);
-        Vocab["·mid"] = Infix(REL, WEAK, (a, _) => $"{a[0]}\\mid {a[1]}", cut: true);
-
-        // ── unaires ────────────────────────────────────────────────────────
-        Vocab["neg"] = Prefix((a, n) => Loose(n!.Parts![0].Sym) >= SUM ? $"-({a[0]})" : $"-{a[0]}");
-        Vocab["pos"] = Prefix((a, n) => Loose(n!.Parts![0].Sym) >= SUM ? $"+({a[0]})" : $"+{a[0]}");
-
-        // ── fonctions ──────────────────────────────────────────────────────
-        Vocab["cos"] = Fn("\\cos"); Vocab["sin"] = Fn("\\sin"); Vocab["tan"] = Fn("\\tan");
-        Vocab["arcsin"] = Fn("\\arcsin"); Vocab["arccos"] = Fn("\\arccos"); Vocab["arctan"] = Fn("\\arctan");
-        Vocab["ln"] = Fn("\\ln"); Vocab["log"] = Fn("\\log");
-        Vocab["sinh"] = Fn("\\sinh"); Vocab["cosh"] = Fn("\\cosh"); Vocab["tanh"] = Fn("\\tanh"); Vocab["coth"] = Fn("\\coth");
-        Vocab["exp"] = Prefix((a, _) => $"e^{{{a[0]}}}");
-        Vocab["arg"] = Fn("\\arg"); Vocab["Re"] = Fn("\\operatorname{Re}"); Vocab["Im"] = Fn("\\operatorname{Im}");
-        Vocab["bar"] = Deco("overline", "bar");
-        Vocab["vec"] = Deco("overrightarrow", "vec");
-        Vocab["hat"] = Deco("widehat", "hat");
-        Vocab["norm"] = Prefix((a, _) => $"\\left\\|{a[0]}\\right\\|");
-        Vocab["abs"] = Prefix((a, _) => $"\\left|{a[0]}\\right|");
-        Vocab["sqrt"] = Prefix((a, _) => $"\\sqrt{{{a[0]}}}");
-        Vocab["root"] = Nary(2, APP, (a, _) => $"\\sqrt[{a[0]}]{{{a[1]}}}");
-        Vocab["floor"] = Prefix((a, _) => $"\\lfloor {a[0]}\\rfloor ");
-        Vocab["ceil"] = Prefix((a, _) => $"\\lceil {a[0]}\\rceil ");
-        Vocab["pgcd"] = Fn("\\operatorname{pgcd}");
-        Vocab["ppcm"] = Fn("\\operatorname{ppcm}");
-
-        // ── quantificateurs / logique ──────────────────────────────────────
-        Vocab["forall"] = Quant("\\forall"); Vocab["exists"] = Quant("\\exists");
-        Vocab["nexists"] = Quant("\\nexists"); Vocab["not"] = Quant("\\neg");
-
-        Vocab["in"] = Rel("\\in"); Vocab["notin"] = Rel("\\notin");
-        Vocab["subset"] = Rel("\\subset"); Vocab["subseteq"] = Rel("\\subseteq");
-        Vocab["supset"] = Rel("\\supset"); Vocab["supseteq"] = Rel("\\supseteq");
-        Vocab["notsubset"] = Rel("\\not\\subset");
-        Vocab["and"] = Rel("\\wedge"); Vocab["or"] = Rel("\\vee");
-        Vocab["equiv"] = Rel("\\equiv"); Vocab["cong"] = Rel("\\cong");
-        Vocab["approx"] = Rel("\\approx"); Vocab["propto"] = Rel("\\propto");
-
-        Vocab["union"] = SetOp("\\cup", SUM); Vocab["inter"] = SetOp("\\cap", PROD);
-        Vocab["setminus"] = SetOp("\\setminus", SUM);
-        Vocab["emptyset"] = Lit("\\emptyset "); Vocab["inf"] = Lit("\\infty ");
-
-        // ── points de suspension (ADR 2026-06-12 dots-ellipsis-atoms) ───────
-        // « ... »/« … » → points BAS partout (choix user : zéro popup en plus,
-        // les centrés se demandent par cdots). Atomes ordinaires : opérande,
-        // cellule de matrice, parenthèses.
-        Vocab["dots"] = Lit("\\ldots ");
-        Vocab["cdots"] = Lit("\\cdots ");
-        Vocab["vdots"] = Lit("\\vdots ");
-        Vocab["ddots"] = Lit("\\ddots ");
-
-        Vocab["partial"] = Prefix((a, _) => $"\\partial {a[0]}", tight: true);
-        Vocab["nabla"] = Prefix((a, _) => $"\\nabla {a[0]}", tight: true);
-        Vocab["det"] = Op("\\det"); Vocab["dim"] = Op("\\dim");
-        Vocab["dot"] = Nary(2, APP, (a, _) => $"\\langle {a[0]},{a[1]}\\rangle ");
-
-        // ── n-aires (quantificateurs scopants) ──────────────────────────────
-        // Formes courtes (ADR 2026-06-11 nary-arity-variants) : \lim u_n,
-        // \sum_k f(k), intégrales indéfinies. Jamais de trous sur les courtes.
-        Vocab["lim"] = Nary(3, QUANT, (a, _) => $"\\lim_{{{a[0]}\\to {a[1]}}} {a[2]}",
-            new NaryVariant { Arity = 1, Render = (a, _) => $"\\lim {a[0]}", Accept = p => TightBody(p[0]) });
-        Vocab["sum"] = Nary(4, QUANT, (a, _) => $"\\sum_{{{a[0]}={a[1]}}}^{{{a[2]}}} {a[3]}",
-            new NaryVariant { Arity = 2, Render = (a, _) => $"\\sum_{{{a[0]}}} {a[1]}", Accept = p => NonNumeric(p[1]) });
-        Vocab["prod"] = Nary(4, QUANT, (a, _) => $"\\prod_{{{a[0]}={a[1]}}}^{{{a[2]}}} {a[3]}",
-            new NaryVariant { Arity = 2, Render = (a, _) => $"\\prod_{{{a[0]}}} {a[1]}", Accept = p => NonNumeric(p[1]) });
-        Vocab["int"] = Nary(4, QUANT, (a, _) => $"\\int_{{{a[0]}}}^{{{a[1]}}} {a[2]} \\, d{a[3]}",
-            new NaryVariant { Arity = 2, Render = (a, _) => $"\\int {a[0]} \\, d{a[1]}", Accept = p => NameAtom(p[1]) });
-        Vocab["iint"] = Nary(5, QUANT, (a, _) => $"\\iint_{{{a[0]}}}^{{{a[1]}}} {a[2]} \\, d{a[3]}\\,d{a[4]}",
-            new NaryVariant { Arity = 3, Render = (a, _) => $"\\iint {a[0]} \\, d{a[1]}\\,d{a[2]}", Accept = p => NameAtom(p[1]) && NameAtom(p[2]) });
-        Vocab["iiint"] = Nary(6, QUANT, (a, _) => $"\\iiint_{{{a[0]}}}^{{{a[1]}}} {a[2]} \\, d{a[3]}\\,d{a[4]}\\,d{a[5]}",
-            new NaryVariant { Arity = 4, Render = (a, _) => $"\\iiint {a[0]} \\, d{a[1]}\\,d{a[2]}\\,d{a[3]}", Accept = p => NameAtom(p[1]) && NameAtom(p[2]) && NameAtom(p[3]) });
-        Vocab["binom"] = Nary(2, APP, (a, _) => $"\\binom{{{a[0]}}}{{{a[1]}}}");
-        // « k parmi n » → n en HAUT (l'oral français inverse l'écrit).
-        // bracketed : le binôme groupe déjà, pas de parenthèses sur n+1.
-        Vocab["·parmi"] = Infix(PROD, STRONG, (a, _) => $"\\binom{{{a[1]}}}{{{a[0]}}}", bracketed: true);
-
-        // ── opérateurs-mots infixes ─────────────────────────────────────────
-        Vocab["mod"] = Infix(PROD, STRONG, (a, _) => $"{a[0]} \\bmod {a[1]}");
-        Vocab["perp"] = Infix(SUM, WEAK, (a, _) => $"{a[0]} \\perp {a[1]}");
-        Vocab["circ"] = Infix(PROD, STRONG, (a, _) => $"{a[0]}\\circ {a[1]}");
-        Vocab["pm"] = Infix(SUM, WEAK, (a, _) => $"{a[0]}\\pm {a[1]}", unary: "upm");
-        Vocab["mp"] = Infix(SUM, WEAK, (a, _) => $"{a[0]}\\mp {a[1]}", unary: "ump");
-        Vocab["upm"] = Prefix((a, _) => $"\\pm {a[0]}");
-        Vocab["ump"] = Prefix((a, _) => $"\\mp {a[0]}");
-        Vocab["parallel"] = Infix(SUM, WEAK, (a, _) => $"{a[0]} \\mathbin{{/\\!/}} {a[1]}");
-        Vocab["//"] = Vocab["parallel"]; // notation symbole (le match opérateur 2-chars prime sur "/")
-        Vocab["+-"] = Vocab["pm"]; Vocab["-+"] = Vocab["mp"]; // second degré : -b +- racine delta
-
-        // ── symboles Unicode collés-copiés (énoncés, manuels) ───────────────
-        Vocab["≤"] = Vocab["<="];   // ≤
-        Vocab["≥"] = Vocab[">="];   // ≥
-        Vocab["≠"] = Vocab["!="];   // ≠
-        Vocab["×"] = Vocab["*"];    // ×
-        Vocab["÷"] = Vocab["·div"]; // ÷
-        Vocab["∘"] = Vocab["circ"]; // ∘
-        Vocab["±"] = Vocab["pm"];   // ±
-        Vocab["·"] = Vocab["."];    // · (point médian → \cdot)
-        Vocab["..."] = Vocab["dots"]; // trois points tapés
-        Vocab["…"] = Vocab["dots"];   // U+2026 (autocorrection Word de « ... »)
-        Vocab["mapsto"] = Infix(REL, WEAK, (a, _) => $"{a[0]}\\mapsto {a[1]}", cut: true, mapping: true);
-
-        // ── raccourcis grecs « @ » (ADR 2026-06-15) ─────────────────────────
-        // Lettre seule qui collisionne → atome à lectures multiples (popup, la
-        // plus courante en tête) ; les lettres uniques pointent en alias direct
-        // vers l'atome grec. Définies AVANT MergeAliases (cibles validées).
-        // AltsUpper = jeu MAJUSCULE (@T → Θ seul, tau n'a pas de capitale grecque ;
-        // @P → [Π, Φ, Ψ] ; @E n'en a pas → @E retombe sur la lettre latine).
-        Vocab["·greek-t"] = new VocabEntry { Shape = "atom", Alts = new() { "\\theta ", "\\tau " }, AltsUpper = new() { "\\Theta " } };
-        Vocab["·greek-e"] = new VocabEntry { Shape = "atom", Alts = new() { "\\epsilon ", "\\eta " } };
-        Vocab["·greek-p"] = new VocabEntry { Shape = "atom", Alts = new() { "\\pi ", "\\phi ", "\\varphi ", "\\psi " }, AltsUpper = new() { "\\Pi ", "\\Phi ", "\\Psi " } };
-
-        // ── ALIAS (lexicaux, rangés par culture) ────────────────────────────
-        // mot saisi → clé canonique de Vocab. Résolus par le lexer via
-        // EngineCulture.Canon ; les clés alias ne vivent plus dans Vocab.
-        // Répartition générique/FR/EN = décision produit ajustable
-        // (ADR 2026-06-10-Feat-culture-scoped-aliases).
-
-        // "V" n'est pas un alias pur : variante de forall qui n'agit que
-        // suivie d'un espace (WordSpace) — entrée interne, convention "·".
-        var fw = Vocab["forall"].Clone(); fw.WordSpace = true; Vocab["·forallWord"] = fw;
-
-        // Alias externalisés dans data/engine/cultures.json (source unique partagée
-        // avec le port Python, cf. ADR portable-engine-universal-vocab). MergeAliases
-        // valide toujours que chaque cible est une clé canonique de Vocab.
+        // ── ALIAS (data/engine/cultures.json) + validation ─────────────────
         var aliasMaps = EngineData.Obj(EngineData.Obj(EngineData.Load("cultures.json"))["aliases"]);
-        var aliasGeneric = EngineData.StrMap(aliasMaps["generic"]);
-        var aliasFrOnly = EngineData.StrMap(aliasMaps["fr"]);
-        var aliasEnOnly = EngineData.StrMap(aliasMaps["en"]);
-
-        AliasesFr = MergeAliases(aliasGeneric, aliasFrOnly);
-        AliasesUs = MergeAliases(aliasGeneric, aliasEnOnly);
+        AliasesFr = MergeAliases(EngineData.StrMap(aliasMaps["generic"]), EngineData.StrMap(aliasMaps["fr"]));
+        AliasesUs = MergeAliases(EngineData.StrMap(aliasMaps["generic"]), EngineData.StrMap(aliasMaps["en"]));
 
         // ── ROLE : rôle de jonction → symbole (aucun opérateur nommé en dur) ─
         foreach (var kv in Vocab)
@@ -371,6 +161,123 @@ internal static class Vocabulary
             if (e.Apply) Role["apply"] = kv.Key;
         }
     }
+
+    // ── builder d'une entrée depuis sa description JSON ──────────────────────
+    private static VocabEntry BuildEntry(Dictionary<string, object?> j)
+    {
+        var e = new VocabEntry();
+        if (j.TryGetValue("shape", out var sh)) e.Shape = EngineData.Str(sh);
+        if (j.TryGetValue("arity", out var ar)) e.Arity = (int)EngineData.Num(ar);
+        if (j.TryGetValue("class", out var cl)) e.Class = EngineData.Str(cl);
+        if (j.TryGetValue("looseness", out var lo)) e.Looseness = Loosenesses[EngineData.Str(lo)];
+        e.Bracketed = Flag(j, "bracketed");
+        e.Cut = Flag(j, "cut");
+        e.Implicit = Flag(j, "implicit");
+        e.Sup = Flag(j, "sup");
+        e.Sub = Flag(j, "sub");
+        e.Tight = Flag(j, "tight");
+        e.List = Flag(j, "list");
+        e.Mapping = Flag(j, "mapping");
+        e.WordSpace = Flag(j, "wordSpace");
+        e.UnitWord = Flag(j, "unitWord");
+        e.UnitOp = Flag(j, "unitOp");
+        e.Apply = Flag(j, "apply");
+        if (j.TryGetValue("unary", out var un)) e.Unary = EngineData.Str(un);
+        if (j.TryGetValue("postSign", out var ps)) e.PostSign = EngineData.Str(ps);
+        if (j.TryGetValue("lower", out var lw)) e.Lower = EngineData.Str(lw);
+        if (j.TryGetValue("upper", out var up)) e.Upper = EngineData.Str(up);
+        if (j.TryGetValue("alts", out var al)) e.Alts = StrList(al);
+        if (j.TryGetValue("altsUpper", out var au)) e.AltsUpper = StrList(au);
+        if (j.TryGetValue("coh", out var co)) e.Coh = EngineData.Str(co);
+
+        if (j.TryGetValue("renderHook", out var rh))
+        {
+            e.Render = Hook(EngineData.Str(rh), j.TryGetValue("hookParams", out var hp) ? hp : null);
+        }
+        else if (j.TryGetValue("render", out var rd))
+        {
+            var tmpl = EngineData.Str(rd);
+            if (j.TryGetValue("renderImplicit", out var ri))
+            {
+                var timpl = EngineData.Str(ri);
+                e.Render = (a, n) => Fill(n is { Implicit: true } ? timpl : tmpl, a);
+            }
+            else
+            {
+                e.Render = (a, _) => Fill(tmpl, a);
+            }
+        }
+
+        if (j.TryGetValue("variants", out var vs))
+        {
+            e.Variants = new List<NaryVariant>();
+            foreach (var v in EngineData.Arr(vs))
+            {
+                var vo = EngineData.Obj(v);
+                var tmpl = EngineData.Str(vo["render"]);
+                var nv = new NaryVariant
+                {
+                    Arity = (int)EngineData.Num(vo["arity"]),
+                    Render = (a, _) => Fill(tmpl, a),
+                };
+                if (vo.TryGetValue("acceptGuard", out var g)) nv.Accept = Guard(EngineData.Str(g));
+                e.Variants.Add(nv);
+            }
+        }
+        return e;
+    }
+
+    private static bool Flag(Dictionary<string, object?> j, string k) =>
+        j.TryGetValue(k, out var v) && EngineData.Bool(v);
+
+    private static List<string> StrList(object? o)
+    {
+        var list = new List<string>();
+        foreach (var x in EngineData.Arr(o)) list.Add(EngineData.Str(x));
+        return list;
+    }
+
+    // ── mini-langage de template : {0}..{5}, substitution SINGLE-PASS (la leçon
+    // du spike : un .replace séquentiel re-scanne le texte substitué). Les
+    // accolades littérales du LaTeX sont conservées telles quelles. ───────────
+    private static readonly Regex Placeholder = new(@"\{([0-9])\}", RegexOptions.Compiled);
+    private static string Fill(string tmpl, IReadOnlyList<string> a) =>
+        Placeholder.Replace(tmpl, m => a[m.Value[1] - '0']);
+
+    // ── render-hooks : la logique de rendu non-déclarative, référencée par nom ─
+    private static RenderFn Hook(string name, object? hookParams)
+    {
+        switch (name)
+        {
+            case "frac_or_setminus":
+                return (a, n) => n is { Parts: { Count: > 1 } p } && p[1].Type == "set"
+                    ? $"{a[0]}\\setminus {a[1]}"
+                    : $"\\frac{{{a[0]}}}{{{a[1]}}}";
+            case "neg":
+                return (a, n) => Loose(n!.Parts![0].Sym) >= SUM ? $"-({a[0]})" : $"-{a[0]}";
+            case "pos":
+                return (a, n) => Loose(n!.Parts![0].Sym) >= SUM ? $"+({a[0]})" : $"+{a[0]}";
+            case "unit":
+                return (a, n) => $"{a[0]}{(n is { Spaced: true } ? "\\," : "")}\\mathrm{{{a[1]}}}";
+            case "deco":
+            {
+                var p = EngineData.Obj(hookParams);
+                string wide = EngineData.Str(p["wide"]), narrow = EngineData.Str(p["narrow"]);
+                return (a, _) => a[0].Length > 1 ? $"\\{wide}{{{a[0]}}}" : $"\\{narrow}{{{a[0]}}}";
+            }
+            default:
+                throw new InvalidOperationException($"renderHook inconnu : {name}");
+        }
+    }
+
+    // ── accept-guards des variantes n-aires, référencés par nom ───────────────
+    private static Func<IReadOnlyList<Node>, bool> Guard(string name) => name switch
+    {
+        "tight_body_0" => p => TightBody(p[0]),
+        "non_numeric_1" => p => NonNumeric(p[1]),
+        "name_atom_tail" => p => p.Skip(1).All(NameAtom),
+        _ => throw new InvalidOperationException($"acceptGuard inconnu : {name}"),
+    };
 
     // Fusion générique+langue ; vérifie que chaque cible est bien une clé
     // canonique de Vocab (une typo d'alias doit échouer au premier Analyze,

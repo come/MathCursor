@@ -26,6 +26,9 @@
     <EmbeddedResource Include="..\..\..\data\engine\cultures.json">
       <LogicalName>MathCursor.Engine.data.cultures.json</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="..\..\..\data\engine\symbols.json">
+      <LogicalName>MathCursor.Engine.data.symbols.json</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>
