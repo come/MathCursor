@@ -118,7 +118,9 @@ def _choose(labels):
     dlg = smgr.createInstanceWithContext("com.sun.star.awt.UnoControlDialog", ctx)
     dlg.setModel(dm)
     toolkit = smgr.createInstanceWithContext("com.sun.star.awt.Toolkit", ctx)
-    dlg.createPeer(toolkit, None)
+    # parent = fenêtre du document : sans parent (None) le dialogue ne s'affichait pas.
+    win = XSCRIPTCONTEXT.getDocument().getCurrentController().getFrame().getContainerWindow()  # noqa: F821
+    dlg.createPeer(toolkit, win)
     lb = dlg.getControl("lst")
     lb.selectItemPos(0, True)
     ret = dlg.execute()
