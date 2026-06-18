@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title data-i18n="page_title">MathCursor · Confidentialité</title>
-  <meta name="description" content="Engagements de confidentialité MathCursor : pas d'identifiant, pas de document entier, opt-in clair pour les pièces jointes." />
+  <meta name="description" content="Confidentialité MathCursor : vos documents et votre frappe restent locaux. Deux exceptions décrites ici : un compteur d'usage anonyme désactivable, et le rapport que vous envoyez vous-même. Aucune donnée personnelle." />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -35,7 +35,21 @@
       <div class="container">
         <h1 data-i18n="h1">Confidentialité</h1>
         <p class="lead" data-i18n="intro">
-          MathCursor est conçu pour rester hors-cloud par défaut. La seule fois où des données quittent votre ordinateur, c'est quand <strong>vous</strong> cliquez sur « Envoyer » dans la fenêtre « Signaler une erreur ». Cette page liste ce qui est envoyé, ce qui ne l'est pas, et combien de temps c'est gardé.
+          MathCursor reste hors-cloud par défaut : vos documents, votre frappe et vos formules ne quittent pas votre ordinateur. Il y a exactement <strong>deux exceptions</strong>, décrites sur cette page : (1) un <strong>compteur d'usage anonyme</strong>, automatique mais désactivable, et (2) le <strong>rapport</strong> que <strong>vous</strong> envoyez explicitement via « Signaler une erreur ».
+        </p>
+
+        <h2 data-i18n="h_counter">Le compteur d'usage anonyme</h2>
+        <p data-i18n="counter_p">
+          Pour suivre l'usage de la bêta, MathCursor compte le <strong>nombre de formules que vous convertissez</strong> : un simple nombre entier.
+        </p>
+        <ul>
+          <li data-i18n="counter_1"><strong>Ce qui est envoyé :</strong> ce nombre, plus la version de MathCursor. Rien d'autre.</li>
+          <li data-i18n="counter_2"><strong>Ce qui n'est jamais joint :</strong> aucun contenu (ni texte tapé, ni formule, ni paragraphe), et <strong>aucun identifiant</strong>, pas même l'identifiant anonyme du rapport d'erreur. C'est un agrégat anonyme pur, sans aucune donnée personnelle.</li>
+          <li data-i18n="counter_3"><strong>Quand :</strong> à la fermeture de Word ou quand il perd le focus. Sans réseau, rien n'est perdu : l'envoi est retenté plus tard.</li>
+          <li data-i18n="counter_4"><strong>Où :</strong> sur l'infrastructure Cloudflare R2 (compte privé du projet MathCursor), comme les rapports d'erreur.</li>
+        </ul>
+        <p data-i18n="counter_optout">
+          <strong>Pour le couper :</strong> décochez « Envoyer les statistiques d'usage anonymes » dans la fenêtre Paramètres. Une fois coupé, plus rien n'est compté, stocké ni envoyé.
         </p>
 
         <h2 data-i18n="h_collected">Ce qui est envoyé quand vous cliquez sur « Envoyer »</h2>
@@ -45,16 +59,16 @@
           <li data-i18n="c_3">Le <strong>paragraphe Word courant</strong> autour de votre curseur (contexte, pour aider au diagnostic).</li>
           <li data-i18n="c_4">Si vous avez coché la case correspondante : une <strong>capture d'écran</strong> de votre fenêtre Word au moment du clic.</li>
           <li data-i18n="c_5">Si vous avez coché la case correspondante : les <strong>64 derniers Ko de log technique</strong> de l'add-in.</li>
-          <li data-i18n="c_6">Des <strong>métadonnées techniques</strong> : version de MathCursor, version de Word, version de Windows, version de .NET. Aucun identifiant utilisateur.</li>
+          <li data-i18n="c_6">Des <strong>métadonnées techniques</strong> : version de MathCursor, de Word, de Windows, de .NET, plus un <strong>identifiant anonyme aléatoire</strong> (un GUID généré sur votre machine, ni votre nom ni votre email) qui sert uniquement à regrouper plusieurs rapports d'une même installation.</li>
         </ul>
 
         <h2 data-i18n="h_not_collected">Ce qui n'est jamais envoyé</h2>
         <ul>
           <li data-i18n="n_1">Le <strong>document Word entier</strong>. Seul le paragraphe courant fait partie du rapport.</li>
-          <li data-i18n="n_2">Aucun <strong>identifiant utilisateur</strong> : ni adresse e-mail, ni nom, ni identifiant machine, ni cookie de session.</li>
+          <li data-i18n="n_2">Aucune <strong>donnée d'identité</strong> : ni votre nom, ni votre adresse email (sauf si vous l'écrivez vous-même dans le commentaire), ni identifiant de machine système, ni cookie. L'identifiant joint au rapport est un GUID aléatoire anonyme, pas une donnée personnelle.</li>
           <li data-i18n="n_3">Aucun <strong>contenu d'autres documents</strong> ouverts simultanément dans Word.</li>
           <li data-i18n="n_4">Aucune <strong>frappe au clavier</strong> ni <strong>contenu du presse-papier</strong> en arrière-plan. MathCursor ne suit pas votre activité.</li>
-          <li data-i18n="n_5">Aucune <strong>télémétrie</strong> automatique : pas d'envoi en arrière-plan, pas de heartbeat, pas de statistiques d'usage.</li>
+          <li data-i18n="n_5">En dehors du <strong>compteur d'usage anonyme</strong> décrit plus haut, rien n'est envoyé en arrière-plan : pas de heartbeat, pas de suivi d'activité, aucun contenu transmis automatiquement.</li>
         </ul>
 
         <h2 data-i18n="h_screenshot">À propos de la capture d'écran</h2>
@@ -69,7 +83,7 @@
 
         <h2 data-i18n="h_storage">Où sont stockées les données envoyées</h2>
         <p data-i18n="storage_p">
-          Les rapports envoyés sont stockés sur l'infrastructure <strong>Cloudflare R2</strong> (compte privé du projet MathCursor). Aucun partage avec un tiers, aucune utilisation publicitaire, aucun accès en dehors de l'équipe MathCursor.
+          Les rapports envoyés et les compteurs anonymes sont stockés sur l'infrastructure <strong>Cloudflare R2</strong> (compte privé du projet MathCursor). Aucun partage avec un tiers, aucune utilisation publicitaire, aucun accès en dehors de l'équipe MathCursor.
         </p>
 
         <h2 data-i18n="h_retention">Durée de conservation</h2>
@@ -79,15 +93,15 @@
 
         <h2 data-i18n="h_offline">Si vous préférez ne pas passer par notre serveur</h2>
         <p data-i18n="offline_p">
-          La fenêtre « Signaler une erreur » propose un lien « Copier dans un mail à la place ». Ce mode prépare le rapport en texte clair dans votre presse-papier et ouvre votre client mail — vous voyez exactement ce qui part, et c'est <strong>vous</strong> qui appuyez sur Envoyer dans votre messagerie. Aucun appel à notre serveur dans ce mode.
+          La fenêtre « Signaler une erreur » propose un lien « Copier dans un mail à la place ». Ce mode prépare le rapport en texte clair dans votre presse-papier et ouvre votre client mail : vous voyez exactement ce qui part, et c'est <strong>vous</strong> qui appuyez sur Envoyer dans votre messagerie. Aucun appel à notre serveur dans ce mode. Et si vous coupez le compteur d'usage dans les Paramètres, plus rien du tout ne sort de votre ordinateur.
         </p>
 
         <h2 data-i18n="h_contact">Contact, suppression, questions</h2>
         <p data-i18n="contact_p">
-          Pour demander la suppression d'un rapport que vous avez envoyé, ou pour toute question sur cette page, utilisez le <a href="/contact.html">formulaire de contact</a>. Comme aucun identifiant utilisateur n'est envoyé, précisez la date approximative et le contenu du rapport pour qu'on puisse le retrouver. Les messages envoyés via ce formulaire (votre email et votre texte) sont stockés au même endroit, uniquement pour pouvoir vous répondre, et supprimés sur simple demande.
+          Pour demander la suppression d'un rapport que vous avez envoyé, ou pour toute question sur cette page, utilisez le <a href="/contact.html">formulaire de contact</a>. Comme aucune donnée d'identité n'est attachée, précisez la date approximative et le contenu du rapport pour qu'on puisse le retrouver. Les messages envoyés via ce formulaire (votre email et votre texte) sont stockés au même endroit, uniquement pour pouvoir vous répondre, et supprimés sur simple demande.
         </p>
 
-        <p data-i18n="updated"><small>Dernière mise à jour : 2026-04-30.</small></p>
+        <p data-i18n="updated"><small>Dernière mise à jour : 2026-06-18.</small></p>
       </div>
     </section>
 
@@ -95,7 +109,7 @@
 
   <footer class="site-footer">
     <div class="container">
-      <div data-i18n="foot_copy">MathCursor · 100 % local, sans tracking, sans compte</div>
+      <div data-i18n="foot_copy">MathCursor · gratuit · sans pub · sans compte</div>
       <nav>
         <a href="/" data-i18n="foot_home">Accueil</a>
         <a href="/contact.html">Contact</a>
@@ -103,7 +117,7 @@
     </div>
   </footer>
 
-  <!-- i18n FR/EN — même pattern que index.html : FR dans le markup, EN dans
+  <!-- i18n FR/EN, même pattern que index.html : FR dans le markup, EN dans
        le dict ci-dessous, switch via lang-toggle + persistance localStorage. -->
   <script>
     const I18N = {
@@ -114,7 +128,15 @@
         nav_downloads: "Downloads",
 
         h1: "Privacy",
-        intro: "MathCursor is designed to stay off-cloud by default. The only time data leaves your computer is when <strong>you</strong> click \"Send\" in the \"Report an issue\" window. This page lists what is sent, what is not, and how long it is kept.",
+        intro: "MathCursor stays off-cloud by default: your documents, your typing and your equations don't leave your computer. There are exactly <strong>two exceptions</strong>, described on this page: (1) an <strong>anonymous usage count</strong>, automatic but optional, and (2) the <strong>report</strong> that <strong>you</strong> explicitly send via \"Report an issue\".",
+
+        h_counter: "The anonymous usage count",
+        counter_p: "To follow beta usage, MathCursor counts the <strong>number of equations you convert</strong>: a plain integer.",
+        counter_1: "<strong>What is sent:</strong> that number, plus the MathCursor version. Nothing else.",
+        counter_2: "<strong>What is never attached:</strong> no content (no typed text, no equation, no paragraph), and <strong>no identifier</strong>, not even the anonymous identifier from the error report. It's a purely anonymous aggregate, with no personal data.",
+        counter_3: "<strong>When:</strong> when Word closes or loses focus. With no network, nothing is lost: sending is retried later.",
+        counter_4: "<strong>Where:</strong> on the Cloudflare R2 infrastructure (private MathCursor project account), like the error reports.",
+        counter_optout: "<strong>To turn it off:</strong> untick \"Send anonymous usage statistics\" in the Settings window. Once off, nothing is counted, stored or sent.",
 
         h_collected: "What is sent when you click \"Send\"",
         c_1: "Your <strong>latest action</strong> in MathCursor: what you typed, what the add-in proposed in the popup, and what was (or would be) inserted in Word.",
@@ -122,14 +144,14 @@
         c_3: "The <strong>current Word paragraph</strong> around your cursor (context, to help diagnose).",
         c_4: "If you ticked the corresponding box: a <strong>screenshot</strong> of your Word window at the time of the click.",
         c_5: "If you ticked the corresponding box: the <strong>last 64 KB of technical log</strong> from the add-in.",
-        c_6: "<strong>Technical metadata</strong>: MathCursor version, Word version, Windows version, .NET version. No user identifier.",
+        c_6: "<strong>Technical metadata</strong>: MathCursor, Word, Windows and .NET versions, plus an <strong>anonymous random identifier</strong> (a GUID generated on your machine, not your name or your email) used only to group several reports from the same installation.",
 
         h_not_collected: "What is never sent",
         n_1: "The <strong>full Word document</strong>. Only the current paragraph is part of the report.",
-        n_2: "No <strong>user identifier</strong>: no email, no name, no machine ID, no session cookie.",
+        n_2: "No <strong>identity data</strong>: not your name, not your email (unless you write it yourself in the comment), no system machine ID, no cookie. The identifier attached to the report is an anonymous random GUID, not personal data.",
         n_3: "No <strong>content from other documents</strong> open at the same time in Word.",
         n_4: "No <strong>keystrokes</strong> nor <strong>clipboard content</strong> in the background. MathCursor doesn't track your activity.",
-        n_5: "No automatic <strong>telemetry</strong>: no background sends, no heartbeat, no usage statistics.",
+        n_5: "Apart from the <strong>anonymous usage count</strong> described above, nothing is sent in the background: no heartbeat, no activity tracking, no content transmitted automatically.",
 
         h_screenshot: "About the screenshot",
         screenshot_p: "The \"Include a screenshot\" box is <strong>ticked by default</strong> but clearly visible before sending. You see the preview in the window. If your document contains anything you'd rather not share (personal notes, drafts, student data), <strong>uncheck the box before sending</strong>.",
@@ -138,20 +160,20 @@
         log_p: "The \"Include the last 64 KB of technical log\" box is <strong>unticked by default</strong>. The log may contain short pieces of text you recently typed in Word (detected zones, generated suggestions). Tick this only if asked for a diagnostic.",
 
         h_storage: "Where the sent data is stored",
-        storage_p: "Sent reports are stored on the <strong>Cloudflare R2</strong> infrastructure (private account of the MathCursor project). No third-party sharing, no advertising use, no access outside the MathCursor team.",
+        storage_p: "Sent reports and anonymous counts are stored on the <strong>Cloudflare R2</strong> infrastructure (private account of the MathCursor project). No third-party sharing, no advertising use, no access outside the MathCursor team.",
 
         h_retention: "Retention period",
         retention_p: "Reports are kept for <strong>6 months maximum</strong>, then deleted automatically. This window lets us trace a bug reported several weeks after it occurred (for example if multiple users report the same issue).",
 
         h_offline: "If you'd rather not go through our server",
-        offline_p: "The \"Report an issue\" window offers a \"Copy to an email instead\" link. This mode prepares the report as plain text in your clipboard and opens your mail client — you see exactly what is sent, and <strong>you</strong> press Send in your mail app. No call to our server in this mode.",
+        offline_p: "The \"Report an issue\" window offers a \"Copy to an email instead\" link. This mode prepares the report as plain text in your clipboard and opens your mail client: you see exactly what is sent, and <strong>you</strong> press Send in your mail app. No call to our server in this mode. And if you turn off the usage count in Settings, nothing at all leaves your computer.",
 
         h_contact: "Contact, deletion, questions",
-        contact_p: "To request deletion of a report you sent, or for any question about this page, use the <a href=\"/contact.html\">contact form</a>. Since no user identifier is sent, please give an approximate date and the content of the report so we can find it. Messages sent via this form (your email and your text) are stored in the same place, only so we can reply to you, and deleted on request.",
+        contact_p: "To request deletion of a report you sent, or for any question about this page, use the <a href=\"/contact.html\">contact form</a>. Since no identity data is attached, please give an approximate date and the content of the report so we can find it. Messages sent via this form (your email and your text) are stored in the same place, only so we can reply to you, and deleted on request.",
 
-        updated: "Last updated: 2026-04-30.",
+        updated: "Last updated: 2026-06-18.",
 
-        foot_copy: "MathCursor · 100% local, no tracking, no account",
+        foot_copy: "MathCursor · free · no ads · no account",
         foot_home: "Home"
       }
     };
