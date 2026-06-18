@@ -3,12 +3,19 @@ using System.Linq;
 
 namespace MathCursor.Engine;
 
-/// <summary>Un candidat de lecture : LaTeX + coût.</summary>
+/// <summary>Un candidat de lecture : LaTeX + coût (+ étiquette mot-clé optionnelle).</summary>
 public sealed class EngineCandidate
 {
     public string Latex { get; }
     public double Cost { get; }
-    public EngineCandidate(string latex, double cost) { Latex = latex; Cost = cost; }
+
+    /// <summary>Mot-clé complet quand ce candidat vient de l'expansion d'un préfixe
+    /// tapé (ex. « arcsin »), pour l'afficher sous le candidat dans la popup. Null
+    /// pour les candidats ordinaires. Cf. ADR backlog moteur #2 (préfixes).</summary>
+    public string? Hint { get; }
+
+    public EngineCandidate(string latex, double cost, string? hint = null)
+    { Latex = latex; Cost = cost; Hint = hint; }
 }
 
 /// <summary>Résultat de l'analyse : décision (popup|auto|erreur) + candidats classés.</summary>
@@ -138,12 +145,12 @@ public sealed class ForestEngine
         return p;
     }
 
-    private AnalyzeResult Finish(List<(Node N, double Off)> all, string? note)
+    private AnalyzeResult Finish(List<(Node N, double Off, string? Hint)> all, string? note)
     {
         if (all.Count == 0) return new AnalyzeResult("erreur", new List<EngineCandidate>(), false);
         var seen = new HashSet<string>();
         var ranked = all
-            .Select(p => new EngineCandidate(LatexRenderer.Render(p.N, _culture), Score.Cost(p.N) + p.Off))
+            .Select(p => new EngineCandidate(LatexRenderer.Render(p.N, _culture), Score.Cost(p.N) + p.Off, p.Hint))
             .OrderBy(r => r.Cost)                       // tri stable (comme V8)
             .Where(r => seen.Add(r.Latex))              // garde le meilleur par rendu
             .ToList();
@@ -161,7 +168,7 @@ public sealed class ForestEngine
     // proposé AUSSI — forme LONGUE en tête (présélection = comportement
     // historique), décision popup. Pas de frère (guards, pas assez d'unités)
     // → rien ne change. Règle de PRÉSENTATION : le Score n'est pas touché.
-    private List<EngineCandidate> PairSkeletons(List<(Node N, double Off)> all, List<EngineCandidate> kept)
+    private List<EngineCandidate> PairSkeletons(List<(Node N, double Off, string? Hint)> all, List<EngineCandidate> kept)
     {
         var bestP = all[0]; double bestC = double.PositiveInfinity;
         foreach (var p in all)
@@ -174,7 +181,7 @@ public sealed class ForestEngine
         if (!n.Parts.Any(c => c.Hole)) return kept;
         if (Vocabulary.Vocab[n.Sym].Variants == null) return kept;
 
-        (Node N, double Off) sib = default; double sibC = double.PositiveInfinity;
+        (Node N, double Off, string? Hint) sib = default; double sibC = double.PositiveInfinity;
         foreach (var p in all)
         {
             var m = p.N;
@@ -187,7 +194,7 @@ public sealed class ForestEngine
 
         var pair = new[] { (P: bestP, C: bestC), (P: sib, C: sibC) }
             .OrderByDescending(x => x.P.N.Parts!.Count)        // forme LONGUE d'abord
-            .Select(x => new EngineCandidate(LatexRenderer.Render(x.P.N, _culture), x.C))
+            .Select(x => new EngineCandidate(LatexRenderer.Render(x.P.N, _culture), x.C, x.P.Hint))
             .ToList();
         var outk = new List<EngineCandidate>(pair);
         foreach (var k in kept)
@@ -279,27 +286,91 @@ public sealed class ForestEngine
     // auto ; < widen+trou pour que le mot entier batte une découpe sale (avec).
     private const double SplitPenalty = 3;
 
+    // Expansion de préfixes (backlog moteur #2) : on analyse l'entrée ORIGINALE
+    // (lecture littérale, comportement historique inchangé) PLUS des variantes où
+    // un mot préfixe-extensible est remplacé par chaque mot-clé candidat. Les
+    // candidats de toutes les variantes concourent dans Finish (tri par coût) ;
+    // ceux issus d'une expansion portent un Hint = le mot-clé complet. Approche
+    // par substitution d'entrée (≠ forking lexer) → le littéral reste toujours
+    // analysé tel quel, zéro régression sur l'existant. Cf. ADR backlog #2.
+    private const int MaxPrefixSpots = 3;   // mots préfixe-extensibles considérés
+    private const int MaxVariants = 12;     // garde-fou combinatoire (entrées analysées)
+
     private AnalyzeResult Run(string src)
     {
+        var all = new List<(Node N, double Off, string? Hint)>();
+        string? note = null;
+        foreach (var (input, hint) in BuildInputVariants(src))
+        {
+            var (cands, n) = CollectFromInput(input);
+            foreach (var (node, off) in cands) all.Add((node, off, hint));
+            if (hint == null) note = n;     // note de l'entrée littérale d'origine
+        }
+        return Finish(all, note);
+    }
+
+    // Lex (multi-flux découpe) + assemble + pénalité de distance, pour UNE entrée.
+    // = l'ancien Run, isolé pour être rejoué sur chaque variante.
+    private (List<(Node N, double Off)> Cands, string? Note) CollectFromInput(string input)
+    {
         _deepNote = false;
-        // NIVEAU 2 — découpe de run : TOUS les flux concourent, pénalisés de
-        // leur distance au flux le plus découpé qui parse.
         var streams = new List<(List<Node> Parses, int Splits, string? Note)>();
         int maxS = 0;
-        foreach (var (toks, splits) in Lexer.LexAll(src, _culture))
+        foreach (var (toks, splits) in Lexer.LexAll(input, _culture))
         {
             var r = Assemble(toks);
             if (r.Parses.Count == 0) continue;
             streams.Add((r.Parses, splits, r.Note));
             if (splits > maxS) maxS = splits;
         }
-        var all = new List<(Node N, double Off)>();
+        var cands = new List<(Node, double)>();
         string? note = null;
         foreach (var (parses, splits, n) in streams)
         {
-            foreach (var p in parses) all.Add((p, SplitPenalty * (maxS - splits)));
-            if (splits == maxS && n != null) note = n;   // note du flux principal
+            foreach (var p in parses) cands.Add((p, SplitPenalty * (maxS - splits)));
+            if (splits == maxS && n != null) note = n;
         }
-        return Finish(all, note ?? (_deepNote ? Note_ : null));
+        return (cands, note ?? (_deepNote ? Note_ : null));
+    }
+
+    private static bool IsLetter(char c) => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+
+    // Entrée littérale (toujours) + une variante par combinaison de substitutions
+    // de mots préfixe-extensibles. Hint = mot-clé SI exactement un mot substitué.
+    private List<(string Input, string? Hint)> BuildInputVariants(string src)
+    {
+        var spots = new List<(int Start, int Len, List<(string Form, string Canon)> M)>();
+        int i = 0;
+        while (i < src.Length && spots.Count < MaxPrefixSpots)
+        {
+            if (!IsLetter(src[i])) { i++; continue; }
+            int st = i;
+            while (i < src.Length && IsLetter(src[i])) i++;
+            var pm = _culture.PrefixMatches(src.Substring(st, i - st));
+            if (pm.Count > 0) spots.Add((st, i - st, pm));
+        }
+
+        var variants = new List<(string, string?)> { (src, null) };   // littéral d'abord
+        if (spots.Count == 0) return variants;
+
+        var optionCounts = spots.Select(s => s.M.Count + 1).ToArray(); // 0 = littéral
+        long total = 1; foreach (var c in optionCounts) total *= c;
+        for (long code = 1; code < total && variants.Count < MaxVariants; code++)
+        {
+            var choice = new int[spots.Count];
+            long rem = code;
+            for (int s = 0; s < spots.Count; s++) { choice[s] = (int)(rem % optionCounts[s]); rem /= optionCounts[s]; }
+
+            string outp = src; string? onlyForm = null; int subs = 0;
+            for (int s = spots.Count - 1; s >= 0; s--)   // droite→gauche : positions stables
+            {
+                if (choice[s] == 0) continue;
+                string form = spots[s].M[choice[s] - 1].Form;
+                outp = outp.Substring(0, spots[s].Start) + form + outp.Substring(spots[s].Start + spots[s].Len);
+                subs++; onlyForm = form;
+            }
+            if (subs > 0) variants.Add((outp, subs == 1 ? onlyForm : null));
+        }
+        return variants;
     }
 }

@@ -33,7 +33,7 @@
       "pourtout": "forall",
       "ilexiste": "exists", "existe": "exists", "nexiste": "nexists",
       "congr": "cong", "congru": "cong",
-      "environ": "approx", "environegal": "approx",
+      "environ": "approx",
       "dans": "in", "appartient": "in", "appt": "in", "app": "in",
       "inclus": "subset", "incl": "subset", "inclu": "subset",
       "pasinclus": "notsubset", "pasincl": "notsubset", "pasinclu": "notsubset",

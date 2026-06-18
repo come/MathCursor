@@ -37,6 +37,9 @@ namespace MathCursor.UI
         private readonly TextBlock _debugFooter;
 
         private IReadOnlyList<string> _candidates = Array.Empty<string>();
+        // Étiquette « mot-clé » par candidat (expansion de préfixe), alignée par
+        // index. Null par élément = pas d'étiquette moteur. Cf. ADR backlog #2.
+        private IReadOnlyList<string> _hints = Array.Empty<string>();
         private int _selectedIndex;
         private bool _navMode;
         private bool _expanded;
@@ -137,8 +140,10 @@ namespace MathCursor.UI
         /// </summary>
         public void ShowCandidates(IReadOnlyList<string> candidates, double anchorX,
             double anchorYBelow, double anchorYAbove, string sourceText = "",
-            string mergeKind = null, IReadOnlyList<string> mergePrevLines = null)
+            string mergeKind = null, IReadOnlyList<string> mergePrevLines = null,
+            IReadOnlyList<string> hints = null)
         {
+            _hints = hints ?? Array.Empty<string>();
             _mergeKind = mergeKind;
             _mergePrevLines = (mergePrevLines != null && mergePrevLines.Count > 0) ? mergePrevLines : null;
             // Rafraîchissement d'une popup DÉJÀ ouverte (frappe continue,
@@ -330,9 +335,12 @@ namespace MathCursor.UI
                 container.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 container.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 container.Children.Add(BuildCandidateContent(_candidates[i]));
-                // Badge discret quand le RENDU d'aperçu ne distingue pas le
-                // candidat (matrice ligne aplatie ≈ tuple) — cf. CandidateHints.
-                string hint = CandidateHints.GetHint(_candidates[i]);
+                // Badge : étiquette mot-clé du moteur (« = arcsin », expansion de
+                // préfixe) prioritaire ; sinon badge de désambiguïsation d'aperçu
+                // (matrice ligne aplatie ≈ tuple — cf. CandidateHints).
+                string hint = (_hints != null && i < _hints.Count && _hints[i] != null)
+                    ? "= " + _hints[i]
+                    : CandidateHints.GetHint(_candidates[i]);
                 if (hint != null)
                 {
                     var badge = new TextBlock

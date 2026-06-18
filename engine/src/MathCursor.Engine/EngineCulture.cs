@@ -31,6 +31,47 @@ public sealed class EngineCulture
 
     internal string Canon(string w) => Aliases.TryGetValue(w, out var c) ? c : w;
 
+    // Formes « préfixables » (mot tapé → clé canonique de Vocab) : clés Vocab
+    // alphabétiques (→ elles-mêmes, grec inclus) + alias alphabétiques (→ cible).
+    // Précalculé une fois par culture. Cf. ADR backlog moteur #2 (préfixes).
+    private readonly IReadOnlyList<KeyValuePair<string, string>> _expandable;
+
+    private static bool IsAlphaWord(string s)
+    {
+        if (s.Length == 0) return false;
+        foreach (var c in s)
+            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) return false;
+        return true;
+    }
+
+    /// <summary>Mots-clés/alias dont <paramref name="word"/> est un préfixe STRICT
+    /// (≥ 3 lettres, alphabétique, et word PAS une forme exacte connue — l'exact-
+    /// match prime). Dédup par cible canonique, en gardant la forme la plus longue
+    /// pour l'affichage. Trié (déterministe). Retour : (FormeComplète, CléCanonique).</summary>
+    internal List<(string Form, string Canon)> PrefixMatches(string word)
+    {
+        var empty = new List<(string, string)>();
+        if (word.Length < 3 || !IsAlphaWord(word)) return empty;
+        // Exact-match prioritaire, y compris insensible à la casse (le lexer
+        // résout « Int » → int via repli minuscule — autocapitalisation Word).
+        if (Vocabulary.Vocab.ContainsKey(Canon(word))) return empty;
+        var lower = word.ToLowerInvariant();
+        if (lower != word && Vocabulary.Vocab.ContainsKey(Canon(lower))) return empty;
+
+        var best = new Dictionary<string, string>(); // canon → forme affichée (la + longue)
+        foreach (var kv in _expandable)
+        {
+            if (kv.Key.Length <= word.Length) continue;
+            if (!kv.Key.StartsWith(word, System.StringComparison.Ordinal)) continue;
+            if (!best.TryGetValue(kv.Value, out var cur) || kv.Key.Length > cur.Length)
+                best[kv.Value] = kv.Key;
+        }
+        return best
+            .Select(kv => (Form: kv.Value, Canon: kv.Key))
+            .OrderBy(t => t.Canon, System.StringComparer.Ordinal)
+            .ToList();
+    }
+
     internal EngineCulture(char[] decimalsIn, string decimalTex, string intervalSep, string matrixEnv,
         IReadOnlyDictionary<string, string> aliases)
     {
@@ -39,6 +80,14 @@ public sealed class EngineCulture
         IntervalSep = intervalSep;
         MatrixEnv = matrixEnv;
         Aliases = aliases;
+
+        // Index des formes préfixables (Vocab alpha → self + alias alpha → cible).
+        var exp = new List<KeyValuePair<string, string>>();
+        foreach (var key in Vocabulary.Vocab.Keys)
+            if (IsAlphaWord(key)) exp.Add(new KeyValuePair<string, string>(key, key));
+        foreach (var kv in aliases)
+            if (IsAlphaWord(kv.Key)) exp.Add(new KeyValuePair<string, string>(kv.Key, kv.Value));
+        _expandable = exp;
     }
 
     /// <summary>Clone du preset avec les réglages utilisateur non-null appliqués.

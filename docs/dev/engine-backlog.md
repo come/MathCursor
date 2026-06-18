@@ -13,19 +13,22 @@ ADR + plan (`/mathcursor-plan`) au moment de l'implémentation.
   naturelle au clavier sans `AltGr`. ✅ Fait 2026-06-18 (`sameAs` dans
   `symbols.json`, +3 fixtures) — ADR `2026-06-18-Feat-power-double-star`.
 
-- [ ] **Mots-clés partiels (préfixe ≥ 3 lettres)** — autoriser tout préfixe d'au
-  moins 3 lettres d'un mot-clé reconnu (ex. `lim` → `limite`, `der` → `dérivée`,
-  `rac` → `racine`, `app` → `approx`…). Dans la popup, **afficher le mot-clé
-  complet reconnu** et le **traiter comme s'il était saisi en entier**.
-  → Vérifier l'absence de collisions de préfixes entre mots-clés ; définir la
-  règle de désambiguïsation (plus court mot-clé ? proposer plusieurs candidats
-  dans la popup ?).
+- [x] **Mots-clés partiels (préfixe ≥ 3 lettres)** — autoriser tout préfixe d'au
+  moins 3 lettres d'un mot-clé reconnu. ✅ Fait 2026-06-18 : `EngineCulture.
+  PrefixMatches` (Vocab alpha + alias, grec inclus, exact-match prioritaire) +
+  génération par **substitution d'entrée** dans `ForestEngine.Run` (littéral
+  toujours analysé → zéro régression) ; collisions → **popup multi-candidats**
+  avec étiquette `EngineCandidate.Hint` « = mot-clé » sous chaque choix. +3
+  fixtures (corpus 450). ADR `2026-06-18-Feat-prefix-keyword-expansion`.
+  (`app`→approx impossible — exact alias `appartient` ; `der`→dérivée abandonné —
+  pas d'opérateur.)
 
 - [x] **`approx` / « environ égal » (≈)** — faire fonctionner la saisie de `≈`
   via mot-clé (`approx`, `environegal`/`environ egal`) et/ou Unicode direct `≈`.
   Vérifier `vocabulary` (alias FR) + `render` LaTeX (`\approx`) + couverture
-  `LatexToOmml`. ✅ Fait 2026-06-18 (`≈` sameAs approx + alias FR `environ`/
-  `environegal`) — ADR `2026-06-18-Feat-approx-and-second-derivative`.
+  `LatexToOmml`. ✅ Fait 2026-06-18 (`≈` sameAs approx + alias FR `environ` ;
+  forme collée `environegal` retirée — mot artificiel) — ADR
+  `2026-06-18-Feat-approx-and-second-derivative`.
 
 - [x] **Dérivée seconde** — vérifier que la dérivée seconde est correctement
   reconnue et rendue (ex. `f''(x)`, `\frac{d^2 f}{dx^2}`…). Ajouter une fixture

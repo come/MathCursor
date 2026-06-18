@@ -25,10 +25,10 @@ naturel. Côté dérivée seconde, `f''(x)` fonctionnait (postfixe `'`) ; #4 = l
 ### #3 — Saisie `approx`/≈ (data only)
 - `data/engine/symbols.json` : `"≈": { "sameAs": "approx" }` → le caractère
   Unicode `≈` (U+2248) collé est reconnu.
-- `data/engine/cultures.json` (alias `fr`) : `"environ": "approx"`,
-  `"environegal": "approx"` → mots-clés FR naturels.
-  *(Les alias sont mono-mot : « environ egal » en deux mots ne matcherait pas ;
-  d'où `environegal` collé.)*
+- `data/engine/cultures.json` (alias `fr`) : `"environ": "approx"` (mot FR
+  naturel). *(« environ egal » en deux mots n'est pas supporté — alias mono-mot.
+  La forme collée `environegal`, d'abord ajoutée puis retirée le 2026-06-18 car
+  ce n'est pas un vrai mot que quelqu'un taperait.)*
 - `approx` (mot-clé), `\approx`/≈ (rendu OMML) : **déjà en place**, inchangés.
 
 ### #4 — Dérivée seconde (confirmation + verrou)
@@ -40,7 +40,8 @@ non-régression. La notation Leibniz `\frac{d^2 f}{dx^2}` reste hors périmètre
 ## Tradeoff & alternatives écartées
 
 - **Alias `environ egal` en deux mots** : impossible via le mécanisme d'alias
-  (mono-token) → `environegal` collé + `environ` seul.
+  (mono-token) → on garde `environ` seul. La forme collée `environegal` a été
+  retirée (mot artificiel).
 - **Nouveau code pour `≈`/dérivée seconde** : inutile, tout est data-driven /
   déjà supporté.
 
@@ -54,5 +55,5 @@ non-régression. La notation Leibniz `\frac{d^2 f}{dx^2}` reste hors périmètre
 
 ## Validation post-fix
 
-`Analyze("a ≈ b")` / `("a environ b")` / `("a environegal b")` → `a\approx b` ;
+`Analyze("a ≈ b")` / `("a environ b")` → `a\approx b` ;
 `Analyze("u''(t)")` → `u''(t)` ; `("f''(x)=0")` → `f''(x)=0`. Corpus 447/447 vert.
