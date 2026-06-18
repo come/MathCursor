@@ -172,11 +172,13 @@
 
     "·forallWord": { "sameAs": "forall", "wordSpace": true },
     "//": { "sameAs": "parallel" },
+    "**": { "sameAs": "^" },
     "+-": { "sameAs": "pm" },
     "-+": { "sameAs": "mp" },
     "≤": { "sameAs": "<=" },
     "≥": { "sameAs": ">=" },
     "≠": { "sameAs": "!=" },
+    "≈": { "sameAs": "approx" },
     "×": { "sameAs": "*" },
     "÷": { "sameAs": "·div" },
     "∘": { "sameAs": "circ" },

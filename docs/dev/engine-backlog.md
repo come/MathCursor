@@ -8,9 +8,10 @@ ADR + plan (`/mathcursor-plan`) au moment de l'implémentation.
 
 ## TODO
 
-- [ ] **`**` pour la puissance** — accepter `**` comme opérateur d'exposant
+- [x] **`**` pour la puissance** — accepter `**` comme opérateur d'exposant
   (ex. `x**2` → `x^2`), en plus de `^`. Convention répandue (Python, etc.),
-  naturelle au clavier sans `AltGr`.
+  naturelle au clavier sans `AltGr`. ✅ Fait 2026-06-18 (`sameAs` dans
+  `symbols.json`, +3 fixtures) — ADR `2026-06-18-Feat-power-double-star`.
 
 - [ ] **Mots-clés partiels (préfixe ≥ 3 lettres)** — autoriser tout préfixe d'au
   moins 3 lettres d'un mot-clé reconnu (ex. `lim` → `limite`, `der` → `dérivée`,
@@ -20,14 +21,17 @@ ADR + plan (`/mathcursor-plan`) au moment de l'implémentation.
   règle de désambiguïsation (plus court mot-clé ? proposer plusieurs candidats
   dans la popup ?).
 
-- [ ] **`approx` / « environ égal » (≈)** — faire fonctionner la saisie de `≈`
+- [x] **`approx` / « environ égal » (≈)** — faire fonctionner la saisie de `≈`
   via mot-clé (`approx`, `environegal`/`environ egal`) et/ou Unicode direct `≈`.
   Vérifier `vocabulary` (alias FR) + `render` LaTeX (`\approx`) + couverture
-  `LatexToOmml`.
+  `LatexToOmml`. ✅ Fait 2026-06-18 (`≈` sameAs approx + alias FR `environ`/
+  `environegal`) — ADR `2026-06-18-Feat-approx-and-second-derivative`.
 
-- [ ] **Dérivée seconde** — vérifier que la dérivée seconde est correctement
+- [x] **Dérivée seconde** — vérifier que la dérivée seconde est correctement
   reconnue et rendue (ex. `f''(x)`, `\frac{d^2 f}{dx^2}`…). Ajouter une fixture
-  de non-régression si manquante.
+  de non-régression si manquante. ✅ Fait 2026-06-18 (`f''(x)`/`u''(t)` OK via
+  postfixe `'` ; +fixture `u''(t)`. Notation Leibniz `\frac{d^2 f}{dx^2}` hors
+  périmètre, pas de sténo dédiée) — ADR `2026-06-18-Feat-approx-and-second-derivative`.
 
 - [ ] **Démo en mode réel** — refaire une démo qui mime vraiment l'ergo finale :
   grande zone de texte libre (canvas ? `contenteditable` ?) avec **curseur
