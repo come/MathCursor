@@ -104,6 +104,24 @@ namespace MathCursor.Serialization.Tests
             Assert.Equal("[", Attr(inner.Element(M + "dPr"), "begChr", "val"));
         }
 
+        // ── Lettres grecques phi / varphi ────────────────────────────────
+        // Convention LaTeX (= celle de l'aperçu WpfMath) : \phi = forme
+        // fermée/droite (U+03D5 ϕ), \varphi = forme cursive/ouverte (U+03C6 φ).
+        // Régression 2026-06-18 : les deux étaient inversés → @p → \varphi
+        // s'insérait en ϕ droit alors que l'aperçu montrait le φ cursif.
+
+        [Fact]
+        public void Phi_maps_to_closed_form_U03D5()
+        {
+            Assert.Equal("ϕ", AllText(LatexToOmml.Convert(@"\phi"))); // ϕ GREEK PHI SYMBOL
+        }
+
+        [Fact]
+        public void Varphi_maps_to_cursive_form_U03C6()
+        {
+            Assert.Equal("φ", AllText(LatexToOmml.Convert(@"\varphi"))); // φ GREEK SMALL LETTER PHI
+        }
+
         // ── Fractions & racines ──────────────────────────────────────────
 
         [Fact]

@@ -531,7 +531,7 @@ namespace MathCursor.Serialization
             {"alpha","α"},{"beta","β"},{"gamma","γ"},{"delta","δ"},{"epsilon","ε"},{"varepsilon","ε"},
             {"zeta","ζ"},{"eta","η"},{"theta","θ"},{"iota","ι"},{"kappa","κ"},{"lambda","λ"},
             {"mu","μ"},{"nu","ν"},{"xi","ξ"},{"pi","π"},{"rho","ρ"},{"sigma","σ"},{"tau","τ"},
-            {"upsilon","υ"},{"phi","φ"},{"varphi","ϕ"},{"chi","χ"},{"psi","ψ"},{"omega","ω"},
+            {"upsilon","υ"},{"phi","ϕ"},{"varphi","φ"},{"chi","χ"},{"psi","ψ"},{"omega","ω"},
             {"Gamma","Γ"},{"Delta","Δ"},{"Theta","Θ"},{"Lambda","Λ"},{"Xi","Ξ"},{"Pi","Π"},
             {"Sigma","Σ"},{"Upsilon","Υ"},{"Phi","Φ"},{"Psi","Ψ"},{"Omega","Ω"},
             {"sin","sin"},{"cos","cos"},{"tan","tan"},{"ln","ln"},{"log","log"},{"exp","exp"},
