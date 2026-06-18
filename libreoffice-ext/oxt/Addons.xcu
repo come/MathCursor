@@ -28,6 +28,26 @@
               </prop>
               <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
             </node>
+            <node oor:name="M2" oor:op="replace">
+              <prop oor:name="URL" oor:type="xs:string">
+                <value>vnd.sun.star.script:MathCursor.oxt|Scripts|python|mathcursor.py$autodetect_start?language=Python&amp;location=user:uno_packages</value>
+              </prop>
+              <prop oor:name="Title" oor:type="xs:string">
+                <value xml:lang="fr">MathCursor : activer l'auto-détection</value>
+                <value xml:lang="en">MathCursor: enable auto-detection</value>
+              </prop>
+              <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+            </node>
+            <node oor:name="M3" oor:op="replace">
+              <prop oor:name="URL" oor:type="xs:string">
+                <value>vnd.sun.star.script:MathCursor.oxt|Scripts|python|mathcursor.py$autodetect_stop?language=Python&amp;location=user:uno_packages</value>
+              </prop>
+              <prop oor:name="Title" oor:type="xs:string">
+                <value xml:lang="fr">MathCursor : désactiver l'auto-détection</value>
+                <value xml:lang="en">MathCursor: disable auto-detection</value>
+              </prop>
+              <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+            </node>
           </node>
         </node>
       </node>

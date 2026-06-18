@@ -42,6 +42,9 @@ CORPUS = [
     ("a+b", "a + b"),
     ("2x", "2 x"),
     ("pi", "%pi"),
+    # non-régression : addition de fractions — la substitution du gabarit infixe
+    # ne doit PAS corrompre le « {1} » interne d'une fraction (one-pass).
+    ("1/2+1/3", "{{1} over {2}} + {{1} over {3}}"),
 ]
 miss = 0
 for inp, expected in CORPUS:

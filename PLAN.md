@@ -151,6 +151,11 @@ séparation moteur/vocabulaire. Les `fixtures.js` deviennent des tests xUnit qui
 - **Phase 3 — Édition in-place + feedback**
   - `EditModeController` (clic dans OMath → retrouve source via CC → ré-édite).
   - Module feedback complet.
+  - *Extension 2026-06-18* : compteur d'usage anonyme (nombre de formules
+    converties) — pile locale `usage.json`, flush HTTP anonyme sur
+    `WindowDeactivate` + `Shutdown` vers `/api/v1/usage`, opt-out `send_usage_stats`.
+    Impose la réécriture honnête de `privacy.html` + home. ADR
+    [`Feat-usage-counter-telemetry`](docs/dev/decisions/2026-06-18-Feat-usage-counter-telemetry.md).
 
 - **Phase 4 — NER isolé (intégration différée)**
   - Reprendre `Detection/` + `models/distilmult-v5/`, tests NER.

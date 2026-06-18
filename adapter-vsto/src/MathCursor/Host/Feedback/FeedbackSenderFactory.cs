@@ -21,14 +21,34 @@ namespace MathCursor.Host.Feedback
         /// À garder synchro avec <c>adapter-vsto/installer/feedback.url</c>.</summary>
         private const string DefaultFeedbackUrl = "https://mathcursor.pages.dev/api/v1/report";
 
+        /// <summary>Fallback hardcodé de l'endpoint compteur d'usage (dernier
+        /// recours si l'URL configurée ne se termine pas par <c>/report</c>).</summary>
+        private const string DefaultUsageUrl = "https://mathcursor.pages.dev/api/v1/usage";
+
         public static IFeedbackSender Create()
         {
+            return new HttpFeedbackSender(ResolveReportUrl());
+        }
+
+        /// <summary>URL effective de l'endpoint <c>/report</c> (env var / fichier
+        /// config / fallback). Source unique partagée avec le compteur d'usage.</summary>
+        public static string ResolveReportUrl()
+        {
             string url = ReadConfiguredUrl();
-            if (string.IsNullOrWhiteSpace(url) || !IsHttpUrl(url))
-            {
-                url = DefaultFeedbackUrl;
-            }
-            return new HttpFeedbackSender(url);
+            if (string.IsNullOrWhiteSpace(url) || !IsHttpUrl(url)) return DefaultFeedbackUrl;
+            return url;
+        }
+
+        /// <summary>URL de l'endpoint compteur d'usage, dérivée de
+        /// <see cref="ResolveReportUrl"/> en remplaçant le segment final
+        /// <c>/report</c> par <c>/usage</c> (même base/host/config).</summary>
+        public static string ResolveUsageUrl()
+        {
+            string url = ResolveReportUrl();
+            const string reportSuffix = "/report";
+            if (url.EndsWith(reportSuffix, StringComparison.Ordinal))
+                return url.Substring(0, url.Length - reportSuffix.Length) + "/usage";
+            return DefaultUsageUrl;
         }
 
         private static string ReadConfiguredUrl()

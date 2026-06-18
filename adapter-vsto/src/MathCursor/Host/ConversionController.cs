@@ -79,20 +79,7 @@ namespace MathCursor.Host
         /// les SetRange internes ne doivent pas refermer/relancer quoi que ce soit.</summary>
         public bool IsCommitting => _committing;
 
-        // ── Données de span : stopwords + délimiteurs FR (table portée de
-        //    l'ex data/locale/fr.yml, le YAML appartenait à l'ancien moteur).
-        private static readonly HashSet<string> Stopwords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "soit", "soient", "et", "ou", "donc", "alors", "avec", "si", "on",
-            "car", "mais", "ainsi", "puis", "comme", "tout", "un", "une",
-            "le", "la", "les", "des", "du", "de", "pour", "par", "sur",
-            "dans", "au", "aux",
-        };
-
-        private static readonly HashSet<char> SpanDelimiters = new HashSet<char>
-        {
-            '.', ';', '!', '?', '=', '<', '>', '\n', '\r',
-        };
+        // Stopwords + délimiteurs de span → Host/SpanComputer.cs (logique pure).
 
         // ── Entrée du flux ───────────────────────────────────────────────
 
@@ -119,8 +106,8 @@ namespace MathCursor.Host
                 while (caret > 0 && (text[caret - 1] == '\r' || text[caret - 1] == '\n')) caret--;
                 if (caret < 0) return;
 
-                int spanStart = ComputeSpanStart(text, caret, paragraph.OMathRegions);
-                int spanEnd = ComputeSpanEnd(text, caret, paragraph.OMathRegions);
+                int spanStart = SpanComputer.ComputeSpanStart(text, caret, paragraph.OMathRegions);
+                int spanEnd = SpanComputer.ComputeSpanEnd(text, caret, paragraph.OMathRegions);
                 while (spanStart < spanEnd && char.IsWhiteSpace(text[spanStart])) spanStart++;
                 while (spanEnd > spanStart && char.IsWhiteSpace(text[spanEnd - 1])) spanEnd--;
                 if (spanEnd <= spanStart) return;
@@ -148,7 +135,7 @@ namespace MathCursor.Host
             foreach (var (s, e) in iter.OMaths)
                 if (s <= boundary && boundary < e) { _log("convert: extension bloquée par OMath, stop"); return; }
 
-            int newStart = ComputeSpanStart(iter.ParagraphText, boundary, iter.OMaths);
+            int newStart = SpanComputer.ComputeSpanStart(iter.ParagraphText, boundary, iter.OMaths);
             while (newStart < iter.StringEnd && char.IsWhiteSpace(iter.ParagraphText[newStart])) newStart++;
             if (newStart >= iter.StringStart) return;
 
@@ -417,6 +404,13 @@ namespace MathCursor.Host
                 // WordOpenXML du Record fermerait le record — mesuré
                 // 2026-06-12, ADR hash-source-map amendé).
                 _inserter.FlushPendingRecord();
+
+                // Compteur d'usage anonyme (un entier, aucun contenu) — seulement
+                // si l'utilisateur n'a pas coupé l'opt-out. Cf. ADR
+                // 2026-06-18-Feat-usage-counter-telemetry.
+                if (Settings.SettingsStore.Current.SendUsageStats)
+                    Usage.UsageCounter.Increment();
+
                 return true;
             }
             catch (Exception ex) { _log("commit_error: " + ex.Message); return false; }
@@ -601,107 +595,9 @@ namespace MathCursor.Host
             catch (Exception ex) { _log("feedback_open_error: " + ex.Message); }
         }
 
-        /// <summary>
-        /// Début de la span : max(début ¶, après le dernier délimiteur hors
-        /// brackets/parens, fin du dernier OMath avant caret, après le
-        /// dernier stopword mot-entier). Logique reprise de
-        /// l'ex-ManualTriggerController (comportement validé).
-        /// </summary>
-        internal static int ComputeSpanStart(string text, int caret,
-            IReadOnlyList<(int start, int end)> omathRegions)
-        {
-            int start = 0;
-
-            // Après le dernier délimiteur — walk backward, suivi profondeur.
-            int bracketDepth = 0, parenDepth = 0;
-            for (int k = caret - 1; k >= 0; k--)
-            {
-                char c = text[k];
-                if (c == ']') { bracketDepth++; continue; }
-                if (c == '[') { if (bracketDepth > 0) bracketDepth--; continue; }
-                if (c == ')') { parenDepth++; continue; }
-                if (c == '(') { if (parenDepth > 0) parenDepth--; continue; }
-
-                if (!SpanDelimiters.Contains(c)) continue;
-                if ((c == ';' || c == ',') && (bracketDepth > 0 || parenDepth > 0)) continue;
-                start = Math.Max(start, k + 1);
-                break;
-            }
-
-            // Après la fin du dernier OMath qui se termine avant le caret.
-            if (omathRegions != null)
-                foreach (var (s, e) in omathRegions)
-                    if (e <= caret) start = Math.Max(start, e);
-
-            // Après le dernier stopword (mot entier).
-            int i = caret - 1;
-            while (i >= start)
-            {
-                while (i >= start && char.IsWhiteSpace(text[i])) i--;
-                if (i < start) break;
-                int wordEnd = i + 1;
-                while (i >= start && IsWordChar(text[i])) i--;
-                int wordStart = i + 1;
-                if (wordEnd <= wordStart) { i--; continue; }
-                string w = text.Substring(wordStart, wordEnd - wordStart);
-                if (Stopwords.Contains(w)) { start = wordEnd; break; }
-            }
-
-            return start;
-        }
-
-        /// <summary>
-        /// Fin de la span : min(fin ¶ [sans \r virtuel], premier délimiteur
-        /// hors brackets/parens APRÈS le caret, début du premier OMath après
-        /// le caret, premier stopword mot-entier après le caret). Miroir
-        /// avant de <see cref="ComputeSpanStart"/> — un caret replacé au
-        /// milieu d'une expression la capture en entier.
-        /// </summary>
-        internal static int ComputeSpanEnd(string text, int caret,
-            IReadOnlyList<(int start, int end)> omathRegions)
-        {
-            int end = text.Length;
-            while (end > caret && (text[end - 1] == '\r' || text[end - 1] == '\n')) end--;
-
-            // Premier délimiteur — walk forward avec suivi profondeur brackets/parens.
-            int bracketDepth = 0, parenDepth = 0;
-            for (int k = caret; k < end; k++)
-            {
-                char c = text[k];
-                if (c == '[') { bracketDepth++; continue; }
-                if (c == ']') { if (bracketDepth > 0) bracketDepth--; continue; }
-                if (c == '(') { parenDepth++; continue; }
-                if (c == ')') { if (parenDepth > 0) parenDepth--; continue; }
-
-                if (!SpanDelimiters.Contains(c)) continue;
-                if ((c == ';' || c == ',') && (bracketDepth > 0 || parenDepth > 0)) continue;
-                end = k;
-                break;
-            }
-
-            // Début du premier OMath qui commence après le caret.
-            if (omathRegions != null)
-                foreach (var (s, _) in omathRegions)
-                    if (s >= caret && s < end) end = s;
-
-            // Premier stopword (mot entier) après le caret.
-            int i = caret;
-            while (i < end)
-            {
-                while (i < end && char.IsWhiteSpace(text[i])) i++;
-                if (i >= end) break;
-                int wordStart = i;
-                while (i < end && IsWordChar(text[i])) i++;
-                int wordEnd = i;
-                if (wordEnd <= wordStart) { i++; continue; }
-                string w = text.Substring(wordStart, wordEnd - wordStart);
-                if (Stopwords.Contains(w)) { end = wordStart; break; }
-            }
-
-            return end;
-        }
-
-        private static bool IsWordChar(char c) => char.IsLetter(c) || c == '\'' || c == '-';
+        // ComputeSpanStart / ComputeSpanEnd extraits dans Host/SpanComputer.cs
+        // (logique pure, testable en unitaire). Cf. ADR
+        // 2026-06-18-Fix-input-autocorrect-fraction-factorial.
 
         private void TryStatusBar(string message)
         {

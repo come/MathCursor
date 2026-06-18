@@ -31,6 +31,7 @@ namespace MathCursor.UI
         private readonly ComboBox _matrixBox;
         private readonly CheckBox _autoDetectBox;
         private readonly CheckBox _tabValidateBox;
+        private readonly CheckBox _usageStatsBox;
         private readonly TextBlock _intervalSepHint;
         private readonly TextBlock _matrixHint;
         private readonly TextBlock _preview;
@@ -42,7 +43,7 @@ namespace MathCursor.UI
 
             Title = Strings.SettingsWindowTitle;
             Width = 560;
-            Height = 580;
+            Height = 680;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             ResizeMode = ResizeMode.NoResize;
             ShowInTaskbar = false;
@@ -105,6 +106,26 @@ namespace MathCursor.UI
             _tabValidateBox.Unchecked += (_, __) => { if (!_loading) _draft.TabValidate = false; };
             root.Children.Add(_tabValidateBox);
 
+            // ── Confidentialité (ADR 2026-06-18-Feat-usage-counter-telemetry) ─
+            root.Children.Add(SectionHeader(Strings.SettingsSectionPrivacy));
+            _usageStatsBox = new CheckBox
+            {
+                Content = Strings.SettingsUsageStatsLabel,
+                FontSize = 12,
+                Margin = new Thickness(0, 2, 0, 2),
+            };
+            _usageStatsBox.Checked += (_, __) => { if (!_loading) _draft.SendUsageStats = true; };
+            _usageStatsBox.Unchecked += (_, __) => { if (!_loading) _draft.SendUsageStats = false; };
+            root.Children.Add(_usageStatsBox);
+            root.Children.Add(new TextBlock
+            {
+                Text = Strings.SettingsUsageStatsHint,
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 110)),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(24, 0, 0, 14),
+            });
+
             // ── Aperçu ───────────────────────────────────────────────────
             root.Children.Add(SectionHeader(Strings.SettingsPreviewLabel));
             _preview = new TextBlock
@@ -141,6 +162,7 @@ namespace MathCursor.UI
             _matrixBox.SelectedIndex = effective.MatrixEnv == "bmatrix" ? 1 : 0;
             _autoDetectBox.IsChecked = _draft.AutoDetect;
             _tabValidateBox.IsChecked = _draft.TabValidate;
+            _usageStatsBox.IsChecked = _draft.SendUsageStats;
             _loading = false;
             RefreshHintsAndPreview();
         }

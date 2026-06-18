@@ -183,6 +183,25 @@
     "±": { "sameAs": "pm" },
     "·": { "sameAs": "." },
     "...": { "sameAs": "dots" },
-    "…": { "sameAs": "dots" }
+    "…": { "sameAs": "dots" },
+
+    "¼": { "shape": "atom", "lower": "\\frac{1}{4}", "upper": "\\frac{1}{4}" },
+    "½": { "shape": "atom", "lower": "\\frac{1}{2}", "upper": "\\frac{1}{2}" },
+    "¾": { "shape": "atom", "lower": "\\frac{3}{4}", "upper": "\\frac{3}{4}" },
+    "⅐": { "shape": "atom", "lower": "\\frac{1}{7}", "upper": "\\frac{1}{7}" },
+    "⅑": { "shape": "atom", "lower": "\\frac{1}{9}", "upper": "\\frac{1}{9}" },
+    "⅒": { "shape": "atom", "lower": "\\frac{1}{10}", "upper": "\\frac{1}{10}" },
+    "⅓": { "shape": "atom", "lower": "\\frac{1}{3}", "upper": "\\frac{1}{3}" },
+    "⅔": { "shape": "atom", "lower": "\\frac{2}{3}", "upper": "\\frac{2}{3}" },
+    "⅕": { "shape": "atom", "lower": "\\frac{1}{5}", "upper": "\\frac{1}{5}" },
+    "⅖": { "shape": "atom", "lower": "\\frac{2}{5}", "upper": "\\frac{2}{5}" },
+    "⅗": { "shape": "atom", "lower": "\\frac{3}{5}", "upper": "\\frac{3}{5}" },
+    "⅘": { "shape": "atom", "lower": "\\frac{4}{5}", "upper": "\\frac{4}{5}" },
+    "⅙": { "shape": "atom", "lower": "\\frac{1}{6}", "upper": "\\frac{1}{6}" },
+    "⅚": { "shape": "atom", "lower": "\\frac{5}{6}", "upper": "\\frac{5}{6}" },
+    "⅛": { "shape": "atom", "lower": "\\frac{1}{8}", "upper": "\\frac{1}{8}" },
+    "⅜": { "shape": "atom", "lower": "\\frac{3}{8}", "upper": "\\frac{3}{8}" },
+    "⅝": { "shape": "atom", "lower": "\\frac{5}{8}", "upper": "\\frac{5}{8}" },
+    "⅞": { "shape": "atom", "lower": "\\frac{7}{8}", "upper": "\\frac{7}{8}" }
   }
 }

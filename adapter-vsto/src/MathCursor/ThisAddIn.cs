@@ -49,6 +49,12 @@ namespace MathCursor
                 // une OMath via TypeText programmatique (bug observé 2026-05-18).
                 DisableOMathAutoCorrectOutsideMath();
 
+                // Désactive le remplacement « 1/2 → ½ » : Word injecte un char
+                // de fraction vulgaire que l'utilisateur ne contrôle pas et qui
+                // brouille la frappe math. Cf. ADR 2026-06-18-Fix-input-
+                // autocorrect-fraction-factorial (le moteur tolère ½ en repli).
+                DisableAutoFormatFractions();
+
                 _conversion = new ConversionController(this.Application, BuildFeedbackReport);
 
                 _editMode = new EditModeController(
@@ -96,6 +102,11 @@ namespace MathCursor
                 // suggestion quand le caret bouge. Pas de polling.
                 this.Application.WindowSelectionChange += OnWindowSelectionChange;
 
+                // Compteur d'usage : flush sur perte de focus de Word (ADR
+                // 2026-06-18-Feat-usage-counter-telemetry). Anti-spam interne :
+                // n'envoie que si le compteur > 0.
+                this.Application.WindowDeactivate += OnWindowDeactivate;
+
                 // Préchauffage (UX 2026-06-12) : la PREMIÈRE popup payait HWND
                 // WPF + JIT WpfMath (~1 s de lag perçu). Hors écran, à
                 // priorité idle (après le boot de Word), sur le thread UI.
@@ -129,6 +140,16 @@ namespace MathCursor
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
         {
             try { this.Application.WindowSelectionChange -= OnWindowSelectionChange; } catch { }
+            try { this.Application.WindowDeactivate -= OnWindowDeactivate; } catch { }
+            // Dernier flush du compteur d'usage, best-effort, borné dans le temps
+            // pour ne pas retarder la fermeture de Word (souvent déjà à 0 grâce au
+            // flush sur perte de focus). Hors thread UI → pas de deadlock de contexte.
+            try
+            {
+                System.Threading.Tasks.Task.Run(() => Host.Usage.UsageStatsClient.FlushAsync())
+                    .Wait(TimeSpan.FromSeconds(2));
+            }
+            catch { }
             try { _keyboard?.Dispose(); } catch { }
             try { _autoDetect?.Dispose(); } catch { }
             try { _ner?.Dispose(); } catch { }
@@ -226,6 +247,15 @@ namespace MathCursor
                 catch { }
             }
             catch { }
+        }
+
+        // ── Événement natif : Word perd le focus ─────────────────────────
+
+        // Flush du compteur d'usage (fire-and-forget). FlushAsync ne fait rien
+        // si l'opt-out est coupé ou si le compteur est à zéro.
+        private void OnWindowDeactivate(Word.Document doc, Word.Window wn)
+        {
+            try { _ = Host.Usage.UsageStatsClient.FlushAsync(); } catch { }
         }
 
         // ── Hook clavier ─────────────────────────────────────────────────
@@ -351,6 +381,23 @@ namespace MathCursor
                 }
             }
             catch (Exception ex) { LogStartup("OMathAutoCorrect setup error: " + ex.Message); }
+        }
+
+        /// <summary>
+        /// Coupe l'AutoFormat « Fractions (1/2) → ½ » de Word. Sans ça, taper
+        /// <c>1/2</c> produit le caractère U+00BD que le moteur recevait comme
+        /// « caractère inattendu ». On le désactive globalement au démarrage
+        /// (le moteur sait quand même lire ½ en repli — copier-coller, doc
+        /// existante). Cf. ADR 2026-06-18-Fix-input-autocorrect-fraction-factorial.
+        /// </summary>
+        private void DisableAutoFormatFractions()
+        {
+            try
+            {
+                var options = this.Application.Options;
+                if (options != null) options.AutoFormatAsYouTypeReplaceFractions = false;
+            }
+            catch (Exception ex) { LogStartup("AutoFormatFractions setup error: " + ex.Message); }
         }
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]

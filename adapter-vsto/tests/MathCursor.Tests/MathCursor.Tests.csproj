@@ -72,6 +72,10 @@
     <Compile Include="..\..\src\MathCursor\Host\Detection\ZoneEngineText.cs" Link="adapter-sources\Host\Detection\ZoneEngineText.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Detection\ZoneRefiner.cs" Link="adapter-sources\Host\Detection\ZoneRefiner.cs" />
     <Compile Include="..\..\src\MathCursor\Host\ParagraphTextExtractor.cs" Link="adapter-sources\Host\ParagraphTextExtractor.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\SpanComputer.cs" Link="adapter-sources\Host\SpanComputer.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Usage\UsageCounter.cs" Link="adapter-sources\Host\Usage\UsageCounter.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Settings\AppSettings.cs" Link="adapter-sources\Host\Settings\AppSettings.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Settings\SettingsStore.cs" Link="adapter-sources\Host\Settings\SettingsStore.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Blocks\RelationMarkers.cs" Link="adapter-sources\Host\Blocks\RelationMarkers.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Blocks\RelationLineDetector.cs" Link="adapter-sources\Host\Blocks\RelationLineDetector.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Blocks\LatexTopLevelSplit.cs" Link="adapter-sources\Host\Blocks\LatexTopLevelSplit.cs" />

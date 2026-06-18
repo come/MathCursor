@@ -192,7 +192,10 @@ def _infix_sm(n, cu):
         return _sm(n.parts[0], cu) + " roman " + _atom_sm(n.parts[1].sym)
     tmpl = _INFIX.get(sym)
     if tmpl is not None:
-        return tmpl.replace("{0}", a[0]).replace("{1}", a[1])
+        # Substitution EN UNE PASSE : un opérande peut contenir littéralement
+        # « {0} »/« {1} » (ex. fraction « {1} over {2} ») ; un double .replace()
+        # corromprait ces occurrences internes.
+        return re.sub(r"\{([01])\}", lambda m: a[int(m.group(1))], tmpl)
     return a[0] + " " + (sym or "?") + " " + a[1]
 
 

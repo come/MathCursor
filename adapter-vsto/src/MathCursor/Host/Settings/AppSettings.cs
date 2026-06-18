@@ -36,6 +36,12 @@ namespace MathCursor.Host.Settings
         /// 2026-06-10-UX-tab-validate-toggle.</summary>
         public bool TabValidate { get; set; }
 
+        /// <summary>Envoi du compteur d'usage anonyme (nombre de formules
+        /// converties — un entier, aucun contenu, aucun identifiant). Défaut ON,
+        /// désactivable par l'utilisateur. Coupé → rien n'est compté ni envoyé.
+        /// Cf. ADR 2026-06-18-Feat-usage-counter-telemetry.</summary>
+        public bool SendUsageStats { get; set; } = true;
+
         /// <summary>Preset moteur de la culture de base.</summary>
         public EngineCulture BaseCulture =>
             Culture == CultureUs ? EngineCulture.Us : EngineCulture.Fr;

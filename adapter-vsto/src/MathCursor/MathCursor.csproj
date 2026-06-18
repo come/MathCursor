@@ -186,6 +186,9 @@
     <EmbeddedResource Include="Ribbon.xml" />
     <Compile Include="Host\ColumnLayoutInserter.cs" />
     <Compile Include="Host\ConversionController.cs" />
+    <Compile Include="Host\SpanComputer.cs" />
+    <Compile Include="Host\Usage\UsageCounter.cs" />
+    <Compile Include="Host\Usage\UsageStatsClient.cs" />
     <Compile Include="Host\AutoDetectController.cs" />
     <Compile Include="Host\EquationDeletionGuard.cs" />
     <Compile Include="Host\Blocks\RelationMarkers.cs" />

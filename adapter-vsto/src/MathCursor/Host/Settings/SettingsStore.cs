@@ -15,13 +15,21 @@ namespace MathCursor.Host.Settings
     internal static class SettingsStore
     {
         private static AppSettings _current;
+        private static string _filePath;
 
         /// <summary>Réglages courants (chargés au premier accès). Jamais null.</summary>
         public static AppSettings Current => _current ?? (_current = Load());
 
-        public static string FilePath => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "MathCursor", "settings.json");
+        /// <summary>Chemin du fichier réglages. En prod : lazy
+        /// <c>%AppData%\MathCursor\settings.json</c>. Le setter (réservé aux tests)
+        /// repointe le fichier et vide le cache courant pour l'isolation.</summary>
+        public static string FilePath
+        {
+            get => _filePath ?? (_filePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "MathCursor", "settings.json"));
+            set { _filePath = value; _current = null; }
+        }
 
         public static AppSettings Load()
         {
@@ -74,6 +82,7 @@ namespace MathCursor.Host.Settings
                 sb.Append(",\"matrix_env\":\"").Append(s.MatrixEnvOverride).Append('"');
             sb.Append(",\"auto_detect\":").Append(s.AutoDetect ? "true" : "false");
             sb.Append(",\"tab_validate\":").Append(s.TabValidate ? "true" : "false");
+            sb.Append(",\"send_usage_stats\":").Append(s.SendUsageStats ? "true" : "false");
             sb.Append('}');
             return sb.ToString();
         }
@@ -101,6 +110,10 @@ namespace MathCursor.Host.Settings
             // Clé absente → défaut false (Tab = tabulation normale).
             var tab = ExtractBool(json, "tab_validate");
             if (tab.HasValue) s.TabValidate = tab.Value;
+
+            // Clé absente (settings.json antérieur) → défaut true.
+            var usage = ExtractBool(json, "send_usage_stats");
+            if (usage.HasValue) s.SendUsageStats = usage.Value;
 
             return s;
         }

@@ -24,6 +24,8 @@ entries = [
     (os.path.join(HERE, "oxt", "description.xml"), "description.xml"),
     (os.path.join(HERE, "oxt", "META-INF", "manifest.xml"), "META-INF/manifest.xml"),
     (os.path.join(HERE, "oxt", "Addons.xcu"), "Addons.xcu"),
+    (os.path.join(HERE, "oxt", "Jobs.xcu"), "Jobs.xcu"),
+    (os.path.join(HERE, "oxt", "jobs.py"), "jobs.py"),
     (os.path.join(HERE, "mathcursor.py"), "Scripts/python/mathcursor.py"),
 ]
 
@@ -42,6 +44,10 @@ def add_tree(src_dir, arc_prefix):
 
 add_tree(os.path.join(ROOT, "engine-python", "mc_engine"), "mc_engine")
 add_tree(os.path.join(ROOT, "data", "engine"), "data/engine")
+# Détecteur NER (pur Python). Le modèle ONNX + les deps natives (vendor) ne sont
+# PAS bundlés dans ce build léger : en dev ils sont lus depuis le repo (cf.
+# bootstrap _DEV_MODEL / _spike_vendor). Packaging release cross-OS = étape P4.
+add_tree(os.path.join(HERE, "mc_ner"), "mc_ner")
 
 if os.path.exists(OUT):
     os.remove(OUT)

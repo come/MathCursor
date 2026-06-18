@@ -1,3 +1,8 @@
 # Artefacts de build de l'extension (régénérés par build_oxt.py).
 MathCursor.oxt
 build/
+
+# Spikes jetables (NER) + dépendances natives vendored.
+_spike_*
+_vendor/
+vendor/

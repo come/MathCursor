@@ -6,4 +6,10 @@
   <manifest:file-entry
       manifest:full-path="Scripts/python"
       manifest:media-type="application/vnd.sun.star.framework-script"/>
+  <manifest:file-entry
+      manifest:full-path="Jobs.xcu"
+      manifest:media-type="application/vnd.sun.star.configuration-data"/>
+  <manifest:file-entry
+      manifest:full-path="jobs.py"
+      manifest:media-type="application/vnd.sun.star.uno-component;type=Python"/>
 </manifest:manifest>

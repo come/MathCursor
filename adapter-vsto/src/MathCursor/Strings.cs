@@ -711,6 +711,26 @@ namespace MathCursor
             _    => "Suggest automatically while typing (the Ctrl+Space shortcut always stays active)",
         };
 
+        // ---------- Section « Confidentialité » (compteur d'usage) ----------
+
+        public static string SettingsSectionPrivacy => Lang switch
+        {
+            "fr" => "Confidentialité",
+            _    => "Privacy",
+        };
+
+        public static string SettingsUsageStatsLabel => Lang switch
+        {
+            "fr" => "Envoyer les statistiques d'usage anonymes",
+            _    => "Send anonymous usage statistics",
+        };
+
+        public static string SettingsUsageStatsHint => Lang switch
+        {
+            "fr" => "Un simple compteur du nombre de formules converties. Aucun contenu, aucune donnée personnelle, aucun identifiant — juste un nombre, pour savoir si l'outil sert.",
+            _    => "Just a count of how many formulas you convert. No content, no personal data, no identifier — only a number, to know the tool is used.",
+        };
+
         // ---------- Bouton « Réouvrir le tutoriel » (groupe Aide) ----------
 
         public static string TutorialButtonLabel => Lang switch

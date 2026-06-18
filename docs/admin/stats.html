@@ -138,6 +138,23 @@
         <div id="recent-empty" class="empty" hidden>(aucun téléchargement)</div>
       </div>
     </div>
+
+    <h2 style="margin-top: 40px; font-size: 22px;">Usage produit</h2>
+    <p class="lead">
+      Compteur de formules converties dans l'add-in Word · anonyme (un nombre,
+      aucun contenu, aucun identifiant) · 30 derniers jours.
+    </p>
+    <div class="grid">
+      <div class="card">
+        <h3>Formules converties (30 j)</h3>
+        <div class="total-big" id="usage-total">…</div>
+      </div>
+      <div class="card full">
+        <h3>Par jour</h3>
+        <canvas id="chart-usage" height="100"></canvas>
+        <div id="usage-empty" class="empty" hidden>(aucune formule convertie)</div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -147,7 +164,7 @@
       palette: ['#00236f','#264191','#b6c4ff','#bb0027','#fde047','#888','#aaa','#ccc'],
     };
 
-    let chartVersions, chartCountries, chartDays;
+    let chartVersions, chartCountries, chartDays, chartUsage;
 
     async function loadStats(refresh = false) {
       const url = refresh ? '/admin/api/stats?refresh=1' : '/admin/api/stats';
@@ -299,8 +316,57 @@
       return String(s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
     }
 
-    document.getElementById('refresh').addEventListener('click', () => loadStats(true));
+    // ── Usage produit (compteur de formules converties) ──────────────────
+    // Fetch séparé : une panne de l'agrégation R2 usage ne casse pas les
+    // stats de téléchargement (Analytics Engine), et inversement.
+    async function loadUsage(refresh = false) {
+      const url = refresh ? '/admin/api/usage?refresh=1' : '/admin/api/usage';
+      const errorBox = document.getElementById('error-box');
+      document.getElementById('usage-total').textContent = '…';
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(resp.status + ' ' + await resp.text());
+        renderUsage(await resp.json());
+      } catch (e) {
+        errorBox.innerHTML += '<div class="error">Erreur usage : ' + escape(e.message) + '</div>';
+        document.getElementById('usage-total').textContent = '?';
+      }
+    }
+
+    function renderUsage(data) {
+      const days = data.by_day || [];
+      const totalWindow = (typeof data.total_window === 'number')
+        ? data.total_window
+        : days.reduce((acc, r) => acc + (Number(r.count) || 0), 0);
+      document.getElementById('usage-total').textContent = totalWindow.toLocaleString('fr-FR');
+
+      const hasData = days.some(r => Number(r.count) > 0);
+      document.getElementById('usage-empty').hidden = hasData;
+      if (chartUsage) chartUsage.destroy();
+      if (days.length > 0) {
+        chartUsage = new Chart(document.getElementById('chart-usage'), {
+          type: 'line',
+          data: {
+            labels: days.map(r => (r.day || '').slice(5, 10)),
+            datasets: [{
+              data: days.map(r => Number(r.count)),
+              borderColor: COLORS.red,
+              backgroundColor: '#f7c9d2',
+              fill: true,
+              tension: 0.25,
+            }],
+          },
+          options: {
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } },
+          },
+        });
+      }
+    }
+
+    document.getElementById('refresh').addEventListener('click', () => { loadStats(true); loadUsage(true); });
     loadStats();
+    loadUsage();
   </script>
 </body>
 </html>
