@@ -78,6 +78,50 @@ namespace MathCursor
             _    => "MathCursor",
         };
 
+        /// <summary>Label de l'onglet quand une mise à jour est dispo (indicateur
+        /// passif). Cf. ADR 2026-06-18-Feat-ribbon-update-badge.</summary>
+        public static string MathCursorTabLabelUpdate => Lang switch
+        {
+            "fr" => "MathCursor ● MAJ",
+            _    => "MathCursor ● Update",
+        };
+
+        public static string UpdateGroupLabel => Lang switch
+        {
+            "fr" => "Mise à jour",
+            _    => "Update",
+        };
+
+        public static string UpdateButtonLabel => Lang switch
+        {
+            "fr" => "Mise à jour disponible",
+            _    => "Update available",
+        };
+
+        public static string UpdateButtonScreentip => Lang switch
+        {
+            "fr" => "Une nouvelle version de MathCursor est disponible — ouvrir la page de téléchargement.",
+            _    => "A new version of MathCursor is available — open the download page.",
+        };
+
+        public static string UpdateAvailableTitle => Lang switch
+        {
+            "fr" => "MathCursor — Mise à jour disponible",
+            _    => "MathCursor — Update available",
+        };
+
+        public static string UpdateAvailableBody(string current, string latest) => Lang switch
+        {
+            "fr" =>
+                $"Une nouvelle version de MathCursor est disponible : {latest}\n" +
+                $"(tu utilises la {current}).\n\n" +
+                "Ouvrir la page de téléchargement ?",
+            _ =>
+                $"A new version of MathCursor is available: {latest}\n" +
+                $"(you're on {current}).\n\n" +
+                "Open the download page?",
+        };
+
         public static string InputGroupLabel => Lang switch
         {
             "fr" => "Saisie",
@@ -425,7 +469,8 @@ namespace MathCursor
                 "  (WhatsApp ou email). Ton feedback fait avancer le produit !\n\n" +
                 "Logs techniques : %AppData%\\MathCursor\\logs\\mathcursor.log\n\n" +
                 "MERCI AUX TESTEURS ET CONTRIBUTEURS\n" +
-                "  V. de Salaberry — Collège Le Sacré-Cœur, Vannes, France",
+                "  V. de Salaberry — Collège Le Sacré-Cœur, Vannes, France\n" +
+                "  E. Velay — Lycée Français de Varsovie, Pologne",
             _ =>
                 "MathCursor — Math notation at the keyboard for Word\n" +
                 $"Version {version} — beta\n\n" +
@@ -446,7 +491,8 @@ namespace MathCursor
                 "  (WhatsApp or email). Your feedback drives the product forward!\n\n" +
                 "Technical logs: %AppData%\\MathCursor\\logs\\mathcursor.log\n\n" +
                 "THANKS TO OUR TESTERS AND CONTRIBUTORS\n" +
-                "  V. de Salaberry — Collège Le Sacré-Cœur, Vannes, France",
+                "  V. de Salaberry — Collège Le Sacré-Cœur, Vannes, France\n" +
+                "  E. Velay — Lycée Français de Varsovie, Pologne",
         };
 
         // ---------- Dialog Report ----------

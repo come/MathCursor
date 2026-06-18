@@ -14,7 +14,8 @@
  * Range requests (resume) supportés : R2 gère les ranges nativement.
  */
 
-const LATEST_VERSION = "0.11.0";
+import { LATEST_VERSION } from "../_latest.js";
+
 const LATEST_FILENAME = `MathCursor-Setup-${LATEST_VERSION}.exe`;
 
 export async function onRequestGet(context) {

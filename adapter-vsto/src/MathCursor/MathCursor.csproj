@@ -189,6 +189,8 @@
     <Compile Include="Host\SpanComputer.cs" />
     <Compile Include="Host\Usage\UsageCounter.cs" />
     <Compile Include="Host\Usage\UsageStatsClient.cs" />
+    <Compile Include="Host\Update\VersionCompare.cs" />
+    <Compile Include="Host\Update\UpdateChecker.cs" />
     <Compile Include="Host\AutoDetectController.cs" />
     <Compile Include="Host\EquationDeletionGuard.cs" />
     <Compile Include="Host\Blocks\RelationMarkers.cs" />

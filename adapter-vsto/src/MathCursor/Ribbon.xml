@@ -88,6 +88,20 @@
                   imageMso="Info"
                   onAction="OnAboutClicked" />
         </group>
+        <!-- Groupe « Mise à jour » : le GROUPE entier est caché par défaut et
+             n'apparaît (getVisible) que quand UpdateChecker détecte une version
+             plus récente — placé tout à droite pour être bien visible.
+             Cf. ADR 2026-06-18-Feat-ribbon-update-badge. -->
+        <group id="MathCursorUpdateGroup"
+               getLabel="OnGetUpdateGroupLabel"
+               getVisible="OnGetUpdateGroupVisible">
+          <button id="UpdateButton"
+                  getLabel="OnGetUpdateButtonLabel"
+                  getScreentip="OnGetUpdateButtonScreentip"
+                  size="large"
+                  getImage="OnGetUpdateButtonImage"
+                  onAction="OnUpdateClicked" />
+        </group>
       </tab>
     </tabs>
   </ribbon>

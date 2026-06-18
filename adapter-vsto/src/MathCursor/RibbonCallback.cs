@@ -30,6 +30,23 @@ namespace MathCursor
             try { _ribbon?.InvalidateControl("TabValidateToggle"); } catch { }
         }
 
+        /// <summary>Rafraîchit le label de l'onglet pour (dé)afficher le marqueur
+        /// « MAJ dispo ». Appelé par UpdateChecker quand une version plus récente
+        /// est détectée. Cf. ADR 2026-06-18-Feat-ribbon-update-badge.</summary>
+        internal void InvalidateUpdateBadge()
+        {
+            // Invalidation COMPLÈTE (1×/session) : l'apparition d'un groupe via
+            // getVisible est peu fiable avec InvalidateControl (Office cache la
+            // mise en page des groupes) → on re-évalue tout le ruban une fois.
+            try { _ribbon?.Invalidate(); }
+            catch
+            {
+                // Repli ciblé si Invalidate() échoue pour une raison quelconque.
+                try { _ribbon?.InvalidateControl("MathCursorTab"); } catch { }
+                try { _ribbon?.InvalidateControl("MathCursorUpdateGroup"); } catch { }
+            }
+        }
+
         public string GetCustomUI(string ribbonID)
         {
             try
@@ -59,7 +76,10 @@ namespace MathCursor
 
         // ---------- Labels / screentips ----------
 
-        public string OnGetTabLabel(IRibbonControl control) => Strings.MathCursorTabLabel;
+        public string OnGetTabLabel(IRibbonControl control) =>
+            Host.Update.UpdateChecker.UpdateAvailable
+                ? Strings.MathCursorTabLabelUpdate
+                : Strings.MathCursorTabLabel;
         public string OnGetConversionGroupLabel(IRibbonControl control) => Strings.ConversionGroupLabel;
         public string OnGetLayoutGroupLabel(IRibbonControl control) => Strings.LayoutGroupLabel;
         public string OnGetToolsGroupLabel(IRibbonControl control) => Strings.ToolsTabGroupLabel;
@@ -86,6 +106,27 @@ namespace MathCursor
         public string OnGetAboutButtonScreentip(IRibbonControl control) => Strings.AboutButtonScreentip;
         public string OnGetTutorialButtonLabel(IRibbonControl control) => Strings.TutorialButtonLabel;
         public string OnGetTutorialButtonScreentip(IRibbonControl control) => Strings.TutorialButtonScreentip;
+        // Groupe « Mise à jour » : visible UNIQUEMENT quand une MAJ est dispo.
+        public bool OnGetUpdateGroupVisible(IRibbonControl control) => Host.Update.UpdateChecker.UpdateAvailable;
+        public string OnGetUpdateGroupLabel(IRibbonControl control) => Strings.UpdateGroupLabel;
+        public string OnGetUpdateButtonLabel(IRibbonControl control) => Strings.UpdateButtonLabel;
+        public string OnGetUpdateButtonScreentip(IRibbonControl control) => Strings.UpdateButtonScreentip;
+
+        // Icône custom « tuile jaune + flèche téléchargement » : le ruban Office
+        // ne permet pas de fond coloré sur un bouton, donc le jaune passe par
+        // l'icône (getImage). Mise en cache (l'image est constante).
+        private static stdole.IPictureDisp _updateIcon;
+        public stdole.IPictureDisp OnGetUpdateButtonImage(IRibbonControl control)
+        {
+            try
+            {
+                if (_updateIcon == null)
+                    using (var bmp = BuildUpdateIcon())
+                        _updateIcon = PictureConverter.ToPictureDisp(bmp);
+                return _updateIcon;
+            }
+            catch (Exception ex) { LogDebug("update_image_error: " + ex.Message); return null; }
+        }
 
         // ---------- Actions ----------
 
@@ -229,10 +270,33 @@ namespace MathCursor
 
         public void OnAboutClicked(IRibbonControl control)
         {
+            // Si une MAJ est dispo, l'onglet porte le marqueur « ● MAJ » : le clic
+            // « À propos » sert alors de chemin d'action → propose d'ouvrir la page
+            // de téléchargement. Cf. ADR 2026-06-18-Feat-ribbon-update-badge.
+            if (Host.Update.UpdateChecker.UpdateAvailable)
+            {
+                var r = MessageBox.Show(
+                    Strings.UpdateAvailableBody(CurrentVersion(), Host.Update.UpdateChecker.LatestVersion),
+                    Strings.UpdateAvailableTitle,
+                    MessageBoxButton.YesNo, MessageBoxImage.Information);
+                if (r == MessageBoxResult.Yes) OpenDownloadPage();
+                return;
+            }
+
             MessageBox.Show(
                 Strings.HelpDialogBody(CurrentVersion()),
                 Strings.HelpDialogTitle,
                 MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        /// <summary>Bouton « Mettre à jour » (visible seulement si MAJ dispo) →
+        /// ouvre la page de téléchargement. Cf. ADR 2026-06-18-Feat-ribbon-update-badge.</summary>
+        public void OnUpdateClicked(IRibbonControl control) => OpenDownloadPage();
+
+        private static void OpenDownloadPage()
+        {
+            try { System.Diagnostics.Process.Start("https://mathcursor.pages.dev/releases.html"); }
+            catch (Exception ex) { LogDebug("open_releases_error: " + ex.Message); }
         }
 
         // ---------- Internals ----------
@@ -241,6 +305,59 @@ namespace MathCursor
         {
             try { return Strings.FormatVersion(Assembly.GetExecutingAssembly().GetName().Version); }
             catch { return "?"; }
+        }
+
+        /// <summary>Icône 32×32 du bouton « Mise à jour disponible » : tuile jaune
+        /// arrondie (jaune de marque #FDE047) + flèche de téléchargement bleu encre
+        /// (#00236F). Cf. ADR 2026-06-18-Feat-ribbon-update-badge.</summary>
+        private static System.Drawing.Bitmap BuildUpdateIcon()
+        {
+            var bmp = new System.Drawing.Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = System.Drawing.Graphics.FromImage(bmp))
+            {
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                g.Clear(System.Drawing.Color.Transparent);
+
+                var rect = new System.Drawing.Rectangle(1, 1, 30, 30);
+                using (var path = RoundedRect(rect, 6))
+                using (var fill = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(0xFD, 0xE0, 0x47)))
+                    g.FillPath(fill, path);
+
+                using (var ink = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(0x00, 0x23, 0x6F)))
+                {
+                    g.FillRectangle(ink, 14, 7, 4, 9); // tige de la flèche
+                    g.FillPolygon(ink, new[]           // pointe vers le bas
+                    {
+                        new System.Drawing.Point(9, 14),
+                        new System.Drawing.Point(23, 14),
+                        new System.Drawing.Point(16, 24),
+                    });
+                    g.FillRectangle(ink, 9, 26, 14, 3); // bac (base du download)
+                }
+            }
+            return bmp;
+        }
+
+        private static System.Drawing.Drawing2D.GraphicsPath RoundedRect(System.Drawing.Rectangle r, int radius)
+        {
+            int d = radius * 2;
+            var p = new System.Drawing.Drawing2D.GraphicsPath();
+            p.AddArc(r.X, r.Y, d, d, 180, 90);
+            p.AddArc(r.Right - d, r.Y, d, d, 270, 90);
+            p.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
+            p.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
+            p.CloseFigure();
+            return p;
+        }
+
+        /// <summary>Convertit un <see cref="System.Drawing.Image"/> en
+        /// <c>IPictureDisp</c> attendu par le ruban (callback getImage). Astuce
+        /// AxHost standard (GetIPictureDispFromPicture est protégé statique).</summary>
+        private sealed class PictureConverter : System.Windows.Forms.AxHost
+        {
+            private PictureConverter() : base("59EE46BA-677D-4d20-BF10-8D8067CB8B33") { }
+            public static stdole.IPictureDisp ToPictureDisp(System.Drawing.Image image)
+                => (stdole.IPictureDisp)GetIPictureDispFromPicture(image);
         }
 
         private static void LogDebug(string message)

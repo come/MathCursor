@@ -25,6 +25,9 @@ namespace MathCursor.Host.Feedback
         /// recours si l'URL configurée ne se termine pas par <c>/report</c>).</summary>
         private const string DefaultUsageUrl = "https://mathcursor.pages.dev/api/v1/usage";
 
+        /// <summary>Fallback hardcodé de l'endpoint version (indicateur MAJ).</summary>
+        private const string DefaultVersionUrl = "https://mathcursor.pages.dev/api/v1/version";
+
         public static IFeedbackSender Create()
         {
             return new HttpFeedbackSender(ResolveReportUrl());
@@ -49,6 +52,18 @@ namespace MathCursor.Host.Feedback
             if (url.EndsWith(reportSuffix, StringComparison.Ordinal))
                 return url.Substring(0, url.Length - reportSuffix.Length) + "/usage";
             return DefaultUsageUrl;
+        }
+
+        /// <summary>URL de l'endpoint version (indicateur MAJ), dérivée de
+        /// <see cref="ResolveReportUrl"/> en remplaçant le segment final
+        /// <c>/report</c> par <c>/version</c>. Cf. ADR 2026-06-18-Feat-ribbon-update-badge.</summary>
+        public static string ResolveVersionUrl()
+        {
+            string url = ResolveReportUrl();
+            const string reportSuffix = "/report";
+            if (url.EndsWith(reportSuffix, StringComparison.Ordinal))
+                return url.Substring(0, url.Length - reportSuffix.Length) + "/version";
+            return DefaultVersionUrl;
         }
 
         private static string ReadConfiguredUrl()

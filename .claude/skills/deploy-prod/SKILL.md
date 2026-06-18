@@ -50,17 +50,31 @@ Stocke `OLD_VERSION` et `NEW_VERSION` pour la suite.
 
 ## Étape 2 — Bump version dans les fichiers
 
-Edit deux fichiers :
+Edit **trois** fichiers (un oubli sur l'un désynchronise « À propos » / l'indicateur
+MAJ / le download — bug réel vécu sur la 0.11.0) :
 
 **a) `adapter-vsto/installer/MathCursor.iss`** :
 ```
 #define MyAppVersion "<OLD_VERSION>"  →  #define MyAppVersion "<NEW_VERSION>"
 ```
 
-**b) `docs/functions/download/[[filename]].js`** :
+**b) `docs/functions/_latest.js`** (source unique consommée par `download/[[filename]].js`
+ET `api/v1/version.js` — l'endpoint que l'add-in interroge pour l'indicateur MAJ) :
 ```
-const LATEST_VERSION = "<OLD_VERSION>";  →  const LATEST_VERSION = "<NEW_VERSION>";
+export const LATEST_VERSION = "<OLD_VERSION>";  →  export const LATEST_VERSION = "<NEW_VERSION>";
 ```
+
+**c) `adapter-vsto/src/MathCursor/Properties/AssemblyInfo.cs`** (sinon l'add-in se
+déclare sur l'ancienne version → « À propos » faux + l'indicateur MAJ faux-positive ;
+cf. ADR 2026-06-18-Feat-ribbon-update-badge) :
+```
+[assembly: AssemblyVersion("<OLD_VERSION>.0")]      →  [assembly: AssemblyVersion("<NEW_VERSION>.0")]
+[assembly: AssemblyFileVersion("<OLD_VERSION>.0")]  →  [assembly: AssemblyFileVersion("<NEW_VERSION>.0")]
+```
+
+> ⚠️ Le bump (c) `AssemblyInfo.cs` doit être fait **AVANT `/build-iss`** (l'EXE
+> embarque la version au moment du build). Si l'installer a déjà été buildé sans,
+> le rebuilder après le bump.
 
 ---
 

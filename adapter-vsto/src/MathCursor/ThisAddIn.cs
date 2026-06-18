@@ -125,6 +125,15 @@ namespace MathCursor
                     catch (Exception exW) { LogStartup("warmup_engine_error: " + exW.Message); }
                 });
 
+                // Vérif MAJ (indicateur « ● MAJ » sur l'onglet) : GET au démarrage,
+                // fire-and-forget. Le rafraîchissement du ruban DOIT repasser sur le
+                // thread UI Office → on capture son Dispatcher ici (Startup = thread UI).
+                // Cf. ADR 2026-06-18-Feat-ribbon-update-badge.
+                var uiDispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+                System.Threading.Tasks.Task.Run(() => Host.Update.UpdateChecker.CheckAsync(
+                    () => uiDispatcher.BeginInvoke(new Action(
+                        () => RibbonCallback.Instance?.InvalidateUpdateBadge()))));
+
                 this.Application.StatusBar = "MathCursor prêt";
             }
             catch (Exception ex)
