@@ -1,0 +1,204 @@
+{"text": "@x", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "@t = @p/2", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "@lambda", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "@u", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit @a@b.", "spans": [{"start": 5, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "@p/4", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "Contactez @marie pour le projet.", "spans": [], "lang": "fr"}
+{"text": "@W", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "Her handle is @sarah_codes.", "spans": [], "lang": "en"}
+{"text": "@pi", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "@beta", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "On note @a_n.", "spans": [{"start": 8, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "½", "spans": [{"start": 0, "end": 1, "label": "MATH"}], "lang": "fr"}
+{"text": "On note n**2.", "spans": [{"start": 8, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère sum k 1 n @a_k.", "spans": [{"start": 13, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "@o", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "Let @a x + @b.", "spans": [{"start": 4, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "@G", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "1/@a+1", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose @a^2.", "spans": [{"start": 8, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider a**b.", "spans": [{"start": 9, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "@w", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider @m + @s.", "spans": [{"start": 9, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "@c", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "@a_n", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer cos @t.", "spans": [{"start": 9, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "@d", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "On a r@e^(i@t).", "spans": [{"start": 5, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Compute @a = @b.", "spans": [{"start": 8, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "Le résultat vaut @a**2.", "spans": [{"start": 17, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "@T", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider 1/@a.", "spans": [{"start": 9, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "n**2", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose x**2 + y**2.", "spans": [{"start": 8, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "@D x", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "On a x**3-1.", "spans": [{"start": 5, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "@D", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "@a+@b", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "x**-1", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "@phi", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "3@a", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "Mets **la définition** en évidence.", "spans": [], "lang": "fr"}
+{"text": "@p^2", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "@k", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "On note @beta.", "spans": [{"start": 8, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose @a in R.", "spans": [{"start": 8, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Réponds à @paul avant midi.", "spans": [], "lang": "fr"}
+{"text": "On a sin @t.", "spans": [{"start": 5, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "e**x", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "**Note** the exception here.", "spans": [], "lang": "en"}
+{"text": "(x+1)**2", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, (a+b)**2.", "spans": [{"start": 18, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, @a = @b.", "spans": [{"start": 18, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "On note @x.", "spans": [{"start": 8, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "@theta", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Compute @a^2.", "spans": [{"start": 8, "end": 12, "label": "MATH"}], "lang": "en"}
+{"text": "Compute e**x.", "spans": [{"start": 8, "end": 12, "label": "MATH"}], "lang": "en"}
+{"text": "@e", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "@omega", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider n**2.", "spans": [{"start": 9, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "On a @D x.", "spans": [{"start": 5, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "(a+b)**2", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "@gamma", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "@t", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "@s^2", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "exp(i@t)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "**Attention** au piège de l'énoncé.", "spans": [], "lang": "fr"}
+{"text": "@g", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose 3¾.", "spans": [{"start": 8, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit @t = @p/2.", "spans": [{"start": 5, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "½+½", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "@a@b", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit @p/4.", "spans": [{"start": 5, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "@psi", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "⅛", "spans": [{"start": 0, "end": 1, "label": "MATH"}], "lang": "fr"}
+{"text": "Consider sum k 1 n @a_k.", "spans": [{"start": 9, "end": 23, "label": "MATH"}], "lang": "en"}
+{"text": "⅔", "spans": [{"start": 0, "end": 1, "label": "MATH"}], "lang": "fr"}
+{"text": "Follow @openai for updates.", "spans": [], "lang": "en"}
+{"text": "@a x + @b", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "@a**2", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "1/@a", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "x**2 + y**2", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "1-¾", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "@sigma", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "@a", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "2@p r", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "@h", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "@S", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère @sigma.", "spans": [{"start": 13, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "@L", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x)=½", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère @T.", "spans": [{"start": 13, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "a½", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "Let @a-@b.", "spans": [{"start": 4, "end": 9, "label": "MATH"}], "lang": "en"}
+{"text": "On a a½.", "spans": [{"start": 5, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "@a^2 + @b^2", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "@a in R", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "@admin a fermé le ticket hier.", "spans": [], "lang": "fr"}
+{"text": "¼", "spans": [{"start": 0, "end": 1, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer @s^2.", "spans": [{"start": 9, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "x**3-1", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "C'est **très** important à retenir.", "spans": [], "lang": "fr"}
+{"text": "10**3", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "½n", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "@a-@b", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Écris à support@ecole.fr si besoin.", "spans": [], "lang": "fr"}
+{"text": "On a 1/@a.", "spans": [{"start": 5, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Compute r@e^(i@t).", "spans": [{"start": 8, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "r@e^(i@t)", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "This is **really** important.", "spans": [], "lang": "en"}
+{"text": "x=½", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "Compute lim @e 0.", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "f(@a)", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "@F", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "We have exp(i@t).", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "Suivez @mathcursor sur le réseau.", "spans": [], "lang": "fr"}
+{"text": "x**2+1", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "@p", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "We set cos @t.", "spans": [{"start": 7, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "Soit @a x + @b.", "spans": [{"start": 5, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "@l/2", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "sin @t", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "@delta", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "@a = @b", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, @m + @s.", "spans": [{"start": 18, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer ¾y.", "spans": [{"start": 9, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Mentionne @tout-le-monde dans le canal.", "spans": [], "lang": "fr"}
+{"text": "⅓", "spans": [{"start": 0, "end": 1, "label": "MATH"}], "lang": "fr"}
+{"text": "¾", "spans": [{"start": 0, "end": 1, "label": "MATH"}], "lang": "fr"}
+{"text": "Le résultat vaut lim @e 0.", "spans": [{"start": 17, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Compute @a in R.", "spans": [{"start": 8, "end": 15, "label": "MATH"}], "lang": "en"}
+{"text": "The result is 2@p.", "spans": [{"start": 14, "end": 17, "label": "MATH"}], "lang": "en"}
+{"text": "On considère 1-¾.", "spans": [{"start": 13, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "Le résultat vaut ½x.", "spans": [{"start": 17, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "cos @t", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "@l", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "cos(x)**2", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit 2@p.", "spans": [{"start": 5, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "⅕", "spans": [{"start": 0, "end": 1, "label": "MATH"}], "lang": "fr"}
+{"text": "@s", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "Le résultat vaut @a-@b.", "spans": [{"start": 17, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Le résultat vaut 1/@a+1.", "spans": [{"start": 17, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "x**2", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère exp(i@t).", "spans": [{"start": 13, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "@m + @s", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "On a a**b.", "spans": [{"start": 5, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "3¾", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "2**n", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "¾y", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "v(@a)", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "@m", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "@O", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "2**10", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, @a^2 + @b^2.", "spans": [{"start": 18, "end": 29, "label": "MATH"}], "lang": "fr"}
+{"text": "@mu", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "@tau", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "@varphi", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, @p^2.", "spans": [{"start": 18, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Le mot **clé** est en gras.", "spans": [], "lang": "fr"}
+{"text": "a**b", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "Send it to admin@school.org.", "spans": [], "lang": "en"}
+{"text": "lim @e 0", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "@P", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "Le résultat vaut v(@a).", "spans": [{"start": 17, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "@a^2", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "Le résultat vaut 3@a.", "spans": [{"start": 17, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose @omega.", "spans": [{"start": 8, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Le résultat vaut @l/2.", "spans": [{"start": 17, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "On a x**2+1.", "spans": [{"start": 5, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Envoyez un mail à jean@exemple.fr.", "spans": [], "lang": "fr"}
+{"text": "Calculer 10**3.", "spans": [{"start": 9, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "@b", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "x @a y", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Compute (a+b)**2.", "spans": [{"start": 8, "end": 16, "label": "MATH"}], "lang": "en"}
+{"text": "½x", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit @a+@b.", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "@f", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer ⅛.", "spans": [{"start": 9, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Use **bold** for emphasis.", "spans": [], "lang": "en"}
+{"text": "@r", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer x @a y.", "spans": [{"start": 9, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer @s.", "spans": [{"start": 9, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "On note @p.", "spans": [{"start": 8, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "D'après le cours, f(@a).", "spans": [{"start": 18, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "½ x + ¼", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "½+¼", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "½ + ¼", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "@n", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "We set f(@a).", "spans": [{"start": 7, "end": 12, "label": "MATH"}], "lang": "en"}
+{"text": "Email me at john@example.com.", "spans": [], "lang": "en"}
+{"text": "2½", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "@A", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "Le résultat vaut @o.", "spans": [{"start": 17, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit @P.", "spans": [{"start": 5, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère ¾.", "spans": [{"start": 13, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit x=½.", "spans": [{"start": 5, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "@B", "spans": [{"start": 0, "end": 2, "label": "MATH"}], "lang": "fr"}
+{"text": "Ping @everyone in the channel.", "spans": [], "lang": "en"}
+{"text": "sum k 1 n @a_k", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "@alpha", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Mon pseudo est @lucas2010.", "spans": [], "lang": "fr"}
+{"text": "Compute @a**2.", "spans": [{"start": 8, "end": 13, "label": "MATH"}], "lang": "en"}
+{"text": "On considère 2@p r.", "spans": [{"start": 13, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "2@p", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}

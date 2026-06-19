@@ -199,10 +199,11 @@ namespace MathCursor
         }
 
         /// <summary>
-        /// Cherche <c>distilmult-v6</c> (model_quantized.onnx + vocab.txt)
-        /// dans les emplacements standards. Null si absent (le modèle
-        /// ~129 Mo n'est pas dans git ; l'installer le déploie, et en dev le
-        /// fallback DocMath s'applique).
+        /// Cherche le modèle NER (model_quantized.onnx + vocab.txt) dans les
+        /// emplacements standards, en préférant la version la plus récente
+        /// (<c>distilmult-v7</c>, fallback <c>distilmult-v6</c>). Null si absent
+        /// (le modèle ~132 Mo n'est pas dans git ; l'installer le déploie, et en
+        /// dev le fallback DocMath s'applique).
         /// </summary>
         private static string TryFindModelDir()
         {
@@ -215,15 +216,18 @@ namespace MathCursor
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "models"),
                 @"D:\Software\DocMath\models", // dev
             };
-            foreach (var root in roots)
-            {
-                if (string.IsNullOrEmpty(root)) continue;
-                var p = Path.Combine(root, "distilmult-v6");
-                if (Directory.Exists(p)
-                    && File.Exists(Path.Combine(p, "model_quantized.onnx"))
-                    && File.Exists(Path.Combine(p, "vocab.txt")))
-                    return p;
-            }
+            // Préférence à la version la plus récente, TOUTES racines confondues
+            // (un v7 en dev prime sur un v6 résiduel ailleurs).
+            foreach (var name in new[] { "distilmult-v7", "distilmult-v6" })
+                foreach (var root in roots)
+                {
+                    if (string.IsNullOrEmpty(root)) continue;
+                    var p = Path.Combine(root, name);
+                    if (Directory.Exists(p)
+                        && File.Exists(Path.Combine(p, "model_quantized.onnx"))
+                        && File.Exists(Path.Combine(p, "vocab.txt")))
+                        return p;
+                }
             return null;
         }
 

@@ -18,6 +18,8 @@ Colab (GPU T4 gratuit) avec les .jsonl de `data/ner-corpus/`.
 | `build_v6_recent_features.py` / `build_v6_1_targeted.py` | v6 — vecteurs, coordonnées |
 | `build_regression_v1_gold.py` | corpus gold du test F1 anti-rechute (`MathNerInferenceTests`) |
 | `build_v8_nary_short_forms.py` | v8 — iint/iiint, formes courtes n-aires, mots-clés nus, autocap Word (2026-06-11) |
+| `build_v9_relation_markers.py` | v9 — marqueurs de relation ≈ en tête de ligne (`approx`/`environ`/`env`/`≈`, 0 occurrence avant v9), autocap Word, + distractors prose (`environ 50 personnes`, `environnement`, `enveloppe`, `env folder`) (2026-06-19) |
+| `build_v10_recent_syntaxes.py` | v10 — syntaxes moteur récentes 0-occurrence : raccourci grec `@` (`@a`, `@p`, `2@p`, `@D`…), fractions vulgaires `½ ¾ ⅓`, puissance `**` ; + distractors homonymes CRITIQUES (handles `@marie`/emails, gras markdown `**texte**`) (2026-06-19) |
 
 > Dossier rapatrié de `D:\Software\DocMath\tools\ner-training` le 2026-06-11.
 > Le script de `extension_v7_conjunction_at_start.jsonl` n'a pas été retrouvé

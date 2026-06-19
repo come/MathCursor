@@ -50,6 +50,24 @@ script n'a pas été retrouvé lors du rapatriement DocMath → MathCursor) :
   `produit` était un chemin mort moteur+refiner). 298 lignes. Baseline
   distilmult-v5 (rev3 à 304 lignes, avant fold) : F1 0.865 — cible
   post-retrain ≥ 0.95 ET gold ≥ 0.99.
+- `extension_v9_relation_markers.jsonl` — **marqueurs de relation ≈ en tête de
+  ligne** (`approx`/`environ`/`env`/`≈`, **0 occurrence avant v9** comme iint
+  avant v8) : la ligne entière marqueur inclus = UNE zone MATH (`environ f(x)` →
+  `≈ f(x)` côté adapter). Autocap Word (`Env`/`Environ`/`Approx`). Distractors
+  PROSE : `environ`/`env`/`approx` en sens commun (`environ 50 personnes`,
+  `l'environnement`, `l'enveloppe`, `env folder`, `approximate cost`) =
+  spans=[]. Marqueur SEUL absent des positifs (prose fréquente). 211 lignes,
+  192 positifs / 19 négatifs. ADR 2026-06-19-Fix-environ-env-line-start-approx-marker.
+- `extension_v10_recent_syntaxes.jsonl` — **syntaxes de saisie moteur récentes,
+  0 occurrence avant v10** : (1) raccourci grec `@` (`@a`→α, `@p`→π/φ/ψ, `@theta`,
+  `@D`→Δ, `2@p`, `@a+@b`, `r@e^(i@t)`) — le NER n'avait JAMAIS vu de `@` ; (2)
+  fractions vulgaires `½ ¾ ⅓ ⅔ ¼` (release 0.11.0) ; (3) puissance `**` (`x**2`,
+  backlog #1). **Distractors homonymes CRITIQUES** (sinon faux positifs massifs) :
+  `@`+handle/email/mention (`@marie`, `jean@exemple.fr`, `@everyone`) et gras
+  markdown `**texte**` = spans=[]. NB : les lettres grecques EN TOUTES LETTRES
+  (alpha/pi/theta…) étaient déjà couvertes (pi 599, alpha 320) — seule la forme
+  `@` manquait. 204 lignes, 184 positifs / 20 négatifs. Commits `f054ad9`
+  (`**`), `ba503d1` (varphi), `bfbf1ad` (0.11.0 fractions).
 
 ## Accents : FOLDÉS partout (décision 2026-06-11)
 

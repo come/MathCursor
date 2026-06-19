@@ -1,0 +1,211 @@
+{"text": "Environ 1,5", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "x ≈ y", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "environ 1,5", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ 3,14", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "approx 2pi", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ f(x)+1", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "approx 1/2", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Le résultat est n approx 100.", "spans": [{"start": 16, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Le résultat est approx x.", "spans": [{"start": 16, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "On obtient approx 5.", "spans": [{"start": 11, "end": 19, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ 1/n", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "env 2pi", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "env 2x+1", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ g(x)", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ 2x+1", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "X approx y", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "env pi", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Env f(x)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx x-1", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "approx 3,14", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx 1/2", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Env 1,5", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "approx f(x)+1", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ 0,5", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "We will arrive in approximately one hour.", "spans": [], "lang": "en"}
+{"text": "approx e^x", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Env e^x", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ 100", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "approx g(x)", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "approx u_n", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "F(x) ≈ 3", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx e^x", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx a", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Ainsi environ f(x).", "spans": [{"start": 6, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Pi environ 3,14", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "A environ b", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Numériquement, env sqrt 2.", "spans": [{"start": 15, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Env 0,5", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "approx x-1", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Ainsi environ e^x.", "spans": [{"start": 6, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ x", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "env 100", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "The approximate cost is still unknown.", "spans": [], "lang": "en"}
+{"text": "Une enveloppe timbrée est jointe au dossier.", "spans": [], "lang": "fr"}
+{"text": "Environ 1/2", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx 2x+1", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Env f(x)+1", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "environ 10^3", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "x approx y", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "approx 0,5", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "environ 100", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ sqrt 2", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Env x^2", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "env 5", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "u_n environ 0", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Il y avait environ cinquante personnes dans la salle.", "spans": [], "lang": "fr"}
+{"text": "approx n", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ x-1", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "env 3,14", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "X environ 3", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "U_n environ 0", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "approx pi", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Env 10^3", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx x^2", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx 1/n", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Donc environ u_n.", "spans": [{"start": 5, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "Env pi", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Env u_n", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx 10^3", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "env sqrt 2", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Env x-1", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "≈ 1/2", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "approx 1,5", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Env 0", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "≈ pi", "spans": [{"start": 0, "end": 4, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ f(x)", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "On obtient environ 0.", "spans": [{"start": 11, "end": 20, "label": "MATH"}], "lang": "fr"}
+{"text": "≈ 3,14", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx u_n", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "environ f(x)", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ 0", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "env u_n", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "Env 1/n", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "On obtient env n.", "spans": [{"start": 11, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "environ 2pi", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ e^x", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "On obtient ≈ 1/2.", "spans": [{"start": 11, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "On a env 3,14.", "spans": [{"start": 5, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "x environ 3", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "On obtient environ 1/2.", "spans": [{"start": 11, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Donc approx f(x)+1.", "spans": [{"start": 5, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ 10^3", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "On obtient approx x-1.", "spans": [{"start": 11, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "Env 2x+1", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Le trajet dure environ vingt minutes.", "spans": [], "lang": "fr"}
+{"text": "environ 0,5", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "environ sqrt 2", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Le résultat est approx 1/n.", "spans": [{"start": 16, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "≈ x", "spans": [{"start": 0, "end": 3, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx f(x)+1", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Env 5", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "F(x) environ 3", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "env 10^3", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx sqrt 2", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "approx sqrt 2", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "env f(x)+1", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Env a", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Ainsi environ 100.", "spans": [{"start": 6, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx 3,14", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Env g(x)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "env 1/n", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "Env 100", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "env e^x", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "pi environ 3,14", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Elle a dépensé environ deux cents euros.", "spans": [], "lang": "fr"}
+{"text": "f(x) approx g(x)", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "approx x", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "environ n", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Range le courrier dans l'enveloppe.", "spans": [], "lang": "fr"}
+{"text": "environ 2x+1", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "environ e^x", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Env n", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ 5", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "env 1/2", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "approx 5", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "environ x^2", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Il faut protéger l'environnement.", "spans": [], "lang": "fr"}
+{"text": "environ u_n", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Il reste environ la moitié du gâteau.", "spans": [], "lang": "fr"}
+{"text": "Save the config in the env folder.", "spans": [], "lang": "en"}
+{"text": "Il a une grande envie de réussir son examen.", "spans": [], "lang": "fr"}
+{"text": "environ x-1", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx x", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ n", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx 5", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "approx f(x)", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "environ x", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "env n", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "1/n approx 0", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "approx 1/n", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Ainsi approx u_n.", "spans": [{"start": 6, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "≈ 0,5", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx g(x)", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "environ f(x)+1", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "Ainsi env 1/2.", "spans": [{"start": 6, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "env 0,5", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx f(x)", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "env x-1", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "environ 1/2", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "≈ f(x)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "Le résultat est env 5.", "spans": [{"start": 16, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "approx 2x+1", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Env 2pi", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "The surroundings of the lake are beautiful.", "spans": [], "lang": "en"}
+{"text": "environ 3,14", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx 2pi", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ x^2", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx 1,5", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "env f(x)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "L'environnement de travail est très agréable.", "spans": [], "lang": "fr"}
+{"text": "F(x) approx g(x)", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "There were about fifty people in the room.", "spans": [], "lang": "en"}
+{"text": "environ 1/n", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx 100", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Nous arriverons dans environ une heure.", "spans": [], "lang": "fr"}
+{"text": "approx x^2", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Env 3,14", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "env x^2", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "approx 10^3", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "environ 5", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) ≈ 3", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Env sqrt 2", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "We get 1/n approx 0.", "spans": [{"start": 7, "end": 19, "label": "MATH"}], "lang": "en"}
+{"text": "environ 0", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx n", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "env a", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "1/n approx 0", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "X ≈ y", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "environ g(x)", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "approx a", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "n approx 100", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Numériquement, env 1,5.", "spans": [{"start": 15, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ u_n", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "approx 0", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "approx 100", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "N approx 100", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "Numériquement, environ 2x+1.", "spans": [{"start": 15, "end": 27, "label": "MATH"}], "lang": "fr"}
+{"text": "Approx 0", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "env x", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ un tiers des élèves étaient absents.", "spans": [], "lang": "fr"}
+{"text": "Environ 2pi", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "He set the env variable before running it.", "spans": [], "lang": "en"}
+{"text": "Approx 0,5", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Les environs du village sont magnifiques.", "spans": [], "lang": "fr"}
+{"text": "Approx pi", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "environ a", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Env 1/2", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "f(x) environ 3", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "a environ b", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "The development environment is ready.", "spans": [], "lang": "en"}
+{"text": "Environ pi", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "env 0", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "environ pi", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Le résultat est approx 1/2.", "spans": [{"start": 16, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "env g(x)", "spans": [{"start": 0, "end": 8, "label": "MATH"}], "lang": "fr"}
+{"text": "Donc approx sqrt 2.", "spans": [{"start": 5, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "env 1,5", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "So x ≈ y.", "spans": [{"start": 3, "end": 8, "label": "MATH"}], "lang": "en"}
+{"text": "Ainsi env 2pi.", "spans": [{"start": 6, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Env x", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "Environ a", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
