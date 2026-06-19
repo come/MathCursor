@@ -57,3 +57,17 @@ non-régression. La notation Leibniz `\frac{d^2 f}{dx^2}` reste hors périmètre
 
 `Analyze("a ≈ b")` / `("a environ b")` → `a\approx b` ;
 `Analyze("u''(t)")` → `u''(t)` ; `("f''(x)=0")` → `f''(x)=0`. Corpus 447/447 vert.
+
+## Suivi 2026-06-19 — `approx` se comporte comme `=`
+
+Retour utilisateur : « approx doit se comporter exactement comme `= >= > < <=` :
+il peut lier, ou faire un début de ligne ». Or `approx` (mot) tombait en **atome
+littéral** quand tapé sans opérande gauche, alors que les relations-**symbole**
+(`=`, `<`, `≤`…) restent toujours infixes. Fix (`Lexer.Word`) : un infixe-mot
+**relation** (`cut: true` — `approx`, `in`, `equiv`, `cong`, `subset`…) sans
+opérande gauche est désormais émis en **infixe** (comme `=`), pas en littéral →
+`approx` seul = erreur (tête-de-relation, comme `=`), `a approx b` lie, et le
+début-de-ligne est géré par `RelationMarkers` (qui listait déjà `approx`/`≈`).
+Les infixes-mots **non**-relations (`union`, `mod`…) restent littéraux quand
+seuls. 450/450 vert, zéro régression. (Piste « symbole nu » d'abord tentée puis
+abandonnée — l'utilisateur veut le comportement relation, pas un atome ≈.)

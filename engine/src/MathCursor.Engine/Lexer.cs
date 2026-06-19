@@ -92,6 +92,11 @@ internal static class Lexer
                 bool binaryPos = prev != null && (prev.Kind is "atom" or "rparen" or "bracket" or "bar" or "postfix");
                 if (binaryPos) Push(new Token { Kind = "infix", Sym = k, Spaced = sp });
                 else if (v.Unary != null) Push(new Token { Kind = "prefix", Sym = v.Unary, Spaced = sp });
+                // Relation-MOT (cut:true — approx, in, equiv, cong…) sans opérande
+                // gauche : reste INFIXE comme les relations-symbole « = ≤ < »
+                // (tête-de-relation → géré par la couche chaîne / erreur). Les
+                // autres infixes-mots seuls (union, mod…) restent littéraux.
+                else if (v.Cut) Push(new Token { Kind = "infix", Sym = k, Spaced = sp });
                 else Push(new Token { Kind = "atom", Sym = w });
             }
             else if (v is { WordSpace: true } && !IsSpace(Ch(i)))
