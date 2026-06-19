@@ -147,8 +147,8 @@ internal static class Vocabulary
 
         // ── ALIAS (data/engine/cultures.json) + validation ─────────────────
         var aliasMaps = EngineData.Obj(EngineData.Obj(EngineData.Load("cultures.json"))["aliases"]);
-        AliasesFr = MergeAliases(EngineData.StrMap(aliasMaps["generic"]), EngineData.StrMap(aliasMaps["fr"]));
-        AliasesUs = MergeAliases(EngineData.StrMap(aliasMaps["generic"]), EngineData.StrMap(aliasMaps["en"]));
+        AliasesFr = AddPrefixAliases(MergeAliases(EngineData.StrMap(aliasMaps["generic"]), EngineData.StrMap(aliasMaps["fr"])));
+        AliasesUs = AddPrefixAliases(MergeAliases(EngineData.StrMap(aliasMaps["generic"]), EngineData.StrMap(aliasMaps["en"])));
 
         // ── ROLE : rôle de jonction → symbole (aucun opérateur nommé en dur) ─
         foreach (var kv in Vocab)
@@ -290,6 +290,48 @@ internal static class Vocabulary
         foreach (var kv in merged)
             if (!Vocab.ContainsKey(kv.Value))
                 throw new InvalidOperationException($"alias '{kv.Key}' → cible inconnue '{kv.Value}'");
+        return merged;
+    }
+
+    // Préfixe minimal généré comme alias : 4 lettres. À 3, trop de mots/variables
+    // courants (« for », « per », « uni »…) seraient capturés ; à 4 (« fora »,
+    // « unio », « appro »…) l'intention est sans ambiguïté.
+    private const int MinPrefixLen = 4;
+
+    private static bool IsAlphaWord(string s)
+    {
+        if (s.Length == 0) return false;
+        foreach (var c in s)
+            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) return false;
+        return true;
+    }
+
+    // Génère les alias de PRÉFIXE non ambigus (backlog moteur #2) : pour chaque
+    // mot-clé Vocab / alias alphabétique, tout préfixe ≥ MinPrefixLen qui n'est
+    // pas déjà une forme exacte et ne préfixe qu'UNE seule cible canonique devient
+    // un alias vers cette cible. Réutilise le mécanisme d'alias (Canon) — pas de
+    // machinerie dédiée. Ambigus (« arc »→arcsin/arccos/arctan, « sub »→subset/
+    // subseteq) : non générés → l'utilisateur tape une lettre de plus.
+    private static IReadOnlyDictionary<string, string> AddPrefixAliases(IReadOnlyDictionary<string, string> aliases)
+    {
+        var forms = new List<KeyValuePair<string, string>>();
+        foreach (var key in Vocab.Keys) if (IsAlphaWord(key)) forms.Add(new KeyValuePair<string, string>(key, key));
+        foreach (var kv in aliases) if (IsAlphaWord(kv.Key)) forms.Add(new KeyValuePair<string, string>(kv.Key, kv.Value));
+
+        var prefixCanons = new Dictionary<string, HashSet<string>>();
+        foreach (var f in forms)
+            for (int len = MinPrefixLen; len < f.Key.Length; len++)
+            {
+                var p = f.Key.Substring(0, len);
+                if (Vocab.ContainsKey(p) || aliases.ContainsKey(p)) continue; // forme exacte prioritaire
+                if (!prefixCanons.TryGetValue(p, out var set)) prefixCanons[p] = set = new HashSet<string>();
+                set.Add(f.Value);
+            }
+
+        var merged = new Dictionary<string, string>();
+        foreach (var kv in aliases) merged[kv.Key] = kv.Value;
+        foreach (var kv in prefixCanons)
+            if (kv.Value.Count == 1) merged[kv.Key] = kv.Value.First(); // préfixe NON ambigu
         return merged;
     }
 }

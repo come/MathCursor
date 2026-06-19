@@ -229,8 +229,6 @@ namespace MathCursor.Host
             }
 
             var candidates = result.Ranked.Select(c => c.Latex).ToList();
-            // Étiquettes « mot-clé » (expansion de préfixe), alignées par index.
-            var hints = result.Ranked.Select(c => c.Hint).ToList();
             _log($"convert: {result.Decision}, {candidates.Count} candidat(s), top=\"{(displayPrefix + candidates[0])}\"");
 
             // Aperçu de MERGE (demande user 2026-06-10) : si la ligne du
@@ -252,7 +250,7 @@ namespace MathCursor.Host
             EnsurePopup();
             var (x, yBelow, yAbove) = ComputeAnchor(zone);
             _zone = zone;
-            _popup.ShowCandidates(display, x, yBelow, yAbove, zone.Text, mergeKind, mergePrevLines, hints);
+            _popup.ShowCandidates(display, x, yBelow, yAbove, zone.Text, mergeKind, mergePrevLines);
             return true;
         }
 

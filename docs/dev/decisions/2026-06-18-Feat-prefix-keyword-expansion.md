@@ -1,6 +1,6 @@
-# Feat — Mots-clés partiels par préfixe (≥ 3 lettres)
+# Feat — Mots-clés partiels par préfixe (alias auto-générés)
 
-**Date :** 2026-06-18
+**Date :** 2026-06-18 (pivot d'implémentation 2026-06-19)
 **Kind :** Feat
 **Température :** molle
 **Statut :** acté
@@ -9,80 +9,66 @@
 
 ## Citation acté
 
-> « 2, le plus costaud en effet » + arbitrages plan mode : « popup multi-candidats
-> MAIS rajouter en dessous de chaque choix à quoi ça correspond » ; « Tout, grec
-> inclus » ; « Tout d'un coup (P1+P2+P3) » — utilisateur, 2026-06-18
+> « 2, le plus costaud en effet » puis, après une première implémentation jugée
+> trop lourde : « est ce qu'on n'aurait pas pu utiliser le système d'alias plutôt
+> mais en autogénérant les alias avec les 3 4 premières lettres ? j'ai
+> l'impression qu'on est en train de monter une usine à gaz » → choix
+> « Simplifier : alias auto-générés » — utilisateur, 2026-06-18/19
 
 ## Contexte
 
-Beaucoup d'abréviations sont des **alias énumérés** (`som`, `rac`, `integ`…). On
-veut un mécanisme **générique** : taper un préfixe ≥ 3 lettres d'un mot-clé
-reconnu l'étend (`appro`→approx, `fora`→forall, `unio`→union, `sub`→subset…).
-Si plusieurs mots-clés matchent → **popup**, chaque candidat étiqueté du mot-clé
-complet. Familles : fonctions, opérateurs nommés, alias FR, **noms grecs**.
+Taper un préfixe d'un mot-clé devrait l'étendre (`appro`→approx, `fora`→forall,
+`unio`→union, `arcs`→arcsin…). Beaucoup d'abréviations sont déjà des alias
+énumérés (`som`, `rac`, `app`…) ; on veut le **généraliser** sans les énumérer.
 
 ## Décision
 
-### Index de préfixes (`EngineCulture`)
-Par culture : ensemble « préfixable » = clés Vocab **alphabétiques** (→ elles-
-mêmes, grec inclus) + alias alphabétiques (→ cible). `PrefixMatches(word)` :
-≥ 3 lettres, alphabétique, **word PAS exact-connu** (y compris insensible à la
-casse — `Int`→int reste l'intégrale), préfixe **strict**, **dédup par cible
-canonique** (garde la forme la plus longue pour l'affichage). Trié déterministe.
+**Auto-générer les alias de préfixe non ambigus** au chargement, dans
+`Vocabulary` (`AddPrefixAliases`), et les fusionner dans les maps d'alias par
+culture (`AliasesFr`/`AliasesUs`). **Réutilise intégralement le mécanisme
+d'alias existant** (`EngineCulture.Canon` dans le lexer) — **zéro machinerie
+dédiée**.
 
-### Génération par **substitution d'entrée** (≠ forking lexer)
-**Choix d'archi (déviation assumée du plan初)** : plutôt que de forker le cœur du
-lexer (mécanisme `choices`/`SplitPenalty` délicat, risqué), `ForestEngine.Run`
-analyse l'**entrée originale** (lecture littérale — comportement historique
-**inchangé**) **+** des variantes où chaque mot préfixe-extensible est remplacé
-par un mot-clé candidat. Tous les candidats concourent dans `Finish` (tri par
-coût). Bornes : `MaxPrefixSpots = 3`, `MaxVariants = 12`.
-→ **Le littéral est toujours analysé tel quel ⇒ zéro régression possible** sur
-l'existant ; les expansions ne font qu'**ajouter** des candidats.
+Règle : pour chaque forme « mot » (clé Vocab alphabétique → elle-même, grec
+inclus ; + alias alphabétique → cible), chaque préfixe de longueur **≥ 4** qui
+(a) n'est **pas** déjà une forme exacte et (b) ne préfixe qu'**UNE seule** cible
+canonique → devient un alias vers cette cible.
 
-### Étiquette popup (`EngineCandidate.Hint` → badge)
-`EngineCandidate` porte un `Hint` optionnel (le mot-clé complet, ex. « arcsin »),
-posé quand exactement un mot a été substitué dans la variante, conservé au dédup.
-Plombé `ConversionController` → `SuggestionPopupWindow.ShowCandidates(…, hints)` →
-badge « = arcsin » (prioritaire sur le badge d'aperçu `CandidateHints`).
+- **≥ 4 lettres** : à 3, trop de mots/variables courants seraient capturés
+  (`for`, `per`, `uni`…) ; à 4 l'intention est nette (`fora`, `unio`, `appro`).
+- **Ambigu** (`arc`→arcsin/arccos/arctan, `sub`→subset/subseteq) : **non
+  généré** → l'utilisateur tape une lettre de plus (`arcs`, `arcc`, `arct`).
+- **Exact-match prioritaire** : un préfixe déjà clé Vocab/alias n'est pas écrasé.
 
-### Garde-fous (faux positifs)
-Exact-match prioritaire (y c. casse), ≥ 3 lettres, **lecture littérale toujours
-candidate** (le mot non étendu reste une option, donc l'auto ne s'impose pas si
-douteux), popup pour les ambigus. Constats : `app`→approx **impossible** (`app`
-exact alias de `appartient`→in) ; `der`→dérivée **abandonné** (pas d'opérateur).
+Combiné au fix « relation-mot » (ADR approx) : `appro`→approx se comporte alors
+comme `=` (lie, ou début de ligne via `RelationMarkers`).
 
 ## Tradeoff & alternatives écartées
 
-- **Forking N-aire du lexer** (plan initial) : écarté — toucher `LexAll`/
-  `SplitPenalty` (cœur critique, 447 fixtures) était risqué pour un gain nul vs
-  la substitution d'entrée, qui réutilise `Analyze` tel quel et garantit le
-  littéral. Coût : N analyses (borné, seulement si mots ambigus présents).
-- **Étiquette dérivée du LaTeX** (adapter seul) : écarté — le « quoi taper » vient
-  proprement du moteur (`Hint`), pas d'un mapping inverse LaTeX→mot-clé partiel.
-- **Expansion seulement si unique** : écarté (l'utilisateur veut le popup multi).
+- **(ÉCARTÉE, d'abord implémentée puis revertée)** Machinerie « popup
+  multi-candidats étiqueté » : substitution de variantes d'entrée dans
+  `ForestEngine.Run` + `EngineCandidate.Hint` + plumbing popup, pour offrir
+  `arc`→[arcsin|arccos|arctan] avec libellés. **Jugée « usine à gaz » par
+  l'utilisateur** pour le gain : la quasi-totalité de la valeur est couverte par
+  les alias auto à 4 lettres (l'ambiguïté disparaît presque toujours dès la 4ᵉ
+  lettre). Revertée intégralement (ForestEngine/EngineCulture/ConversionController/
+  SuggestionPopupWindow remis à l'état pré-#2).
+- **Préfixes ≥ 3** : écarté (faux positifs sur mots courants).
 
 ## Conséquences
 
-- **Moteur (L1)** : `EngineCulture` (index + `PrefixMatches`), `ForestEngine`
-  (`Run`→variantes, `CollectFromInput`, `BuildInputVariants`, `EngineCandidate.Hint`).
-  Données (`symbols.json`/`cultures.json`) **inchangées** (l'index se dérive du
-  Vocab/alias). Profite au futur port Python (même logique).
-- **Adapter (L3)** : `ConversionController` (passe les hints), `SuggestionPopupWindow`
-  (badge hint moteur).
-- **Tests** : +3 fixtures (`a appro b`→`\approx`, `a unio b`→`\cup`, `a sub b`→
-  popup [subset|subseteq]) → corpus **450**. Engine 21 / adapter 317 / serial 60
-  verts ; **zéro régression** (447→450).
-- **API publique** : `EngineCandidate.Hint` ajouté (rétro-compat, optionnel).
+- **Moteur (L1)** : `Vocabulary.AddPrefixAliases` (+ `IsAlphaWord`,
+  `MinPrefixLen=4`) ; aucune autre couche touchée (lexer/parser/render/popup
+  inchangés). Données (`symbols.json`/`cultures.json`) inchangées — les alias se
+  dérivent du Vocab/alias existants. Bénéficie au futur port Python (même logique).
+- **Perdu vs la machinerie** : pas de popup pour les préfixes ambigus à 3 lettres
+  (`arc` seul → littéral ; taper `arcs`/`arcc`/`arct`).
+- **Tests** : fixtures `a appro b`→`\approx`, `a unio b`→`\cup` (corpus 449,
+  l'ancienne `a sub b`→popup retirée). Engine 21 / adapter 317 verts, zéro
+  régression sur les ~hundreds d'alias générés.
 
 ## Validation post-fix
 
-`a appro b`→`a\approx b` (auto) ; `a sub b`→popup [subset|subseteq] étiquetés ;
-`som`/`inclu`/`cos`/`Int` inchangés (exact-match) ; `abc` non étendu. Corpus
-450/450. Manuel Word : `appro`+Ctrl+Espace ; `sub` → popup avec « = subset » /
-« = subseteq ».
-
-## Limites connues
-- Préfixe autocapitalisé d'un mot-clé minuscule (« Appro » en début de phrase) non
-  étendu (match casse-sensible) — mineur. `MaxVariants`/`MaxPrefixSpots` bornent
-  les expressions à plusieurs mots ambigus (rare).
+`Analyze("a appro b")`→`a\approx b` ; `("arcs x")`→`\arcsin(x)` ; `("fora x")`→
+`\forall x` ; `("for x")`/`("per")`/`("uni")` → littéral (≥4 protège). Corpus
+449/449 vert.

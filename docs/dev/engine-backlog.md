@@ -13,15 +13,15 @@ ADR + plan (`/mathcursor-plan`) au moment de l'implémentation.
   naturelle au clavier sans `AltGr`. ✅ Fait 2026-06-18 (`sameAs` dans
   `symbols.json`, +3 fixtures) — ADR `2026-06-18-Feat-power-double-star`.
 
-- [x] **Mots-clés partiels (préfixe ≥ 3 lettres)** — autoriser tout préfixe d'au
-  moins 3 lettres d'un mot-clé reconnu. ✅ Fait 2026-06-18 : `EngineCulture.
-  PrefixMatches` (Vocab alpha + alias, grec inclus, exact-match prioritaire) +
-  génération par **substitution d'entrée** dans `ForestEngine.Run` (littéral
-  toujours analysé → zéro régression) ; collisions → **popup multi-candidats**
-  avec étiquette `EngineCandidate.Hint` « = mot-clé » sous chaque choix. +3
-  fixtures (corpus 450). ADR `2026-06-18-Feat-prefix-keyword-expansion`.
-  (`app`→approx impossible — exact alias `appartient` ; `der`→dérivée abandonné —
-  pas d'opérateur.)
+- [x] **Mots-clés partiels par préfixe** — taper un préfixe d'un mot-clé l'étend.
+  ✅ Fait 2026-06-19 : **alias auto-générés** (`Vocabulary.AddPrefixAliases`) —
+  pour chaque mot-clé/alias, tout préfixe **≥ 4 lettres** non ambigu devient un
+  alias vers la cible, fusionné dans les maps d'alias. Réutilise `Canon` (zéro
+  machinerie). Ambigus (`arc`, `sub`) → non générés (taper 1 lettre de plus).
+  ≥4 (pas 3) pour éviter `for`/`per`/`uni`. ADR
+  `2026-06-18-Feat-prefix-keyword-expansion`. (1ʳᵉ implé « popup multi-candidats »
+  jugée usine à gaz par l'utilisateur → revertée au profit des alias auto.
+  `app`→approx impossible — exact alias `appartient` ; `der`→dérivée sans cible.)
 
 - [x] **`approx` / « environ égal » (≈)** — faire fonctionner la saisie de `≈`
   via mot-clé (`approx`, `environegal`/`environ egal`) et/ou Unicode direct `≈`.
