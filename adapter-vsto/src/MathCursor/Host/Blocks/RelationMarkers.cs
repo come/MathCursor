@@ -25,9 +25,15 @@ namespace MathCursor.Host.Blocks
             new (string, string, bool)[]
             {
                 // marqueur-MOT (frontière de mot exigée par TryMatch, sinon
-                // « approximation » matcherait) — demande user 2026-06-12 :
-                // « approx 3,14 » en début de ligne, au même titre que > etc.
-                ("approx", "\\approx ",      false),
+                // « approximation »/« environnement » matcheraient) — demande
+                // user 2026-06-12 : « approx 3,14 » en début de ligne, au même
+                // titre que > etc. ; « environ »/« env » ajoutés 2026-06-19
+                // (ADR Fix-environ-env-line-start-approx-marker). Plus-long
+                // d'abord : « environ » avant « env » (la frontière de mot
+                // suffirait, mais on garde l'invariant longueur décroissante).
+                ("approx",  "\\approx ",     false),
+                ("environ", "\\approx ",     false),
+                ("env",     "\\approx ",     false),
                 ("<=>", "\\Leftrightarrow ", true),
                 ("=>",  "\\Rightarrow ",     true),
                 ("<=",  "\\leq ",            false),
@@ -54,7 +60,11 @@ namespace MathCursor.Host.Blocks
             foreach (var entry in Table)
             {
                 if (start + entry.Typed.Length > text.Length) continue;
-                if (string.CompareOrdinal(text, start, entry.Typed, 0, entry.Typed.Length) != 0)
+                // Insensible à la casse : Word capitalise automatiquement le
+                // début de ligne (« env »→« Env », « approx »→« Approx »).
+                // Sans effet sur les marqueurs symboles. ADR 2026-06-19.
+                if (string.Compare(text, start, entry.Typed, 0, entry.Typed.Length,
+                        System.StringComparison.OrdinalIgnoreCase) != 0)
                     continue;
                 // marqueur-MOT : frontière de mot exigée (« approx 3,14 » oui,
                 // « approximation » non). Sans objet pour les symboles.
