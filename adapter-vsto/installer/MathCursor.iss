@@ -34,13 +34,34 @@ Compression=lzma2/ultra
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\{#MyAppExeName}
-; Fenêtre d'info post-install : rappel ouvrir Word
-InfoAfterFile=after-install.txt
 SetupLogging=yes
 
 [Languages]
-Name: "french"; MessagesFile: "compiler:Languages\French.isl"
-Name: "english"; MessagesFile: "compiler:Default.isl"
+; Fenêtre d'info post-install (InfoAfterFile) localisée PAR LANGUE — sinon
+; l'utilisateur EN voyait le texte FR (bug remonté 2026-06-19).
+Name: "french";  MessagesFile: "compiler:Languages\French.isl"; InfoAfterFile: "after-install.txt"
+Name: "english"; MessagesFile: "compiler:Default.isl";          InfoAfterFile: "after-install-en.txt"
+
+[CustomMessages]
+; Tous les textes custom de l'installeur, par langue (le préfixe = Name de la
+; langue). Référencés par {cm:Cle} dans les sections directives et par
+; ExpandConstant('{cm:Cle}') dans [Code]. %n = saut de ligne.
+french.OpenTutorial=Ouvrir le tutoriel
+english.OpenTutorial=Open the tutorial
+french.StatusVcRedistX86=Vérification du runtime Visual C++ (x86)...
+english.StatusVcRedistX86=Checking the Visual C++ runtime (x86)...
+french.StatusVcRedistX64=Vérification du runtime Visual C++ (x64)...
+english.StatusVcRedistX64=Checking the Visual C++ runtime (x64)...
+french.StatusCert=Importation du certificat...
+english.StatusCert=Importing the certificate...
+french.NeedDotNet=MathCursor nécessite .NET Framework 4.8.%nIl est préinstallé sur Windows 10 et 11 — vérifiez les mises à jour Windows.
+english.NeedDotNet=MathCursor requires .NET Framework 4.8.%nIt is preinstalled on Windows 10 and 11 — check for Windows updates.
+french.VstoMissing=Le runtime VSTO ne semble pas installé.%nIl est normalement livré avec Office 2016+. Continuer quand même ?
+english.VstoMissing=The VSTO runtime does not appear to be installed.%nIt normally ships with Office 2016+. Continue anyway?
+french.WordMissing=Microsoft Word ne semble pas installé sur ce PC.%nMathCursor est un add-in pour Word — installer quand même ?
+english.WordMissing=Microsoft Word does not appear to be installed on this PC.%nMathCursor is a Word add-in — install anyway?
+french.WordOpen=Microsoft Word est ouvert. Fermez Word avant de continuer, puis relancez l'installation.
+english.WordOpen=Microsoft Word is open. Close Word before continuing, then restart the installation.
 
 [Files]
 ; Binaires et manifest VSTO (copiés par build.ps1 depuis bin/Release/)
@@ -101,12 +122,6 @@ Source: "payload\MathCursor-Tutoriel-en.docx"; DestDir: "{userdocs}\MathCursor";
 Source: "payload\vc_redist.x86.exe";                      DestDir: "{tmp}"; Flags: deleteafterinstall skipifsourcedoesntexist
 Source: "payload\vc_redist.x64.exe";                      DestDir: "{tmp}"; Flags: deleteafterinstall skipifsourcedoesntexist
 
-[Tasks]
-; Checkbox optionnelle proposée à l'utilisateur en fin d'installation.
-; "postinstall" dans le [Run] correspondant fait apparaître la checkbox sur
-; la dernière page du wizard — l'utilisateur décide.
-Name: "opentutorial"; Description: "Ouvrir le tutoriel maintenant"; GroupDescription: "Pour bien démarrer :"
-
 [Run]
 ; Installation conditionnelle du VC++ Redistributable. /install /quiet
 ; /norestart : install silencieuse + pas de redémarrage forcé. Le redist
@@ -117,11 +132,11 @@ Name: "opentutorial"; Description: "Ouvrir le tutoriel maintenant"; GroupDescrip
 Filename: "{tmp}\vc_redist.x86.exe"; \
     Parameters: "/install /quiet /norestart"; \
     Flags: waituntilterminated skipifdoesntexist; \
-    StatusMsg: "Vérification du runtime Visual C++ (x86)..."
+    StatusMsg: "{cm:StatusVcRedistX86}"
 Filename: "{tmp}\vc_redist.x64.exe"; \
     Parameters: "/install /quiet /norestart"; \
     Flags: waituntilterminated skipifdoesntexist; \
-    StatusMsg: "Vérification du runtime Visual C++ (x64)..."
+    StatusMsg: "{cm:StatusVcRedistX64}"
 
 ; Import du certificat auto-signé UNIQUEMENT dans TrustedPublisher.
 ; - Pas de Root : l'import dans Cert:\CurrentUser\Root déclenche un popup UAC-like
@@ -134,18 +149,19 @@ Filename: "{tmp}\vc_redist.x64.exe"; \
 Filename: "{sys}\certutil.exe"; \
     Parameters: "-user -addstore TrustedPublisher ""{tmp}\mathcursor.cer"""; \
     Flags: runhidden; \
-    StatusMsg: "Importation du certificat..."
+    StatusMsg: "{cm:StatusCert}"
 
-; Ouverture optionnelle du tutoriel à la fin de l'install. La checkbox liée
-; à Tasks: opentutorial apparaît sur la dernière page du wizard.
+; Ouverture optionnelle du tutoriel — UNIQUEMENT en fin d'install. Le flag
+; "postinstall" + "Description" fait apparaître la checkbox sur la DERNIÈRE page
+; du wizard (cochée par défaut). Plus de Tasks: opentutorial (qui doublonnait la
+; proposition sur la page "Select Additional Tasks" — bug remonté 2026-06-19).
 ; - shellexec : laisse Word gérer l'ouverture (équivalent double-clic explorateur)
-; - postinstall : déplace l'action à la fin, après la fermeture des autres jobs
+; - postinstall : action à la fin, après la fermeture des autres jobs
 ; - nowait : l'installer rend la main sans attendre Word
 ; - skipifsilent : pas d'ouverture en mode /SILENT (déploiement scripté)
 Filename: "{userdocs}\MathCursor\MathCursor-Tutorial.docx"; \
-    Description: "Ouvrir le tutoriel"; \
-    Flags: shellexec postinstall nowait skipifsilent; \
-    Tasks: opentutorial
+    Description: "{cm:OpenTutorial}"; \
+    Flags: shellexec postinstall nowait skipifsilent
 
 [UninstallRun]
 ; Nettoyage du certificat à la désinstallation. Non-bloquant si le cert n'est plus là.
@@ -187,8 +203,7 @@ begin
     end;
     if not HasDotNet48 then
     begin
-        MsgBox('MathCursor nécessite .NET Framework 4.8.'#13#10'Il est préinstallé sur Windows 10 et 11 — vérifiez les mises à jour Windows.',
-               mbError, MB_OK);
+        MsgBox(ExpandConstant('{cm:NeedDotNet}'), mbError, MB_OK);
         Result := False;
         Exit;
     end;
@@ -198,8 +213,7 @@ begin
                       RegKeyExists(HKLM, 'SOFTWARE\WOW6432Node\Microsoft\vsto runtime Setup\v4');
     if not HasVstoRuntime then
     begin
-        if MsgBox('Le runtime VSTO ne semble pas installé.'#13#10 +
-                  'Il est normalement livré avec Office 2016+. Continuer quand même ?',
+        if MsgBox(ExpandConstant('{cm:VstoMissing}'),
                   mbConfirmation, MB_YESNO) = IDNO then
         begin
             Result := False;
@@ -211,8 +225,7 @@ begin
     HasWord := RegKeyExists(HKCR, 'Word.Application');
     if not HasWord then
     begin
-        if MsgBox('Microsoft Word ne semble pas installé sur ce PC.'#13#10 +
-                  'MathCursor est un add-in pour Word — installer quand même ?',
+        if MsgBox(ExpandConstant('{cm:WordMissing}'),
                   mbConfirmation, MB_YESNO) = IDNO then
         begin
             Result := False;
@@ -232,6 +245,6 @@ begin
     if Exec('cmd.exe', '/c tasklist /FI "IMAGENAME eq WINWORD.EXE" 2>NUL | find /I "WINWORD.EXE" >NUL',
             '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0) then
     begin
-        Result := 'Microsoft Word est ouvert. Fermez Word avant de continuer, puis relancez l''installation.';
+        Result := ExpandConstant('{cm:WordOpen}');
     end;
 end;

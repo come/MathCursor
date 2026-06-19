@@ -1,0 +1,13 @@
+Installation complete.
+
+To activate MathCursor:
+  1. Open Microsoft Word.
+  2. The add-in loads automatically (status bar: "MathCursor ready").
+  3. Start typing: as soon as a math expression is detected, a popup appears.
+     Navigate with the Down arrow, confirm with Enter.
+
+If the popup does not appear:
+  - Check File > Options > Add-ins > COM Add-ins: "MathCursor" must be checked.
+  - Logs: %AppData%\MathCursor\logs\mathcursor.log
+
+Uninstall: Control Panel > Programs > MathCursor > Uninstall.
