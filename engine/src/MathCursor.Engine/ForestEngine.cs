@@ -155,7 +155,11 @@ public sealed class ForestEngine
             .Where(r => seen.Add(r.Latex))              // garde le meilleur par rendu
             .ToList();
         double best = ranked[0].Cost;
-        var win = ranked.Where(r => r.Cost < best + PopupGap).ToList();
+        // Les candidats d'EXPANSION de préfixe (Hint != null) restent dans la
+        // popup même hors-seuil : l'utilisateur a tapé un préfixe exprès, on lui
+        // montre les options (« arc » seul → arcsin/arccos/arctan, même si le
+        // littéral « arc » coûte moins). Borné par MaxShow. Cf. ADR préfixes #2.
+        var win = ranked.Where(r => r.Cost < best + PopupGap || r.Hint != null).ToList();
         var kept = win.Take(MaxShow).ToList();
         bool hasNote = note != null || win.Count > MaxShow;
         kept = PairSkeletons(all, kept);
