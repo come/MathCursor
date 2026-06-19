@@ -46,20 +46,32 @@ namespace MathCursor.Host
         {
             int start = 0;
 
-            // Après le dernier délimiteur — walk backward, suivi profondeur.
-            int bracketDepth = 0, parenDepth = 0;
-            for (int k = caret - 1; k >= 0; k--)
+            // Groupe ( … ou [ … NON FERMÉ englobant le caret (matrice / tuple /
+            // intervalle en cours de frappe) : la zone démarre à l'ouvrante, les
+            // ; et , internes sont structurels (pas des fins de phrase). Cf. ADR
+            // 2026-06-19-Fix-spancomputer-unclosed-bracket-matrix.
+            int openBracket = EnclosingOpenBracket(text, caret);
+            if (openBracket >= 0)
             {
-                char c = text[k];
-                if (c == ']') { bracketDepth++; continue; }
-                if (c == '[') { if (bracketDepth > 0) bracketDepth--; continue; }
-                if (c == ')') { parenDepth++; continue; }
-                if (c == '(') { if (parenDepth > 0) parenDepth--; continue; }
+                start = openBracket;
+            }
+            else
+            {
+                // Après le dernier délimiteur — walk backward, suivi profondeur.
+                int bracketDepth = 0, parenDepth = 0;
+                for (int k = caret - 1; k >= 0; k--)
+                {
+                    char c = text[k];
+                    if (c == ']') { bracketDepth++; continue; }
+                    if (c == '[') { if (bracketDepth > 0) bracketDepth--; continue; }
+                    if (c == ')') { parenDepth++; continue; }
+                    if (c == '(') { if (parenDepth > 0) parenDepth--; continue; }
 
-                if (!SpanDelimiters.Contains(c)) continue;
-                if ((c == ';' || c == ',') && (bracketDepth > 0 || parenDepth > 0)) continue;
-                start = Math.Max(start, k + 1);
-                break;
+                    if (!SpanDelimiters.Contains(c)) continue;
+                    if ((c == ';' || c == ',') && (bracketDepth > 0 || parenDepth > 0)) continue;
+                    start = Math.Max(start, k + 1);
+                    break;
+                }
             }
 
             // Après la fin du dernier OMath qui se termine avant le caret.
@@ -98,7 +110,11 @@ namespace MathCursor.Host
             while (end > caret && (text[end - 1] == '\r' || text[end - 1] == '\n')) end--;
 
             // Premier délimiteur — walk forward avec suivi profondeur brackets/parens.
-            int bracketDepth = 0, parenDepth = 0;
+            // Init = ouvrantes NON fermées avant le caret (caret replacé au milieu
+            // d'un groupe ( … / [ … en cours de frappe) → les ; , du groupe
+            // englobant ne coupent pas. Cf. ADR 2026-06-19-Fix-spancomputer-
+            // unclosed-bracket-matrix.
+            OpenDepthBehind(text, caret, out int parenDepth, out int bracketDepth);
             for (int k = caret; k < end; k++)
             {
                 char c = text[k];
@@ -133,6 +149,52 @@ namespace MathCursor.Host
             }
 
             return end;
+        }
+
+        /// <summary>
+        /// Position de l'ouvrante <c>(</c> ou <c>[</c> NON fermée qui englobe le
+        /// caret (groupe en cours de frappe), ou -1. On ne traverse pas un saut
+        /// de ligne (un groupe ne s'étend pas sur plusieurs lignes). Le <c>.</c>
+        /// n'arrête PAS le scan (sinon un séparateur décimal <c>(1,5 ;2,5</c>
+        /// casserait la détection).
+        /// </summary>
+        private static int EnclosingOpenBracket(string text, int caret)
+        {
+            int depth = 0;
+            for (int k = caret - 1; k >= 0; k--)
+            {
+                char c = text[k];
+                if (c == '\n' || c == '\r') return -1;
+                if (c == ')' || c == ']') { depth++; continue; }
+                if (c == '(' || c == '[')
+                {
+                    if (depth > 0) { depth--; continue; }
+                    return k; // ouvrante non appariée englobant le caret
+                }
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// Nombre d'ouvrantes <c>(</c> / <c>[</c> NON fermées avant le caret
+        /// (remis à zéro à chaque saut de ligne). Sert à initialiser la marche
+        /// avant de <see cref="ComputeSpanEnd"/> quand le caret est au milieu
+        /// d'un groupe ouvert.
+        /// </summary>
+        private static void OpenDepthBehind(string text, int caret, out int parenOpen, out int bracketOpen)
+        {
+            parenOpen = 0;
+            bracketOpen = 0;
+            int n = Math.Min(caret, text.Length);
+            for (int k = 0; k < n; k++)
+            {
+                char c = text[k];
+                if (c == '\n' || c == '\r') { parenOpen = 0; bracketOpen = 0; continue; }
+                if (c == '(') parenOpen++;
+                else if (c == ')') { if (parenOpen > 0) parenOpen--; }
+                else if (c == '[') bracketOpen++;
+                else if (c == ']') { if (bracketOpen > 0) bracketOpen--; }
+            }
         }
 
         private static bool IsWordChar(char c) => char.IsLetter(c) || c == '\'' || c == '-';

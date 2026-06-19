@@ -58,5 +58,65 @@ namespace MathCursor.Tests.Host
         {
             Assert.Equal("1/x+1", Span("1/x+1", 5));
         }
+
+        // ── Matrices en cours de frappe : parenthèse non fermée → la zone
+        //    englobe tout le groupe, les ; et , internes ne coupent pas
+        //    (ADR 2026-06-19-Fix-spancomputer-unclosed-bracket-matrix). ──
+
+        [Fact]
+        public void Matrice_non_fermee_virgules_captee_entiere()
+        {
+            // LE bug rapporté : ne proposait que "e,f".
+            const string t = "(a,b,c,d ;e,f";
+            Assert.Equal("(a,b,c,d ;e,f", Span(t, t.Length));
+        }
+
+        [Fact]
+        public void Matrice_non_fermee_espaces_captee_entiere()
+        {
+            // LE bug rapporté : "e f" seul → moteur erreur → rien.
+            const string t = "(a b c d; e f";
+            Assert.Equal("(a b c d; e f", Span(t, t.Length));
+        }
+
+        [Fact]
+        public void Matrice_non_fermee_caret_au_milieu()
+        {
+            // Caret replacé après "c" (au milieu) → tout le groupe capté.
+            const string t = "(a,b;c,d";
+            Assert.Equal("(a,b;c,d", Span(t, 6)); // après le 2e ',' -> "(a,b;c|,d"
+        }
+
+        [Fact]
+        public void Crochet_non_ferme_intervalle()
+        {
+            const string t = "[0;1";
+            Assert.Equal("[0;1", Span(t, t.Length));
+        }
+
+        [Fact]
+        public void Decimale_dans_parenthese_non_fermee()
+        {
+            // Le '.' ne doit pas arrêter la détection du groupe (séparateur décimal).
+            const string t = "(1.5 ;2.5";
+            Assert.Equal("(1.5 ;2.5", Span(t, t.Length));
+        }
+
+        [Fact]
+        public void Matrice_fermee_inchangee()
+        {
+            const string t = "(a,b,c;d,e,f)";
+            Assert.Equal("(a,b,c;d,e,f)", Span(t, t.Length));
+        }
+
+        [Fact]
+        public void Point_virgule_hors_parenthese_coupe_toujours()
+        {
+            // Chaîne de raisonnement multi-zones : hors parenthèse, ';' borne
+            // (isolé du '=' qui bornerait plus tôt) — le fix matrices ne doit
+            // PAS désactiver le ';' séparateur hors groupe.
+            const string t = "a ; b";
+            Assert.Equal("b", Span(t, t.Length));
+        }
     }
 }
