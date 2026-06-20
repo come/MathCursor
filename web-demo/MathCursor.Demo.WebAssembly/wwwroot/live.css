@@ -1,0 +1,103 @@
+/* MathCursor — démo « mode réel ». Éditeur au fil de l'eau : zone contenteditable,
+   détection caret-span live, popup flottante au caret, rendu KaTeX inline figé.
+   Réutilise les variables du thème (style.css) + les classes candidat de demo.css. */
+
+.editor-wrap {
+  margin: 20px 0 8px;
+}
+
+#editor {
+  min-height: 260px;
+  padding: 18px 20px;
+  border: 2px solid var(--paper-rim);
+  border-radius: 8px;
+  background: var(--paper-white);
+  font-family: var(--font-mono);
+  font-size: 18px;
+  line-height: 2.1;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#editor:focus {
+  border-color: var(--ink);
+}
+
+/* Placeholder (affiché quand l'éditeur est vide). */
+#editor.is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  font-style: italic;
+  pointer-events: none;
+}
+
+/* Une ligne = un bloc. */
+#editor .ln {
+  min-height: 1.6em;
+}
+
+/* Équation validée : rendu KaTeX figé, inséré inline dans le texte. */
+.eq {
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0 2px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: var(--ink-tint);
+  box-shadow: inset 0 0 0 1px var(--ink-light);
+  user-select: none;
+}
+
+.eq .katex { font-size: 1.15em; }
+
+/* Popup flottante au caret (position calculée en JS). */
+#caret-popup {
+  position: absolute;
+  z-index: 500;
+  min-width: 280px;
+  max-width: 520px;
+  border: 1px solid var(--paper-rim);
+  border-radius: 8px;
+  background: var(--paper-white);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
+  display: none;
+}
+
+#caret-popup.visible { display: block; }
+
+/* La popup flottante est plus dense que celle de demo.css : on resserre. */
+#caret-popup .cand { padding: 7px 14px; cursor: pointer; }
+#caret-popup .cand:hover { background: var(--paper-low); }
+#caret-popup .cand-render { min-height: 24px; font-size: 15px; }
+
+/* État de navigation clavier : le candidat courant est mis en avant. */
+#caret-popup .cand.nav-active {
+  background: var(--ink-tint);
+  box-shadow: inset 3px 0 0 var(--ink);
+}
+
+.live-hint {
+  margin-top: 22px;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+  border-left: 3px solid var(--ink-light);
+  padding: 8px 14px;
+  background: var(--paper-low);
+  border-radius: 0 4px 4px 0;
+}
+
+.live-hint kbd {
+  font-family: var(--font-mono);
+  font-style: normal;
+  font-size: 11px;
+  background: var(--paper-white);
+  border: 1px solid var(--paper-rim);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
