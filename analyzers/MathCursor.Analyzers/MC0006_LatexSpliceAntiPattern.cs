@@ -43,7 +43,7 @@ public sealed class MC0006_LatexSpliceAntiPattern : DiagnosticAnalyzer
         "Splicer du LaTeX dans le texte déjà rendu (topLatex.Substring + altLatex + topLatex.Substring) " +
         "est l'anti-pattern racine du bug double-wrap (parens, widehat, vec). " +
         "Préférer la mutation source via SourceMutation + relance du pipeline. " +
-        "Cf. bug 11-05 (commit 9ab248b) et docs/dev/architecture/cartography.md.";
+        "Cf. bug 11-05 (commit 9ab248b).";
 
     private static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,

@@ -17,10 +17,9 @@ plans en cours. **Mis à jour à chaque fin de sous-livraison.**
 
 1. **CLAUDE.md** racine — contexte produit + stack + règles dev + process décision
 2. **Ce fichier ROADMAP.md** — état des chantiers en cours
-3. **`docs/dev/architecture/cartography.md`** — image archi détaillée par fichier, dette identifiée
-4. **`docs/dev/decisions/README.md`** — index chrono de tous les ADRs (≥ 50 décisions)
-5. **`git log --oneline -30`** — contexte des derniers commits
-6. **Skills disponibles** :
+3. **`docs/dev/decisions/README.md`** — index chrono de tous les ADRs (≥ 50 décisions)
+4. **`git log --oneline -30`** — contexte des derniers commits
+5. **Skills disponibles** :
    - `/mathcursor-plan <sujet>` — force le bon process de planification (couche + tradeoff qualité + règles MC)
    - `/mathcursor-adr` — génère ADR au format projet
    - `/deploy-prod` — pipeline release
@@ -45,7 +44,7 @@ plans en cours. **Mis à jour à chaque fin de sous-livraison.**
 
 ### Étapes du brief
 
-- [x] **Étape 1** — Cartographie (`docs/dev/architecture/cartography.md`)
+- [x] ~~**Étape 1** — Cartographie~~ (`cartography.md` **supprimée**, ADR 2026-06-23 — décrivait l'archi `core-csharp`/LatticeEngine abandonnée au profit du portage forest)
 - [x] **Étape 2** — Projet `MathCursor.Core.Abstractions/` avec 6 contrats (`IConstructStrategy`, `IDomainParser`, `ILocaleLexer`, `ILocaleNER`, `IOutputSerializer<TFormat>`, `ParseContext`)
 - [ ] **Étape 3** — Implémentation des contrats par types existants (`LatticeEngine` → `IDomainParser`, etc.) — **OPTIONNEL**, déclencher si extension de domaine ou format effective
 - [x] **Étape 4** — Visitor sur AST (`IAstVisitor<TResult>` + 18 `Accept` overrides + `LatexRenderingVisitor`). ADR [`Refactor-ast-visitor`](../decisions/2026-05-13-Refactor-ast-visitor.md)
