@@ -904,5 +904,24 @@ namespace MathCursor
             "fr" => "MathCursor : aucune notation mathématique reconnue ici.",
             _    => "MathCursor: no mathematical notation recognized here.",
         };
+
+        // Échecs visibles (ADR 2026-06-22-Fix-surface-silent-failures) — StatusBar.
+        public static string ConvertCommitFailed => Lang switch
+        {
+            "fr" => "MathCursor : l'insertion a échoué — réessayez (détail au journal).",
+            _    => "MathCursor: insertion failed — try again (see log for details).",
+        };
+
+        public static string RevertFailed => Lang switch
+        {
+            "fr" => "MathCursor : impossible de revenir à la saisie initiale (détail au journal).",
+            _    => "MathCursor: could not revert to the original input (see log for details).",
+        };
+
+        public static string SourceNotRecorded => Lang switch
+        {
+            "fr" => "MathCursor : formule insérée, mais sa source n'a pas été enregistrée — ré-édition indisponible.",
+            _    => "MathCursor: equation inserted, but its source wasn't saved — re-editing unavailable.",
+        };
     }
 }

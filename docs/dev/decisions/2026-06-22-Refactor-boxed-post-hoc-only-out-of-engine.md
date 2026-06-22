@@ -40,25 +40,37 @@ une équation existante. Concrètement :
   `data/engine/symbols.json`, des alias `encadre`/`cadre`/`encadrer` dans
   `data/engine/cultures.json`, et des fixtures `boxed …` du moteur. Le moteur ne
   reconnaît plus `boxed(...)` (redevient du texte ordinaire).
-- **A2 conservé.** La re-sérialisation `\boxed{…}` → `m:borderBox`
-  (`serialization/.../LatexToOmml.cs`) reste : c'est elle qui permet d'injecter
-  le cadre après coup (demande explicite « reserializer avec boxed dans le
-  latex »).
-- **A3 conservé.** Walker `borderBox` + aperçu popup inchangés. Le verrou
-  `WalkerCoverageTests` garde un test **explicite** `BorderBox_EstConstructible`
-  indépendant du corpus moteur → la sortie de `boxed` du corpus ne le casse pas.
-- **A4 conservé, ajusté.** Le bouton ruban « Encadrer » reste. `BoxAtCaret`
-  stocke désormais la **sténo intérieure** (`entry.Steno`) au lieu de
-  `boxed(<sténo>)` : comme `boxed` a quitté le moteur, `boxed(...)` ne serait
-  plus reconvertible, donc « Revenir à la saisie » sur une formule encadrée
-  rend la **formule simple** (désencadrement), pas un littéral `boxed(...)`. Le
-  garde-fou anti double-encadrement reste basé sur `entry.Latex.StartsWith("\\boxed{")`.
-- **Nouveau — entrée popup d'édition.** La popup contextuelle
-  (`EditModePopupWindow`), qui s'ouvre quand le caret atterrit sur une de nos
-  OMaths, reçoit une ligne **« Encadrer cette formule »** au-dessus de
-  « Revenir à la saisie initiale ». Clic → `ConversionController.BoxAtCaret`
-  (callback câblé via `ThisAddIn` → `EditModeController`). Libellé i18n FR/EN
-  dans `Strings.cs`.
+- **A2 / A3 dormants.** Après itération (banc POC ruban), l'encadrement se fait
+  **EN PLACE** sur l'OMath, **sans** repasser par le LaTeX `\boxed` ni le walker.
+  Le serializer `\boxed{…}`→`m:borderBox` (A2) et le walker `borderBox` (A3) —
+  avec leurs tests (`Boxed_*`, `BorderBox_EstConstructible`) — restent en place
+  mais **ne sont plus sur le chemin** de l'encadrement (conservés : inoffensifs,
+  testés, et le `\boxed` stocké en map sert encore de marqueur).
+- **A4 — `BoxAtCaret` en place** (bouton ruban + entrée popup). Plus de
+  delete+redraw (qui butait sur `Range.Delete` « Cannot edit Range » pour les
+  OMaths structurées) :
+  - `om.Functions.Add(om.Range, wdOMathFunctionBorderBox)` enveloppe le contenu
+    de l'OMath directement (objet model Word).
+  - **padding horizontal** : un U+2004 (three-per-em) inséré dans l'argument `E`
+    de chaque côté (`borderBox` n'a **aucun** attribut de marge — confirmé par
+    réflexion sur l'interop ; vertical laissé au ras, choix user).
+  - **dernière ligne d'un bloc** (chaîne/système) uniquement : on encadre la
+    dernière row de l'eqArr ; on garde **K** `&` d'alignement de tête (**2** sur
+    chaîne à connecteur `Row3 = & ⟺ & lhs & relRhs`, **1** sinon), on supprime
+    les autres `&` (localisés via `Range.Characters` — fiable, pas de `MoveRight`
+    qui dérive sur les marqueurs — supprimés via `Range.Delete`). Résultat :
+    connecteur **hors** cadre et aligné avec les autres, contenu boxé **sans `&`
+    visible**, alignement des lignes du dessus préservé (la ligne boxée ne
+    réaligne pas son signe interne — contenu = un bloc, assumé).
+  - source-map re-`Record` après mutation (le contenu change → K1/K2 changent ;
+    `Type` du bloc préservé) ; sténo stockée = **sténo intérieure** → « Revenir à
+    la saisie » désencadre proprement. Garde anti double-encadrement :
+    `entry.IsAlreadyBoxed` (`\boxed` présent dans le latex stocké).
+- **Nouveau — entrée popup d'édition.** `EditModePopupWindow` reçoit une ligne
+  au-dessus de « Revenir à la saisie initiale » : **« Encadrer cette formule »**
+  (simple) ou **« Encadrer la dernière ligne »** (bloc — `EquationSource.IsBlock`).
+  Clic → `ConversionController.BoxAtCaret` (callback câblé `ThisAddIn` →
+  `EditModeController`). Libellés i18n FR/EN dans `Strings.cs`.
 
 ## Tradeoff & alternatives écartées
 
@@ -68,22 +80,34 @@ une équation existante. Concrètement :
 - **Stocker `boxed(<sténo>)` comme source** : écarté — sténo non reconvertible
   une fois `boxed` hors moteur, casse le round-trip d'édition. La sténo
   intérieure rend le revert prévisible (désencadre).
-- **Retirer aussi A2/A3 et wrapper l'OMath directement côté Word** : écarté —
-  réutiliser le pipeline `\boxed` → `LatexToOmml` → walker existant est plus sûr
-  (un seul chemin d'insertion, testé) et répond au « reserializer avec boxed ».
+- **Wrapper l'OMath directement côté Word (in-place)** : d'abord écarté au profit
+  du pipeline `\boxed`→`LatexToOmml`→walker, puis **adopté** après que ce pipeline
+  (delete+redraw) a buté sur `Range.Delete` « Cannot edit Range » pour les OMaths
+  structurées (frac/int/eqArr). `Functions.Add` en place est plus robuste.
+- **Grattage des `&` par position (`MoveRight`)** : écarté — les marqueurs
+  d'alignement `&` ne sont pas des positions navigables fiables → un `&` survit.
+  `Range.Characters` (énumération native) les localise correctement.
+- **Re-composer le bloc via `ChainComposer` + ré-insérer** : écarté — exigeait de
+  supprimer l'OMath structuré (retour du `Selection.Delete`, jugé trop risqué par
+  l'utilisateur). Le grattage in-place des `&` évite toute ré-insertion.
+- **`borderBox` pleine ligne sur un bloc** : écarté — engloberait les `&` (visibles
+  en clair) et casserait l'alignement. D'où le « garder K `&`, boxer le reste ».
 
 ## Conséquences
 
 - **Code touché** :
   - Moteur/data : `data/engine/symbols.json`, `data/engine/cultures.json`,
     `engine/tests/.../fixtures.json` (sortie A1).
-  - Adapter : `Host/ConversionController.cs` (`BoxAtCaret` source intérieure),
-    `UI/EditModePopupWindow.cs` (2ᵉ ligne + event `BoxRequested`),
-    `Host/EditMode/EditModeController.cs` (callback `boxAtCaret` + handler),
-    `ThisAddIn.cs` (câblage), `Strings.cs` (libellé i18n).
+  - Adapter : `Host/ConversionController.cs` (`BoxAtCaret` en place +
+    `FindEqArray` + `BoxLastLatexLine`), `Host/SourceMap/EquationSource.cs`
+    (`IsBlock`/`IsMatrixLike`/`IsAlreadyBoxed`/`CanBox`),
+    `UI/EditModePopupWindow.cs` (2ᵉ ligne + event `BoxRequested` + libellé),
+    `Host/EditMode/EditModeController.cs` (callback `boxAtCaret` + handler +
+    choix libellé), `ThisAddIn.cs` (câblage), `Strings.cs` (libellés i18n).
 - **Inchangés** : `LatexToOmml.cs` (A2), `OmmlWalkerWhitelist.cs` /
   `OmmlToOMathBuilder.cs` (A3), `MixedLatexRenderer.cs` / `WpfMathAdapter.cs`
-  (aperçu), bouton ruban `BoxResultButton`, volet B callouts.
+  (aperçu), bouton ruban `BoxResultButton`, volet B callouts. (A2/A3 hors chemin
+  d'encadrement désormais, mais conservés.)
 - **Tests** : fixtures moteur `boxed …` supprimées ; tests A2 `Boxed_*`
   (serialization) et A3 `BorderBox_EstConstructible` (adapter) restent verts.
 - **API publique** : inchangée (`ForestEngine.Analyze`, `OMathInserter.Insert`,
@@ -97,11 +121,12 @@ une équation existante. Concrètement :
 - Serialization : `dotnet test` → `Boxed_*` verts (A2 intact).
 - Adapter : `dotnet test` → `WalkerCoverageTests.BorderBox_EstConstructible`
   vert ; build VSTO OK.
-- Manuel Word :
+- Manuel Word (validé en session 2026-06-22) :
   1. `boxed(x=2)` + `Ctrl+Espace` → ne s'encadre plus ;
-  2. caret dans une équation → bouton ruban « Encadrer » → encadrée, 1 Ctrl+Z
-     annule ;
-  3. caret sur une de nos équations → popup montre « Encadrer cette formule »
-     au-dessus de « Revenir à la saisie initiale » → clic → encadrée ;
+  2. équation simple → popup « Encadrer cette formule » / bouton ruban → encadrée
+     en place + padding latéral ;
+  3. **chaîne `⟺`** → popup « Encadrer la dernière ligne » → seule la dernière
+     ligne encadrée, connecteur dehors et aligné, **pas de `&` visible** (validé
+     « c'est parfait ») ;
   4. « Revenir à la saisie » sur une formule encadrée → formule simple ;
   5. FR/EN libellés.

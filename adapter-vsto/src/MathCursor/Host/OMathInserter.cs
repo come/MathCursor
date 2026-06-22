@@ -98,10 +98,10 @@ namespace MathCursor.Host
                 Word.OMath om = null;
                 int probeEnd = Math.Min(doc.Content.End, p.omEnd + 1);
                 foreach (Word.OMath o in doc.Range(Math.Max(0, p.omStart - 1), probeEnd).OMaths) { om = o; break; }
-                if (om == null) { _log("record_flush: OMath introuvable au re-probe, source non enregistrée"); return; }
+                if (om == null) { _log("record_flush: OMath introuvable au re-probe, source non enregistrée"); try { _app.StatusBar = Strings.SourceNotRecorded; } catch { } return; }
                 _sourceMap.Record(doc, om, p.steno, p.latex, p.blockType, p.handle);
             }
-            catch (Exception ex) { _log("record_flush_error: " + ex.Message); }
+            catch (Exception ex) { _log("record_flush_error: " + ex.Message); try { _app.StatusBar = Strings.SourceNotRecorded; } catch { } }
         }
 
         private (int newStart, int newEnd, string newHandle) InsertCore(

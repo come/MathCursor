@@ -226,7 +226,12 @@ namespace MathCursor.Host.EditMode
 
                 try { _app.Activate(); } catch { }
             }
-            catch (Exception ex) { _log("revert_error: " + ex.Message); return; }
+            catch (Exception ex)
+            {
+                _log("revert_error: " + ex.Message);
+                try { _app.StatusBar = Strings.RevertFailed; } catch { }
+                return;
+            }
 
             _editHandle = null;
             _editingOMathStart = -1;

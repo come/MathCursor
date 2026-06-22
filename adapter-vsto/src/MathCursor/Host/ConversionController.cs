@@ -413,7 +413,7 @@ namespace MathCursor.Host
 
                 return true;
             }
-            catch (Exception ex) { _log("commit_error: " + ex.Message); return false; }
+            catch (Exception ex) { _log("commit_error: " + ex.Message); TryStatusBar(Strings.ConvertCommitFailed); return false; }
             finally
             {
                 HidePopup();
@@ -496,26 +496,49 @@ namespace MathCursor.Host
                             // Une row d'eqArr porte des marqueurs d'alignement
                             // « & » (cf. ChainComposer). Un borderBox n'est PAS
                             // une cellule d'eqArr → s'il les enveloppe, ils
-                            // s'affichent EN CLAIR (bug « on voit le & »). On
-                            // saute donc les & de tête : la boîte n'entoure que
-                            // le contenu visible, le & reste dehors comme point
-                            // d'alignement (alignement préservé).
+                            // s'affichent EN CLAIR. Règle (choix user 2026-06-22) :
+                            // on GARDE le PREMIER & (il cale la boîte sur la
+                            // colonne du connecteur), on SUPPRIME les autres &, et
+                            // on encadre tout ce qui suit le premier &. La dernière
+                            // ligne perd son alignement interne (contenu boxé = un
+                            // bloc), mais son bord gauche reste calé sur la colonne.
                             boxRange = target.Range;
                             try
                             {
-                                string rowText = target.Range.Text ?? "";
-                                int lead = 0;
-                                while (lead < rowText.Length && rowText[lead] == '&') lead++;
-                                if (lead > 0)
+                                // Localisation des & via Range.Characters
+                                // (énumération native Word, FIABLE) — pas de
+                                // MoveRight(n) qui dérive sur les marqueurs
+                                // d'alignement. On collecte d'abord, puis on
+                                // supprime de la FIN vers le début (les ranges
+                                // amont restent valides).
+                                var amps = new System.Collections.Generic.List<Word.Range>();
+                                foreach (Word.Range ch in target.Range.Characters)
                                 {
-                                    var selAmp = _app.Selection;
-                                    selAmp.SetRange(target.Range.Start, target.Range.Start);
-                                    selAmp.MoveRight(Word.WdUnits.wdCharacter, lead, Word.WdMovementType.wdMove);
-                                    boxRange = doc.Range(selAmp.Start, target.Range.End);
-                                    _log($"box(inplace): saut {lead} marqueur(s) & → boxRange=[{boxRange.Start},{boxRange.End}]");
+                                    string ct = null; try { ct = ch.Text; } catch { }
+                                    if (ct == "&") amps.Add(ch);
+                                }
+                                if (amps.Count > 0)
+                                {
+                                    // Combien de & garder en tête : ChainComposer
+                                    // met une colonne PAD en tête sur les chaînes
+                                    // à connecteur (Row3 = `& ⟺ & lhs & relRhs`,
+                                    // 3 &) → garder 2 (pad + sép. connecteur)
+                                    // laisse le ⟺ DEHORS et encadre lhs+relRhs.
+                                    // Chaîne « = » / système (1 &) → garder 1.
+                                    int keep = amps.Count >= 3 ? 2 : 1;
+                                    // supprime les & au-delà des `keep` premiers,
+                                    // de la fin vers le début, via Range.Delete.
+                                    for (int i = amps.Count - 1; i >= keep; i--)
+                                    {
+                                        try { amps[i].Delete(); }
+                                        catch (Exception exD) { _log($"box(inplace): del & #{i} KO: {exD.Message}"); }
+                                    }
+                                    int boxStart = amps[keep - 1].End;
+                                    boxRange = doc.Range(boxStart, target.Range.End);
+                                    _log($"box(inplace): {amps.Count} & (gardé {keep}), box=[{boxStart},{boxRange.End}]");
                                 }
                             }
-                            catch (Exception exAmp) { _log("box(inplace): saut & KO: " + exAmp.Message); }
+                            catch (Exception exAmp) { _log("box(inplace): & KO: " + exAmp.Message); }
                         }
                         else boxRange = target.Range;
 
