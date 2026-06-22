@@ -43,5 +43,24 @@ namespace MathCursor.Host.SourceMap
 
         /// <summary>Timestamp UTC du commit — sert de critère d'éviction au cap.</summary>
         public DateTime ParsedAt { get; set; }
+
+        // ── Classification pour l'encadrement (ADR 2026-06-22) ───────────
+
+        /// <summary>Bloc empilé (chaîne / système) : sténo et LaTeX joints par
+        /// '\n'. C'est le cas « multiligne » → l'encadrement ne vise que la
+        /// dernière ligne.</summary>
+        public bool IsBlock =>
+            !string.IsNullOrEmpty(Type) || (Steno ?? "").IndexOf('\n') >= 0;
+
+        /// <summary>Équation simple mais à structure « tableau » (matrice / env.
+        /// LaTeX) : hors périmètre encadrement v1.</summary>
+        public bool IsMatrixLike =>
+            !IsBlock && ((Latex ?? "").Contains("\\\\") || (Latex ?? "").Contains("\\begin{"));
+
+        /// <summary>Déjà encadrée (un \boxed quelque part dans le LaTeX).</summary>
+        public bool IsAlreadyBoxed => (Latex ?? "").Contains("\\boxed{");
+
+        /// <summary>Encadrable : ni déjà encadrée, ni matrice/env. complexe.</summary>
+        public bool CanBox => !IsAlreadyBoxed && !IsMatrixLike;
     }
 }

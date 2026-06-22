@@ -62,6 +62,7 @@ namespace MathCursor
                     _conversion.Resolver,
                     hideSuggestionPopup: () => _conversion?.HidePopup(),
                     getCaretScreenPos: CaretScreenPositionReader.Read,
+                    boxAtCaret: () => _conversion?.BoxAtCaret() ?? false,
                     log: LogStartup);
 
                 // Suppression atomique Backspace/Suppr (héritier minimal de

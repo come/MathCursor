@@ -37,6 +37,14 @@
                         size="normal"
                         imageMso="AcceptTask"
                         onAction="OnTabValidateToggled" />
+          <!-- Encadre l'équation sous le caret (\boxed → m:borderBox), via le
+               pipeline d'insertion (1 Ctrl+Z annule). Cf. ADR 2026-06-20. -->
+          <button id="BoxResultButton"
+                  getLabel="OnGetBoxResultButtonLabel"
+                  getScreentip="OnGetBoxResultButtonScreentip"
+                  size="normal"
+                  imageMso="BorderOutside"
+                  onAction="OnBoxResultClicked" />
         </group>
         <group id="MathCursorLayoutGroup" getLabel="OnGetLayoutGroupLabel">
           <menu id="ColumnsMenu"
@@ -56,6 +64,27 @@
             <button id="InsertColumns4Button"
                     getLabel="OnGetColumns4Label"
                     onAction="OnInsertColumnsClicked" />
+          </menu>
+          <!-- Encadrés colorés typés (Théorème/Définition/Exemple/Propriété) :
+               style de paragraphe Word (barre d'accent + fond + titre), aucune
+               OMath. Cf. ADR 2026-06-20-Feat-encadres-callouts-boxed. -->
+          <menu id="CalloutMenu"
+                getLabel="OnGetCalloutMenuLabel"
+                getScreentip="OnGetCalloutMenuScreentip"
+                size="large"
+                imageMso="TextBoxInsert">
+            <button id="CalloutTheoremButton"
+                    getLabel="OnGetCalloutTheoremLabel"
+                    onAction="OnInsertCalloutClicked" />
+            <button id="CalloutDefinitionButton"
+                    getLabel="OnGetCalloutDefinitionLabel"
+                    onAction="OnInsertCalloutClicked" />
+            <button id="CalloutExampleButton"
+                    getLabel="OnGetCalloutExampleLabel"
+                    onAction="OnInsertCalloutClicked" />
+            <button id="CalloutPropertyButton"
+                    getLabel="OnGetCalloutPropertyLabel"
+                    onAction="OnInsertCalloutClicked" />
           </menu>
         </group>
         <group id="MathCursorToolsGroup" getLabel="OnGetToolsGroupLabel">

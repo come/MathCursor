@@ -126,6 +126,12 @@ namespace MathCursor.Host.SourceMap
                         if (!CheckItems(row.Elements(), ref reason)) return false;
                     return true;
                 }
+                case "borderBox":
+                    // \boxed : on n'émet jamais de borderBoxPr (4 bords par
+                    // défaut). Sa présence = arbre non prévu → refus.
+                    if (el.Element(M + "borderBoxPr") != null)
+                    { reason = "m:borderBoxPr non supporté"; return false; }
+                    return CheckArg(el, "e", ref reason);
                 default:
                     reason = "<m:" + n + "> hors whitelist";
                     return false;

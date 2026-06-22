@@ -96,14 +96,77 @@ namespace MathCursor.UI
             s = VmatrixRegex.Replace(s, m =>
                 "\\left| \\matrix{" + m.Groups["body"].Value.Trim() + "} \\right|");
 
+            // 4c) \boxed{X} : WpfMath ne connaît ni \boxed ni \fbox
+            //     (TexParseException 'boxed'). L'aperçu popup est COSMETIQUE
+            //     (Word reçoit le vrai cadre m:borderBox via LatexToOmml) →
+            //     on déballe le contenu. Matching d'accolades car le contenu
+            //     peut être imbriqué (\boxed{\frac{1}{x}}).
+            s = UnwrapBraced(s, "\\boxed");
+
             // 5) Substitutions littérales mot-à-mot (ordre préservé).
             foreach (var (from, to) in LiteralSubs)
                 s = s.Replace(from, to);
 
+            // 6) Bornes d'intégrale À DROITE (subSup) dans l'aperçu, comme dans
+            //    Word (ADR 2026-06-22-Fix-integrales-bornes-subsup). WpfMath,
+            //    comme TeX, EMPILE les bornes des grands opérateurs en display
+            //    style ; \nolimits et \textstyle ne sont PAS supportés (rendent
+            //    un visuel vide — sondé via WpfMathRenderProbeTests). Astuce :
+            //    grouper l'opérateur → {\int}_a^b attache les scripts à un atome
+            //    ORDINAIRE, qui les place à droite.
+            //    a) Cas courant « ∫_{bas}^{haut} » (indice braced juste après) :
+            //       on groupe ET on injecte un kern négatif \!\! en tête
+            //       d'indice — sinon WpfMath aligne la borne BASSE trop à droite
+            //       (atome ordinaire = scripts symétriques), au lieu de la
+            //       rentrer sous la pente de l'intégrale (sondé probes 60/65/66,
+            //       user 2026-06-22). \!\! marche dans WpfMath, contrairement à
+            //       \nolimits.
+            //    b) Fallback (indice non-braced, ou ^ avant _) : groupage seul.
+            //    Couvre \int, \oint, et le run \int\int issu de la dégradation
+            //    \iint ci-dessus. \int sans bornes (intégrale indéfinie) n'est
+            //    pas touché (pas de _/^ → pas d'empilement).
+            s = IntBoundsBracedSubRegex.Replace(s, "{$1}_{\\!\\!");
+            s = IntBoundsRegex.Replace(s, "{$1}");
+
+            return s;
+        }
+
+        /// <summary>Retire toutes les occurrences <c>cmd{…}</c> en gardant
+        /// leur contenu, avec appariement d'accolades (gère l'imbrication).
+        /// Bascule inerte si une occurrence est déséquilibrée.</summary>
+        private static string UnwrapBraced(string s, string cmd)
+        {
+            string token = cmd + "{";
+            int idx;
+            while ((idx = s.IndexOf(token, System.StringComparison.Ordinal)) >= 0)
+            {
+                int open = idx + token.Length - 1; // l'accolade ouvrante
+                int depth = 0, j = open;
+                for (; j < s.Length; j++)
+                {
+                    if (s[j] == '{') depth++;
+                    else if (s[j] == '}' && --depth == 0) break;
+                }
+                if (j >= s.Length) break; // déséquilibré : on laisse tel quel
+                string inner = s.Substring(open + 1, j - open - 1);
+                s = s.Substring(0, idx) + inner + s.Substring(j + 1);
+            }
             return s;
         }
 
         // ----- regex compilées -----
+
+        // Un run de signes intégrale (\int, \oint, ou \int\int… issu de la
+        // dégradation \iint) suivi d'un indice BRACED « _{ » : on injecte le
+        // kern \!\! dedans (borne basse rentrée sous la pente).
+        private static readonly Regex IntBoundsBracedSubRegex =
+            new Regex(@"(\\(?:o?int)(?:\\int)*)_\{", RegexOptions.Compiled);
+
+        // Idem mais cas restants (indice non-braced, ou ^ avant _) : groupage
+        // seul, sans kern. Le run déjà groupé en (a) n'est plus suivi de _/^
+        // (il est suivi de « } ») donc n'est pas re-matché ici.
+        private static readonly Regex IntBoundsRegex =
+            new Regex(@"(\\(?:o?int)(?:\\int)*)(?=[_^])", RegexOptions.Compiled);
 
         private static readonly Regex MathbbRegex =
             new Regex(@"\\mathbb\{(\w)\}", RegexOptions.Compiled);

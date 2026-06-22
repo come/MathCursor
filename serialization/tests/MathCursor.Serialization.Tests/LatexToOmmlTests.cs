@@ -151,6 +151,26 @@ namespace MathCursor.Serialization.Tests
             Assert.Equal("8", AllText(rad.Element(M + "e")));
         }
 
+        // ── Cadre \boxed (encadrer un résultat) ──────────────────────────
+
+        [Fact]
+        public void Boxed_emits_borderBox_with_content()
+        {
+            var x = LatexToOmml.Convert(@"\boxed{x=2}");
+            var bb = Assert.Single(x.Elements(M + "borderBox"));
+            // Pas de borderBoxPr → défaut Word = 4 bords visibles, aucune barre.
+            Assert.Null(bb.Element(M + "borderBoxPr"));
+            Assert.Equal("x=2", AllText(bb.Element(M + "e")));
+        }
+
+        [Fact]
+        public void Boxed_nests_structures()
+        {
+            var x = LatexToOmml.Convert(@"\boxed{\frac{1}{x}}");
+            var bb = Assert.Single(x.Elements(M + "borderBox"));
+            Assert.Single(bb.Element(M + "e").Descendants(M + "f"));
+        }
+
         // ── Scripts (exposant / indice) ──────────────────────────────────
 
         [Fact]

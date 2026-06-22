@@ -185,6 +185,7 @@
     <Compile Include="RibbonCallback.cs" />
     <EmbeddedResource Include="Ribbon.xml" />
     <Compile Include="Host\ColumnLayoutInserter.cs" />
+    <Compile Include="Host\CalloutInserter.cs" />
     <Compile Include="Host\ConversionController.cs" />
     <Compile Include="Host\SpanComputer.cs" />
     <Compile Include="Host\Usage\UsageCounter.cs" />

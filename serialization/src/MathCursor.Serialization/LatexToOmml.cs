@@ -188,6 +188,14 @@ namespace MathCursor.Serialization
                         new XElement(M + "deg"),
                         new XElement(M + "e", ParseFragment(arg)));
                 }
+                case "boxed":
+                {
+                    // \boxed{x} → <m:borderBox> (cadre 4 bords) ; pas de borderBoxPr
+                    // = défaut Word (tous bords visibles, aucune barre).
+                    var arg = ReadArg(s, ref i);
+                    return new XElement(M + "borderBox",
+                        new XElement(M + "e", ParseFragment(arg)));
+                }
                 case "vec": case "overrightarrow":
                     return Accent(ReadArg(s, ref i), "⃗");
                 case "hat": case "widehat":

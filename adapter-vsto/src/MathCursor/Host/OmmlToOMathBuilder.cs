@@ -254,6 +254,13 @@ namespace MathCursor.Host
                         FillArg(doc, fn.EqArray.E.Item(k + 1), rows[k]);
                     break;
                 }
+                case "borderBox":
+                    // \boxed{x} : cadre 4 bords par défaut (aucun borderBoxPr
+                    // émis ni géré — la whitelist le refuse). fn.BorderBox.E
+                    // = le contenu encadré, rempli récursivement.
+                    fn = om.Functions.Add(at, Word.WdOMathFunctionType.wdOMathFunctionBorderBox);
+                    FillArg(doc, fn.BorderBox.E, el.Element(M + "e"));
+                    break;
                 default:
                     // IsSupported a whitelisté l'arbre — ne doit jamais arriver.
                     throw new NotSupportedException("walker: <m:" + n + "> inattendu");

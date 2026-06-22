@@ -154,6 +154,10 @@ namespace MathCursor.Tests.UI
             { "51-widehat-multi",  @"\widehat{ABC}" },
             { "52-overline",       @"\overline{x+y}" },
             { "53-oint",           @"\oint" },
+            // \boxed : cadre WPF (Border) autour du contenu rendu — l'aperçu
+            // doit montrer le cadre que Word recevra en m:borderBox.
+            { "60-boxed",          @"\boxed{x=2}" },
+            { "61-boxed-frac",     @"\boxed{\frac{1}{x}}" },
         };
 
         [Theory]

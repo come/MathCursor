@@ -9,9 +9,10 @@ using System.Windows.Media.Animation;
 namespace MathCursor.UI
 {
     /// <summary>
-    /// Popup affichée sous un OMath produit par MathCursor (bookmark mcEq_… +
-    /// handle dans l'EquationStore). Une seule action utile :
-    /// « Revenir à la saisie initiale ».
+    /// Popup affichée sous un OMath produit par MathCursor (map hash→source).
+    /// Deux actions (clic souris) empilées : « Encadrer cette formule »
+    /// (post-hoc <c>\boxed</c>, ADR 2026-06-22) au-dessus de « Revenir à la
+    /// saisie initiale ».
     ///
     /// Click souris UNIQUEMENT (pas de nav clavier) — les flèches et Enter
     /// restent interceptées par Word pour naviguer dans l'OMath natif. Esc
@@ -23,6 +24,9 @@ namespace MathCursor.UI
         private const int FadeMs = 150;
 
         public event Action RevertRequested;
+        public event Action BoxRequested;
+
+        private readonly Border _boxRow;
 
         public EditModePopupWindow()
         {
@@ -44,26 +48,15 @@ namespace MathCursor.UI
                 Background = Brushes.White,
             };
 
-            var actionRow = new Border
-            {
-                Padding = new Thickness(10, 8, 10, 8),
-                Background = Brushes.White,
-                Cursor = System.Windows.Input.Cursors.Hand,
-            };
-            actionRow.Child = new TextBlock
-            {
-                Text = "Revenir à la saisie initiale",
-                FontSize = 13,
-                Foreground = new SolidColorBrush(Color.FromRgb(40, 40, 40)),
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-            actionRow.MouseEnter += (_, __) =>
-                actionRow.Background = new SolidColorBrush(Color.FromRgb(220, 235, 255));
-            actionRow.MouseLeave += (_, __) =>
-                actionRow.Background = Brushes.White;
-            actionRow.MouseLeftButtonUp += (_, __) => RevertRequested?.Invoke();
+            // Lignes empilées : encadrer (haut) puis revenir à la saisie (bas).
+            _boxRow = MakeActionRow(Strings.EditBoxFormulaLabel, () => BoxRequested?.Invoke());
+            var revertRow = MakeActionRow(Strings.EditRevertLabel, () => RevertRequested?.Invoke());
 
-            border.Child = actionRow;
+            var stack = new StackPanel { Orientation = Orientation.Vertical };
+            stack.Children.Add(_boxRow);
+            stack.Children.Add(revertRow);
+
+            border.Child = stack;
             Content = border;
 
             SourceInitialized += (_, _) =>
@@ -77,13 +70,45 @@ namespace MathCursor.UI
             };
         }
 
+        /// <summary>Construit une ligne d'action cliquable (style commun aux
+        /// deux entrées : hover bleu pâle, curseur main).</summary>
+        private static Border MakeActionRow(string text, Action onClick)
+        {
+            var row = new Border
+            {
+                Padding = new Thickness(10, 8, 10, 8),
+                Background = Brushes.White,
+                Cursor = System.Windows.Input.Cursors.Hand,
+            };
+            row.Child = new TextBlock
+            {
+                Text = text,
+                FontSize = 13,
+                Foreground = new SolidColorBrush(Color.FromRgb(40, 40, 40)),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            row.MouseEnter += (_, __) =>
+                row.Background = new SolidColorBrush(Color.FromRgb(220, 235, 255));
+            row.MouseLeave += (_, __) =>
+                row.Background = Brushes.White;
+            row.MouseLeftButtonUp += (_, __) => onClick?.Invoke();
+            return row;
+        }
+
         /// <summary>
         /// Affiche à la position (X, Y) en DIP. <paramref name="alignRight"/>
         /// signifie : X est la coord du bord DROIT de la popup (alignée avec
         /// la droite de la boîte OMath par exemple), pas le bord gauche.
+        /// <paramref name="canBox"/> : la formule n'est pas déjà encadrée → on
+        /// montre l'entrée d'encadrement (sinon masquée, pas de no-op silencieux).
+        /// <paramref name="boxLabel"/> : libellé de cette entrée (« Encadrer cette
+        /// formule » ou « Encadrer la dernière ligne » pour un bloc) ; null = garde
+        /// le libellé courant.
         /// </summary>
-        public void ShowAt(double x, double y, bool alignRight)
+        public void ShowAt(double x, double y, bool alignRight, bool canBox = true, string boxLabel = null)
         {
+            _boxRow.Visibility = canBox ? Visibility.Visible : Visibility.Collapsed;
+            if (boxLabel != null && _boxRow.Child is TextBlock boxText) boxText.Text = boxLabel;
             // SizeToContent rend ActualWidth disponible après Show ; on calcule
             // la position après show pour avoir la vraie largeur si on aligne
             // à droite.

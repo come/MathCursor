@@ -29,6 +29,7 @@ namespace MathCursor.Host.EditMode
         private readonly SourceMapResolver _resolver;
         private readonly Action _hideSuggestionPopup;
         private readonly Func<(double x, double y)> _getCaretScreenPos;
+        private readonly Func<bool> _boxAtCaret;
         private readonly Action<string> _log;
 
         private EquationHandle _editHandle;
@@ -55,12 +56,14 @@ namespace MathCursor.Host.EditMode
             SourceMapResolver resolver,
             Action hideSuggestionPopup,
             Func<(double x, double y)> getCaretScreenPos,
+            Func<bool> boxAtCaret,
             Action<string> log)
         {
             _app = app ?? throw new ArgumentNullException(nameof(app));
             _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
             _hideSuggestionPopup = hideSuggestionPopup ?? (() => { });
             _getCaretScreenPos = getCaretScreenPos ?? throw new ArgumentNullException(nameof(getCaretScreenPos));
+            _boxAtCaret = boxAtCaret ?? (() => false);
             _log = log ?? (s => { });
         }
 
@@ -122,21 +125,29 @@ namespace MathCursor.Host.EditMode
             {
                 _popup = new EditModePopupWindow();
                 _popup.RevertRequested += OnRevertRequested;
+                _popup.BoxRequested += OnBoxRequested;
             }
+
+            // Encadrable ? (ni déjà \boxed, ni matrice/env. complexe → sinon on
+            // masque l'entrée, pas de no-op silencieux). Pour un BLOC (chaîne /
+            // système), l'encadrement ne vise que la dernière ligne → libellé
+            // dédié (ADR 2026-06-22).
+            bool canBox = source.CanBox;
+            string boxLabel = source.IsBlock ? Strings.EditBoxLastLineLabel : Strings.EditBoxFormulaLabel;
 
             // Panneau ancré au DÉBUT de la formule (demande user 2026-06-11) :
             // bord gauche du popup = bord gauche de l'OMath, juste dessous.
             // Repli : ancien comportement caret-rightaligned si GetPoint échoue.
             if (TryGetOMathScreenAnchor(om, out double ax, out double ay))
             {
-                _popup.ShowAt(ax, ay, alignRight: false);
+                _popup.ShowAt(ax, ay, alignRight: false, canBox: canBox, boxLabel: boxLabel);
                 _log($"edit mode: handle={_editHandle.Id} popup at omath-start ({ax:F0},{ay:F0})");
             }
             else
             {
                 const double OMathExtraHeightDip = 18.0;
                 var caretPos = _getCaretScreenPos();
-                _popup.ShowAt(caretPos.x, caretPos.y + OMathExtraHeightDip, alignRight: true);
+                _popup.ShowAt(caretPos.x, caretPos.y + OMathExtraHeightDip, alignRight: true, canBox: canBox, boxLabel: boxLabel);
                 _log($"edit mode: handle={_editHandle.Id} popup at caret-rightaligned fallback ({caretPos.x:F0},{caretPos.y + OMathExtraHeightDip:F0})");
             }
             return true;
@@ -221,6 +232,21 @@ namespace MathCursor.Host.EditMode
             _editingOMathStart = -1;
             _popup?.HidePopup();
             _log($"revert: handle={handle.Id} → \"{source}\"");
+        }
+
+        // ── Action encadrer (ADR 2026-06-22) ─────────────────────────
+
+        /// <summary>Encadre la formule sous le caret via le pipeline partagé
+        /// (<c>ConversionController.BoxAtCaret</c>, injecté en callback). L'OMath
+        /// devient un <c>m:borderBox</c> → on ferme la popup et on réarme la
+        /// détection pour que le polling la rouvre sur la nouvelle équation.</summary>
+        private void OnBoxRequested()
+        {
+            bool ok = _boxAtCaret();
+            _log($"edit mode: box requested → {(ok ? "encadrée" : "no-op")}");
+            _editHandle = null;
+            _editingOMathStart = -1;
+            _popup?.HidePopup();
         }
 
         /// <summary>Cherche un OMath inclus dans la sélection actuelle.</summary>

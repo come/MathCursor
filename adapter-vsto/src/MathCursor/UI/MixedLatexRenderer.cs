@@ -146,6 +146,16 @@ namespace MathCursor.UI
             if (string.IsNullOrEmpty(latex))
                 return new TextBlock { Text = "", FontSize = 14 };
 
+            // \boxed{…} pleine formule : WpfMath ne sait pas dessiner de cadre
+            // (cf. WpfMathAdapter qui le déballe en filet pour les cas nichés).
+            // Ici on rend le contenu récursivement et on l'entoure d'un Border
+            // WPF → aperçu fidèle au m:borderBox inséré dans Word (ADR
+            // 2026-06-20 boxed). Pleine formule seulement : un \boxed inline
+            // (a+\boxed{x}) retombe sur le déballage WpfMathAdapter.
+            string boxedInner = WholeBoxedInner(latex);
+            if (boxedInner != null)
+                return WrapInBorder(Render(boxedInner, scale), scale);
+
             var segments = Tokenize(latex);
 
             // Fast path : aucune macro Unicode → FormulaControl direct
@@ -173,6 +183,45 @@ namespace MathCursor.UI
                 panel.Children.Add(child);
             }
             return panel;
+        }
+
+        /// <summary>Si <paramref name="latex"/> est exactement
+        /// <c>\boxed{…}</c> (le cadre enveloppe TOUTE la formule), renvoie le
+        /// contenu intérieur ; sinon null. Appariement d'accolades (le contenu
+        /// peut être imbriqué : <c>\boxed{\frac{1}{x}}</c>).</summary>
+        private static string WholeBoxedInner(string latex)
+        {
+            const string tok = "\\boxed{";
+            if (!latex.StartsWith(tok, System.StringComparison.Ordinal)) return null;
+            int open = tok.Length - 1; // l'accolade ouvrante
+            int depth = 0;
+            for (int j = open; j < latex.Length; j++)
+            {
+                if (latex[j] == '{') depth++;
+                else if (latex[j] == '}' && --depth == 0)
+                    return j == latex.Length - 1
+                        ? latex.Substring(open + 1, j - open - 1)
+                        : null; // du contenu suit le } → pas pleine formule
+            }
+            return null; // déséquilibré
+        }
+
+        /// <summary>Entoure un élément rendu d'un cadre fin (aperçu du
+        /// m:borderBox). Padding proportionnel au scale pour un visuel
+        /// cohérent quelle que soit la taille du popup.</summary>
+        private static UIElement WrapInBorder(UIElement inner, double scale)
+        {
+            var border = new Border
+            {
+                BorderBrush = new SolidColorBrush(Color.FromRgb(60, 60, 60)),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(scale * 0.35, scale * 0.18, scale * 0.35, scale * 0.18),
+                Child = inner,
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                SnapsToDevicePixels = true,
+            };
+            return border;
         }
 
         private static UIElement MakeFormulaControl(string latex, double scale)

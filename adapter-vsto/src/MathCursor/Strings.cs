@@ -745,6 +745,50 @@ namespace MathCursor
             _    => "Converts the text typed before the caret into an equation (Ctrl+Space). Press again to extend the zone leftwards.",
         };
 
+        public static string BoxResultButtonLabel => Lang switch
+        {
+            "fr" => "Encadrer",
+            _    => "Box result",
+        };
+
+        public static string BoxResultButtonScreentip => Lang switch
+        {
+            "fr" => "Encadre l'équation sous le curseur (cadre autour du résultat). Annulable en un Ctrl+Z. Sans effet si le curseur n'est pas dans une équation MathCursor.",
+            _    => "Draws a frame around the equation under the caret (boxed result). Undo with a single Ctrl+Z. No effect if the caret is not inside a MathCursor equation.",
+        };
+
+        // Entrées de la popup d'édition (au-dessus d'une OMath à nous).
+        public static string EditBoxFormulaLabel => Lang switch
+        {
+            "fr" => "Encadrer cette formule",
+            _    => "Box this formula",
+        };
+
+        // Variante BLOC (chaîne / système) : on n'encadre que la dernière ligne.
+        public static string EditBoxLastLineLabel => Lang switch
+        {
+            "fr" => "Encadrer la dernière ligne",
+            _    => "Box last line",
+        };
+
+        public static string EditRevertLabel => Lang switch
+        {
+            "fr" => "Revenir à la saisie initiale",
+            _    => "Revert to original input",
+        };
+
+        public static string CalloutMenuLabel => Lang switch
+        {
+            "fr" => "Encadré",
+            _    => "Callout",
+        };
+
+        public static string CalloutMenuScreentip => Lang switch
+        {
+            "fr" => "Insère un encadré coloré (Théorème, Définition, Exemple, Propriété) autour de la sélection ou du paragraphe courant : barre d'accent, fond teinté et titre.",
+            _    => "Inserts a coloured callout (Theorem, Definition, Example, Property) around the selection or current paragraph: accent bar, tinted background and title.",
+        };
+
         public static string SettingsSectionDetection => Lang switch
         {
             "fr" => "Détection",

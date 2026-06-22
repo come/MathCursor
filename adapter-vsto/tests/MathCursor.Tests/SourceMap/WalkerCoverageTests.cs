@@ -67,6 +67,29 @@ namespace MathCursor.Tests.SourceMap
             Assert.True(OmmlWalkerWhitelist.IsSupported(oMath, out string why), why);
         }
 
+        [Fact]
+        public void BorderBox_EstConstructible()
+        {
+            // \boxed{x=2} → m:borderBox/m:e (cadre 4 bords, pas de borderBoxPr).
+            XNamespace m = M;
+            var oMath = new XElement(m + "oMath",
+                new XElement(m + "borderBox",
+                    new XElement(m + "e", Run("x"), Run("="), Run("2"))));
+            Assert.True(OmmlWalkerWhitelist.IsSupported(oMath, out string why), why);
+        }
+
+        [Fact]
+        public void BorderBoxPr_EstRefuse()
+        {
+            // On n'émet jamais de borderBoxPr : sa présence = arbre non prévu.
+            XNamespace m = M;
+            var oMath = new XElement(m + "oMath",
+                new XElement(m + "borderBox",
+                    new XElement(m + "borderBoxPr"),
+                    new XElement(m + "e", Run("x"))));
+            Assert.False(OmmlWalkerWhitelist.IsSupported(oMath, out _));
+        }
+
         private static XElement Run(string t)
         {
             XNamespace m = M;

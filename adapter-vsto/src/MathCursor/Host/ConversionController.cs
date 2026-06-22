@@ -421,6 +421,201 @@ namespace MathCursor.Host
             }
         }
 
+        // ── Encadrer le résultat (bouton ruban) ──────────────────────────
+
+        /// <summary>
+        /// Encadre l'OMath sous le caret EN PLACE : branche une
+        /// <c>m:borderBox</c> autour de son contenu via
+        /// <c>OMath.Functions.Add(…, wdOMathFunctionBorderBox)</c>, sans
+        /// delete+redraw (ADR 2026-06-22). Confirme d'abord la source par K2
+        /// (l'OMath doit être à nous), puis ré-enregistre la map après mutation
+        /// (le contenu — donc le hash — change). Déclenché par le bouton ruban
+        /// « Encadrer » ou l'entrée « Encadrer cette formule » de la popup
+        /// d'édition. No-op (loggué) si : pas d'équation sous le caret ;
+        /// équation hors map (éditée à la main, K2 non confirmée) ; déjà
+        /// encadrée ; bloc multiligne (hors périmètre v1). Retourne true si
+        /// l'encadrement a eu lieu.
+        /// </summary>
+        public bool BoxAtCaret()
+        {
+            var doc = _app.ActiveDocument;
+            if (doc == null) return false;
+
+            var om = FindOMathAtCaret();
+            if (om == null) { _log("box: pas d'équation sous le caret"); return false; }
+
+            // Source CONFIRMÉE par K2 : on REMPLACE l'OMath (destructif), jamais
+            // sur un simple match K1. Miss = équation éditée main, on s'abstient.
+            var entry = Resolver.ResolveConfirmed(doc, om);
+            if (entry == null || string.IsNullOrEmpty(entry.Latex))
+            { _log("box: source introuvable (hors map / éditée main)"); return false; }
+
+            if (entry.IsAlreadyBoxed)
+            { _log("box: déjà encadrée, no-op"); return false; }
+
+            // Matrices / environnements LaTeX (structure tableau) : hors
+            // périmètre encadrement v1.
+            if (entry.IsMatrixLike)
+            { _log("box: matrice/env. non encadrable (v1)"); return false; }
+
+            // boxed = décoration appliquée à un OMath EXISTANT (ADR 2026-06-22) :
+            // on branche une m:borderBox DIRECTEMENT autour du contenu via
+            // Functions.Add, EN PLACE — pas de delete+redraw (qui butait sur
+            // ZoneCleaner/Range.Delete « Cannot edit Range » pour les OMaths
+            // structurées). Pour un BLOC (chaîne/système), on ne vise que la
+            // DERNIÈRE ligne. La source garde la sténo INTÉRIEURE (revert →
+            // formule simple) ; le latex porte le \boxed (garde anti
+            // double-encadrement).
+            bool lastLineOnly = entry.IsBlock;
+            string newSource = entry.Steno ?? "";
+            string newLatex = lastLineOnly
+                ? BoxLastLatexLine(entry.Latex)
+                : "\\boxed{" + entry.Latex + "}";
+
+            _committing = true;
+            try
+            {
+                int omStart = om.Range.Start, omEnd = om.Range.End;
+                _log($"box(inplace): om [{omStart},{omEnd}) lastLine={lastLineOnly} source=\"{newSource}\" latex=\"{newLatex}\"");
+                using (new UndoRecordScope(_app, "MathCursor : encadrer"))
+                {
+                    try
+                    {
+                        // Cible : l'OMath entier, ou la DERNIÈRE ligne d'un bloc
+                        // (chaîne/système) = dernière row de son eqArr.
+                        Word.OMath target = om;
+                        Word.Range boxRange;
+                        if (lastLineOnly)
+                        {
+                            var eqFn = FindEqArray(om);
+                            var rows = eqFn?.EqArray?.E;
+                            if (rows == null || rows.Count == 0)
+                            { _log("box(inplace): bloc sans eqArr → no-op"); return false; }
+                            target = (Word.OMath)rows.Item(rows.Count);
+
+                            // Une row d'eqArr porte des marqueurs d'alignement
+                            // « & » (cf. ChainComposer). Un borderBox n'est PAS
+                            // une cellule d'eqArr → s'il les enveloppe, ils
+                            // s'affichent EN CLAIR (bug « on voit le & »). On
+                            // saute donc les & de tête : la boîte n'entoure que
+                            // le contenu visible, le & reste dehors comme point
+                            // d'alignement (alignement préservé).
+                            boxRange = target.Range;
+                            try
+                            {
+                                string rowText = target.Range.Text ?? "";
+                                int lead = 0;
+                                while (lead < rowText.Length && rowText[lead] == '&') lead++;
+                                if (lead > 0)
+                                {
+                                    var selAmp = _app.Selection;
+                                    selAmp.SetRange(target.Range.Start, target.Range.Start);
+                                    selAmp.MoveRight(Word.WdUnits.wdCharacter, lead, Word.WdMovementType.wdMove);
+                                    boxRange = doc.Range(selAmp.Start, target.Range.End);
+                                    _log($"box(inplace): saut {lead} marqueur(s) & → boxRange=[{boxRange.Start},{boxRange.End}]");
+                                }
+                            }
+                            catch (Exception exAmp) { _log("box(inplace): saut & KO: " + exAmp.Message); }
+                        }
+                        else boxRange = target.Range;
+
+                        var fn = target.Functions.Add(boxRange, Word.WdOMathFunctionType.wdOMathFunctionBorderBox);
+
+                        // Padding intérieur : la borderBox colle au contenu par
+                        // défaut (pas d'attribut de marge en OMML). On insère un
+                        // espace DANS l'argument E (donc dans la boîte), de
+                        // chaque côté. U+2004 (three-per-em, 1/3 em) = espace
+                        // EXPLICITE que Word préserve en mode math (un espace
+                        // ASCII y est avalé par l'auto-spacing). InsertAfter
+                        // d'abord (ne décale pas le début), puis InsertBefore.
+                        const string Pad = " ";
+                        try
+                        {
+                            var er = fn.BorderBox.E.Range;
+                            er.InsertAfter(Pad);
+                            er.InsertBefore(Pad);
+                        }
+                        catch (Exception exP) { _log("box(inplace): padding KO: " + exP.Message); }
+
+                        try { _log($"box(inplace): borderBox posée, fn=[{fn.Range.Start},{fn.Range.End}] om now [{om.Range.Start},{om.Range.End}]"); }
+                        catch { }
+                    }
+                    catch (Exception exA) { _log("box(inplace): Functions.Add KO: " + exA.Message); return false; }
+                }
+
+                // Source en map APRÈS le scope undo (Record lit WordOpenXML →
+                // fermerait le record). Le contenu a changé (borderBox) → K1/K2
+                // changent : sans re-Record, l'équation n'est plus « à nous »
+                // (plus de revert/edit popup). Re-trouve l'OMath au voisinage.
+                Word.OMath boxed = null;
+                int probeEnd = Math.Min(doc.Content.End, omStart + 2);
+                foreach (Word.OMath o in doc.Range(Math.Max(0, omStart - 1), probeEnd).OMaths) { boxed = o; break; }
+                if (boxed != null)
+                    _inserter.SourceMap.Record(doc, boxed, newSource, newLatex, entry.Type, OMathInserter.NewHandleId());
+                else
+                    _log("box(inplace): OMath introuvable au re-probe, source non réenregistrée");
+                return true;
+            }
+            catch (Exception ex) { _log("box_error: " + ex.Message); return false; }
+            finally { _committing = false; }
+        }
+
+        /// <summary>Première fonction eqArr de l'OMath (top-level pour une
+        /// chaîne, nichée dans le delim pour un système), ou null. Récurse via
+        /// les arguments génériques (<c>OMathFunction.Args</c>).</summary>
+        private static Word.OMathFunction FindEqArray(Word.OMath om)
+        {
+            if (om == null) return null;
+            Word.OMathFunctions fns;
+            try { fns = om.Functions; } catch { return null; }
+            if (fns == null) return null;
+            foreach (Word.OMathFunction f in fns)
+            {
+                try { if (f.Type == Word.WdOMathFunctionType.wdOMathFunctionEqArray) return f; }
+                catch { continue; }
+                Word.OMathArgs args = null;
+                try { args = f.Args; } catch { }
+                if (args == null) continue;
+                int n = 0;
+                try { n = args.Count; } catch { }
+                for (int i = 1; i <= n; i++)
+                {
+                    Word.OMath arg = null;
+                    try { arg = (Word.OMath)args.Item(i); } catch { }
+                    var found = FindEqArray(arg);
+                    if (found != null) return found;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>Enveloppe la DERNIÈRE ligne d'un LaTeX de bloc (lignes
+        /// jointes par '\n', cf. <c>EquationSource.Latex</c>) dans
+        /// <c>\boxed{…}</c>. Métadonnée map only (le rendu se fait sur l'OMath,
+        /// le revert sur la sténo) — sert surtout à la garde anti
+        /// double-encadrement.</summary>
+        private static string BoxLastLatexLine(string latex)
+        {
+            if (string.IsNullOrEmpty(latex)) return "\\boxed{}";
+            int nl = latex.LastIndexOf('\n');
+            return nl < 0
+                ? "\\boxed{" + latex + "}"
+                : latex.Substring(0, nl + 1) + "\\boxed{" + latex.Substring(nl + 1) + "}";
+        }
+
+        /// <summary>OMath inclus dans la sélection courante (caret), ou null.</summary>
+        private Word.OMath FindOMathAtCaret()
+        {
+            try
+            {
+                var sel = _app.Selection;
+                if (sel?.OMaths != null && sel.OMaths.Count > 0)
+                    foreach (Word.OMath om in sel.OMaths) return om;
+            }
+            catch { }
+            return null;
+        }
+
         // ── Navigation popup (déléguée par le hook clavier) ─────────────
 
         public void EnterNavMode() => _popup?.EnterNavMode();

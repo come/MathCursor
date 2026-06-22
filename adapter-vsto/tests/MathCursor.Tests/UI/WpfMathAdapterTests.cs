@@ -37,6 +37,44 @@ namespace MathCursor.Tests.UI
             => Assert.Equal("\\left\\Vert AB\\right\\Vert ",
                 WpfMathAdapter.Adapt("\\left\\|AB\\right\\|"));
 
+        // ---- \boxed{X} → X (WpfMath ne connaît pas \boxed ; aperçu cosmétique,
+        //      Word reçoit le vrai cadre m:borderBox) ----
+
+        [Theory]
+        [InlineData("\\boxed{x=2}", "x=2")]
+        [InlineData("a+\\boxed{x}+b", "a+x+b")]
+        [InlineData("\\boxed{\\frac{1}{x}}", "\\frac{1}{x}")]          // imbrication
+        [InlineData("\\boxed{\\boxed{x}}", "x")]                        // double
+        public void Boxed_is_unwrapped_to_content(string input, string expected)
+            => Assert.Equal(expected, WpfMathAdapter.Adapt(input));
+
+        // ---- bornes d'intégrale À DROITE : {\int}_a^b (WpfMath empile sinon ;
+        //      \nolimits non supporté — probe 52/55, user 2026-06-22) ----
+
+        // Indice braced « _{…} » : groupé + kern \!\! (borne basse rentrée).
+        [Theory]
+        [InlineData("\\int_{a}^{b} f \\, dx", "{\\int}_{\\!\\!a}^{b} f \\, dx")]
+        [InlineData("\\oint_{C} F", "{\\oint}_{\\!\\!C} F")]
+        // \iint avec bornes est dégradé en \int\int AVANT le wrap → {\int\int}
+        [InlineData("\\iint_{D} f", "{\\int\\int}_{\\!\\!D} f")]
+        [InlineData("\\iiint_{V} f", "{\\int\\int\\int}_{\\!\\!V} f")]
+        public void Integral_braced_sub_grouped_and_kerned(string input, string expected)
+            => Assert.Equal(expected, WpfMathAdapter.Adapt(input));
+
+        // Fallback (^ avant _ : indice pas en position « _{ » juste après ∫) :
+        // groupage seul, pas de kern injecté.
+        [Theory]
+        [InlineData("\\int^{b}_{a} f", "{\\int}^{b}_{a} f")]
+        public void Integral_supfirst_grouped_without_kern(string input, string expected)
+            => Assert.Equal(expected, WpfMathAdapter.Adapt(input));
+
+        [Theory]
+        // intégrale SANS bornes : pas de _/^ → pas de wrap (rien à empiler).
+        [InlineData("\\int f \\, dx")]
+        [InlineData("\\oint F")]
+        public void Integral_without_bounds_not_grouped(string input)
+            => Assert.Equal(input, WpfMathAdapter.Adapt(input));
+
         // ---- \mathbb{X} → |X (pseudo-blackboard popup) ----
 
         [Theory]

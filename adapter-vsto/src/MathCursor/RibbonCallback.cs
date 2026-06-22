@@ -100,6 +100,14 @@ namespace MathCursor
         public bool OnGetTabValidatePressed(IRibbonControl control) => Host.Settings.SettingsStore.Current.TabValidate;
         public string OnGetConvertButtonLabel(IRibbonControl control) => Strings.ConvertButtonLabel;
         public string OnGetConvertButtonScreentip(IRibbonControl control) => Strings.ConvertButtonScreentip;
+        public string OnGetBoxResultButtonLabel(IRibbonControl control) => Strings.BoxResultButtonLabel;
+        public string OnGetBoxResultButtonScreentip(IRibbonControl control) => Strings.BoxResultButtonScreentip;
+        public string OnGetCalloutMenuLabel(IRibbonControl control) => Strings.CalloutMenuLabel;
+        public string OnGetCalloutMenuScreentip(IRibbonControl control) => Strings.CalloutMenuScreentip;
+        public string OnGetCalloutTheoremLabel(IRibbonControl control) => Host.CalloutInserter.Styles["theorem"].Label;
+        public string OnGetCalloutDefinitionLabel(IRibbonControl control) => Host.CalloutInserter.Styles["definition"].Label;
+        public string OnGetCalloutExampleLabel(IRibbonControl control) => Host.CalloutInserter.Styles["example"].Label;
+        public string OnGetCalloutPropertyLabel(IRibbonControl control) => Host.CalloutInserter.Styles["property"].Label;
         public string OnGetReportButtonLabel(IRibbonControl control) => Strings.ReportButtonLabel;
         public string OnGetReportButtonScreentip(IRibbonControl control) => Strings.ReportButtonScreentip;
         public string OnGetAboutButtonLabel(IRibbonControl control) => Strings.AboutButtonLabel;
@@ -135,6 +143,48 @@ namespace MathCursor
         {
             try { Globals.ThisAddIn?.Conversion?.Trigger(); }
             catch (Exception ex) { LogDebug("convert_clicked_error: " + ex.Message); }
+        }
+
+        /// <summary>Encadre l'équation sous le caret (\boxed). No-op si le
+        /// caret n'est pas sur une de nos équations (cf. ConversionController).</summary>
+        public void OnBoxResultClicked(IRibbonControl control)
+        {
+            try { Globals.ThisAddIn?.Conversion?.BoxAtCaret(); }
+            catch (Exception ex) { LogDebug("box_result_clicked_error: " + ex.Message); }
+        }
+
+        /// <summary>Insère un encadré coloré typé autour de la sélection (ou du
+        /// ¶ courant). Le type est résolu depuis l'id du bouton du menu.</summary>
+        public void OnInsertCalloutClicked(IRibbonControl control)
+        {
+            try
+            {
+                string key = CalloutKeyFromId(control?.Id);
+                if (key == null || !Host.CalloutInserter.Styles.TryGetValue(key, out var style))
+                { LogDebug($"callout: id inconnu {control?.Id ?? "<null>"}"); return; }
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null) { LogDebug("callout: app null"); return; }
+                Host.CalloutInserter.Insert(app, style);
+                LogDebug($"callout_done key={key}");
+            }
+            catch (Exception ex)
+            {
+                LogDebug("callout_error: " + ex.Message);
+                MessageBox.Show(
+                    "Impossible d'insérer l'encadré :\n" + ex.Message,
+                    "MathCursor", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        // "CalloutTheoremButton" → "theorem", etc.
+        private static string CalloutKeyFromId(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            if (id.IndexOf("Theorem", StringComparison.OrdinalIgnoreCase) >= 0) return "theorem";
+            if (id.IndexOf("Definition", StringComparison.OrdinalIgnoreCase) >= 0) return "definition";
+            if (id.IndexOf("Example", StringComparison.OrdinalIgnoreCase) >= 0) return "example";
+            if (id.IndexOf("Property", StringComparison.OrdinalIgnoreCase) >= 0) return "property";
+            return null;
         }
 
         public void OnReportIssueClicked(IRibbonControl control)
