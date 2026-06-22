@@ -52,7 +52,7 @@ namespace MathCursor.Serialization
 
             void Flush()
             {
-                if (text.Length > 0) { outEls.Add(Run(text.ToString())); text.Clear(); }
+                if (text.Length > 0) { outEls.Add(Run(CollapseSpaces(text.ToString()))); text.Clear(); }
             }
 
             while (i < s.Length)
@@ -238,12 +238,14 @@ namespace MathCursor.Serialization
                     // \right orphelin (LaTeX mal formé) : consomme le délim, ignore.
                     ReadDelim(s, ref i);
                     return null;
-                case "sum": return Nary("∑", s, ref i);
-                case "prod": return Nary("∏", s, ref i);
-                case "int": return Nary("∫", s, ref i);
-                case "iint": return Nary("∬", s, ref i);
-                case "iiint": return Nary("∭", s, ref i);
-                case "oint": return Nary("∮", s, ref i);
+                case "sum": return Nary("∑", s, ref i, "undOvr");
+                case "prod": return Nary("∏", s, ref i, "undOvr");
+                // Intégrales : bornes en indice/exposant À DROITE (subSup), pas
+                // empilées au-dessus/dessous — convention typo + Word natif.
+                case "int": return Nary("∫", s, ref i, "subSup");
+                case "iint": return Nary("∬", s, ref i, "subSup");
+                case "iiint": return Nary("∭", s, ref i, "subSup");
+                case "oint": return Nary("∮", s, ref i, "subSup");
                 case "binom":
                 {
                     // coefficient binomial : <m:d>( … )</m:d> avec fraction SANS barre.
@@ -327,7 +329,9 @@ namespace MathCursor.Serialization
         }
 
         // ∑/∫/… : <m:nary> avec chr, sub (from), sup (to), e (corps).
-        private static XElement Nary(string chr, string s, ref int i)
+        // limLoc = "undOvr" (bornes empilées : ∑, ∏) ou "subSup" (bornes à
+        // droite : ∫). Cf. ADR 2026-06-22-Fix-integrales-bornes-subsup.
+        private static XElement Nary(string chr, string s, ref int i, string limLoc)
         {
             string sub = null, sup = null;
             while (i < s.Length && (s[i] == '_' || s[i] == '^'))
@@ -338,15 +342,40 @@ namespace MathCursor.Serialization
             }
             var naryPr = new XElement(M + "naryPr",
                 new XElement(M + "chr", new XAttribute(M + "val", chr)),
-                new XElement(M + "limLoc", new XAttribute(M + "val", "undOvr")),
+                new XElement(M + "limLoc", new XAttribute(M + "val", limLoc)),
                 new XElement(M + "subHide", new XAttribute(M + "val", sub == null ? "1" : "0")),
                 new XElement(M + "supHide", new XAttribute(M + "val", sup == null ? "1" : "0")));
             var body = ParseSeq(s, ref i, stopAtBrace: true);
+            TrimRunEnds(body); // pas d'espace de tête/queue collé à l'opérateur
             return new XElement(M + "nary",
                 naryPr,
                 new XElement(M + "sub", sub == null ? null : ParseFragment(sub)),
                 new XElement(M + "sup", sup == null ? null : ParseFragment(sup)),
                 new XElement(M + "e", body));
+        }
+
+        // Retire l'espace de TÊTE du 1er run texte et de QUEUE du dernier d'une
+        // séquence. Pour le corps d'un n-aire : le template « \int_{a}^{b} f … »
+        // a un espace littéral avant l'opérande → sinon Word colle un blanc
+        // entre l'intégrale et son corps (retour user 2026-06-22). Les espaces
+        // INTERNES (« f \, dx ») restent — seuls les bords sont rognés.
+        private static void TrimRunEnds(List<XElement> els)
+        {
+            if (els.Count == 0) return;
+            var firstT = els[0].Name == M + "r" ? els[0].Element(M + "t") : null;
+            if (firstT != null)
+            {
+                int a = 0; var v = firstT.Value;
+                while (a < v.Length && IsSpace(v[a])) a++;
+                firstT.Value = v.Substring(a);
+            }
+            var lastT = els[els.Count - 1].Name == M + "r" ? els[els.Count - 1].Element(M + "t") : null;
+            if (lastT != null)
+            {
+                var v = lastT.Value; int b = v.Length;
+                while (b > 0 && IsSpace(v[b - 1])) b--;
+                lastT.Value = v.Substring(0, b);
+            }
         }
 
         private static XElement Accent(string arg, string combining)
@@ -390,6 +419,32 @@ namespace MathCursor.Serialization
         private static XElement Run(string t) =>
             new XElement(M + "r", new XElement(M + "t",
                 new XAttribute(XNamespace.Xml + "space", "preserve"), t));
+
+        private static bool IsSpace(char c) => c == ' ' || c == ' ' || c == ' ';
+
+        // Collapse les espaces CONSÉCUTIFS d'un run en un seul. En math un
+        // littéral et un \, qui se suivent ne valent qu'UN espace ; sans ça
+        // « \int f \, dx » cumulait espace + fine (U+2009) + espace = 3 espaces
+        // avant dx dans Word (retour user 2026-06-22 ; WpfMath les ignore déjà
+        // côté aperçu). On garde l'espace fine si le run en contient une (rendu
+        // intégrale propre), sinon l'espace normal. Les espaces simples (un
+        // seul, ex. « 1\,cm ») sont inchangés.
+        private static string CollapseSpaces(string s)
+        {
+            var sb = new StringBuilder(s.Length);
+            int k = 0;
+            while (k < s.Length)
+            {
+                if (IsSpace(s[k]))
+                {
+                    char keep = ' ';
+                    while (k < s.Length && IsSpace(s[k])) { if (s[k] == ' ') keep = ' '; k++; }
+                    sb.Append(keep);
+                }
+                else sb.Append(s[k++]);
+            }
+            return sb.ToString();
+        }
 
         // Parse un fragment isolé (argument) en liste d'éléments.
         private static List<XElement> ParseFragment(string frag)

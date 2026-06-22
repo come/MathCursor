@@ -220,6 +220,8 @@ namespace MathCursor.Serialization.Tests
             var x = LatexToOmml.Convert(@"\sum_{k=1}^{n} f(k)");
             var nary = Assert.Single(x.Elements(M + "nary"));
             Assert.Equal("∑", Attr(nary.Element(M + "naryPr"), "chr", "val"));
+            // Somme : bornes empilées au-dessus/dessous.
+            Assert.Equal("undOvr", Attr(nary.Element(M + "naryPr"), "limLoc", "val"));
             Assert.Equal("0", Attr(nary.Element(M + "naryPr"), "subHide", "val"));
             Assert.Equal("0", Attr(nary.Element(M + "naryPr"), "supHide", "val"));
             Assert.Equal("k=1", AllText(nary.Element(M + "sub")));
@@ -234,6 +236,33 @@ namespace MathCursor.Serialization.Tests
             Assert.Equal("∫", Attr(nary.Element(M + "naryPr"), "chr", "val"));
             Assert.Equal("1", Attr(nary.Element(M + "naryPr"), "subHide", "val"));
             Assert.Equal("1", Attr(nary.Element(M + "naryPr"), "supHide", "val"));
+        }
+
+        [Fact]
+        public void Integral_bounds_are_placed_to_the_right_subSup()
+        {
+            // Bornes d'intégrale en indice/exposant À DROITE (∫_a^b), pas
+            // empilées — convention typo + Word natif.
+            var x = LatexToOmml.Convert(@"\int_{-T/2}^{T/2} f");
+            var nary = Assert.Single(x.Elements(M + "nary"));
+            Assert.Equal("∫", Attr(nary.Element(M + "naryPr"), "chr", "val"));
+            Assert.Equal("subSup", Attr(nary.Element(M + "naryPr"), "limLoc", "val"));
+        }
+
+        [Fact]
+        public void Integral_body_collapses_redundant_spaces()
+        {
+            // « \int f \, dx » : espace littéral + \,→fine (U+2009) + espace =
+            // 3 espaces avant dx dans Word. On les collapse en UN seul
+            // (retour user 2026-06-22).
+            var x = LatexToOmml.Convert(@"\int_{a}^{b} f \, dx");
+            var nary = Assert.Single(x.Elements(M + "nary"));
+            var body = AllText(nary.Element(M + "e"));
+            // Tout blanc (espace, fine U+2009) normalisé → vérifie zéro doublon.
+            var norm = System.Text.RegularExpressions.Regex.Replace(body, @"\s", " ");
+            Assert.DoesNotContain("  ", norm);
+            // Pas d'espace de TÊTE collé à l'opérateur (corps = « f dx »).
+            Assert.False(char.IsWhiteSpace(norm[0]), "corps d'intégrale ne doit pas démarrer par un espace");
         }
 
         [Fact]

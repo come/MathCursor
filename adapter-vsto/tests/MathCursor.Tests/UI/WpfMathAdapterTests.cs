@@ -196,10 +196,12 @@ namespace MathCursor.Tests.UI
         // (TextBlock Unicode ∬ / ∭), n'atteignent jamais Adapt. AVEC bornes
         // (\iint_{a}^{b}) ils RESTENT dans le segment WpfMath (le ∬ Unicode
         // ne porte pas de scripts) et Adapt les dégrade en intégrales simples
-        // enchaînées (audit popup 2026-06-10). \oint : pass-through natif.
+        // enchaînées (audit popup 2026-06-10), PUIS le run de ∫ est groupé pour
+        // que les bornes passent à droite (subSup, user 2026-06-22). \oint nu :
+        // pass-through natif (pas de bornes → pas de groupe).
         [Theory]
-        [InlineData("\\iint_{0}^{1} f", "\\int\\int_{0}^{1} f")]
-        [InlineData("\\iiint_{0}^{1} f", "\\int\\int\\int_{0}^{1} f")]
+        [InlineData("\\iint_{0}^{1} f", "{\\int\\int}_{\\!\\!0}^{1} f")]
+        [InlineData("\\iiint_{0}^{1} f", "{\\int\\int\\int}_{\\!\\!0}^{1} f")]
         [InlineData("\\oint", "\\oint")]
         public void Integrals_with_bounds_degrade_to_chained_ints(string input, string expected)
             => Assert.Equal(expected, WpfMathAdapter.Adapt(input));
