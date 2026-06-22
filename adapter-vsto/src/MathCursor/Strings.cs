@@ -468,6 +468,11 @@ namespace MathCursor
                 "  Bouton \"Signaler un souci\" à gauche → génère un rapport prêt à envoyer\n" +
                 "  (WhatsApp ou email). Ton feedback fait avancer le produit !\n\n" +
                 "Logs techniques : %AppData%\\MathCursor\\logs\\mathcursor.log\n\n" +
+                "LICENCES\n" +
+                "  MathCursor est un logiciel libre, sous licence GNU GPL v3 (fichier LICENSE).\n" +
+                "  Polices math fournies : Latin Modern Math (GUST Font License) et\n" +
+                "  STIX Two Math (SIL Open Font License) — textes des licences dans le\n" +
+                "  sous-dossier fonts-licenses du dossier d'installation.\n\n" +
                 "MERCI AUX TESTEURS ET CONTRIBUTEURS\n" +
                 "  V. de Salaberry — Collège Le Sacré-Cœur, Vannes, France\n" +
                 "  E. Velay — Lycée Français de Varsovie, Pologne",
@@ -490,6 +495,11 @@ namespace MathCursor
                 "  \"Report an issue\" button on the left → generates a ready-to-send report\n" +
                 "  (WhatsApp or email). Your feedback drives the product forward!\n\n" +
                 "Technical logs: %AppData%\\MathCursor\\logs\\mathcursor.log\n\n" +
+                "LICENSES\n" +
+                "  MathCursor is free software, under the GNU GPL v3 (see the LICENSE file).\n" +
+                "  Bundled math fonts: Latin Modern Math (GUST Font License) and STIX Two\n" +
+                "  Math (SIL Open Font License) — license texts in the fonts-licenses\n" +
+                "  subfolder of the install folder.\n\n" +
                 "THANKS TO OUR TESTERS AND CONTRIBUTORS\n" +
                 "  V. de Salaberry — Collège Le Sacré-Cœur, Vannes, France\n" +
                 "  E. Velay — Lycée Français de Varsovie, Pologne",
@@ -787,6 +797,44 @@ namespace MathCursor
         {
             "fr" => "Insère un encadré coloré (Théorème, Définition, Exemple, Propriété) autour de la sélection ou du paragraphe courant : barre d'accent, fond teinté et titre.",
             _    => "Inserts a coloured callout (Theorem, Definition, Example, Property) around the selection or current paragraph: accent bar, tinted background and title.",
+        };
+
+        // ---------- Sélecteur de police math (ADR 2026-06-22) ----------
+
+        public static string MathFontLabel => Lang switch
+        {
+            "fr" => "Police math",
+            _    => "Math font",
+        };
+
+        public static string MathFontScreentip => Lang switch
+        {
+            "fr" => "Choisit la police des équations (Cambria, Latin Modern, STIX). Applique la fonte à toutes les équations du document et la garde pour les prochaines. Latin Modern et STIX doivent être installées sur le poste.",
+            _    => "Picks the font for equations (Cambria, Latin Modern, STIX). Applies it to every equation in the document and keeps it for the next ones. Latin Modern and STIX must be installed on this PC.",
+        };
+
+        public static string MathFontDefaultSuffix => Lang switch
+        {
+            "fr" => "(défaut)",
+            _    => "(default)",
+        };
+
+        public static string MathFontNotInstalledSuffix => Lang switch
+        {
+            "fr" => "(à installer)",
+            _    => "(not installed)",
+        };
+
+        public static string MathFontNotInstalledTitle => Lang switch
+        {
+            "fr" => "Police non installée",
+            _    => "Font not installed",
+        };
+
+        public static string MathFontNotInstalledBody(string font) => Lang switch
+        {
+            "fr" => $"La police « {font} » n'est pas installée sur cet ordinateur : Word affichera les équations en Cambria Math en attendant.\n\nElle est gratuite — ouvrir la page de téléchargement maintenant ? (installe la police, puis re-sélectionne-la dans le menu « Police math »)",
+            _    => $"The font \"{font}\" is not installed on this computer: Word will show the equations in Cambria Math for now.\n\nIt is free — open the download page now? (install the font, then pick it again from the \"Math font\" menu)",
         };
 
         public static string SettingsSectionDetection => Lang switch

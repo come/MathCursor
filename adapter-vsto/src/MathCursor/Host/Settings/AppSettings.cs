@@ -42,6 +42,13 @@ namespace MathCursor.Host.Settings
         /// Cf. ADR 2026-06-18-Feat-usage-counter-telemetry.</summary>
         public bool SendUsageStats { get; set; } = true;
 
+        /// <summary>Police math choisie pour les équations (fonte à table OpenType
+        /// MATH) : "Cambria Math" | "Latin Modern Math" | "STIX Two Math".
+        /// null = défaut Word (Cambria). Appliquée aux équations insérées par
+        /// MathCursor (préréglage) et posable sur tout le doc via le menu ruban.
+        /// Cf. ADR 2026-06-22-Feat-math-font-selector.</summary>
+        public string MathFont { get; set; }
+
         /// <summary>Preset moteur de la culture de base.</summary>
         public EngineCulture BaseCulture =>
             Culture == CultureUs ? EngineCulture.Us : EngineCulture.Fr;

@@ -10,6 +10,7 @@ namespace MathCursor.Tests.Host.Settings
     /// (ADR 2026-06-18-Feat-usage-counter-telemetry). Le fichier est repointé
     /// sur un temp isolé via le seam <see cref="SettingsStore.FilePath"/>.
     /// </summary>
+    [Collection("SettingsStore")] // statique SettingsStore.FilePath partagé → pas de //
     public sealed class SendUsageStatsSettingTests : IDisposable
     {
         private readonly string _path;

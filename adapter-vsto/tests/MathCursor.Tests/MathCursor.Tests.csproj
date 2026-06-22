@@ -77,6 +77,7 @@
     <Compile Include="..\..\src\MathCursor\Host\Usage\UsageCounter.cs" Link="adapter-sources\Host\Usage\UsageCounter.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Settings\AppSettings.cs" Link="adapter-sources\Host\Settings\AppSettings.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Settings\SettingsStore.cs" Link="adapter-sources\Host\Settings\SettingsStore.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\MathFontCatalog.cs" Link="adapter-sources\Host\MathFontCatalog.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Blocks\RelationMarkers.cs" Link="adapter-sources\Host\Blocks\RelationMarkers.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Blocks\RelationLineDetector.cs" Link="adapter-sources\Host\Blocks\RelationLineDetector.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Blocks\LatexTopLevelSplit.cs" Link="adapter-sources\Host\Blocks\LatexTopLevelSplit.cs" />

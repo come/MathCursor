@@ -83,6 +83,10 @@ namespace MathCursor.Host.Settings
             sb.Append(",\"auto_detect\":").Append(s.AutoDetect ? "true" : "false");
             sb.Append(",\"tab_validate\":").Append(s.TabValidate ? "true" : "false");
             sb.Append(",\"send_usage_stats\":").Append(s.SendUsageStats ? "true" : "false");
+            // Police math absente = défaut Word (ne pas écrire null). Les noms de
+            // fontes n'ont ni guillemet ni backslash → littéral JSON direct.
+            if (s.MathFont != null)
+                sb.Append(",\"math_font\":\"").Append(s.MathFont).Append('"');
             sb.Append('}');
             return sb.ToString();
         }
@@ -114,6 +118,10 @@ namespace MathCursor.Host.Settings
             // Clé absente (settings.json antérieur) → défaut true.
             var usage = ExtractBool(json, "send_usage_stats");
             if (usage.HasValue) s.SendUsageStats = usage.Value;
+
+            // Clé absente → null = défaut Word (Cambria).
+            var mathFont = ExtractString(json, "math_font");
+            if (!string.IsNullOrEmpty(mathFont)) s.MathFont = mathFont;
 
             return s;
         }

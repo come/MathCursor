@@ -223,6 +223,17 @@ namespace MathCursor.Host
                     catch (Exception exJc) { _log("insert_omath_jc_error: " + exJc.Message); }
                 }
             }
+
+            // 5b. Police math (préréglage utilisateur) — cosmétique, JAMAIS
+            //     bloquant pour le commit. Cf. ADR 2026-06-22-Feat-math-font-selector.
+            try
+            {
+                var mathFont = Settings.SettingsStore.Current?.MathFont;
+                if (!string.IsNullOrEmpty(mathFont))
+                    MathFontApplier.ApplyToRange(om.Range, mathFont);
+            }
+            catch (Exception exF) { _log("insert_mathfont_error: " + exF.Message); }
+
             try { newStart = om.Range.Start; newEnd = om.Range.End; } catch { }
 
             // 6. Caret APRÈS l'OMath + MoveRight : franchit la frontière et

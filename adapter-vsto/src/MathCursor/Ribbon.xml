@@ -88,6 +88,18 @@
           </menu>
         </group>
         <group id="MathCursorToolsGroup" getLabel="OnGetToolsGroupLabel">
+          <!-- Sélecteur de police math (Cambria / Latin Modern / STIX). Au
+               choix : pose la fonte sur TOUTES les équations du doc + mémorise
+               le préréglage des futures insertions MathCursor. Liste curatée
+               (fontes à table OpenType MATH). Cf. ADR 2026-06-22-Feat-math-font-selector. -->
+          <dropDown id="MathFontDropDown"
+                    getLabel="OnGetMathFontLabel"
+                    getScreentip="OnGetMathFontScreentip"
+                    getItemCount="OnGetMathFontItemCount"
+                    getItemID="OnGetMathFontItemId"
+                    getItemLabel="OnGetMathFontItemLabel"
+                    getSelectedItemIndex="OnGetMathFontSelectedIndex"
+                    onAction="OnMathFontSelected" />
           <button id="SettingsButton"
                   getLabel="OnGetSettingsButtonLabel"
                   getScreentip="OnGetSettingsButtonScreentip"

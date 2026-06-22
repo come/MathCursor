@@ -187,6 +187,93 @@ namespace MathCursor
             return null;
         }
 
+        // ---------- Sélecteur de police math (ADR 2026-06-22) ----------
+
+        public string OnGetMathFontLabel(IRibbonControl control) => Strings.MathFontLabel;
+        public string OnGetMathFontScreentip(IRibbonControl control) => Strings.MathFontScreentip;
+        public int OnGetMathFontItemCount(IRibbonControl control) => Host.MathFontCatalog.Fonts.Length;
+        public string OnGetMathFontItemId(IRibbonControl control, int index) => "mathfont_" + index;
+
+        /// <summary>Libellé d'un item : nom de la fonte, suffixé « (défaut) » pour
+        /// Cambria et « (à installer) » si absente du poste.</summary>
+        public string OnGetMathFontItemLabel(IRibbonControl control, int index)
+        {
+            try
+            {
+                var fonts = Host.MathFontCatalog.Fonts;
+                if (index < 0 || index >= fonts.Length) return "";
+                string font = fonts[index];
+                string label = Host.MathFontCatalog.IsDefault(font)
+                    ? font + " " + Strings.MathFontDefaultSuffix
+                    : font;
+                var app = Globals.ThisAddIn?.Application;
+                if (app != null && !Host.MathFontApplier.IsInstalled(app, font))
+                    label += " " + Strings.MathFontNotInstalledSuffix;
+                return label;
+            }
+            catch (Exception ex)
+            {
+                LogDebug("mathfont_item_label_error: " + ex.Message);
+                return Host.MathFontCatalog.Fonts[index];
+            }
+        }
+
+        public int OnGetMathFontSelectedIndex(IRibbonControl control)
+        {
+            try { return Host.MathFontCatalog.IndexOf(Host.Settings.SettingsStore.Current.MathFont); }
+            catch { return 0; }
+        }
+
+        /// <summary>Choix d'une police : (1) mémorise le préréglage des futures
+        /// insertions MathCursor, (2) pose la fonte sur toutes les équations du
+        /// doc. Avertit si la fonte n'est pas installée (Word retombe sur Cambria).</summary>
+        public void OnMathFontSelected(IRibbonControl control, string itemId, int index)
+        {
+            try
+            {
+                var fonts = Host.MathFontCatalog.Fonts;
+                if (index < 0 || index >= fonts.Length) return;
+                string font = fonts[index];
+
+                // 1) Préréglage persistant (futures insertions MathCursor).
+                var s = Host.Settings.SettingsStore.Current.Clone();
+                s.MathFont = font;
+                Host.Settings.SettingsStore.Save(s);
+
+                // 2) Doc entier : poser la fonte sur toutes les équations actuelles.
+                var app = Globals.ThisAddIn?.Application;
+                var doc = app?.ActiveDocument;
+                int n = Host.MathFontApplier.ApplyToDocument(doc, font, LogDebug);
+
+                if (app != null && !Host.MathFontApplier.IsInstalled(app, font))
+                {
+                    string url = Host.MathFontCatalog.DownloadUrl(font);
+                    if (url != null)
+                    {
+                        var r = MessageBox.Show(
+                            Strings.MathFontNotInstalledBody(font),
+                            Strings.MathFontNotInstalledTitle,
+                            MessageBoxButton.YesNo, MessageBoxImage.Information);
+                        if (r == MessageBoxResult.Yes)
+                        {
+                            try { System.Diagnostics.Process.Start(url); }
+                            catch (Exception exU) { LogDebug("mathfont_open_url_error: " + exU.Message); }
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show(
+                            Strings.MathFontNotInstalledBody(font),
+                            Strings.MathFontNotInstalledTitle,
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+
+                LogDebug($"mathfont_selected \"{font}\" applied={n}");
+            }
+            catch (Exception ex) { LogDebug("mathfont_selected_error: " + ex.Message); }
+        }
+
         public void OnReportIssueClicked(IRibbonControl control)
         {
             try

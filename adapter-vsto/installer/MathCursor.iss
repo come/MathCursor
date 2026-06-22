@@ -115,6 +115,21 @@ Source: "payload\mathcursor.cer";                         DestDir: "{tmp}"; Flag
 Source: "payload\MathCursor-Tutoriel-fr.docx"; DestDir: "{userdocs}\MathCursor"; DestName: "MathCursor-Tutorial.docx"; Flags: ignoreversion uninsneveruninstall; Languages: french
 Source: "payload\MathCursor-Tutoriel-en.docx"; DestDir: "{userdocs}\MathCursor"; DestName: "MathCursor-Tutorial.docx"; Flags: ignoreversion uninsneveruninstall skipifsourcedoesntexist; Languages: english
 
+; Polices math embarquées (ADR 2026-06-22-Feat-math-font-selector). Installées
+; PAR UTILISATEUR (pas d'UAC, cohérent avec PrivilegesRequired=lowest) via
+; {autofonts} → {localappdata}\Microsoft\Windows\Fonts + enregistrement HKCU.
+; Requiert Windows 10 1809+ (police per-user) ; sur un système plus ancien le
+; menu « Police math » garde son repli « ouvrir la page de téléchargement ».
+; Licences redistribuables fournies à côté (GUST Font License / SIL OFL).
+; - onlyifdoesntexist : ne pas écraser une installation manuelle de la police.
+; - uninsneveruninstall : conservées après désinstallation (d'autres documents
+;   ou applications peuvent s'en servir).
+Source: "fonts\latinmodern-math.otf";   DestDir: "{autofonts}"; FontInstall: "Latin Modern Math"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "fonts\STIXTwoMath-Regular.otf"; DestDir: "{autofonts}"; FontInstall: "STIX Two Math";     Flags: onlyifdoesntexist uninsneveruninstall
+; Licences des polices embarquées, déposées dans le dossier d'install (traçabilité).
+Source: "fonts\GUST-FONT-LICENSE.txt";   DestDir: "{app}\fonts-licenses"; Flags: ignoreversion
+Source: "fonts\STIX-OFL.txt";            DestDir: "{app}\fonts-licenses"; Flags: ignoreversion
+
 ; Visual C++ Redistributables x86 + x64 — requis par les DLLs natives ONNX
 ; (1 par arch). Word 32-bit a besoin du x86 ; Word 64-bit a besoin du x64.
 ; `skipifsourcedoesntexist` : si build.ps1 n'a pas pu télécharger, on skippe
