@@ -113,7 +113,7 @@ internal static class Lexer
         static string BestSplittableAt(string str, int at)
         {
             string b = "";
-            foreach (var k in Vocabulary.Splittable)
+            foreach (var k in Vocabulary.SplittableTokens)
                 if (k.Length > b.Length && at + k.Length <= str.Length && string.CompareOrdinal(str, at, k, 0, k.Length) == 0)
                     b = k;
             return b;
@@ -240,7 +240,7 @@ internal static class Lexer
                 if (!known)
                 {
                     var pieces = Decompose(s);
-                    bool anySplit = pieces.Count >= 2 && pieces.Exists(p => Vocabulary.Splittable.Contains(p));
+                    bool anySplit = pieces.Count >= 2 && pieces.Exists(p => Vocabulary.IsSplittable(p));
                     if (anySplit)
                     {
                         runsOut?.Add(st);

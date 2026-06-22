@@ -74,10 +74,19 @@ internal static class Vocabulary
     // pour les entrées — les deux DOIVENT coïncider.
     private const double REL = 5, SUM = 3, QUANT = 2.5, PROD = 2, POW = 1, APP = 0;
 
-    public static readonly Dictionary<string, VocabEntry> Vocab = new();
-    public static readonly Dictionary<char, int> Sep = new() { [','] = 0, [';'] = 2 };
-    public static readonly HashSet<string> Splittable = new();
-    public static readonly Dictionary<string, string> Role = new();
+    // Tables remplies une seule fois au cctor, exposées en LECTURE SEULE
+    // (ADR 2026-06-22 — durcissement audit : pas de corruption d'état partagé
+    // entre analyses). netstandard2.0 n'a pas IReadOnlySet → Splittable est
+    // encapsulé derrière IsSplittable (hot-path lexer, O(1)) + SplittableTokens.
+    private static readonly Dictionary<string, VocabEntry> _vocab = new();
+    public static IReadOnlyDictionary<string, VocabEntry> Vocab => _vocab;
+    private static readonly Dictionary<char, int> _sep = new() { [','] = 0, [';'] = 2 };
+    public static IReadOnlyDictionary<char, int> Sep => _sep;
+    private static readonly HashSet<string> _splittable = new();
+    public static bool IsSplittable(string s) => _splittable.Contains(s);
+    public static IEnumerable<string> SplittableTokens => _splittable;
+    private static readonly Dictionary<string, string> _role = new();
+    public static IReadOnlyDictionary<string, string> Role => _role;
 
     // Sets d'alias (mot saisi → clé canonique de Vocab) par culture :
     // générique + langue, fusionnés une fois au cctor, jamais mutés ensuite.
@@ -122,7 +131,7 @@ internal static class Vocabulary
         foreach (var kv in symbols)
         {
             var j = EngineData.Obj(kv.Value);
-            if (!j.ContainsKey("sameAs")) Vocab[kv.Key] = BuildEntry(j);
+            if (!j.ContainsKey("sameAs")) _vocab[kv.Key] = BuildEntry(j);
         }
         // Pass 2 : sameAs = clone d'une entrée déjà construite + overrides
         // (ex. ·forallWord = forall + wordSpace ; ≤ = <= ; × = * ; …).
@@ -130,9 +139,9 @@ internal static class Vocabulary
         {
             var j = EngineData.Obj(kv.Value);
             if (!j.ContainsKey("sameAs")) continue;
-            var e = Vocab[EngineData.Str(j["sameAs"])].Clone();
+            var e = _vocab[EngineData.Str(j["sameAs"])].Clone();
             if (j.ContainsKey("wordSpace")) e.WordSpace = EngineData.Bool(j["wordSpace"]);
-            Vocab[kv.Key] = e;
+            _vocab[kv.Key] = e;
         }
 
         // Mots-unités (générés depuis Units.Words / units.json). Un SYMBOLE prime
@@ -140,10 +149,10 @@ internal static class Vocabulary
         // on ne remplit que les clés non déjà définies (l'original définissait les
         // symboles APRÈS la boucle units, qui les écrasait — même invariant).
         foreach (var w in Units.Words)
-            if (!Vocab.ContainsKey(w)) Vocab[w] = new VocabEntry { UnitWord = true };
+            if (!_vocab.ContainsKey(w)) _vocab[w] = new VocabEntry { UnitWord = true };
 
         // Splittable (liste data — inclut « conj », alias sans entrée Vocab).
-        foreach (var w in EngineData.Arr(root["splittable"])) Splittable.Add(EngineData.Str(w));
+        foreach (var w in EngineData.Arr(root["splittable"])) _splittable.Add(EngineData.Str(w));
 
         // ── ALIAS (data/engine/cultures.json) + validation ─────────────────
         var aliasMaps = EngineData.Obj(EngineData.Obj(EngineData.Load("cultures.json"))["aliases"]);
@@ -151,14 +160,14 @@ internal static class Vocabulary
         AliasesUs = AddPrefixAliases(MergeAliases(EngineData.StrMap(aliasMaps["generic"]), EngineData.StrMap(aliasMaps["en"])));
 
         // ── ROLE : rôle de jonction → symbole (aucun opérateur nommé en dur) ─
-        foreach (var kv in Vocab)
+        foreach (var kv in _vocab)
         {
             var e = kv.Value;
-            if (e.Implicit) Role["implicit"] = kv.Key;
-            if (e.Sup) Role["sup"] = kv.Key;
-            if (e.Sub) Role["sub"] = kv.Key;
-            if (e.UnitOp) Role["unitOp"] = kv.Key;
-            if (e.Apply) Role["apply"] = kv.Key;
+            if (e.Implicit) _role["implicit"] = kv.Key;
+            if (e.Sup) _role["sup"] = kv.Key;
+            if (e.Sub) _role["sub"] = kv.Key;
+            if (e.UnitOp) _role["unitOp"] = kv.Key;
+            if (e.Apply) _role["apply"] = kv.Key;
         }
     }
 

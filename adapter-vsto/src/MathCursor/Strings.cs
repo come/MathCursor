@@ -923,5 +923,30 @@ namespace MathCursor
             "fr" => "MathCursor : formule insérée, mais sa source n'a pas été enregistrée — ré-édition indisponible.",
             _    => "MathCursor: equation inserted, but its source wasn't saved — re-editing unavailable.",
         };
+
+        // Démarrage / dialogues d'erreur ruban (ADR 2026-06-23 — i18n).
+        public static string StatusReady => Lang switch
+        {
+            "fr" => "MathCursor prêt",
+            _    => "MathCursor ready",
+        };
+
+        public static string StartupFailed => Lang switch
+        {
+            "fr" => "Échec du démarrage MathCursor :\n",
+            _    => "MathCursor failed to start:\n",
+        };
+
+        public static string CalloutInsertFailed => Lang switch
+        {
+            "fr" => "Impossible d'insérer l'encadré :\n",
+            _    => "Couldn't insert the callout:\n",
+        };
+
+        public static string ColumnsInsertFailed => Lang switch
+        {
+            "fr" => "Impossible d'insérer les colonnes :\n",
+            _    => "Couldn't insert the columns:\n",
+        };
     }
 }

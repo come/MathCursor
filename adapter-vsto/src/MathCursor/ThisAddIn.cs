@@ -135,12 +135,12 @@ namespace MathCursor
                     () => uiDispatcher.BeginInvoke(new Action(
                         () => RibbonCallback.Instance?.InvalidateUpdateBadge()))));
 
-                this.Application.StatusBar = "MathCursor prêt";
+                this.Application.StatusBar = Strings.StatusReady;
             }
             catch (Exception ex)
             {
                 System.Windows.MessageBox.Show(
-                    "Échec du démarrage MathCursor :\n" + ex.Message + "\n\n" + ex.StackTrace,
+                    Strings.StartupFailed + ex.Message + "\n\n" + ex.StackTrace,
                     "MathCursor",
                     System.Windows.MessageBoxButton.OK,
                     System.Windows.MessageBoxImage.Error);

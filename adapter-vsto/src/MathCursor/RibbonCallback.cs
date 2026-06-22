@@ -171,7 +171,7 @@ namespace MathCursor
             {
                 LogDebug("callout_error: " + ex.Message);
                 MessageBox.Show(
-                    "Impossible d'insérer l'encadré :\n" + ex.Message,
+                    Strings.CalloutInsertFailed + ex.Message,
                     "MathCursor", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
@@ -322,7 +322,7 @@ namespace MathCursor
             {
                 LogDebug("insert_columns_error: " + ex.Message);
                 MessageBox.Show(
-                    "Impossible d'insérer les colonnes :\n" + ex.Message,
+                    Strings.ColumnsInsertFailed + ex.Message,
                     "MathCursor",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);

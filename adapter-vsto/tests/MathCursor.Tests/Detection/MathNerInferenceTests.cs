@@ -30,39 +30,39 @@ namespace MathCursor.Tests.Detection
 
         // ---- Sanity : modèle se charge et détecte au moins un span ----
 
-        [Fact]
+        [SkippableFact]
         public void Detector_loads_and_detects_simple_math()
         {
-            if (!_fix.Available) { _log.WriteLine(_fix.SkipReason); return; }
+            Skip.IfNot(_fix.Available, _fix.SkipReason);
             var zones = _fix.Detector.Detect("On a f(x) = 2x + 1 et c'est tout.");
             Assert.NotEmpty(zones);
             // Le span doit recouvrir la formule, pas juste un mot.
             Assert.Contains(zones, z => z.End - z.Start >= 5);
         }
 
-        [Fact]
+        [SkippableFact]
         public void Detector_returns_empty_on_pure_text()
         {
-            if (!_fix.Available) { _log.WriteLine(_fix.SkipReason); return; }
+            Skip.IfNot(_fix.Available, _fix.SkipReason);
             // Texte sans formule math → aucune zone détectée (ou zones très
             // courtes filtrées par le seuil de confidence).
             var zones = _fix.Detector.Detect("Le chat dort sur le canapé du salon.");
             Assert.Empty(zones);
         }
 
-        [Fact]
+        [SkippableFact]
         public void Detector_returns_empty_on_empty_input()
         {
-            if (!_fix.Available) { _log.WriteLine(_fix.SkipReason); return; }
+            Skip.IfNot(_fix.Available, _fix.SkipReason);
             Assert.Empty(_fix.Detector.Detect(""));
         }
 
         // ---- F1 span-level sur regression_v1_gold (filet anti-rechute) ----
 
-        [Fact]
+        [SkippableFact]
         public void Regression_gold_corpus_f1_above_threshold()
         {
-            if (!_fix.Available) { _log.WriteLine(_fix.SkipReason); return; }
+            Skip.IfNot(_fix.Available, _fix.SkipReason);
             var examples = _fix.LoadCorpus("regression_v1_gold.jsonl");
             Assert.NotEmpty(examples);
 
@@ -84,10 +84,10 @@ namespace MathCursor.Tests.Detection
 
         // ---- F1 sur sample du test set (perf baseline du modèle) ----
 
-        [Fact]
+        [SkippableFact]
         public void Test_corpus_sample_f1_above_baseline()
         {
-            if (!_fix.Available) { _log.WriteLine(_fix.SkipReason); return; }
+            Skip.IfNot(_fix.Available, _fix.SkipReason);
             // Échantillon de 100 exemples du test set — assez pour avoir un
             // F1 stable, pas trop pour rester rapide (~3-4s sur ce hardware).
             var examples = _fix.LoadCorpus("test.jsonl", limit: 100);
@@ -108,10 +108,10 @@ namespace MathCursor.Tests.Detection
 
         // ---- Échantillon v6 (features récentes : vecteurs, coordonnées) ----
 
-        [Fact]
+        [SkippableFact]
         public void Recent_features_corpus_f1_above_threshold()
         {
-            if (!_fix.Available) { _log.WriteLine(_fix.SkipReason); return; }
+            Skip.IfNot(_fix.Available, _fix.SkipReason);
             var examples = _fix.LoadCorpus("extension_v6_recent_features.jsonl", limit: 80);
             Assert.NotEmpty(examples);
 
@@ -130,10 +130,10 @@ namespace MathCursor.Tests.Detection
 
         // ---- Échantillon v8 (formes courtes n-aires, iint/iiint, mots-clés nus) ----
 
-        [Fact]
+        [SkippableFact]
         public void Nary_short_forms_corpus_f1_above_threshold()
         {
-            if (!_fix.Available) { _log.WriteLine(_fix.SkipReason); return; }
+            Skip.IfNot(_fix.Available, _fix.SkipReason);
             var examples = _fix.LoadCorpus("extension_v8_nary_short_forms.jsonl");
             Assert.NotEmpty(examples);
 
