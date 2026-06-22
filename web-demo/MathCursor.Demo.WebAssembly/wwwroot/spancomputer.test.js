@@ -1,9 +1,13 @@
-// Parite du port JS de SpanComputer vs le C# valide.
-// Cas portes 1:1 de adapter-vsto/tests/MathCursor.Tests/Host/SpanComputerTests.cs.
+// Parite du port JS de SpanComputer vs le C#.
+// Cas = SOURCE UNIQUE partagee avec le C# :
+//   adapter-vsto/tests/MathCursor.Tests/Host/spancomputer-fixtures.txt
+// (plus de liste recopiee a la main → plus de derive silencieuse, ADR 2026-06-23).
 // Lancement : node spancomputer.test.js  (sortie OK/FAIL, exit code 1 si echec).
 'use strict';
 
 var SpanComputer = require('./spancomputer.js');
+var fs = require('fs');
+var path = require('path');
 
 // Reproduit le helper Span() des tests xUnit : zone brute + trim des blancs.
 function span(text, caret) {
@@ -11,21 +15,12 @@ function span(text, caret) {
   return text.substring(z.start, z.end);
 }
 
-var cases = [
-  // [nom, texte, caret, attendu]
-  ['Factorielle_au_bout_est_captee', 'n!', 2, 'n!'],
-  ['Factorielle_apres_un_stopword', 'soit n!', 'soit n!'.length, 'n!'],
-  ['Factorielle_a_droite_d_un_egal', 'a=n!', 'a=n!'.length, 'n!'],
-  ['Point_reste_un_delimiteur', 'fin. x+1', 'fin. x+1'.length, 'x+1'],
-  ['Expression_simple_entiere', '1/x+1', 5, '1/x+1'],
-  ['Matrice_non_fermee_virgules_captee_entiere', '(a,b,c,d ;e,f', '(a,b,c,d ;e,f'.length, '(a,b,c,d ;e,f'],
-  ['Matrice_non_fermee_espaces_captee_entiere', '(a b c d; e f', '(a b c d; e f'.length, '(a b c d; e f'],
-  ['Matrice_non_fermee_caret_au_milieu', '(a,b;c,d', 6, '(a,b;c,d'],
-  ['Crochet_non_ferme_intervalle', '[0;1', '[0;1'.length, '[0;1'],
-  ['Decimale_dans_parenthese_non_fermee', '(1.5 ;2.5', '(1.5 ;2.5'.length, '(1.5 ;2.5'],
-  ['Matrice_fermee_inchangee', '(a,b,c;d,e,f)', '(a,b,c;d,e,f)'.length, '(a,b,c;d,e,f)'],
-  ['Point_virgule_hors_parenthese_coupe_toujours', 'a ; b', 'a ; b'.length, 'b']
-];
+// Fixture partagee (meme fichier que le C#). [name, text, caret, expected].
+var fixturePath = path.join(__dirname, '../../../adapter-vsto/tests/MathCursor.Tests/Host/spancomputer-fixtures.txt');
+var cases = fs.readFileSync(fixturePath, 'utf8').split('\n')
+  .map(function (l) { return l.replace(/\r$/, ''); })
+  .filter(function (l) { return l.trim().length > 0 && l.trim()[0] !== '#'; })
+  .map(function (l) { var p = l.split('|'); return [p[0], p[1], parseInt(p[2], 10), p[3]]; });
 
 // ── Comportement DEMO « mode reel » : set reduit (sans = < >) -> l'equation
 //    entiere est captee. Specifique a la demo (pas une parite C#). ──

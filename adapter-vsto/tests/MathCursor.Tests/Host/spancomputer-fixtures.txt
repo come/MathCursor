@@ -1,0 +1,16 @@
+# Parite SpanComputer C# <-> JS — SOURCE UNIQUE (ADR 2026-06-23).
+# Lu par SpanComputerTests.cs (C#) ET web-demo/.../spancomputer.test.js (JS).
+# Format : name|text|caret|expected  (les # et lignes vides sont ignores ;
+# aucun champ ne contient de '|'). Ajouter un cas ICI le verrouille des DEUX cotes.
+Factorielle_au_bout_est_captee|n!|2|n!
+Factorielle_apres_un_stopword|soit n!|7|n!
+Factorielle_a_droite_d_un_egal|a=n!|4|n!
+Point_reste_un_delimiteur|fin. x+1|8|x+1
+Expression_simple_entiere|1/x+1|5|1/x+1
+Matrice_non_fermee_virgules_captee_entiere|(a,b,c,d ;e,f|13|(a,b,c,d ;e,f
+Matrice_non_fermee_espaces_captee_entiere|(a b c d; e f|13|(a b c d; e f
+Matrice_non_fermee_caret_au_milieu|(a,b;c,d|6|(a,b;c,d
+Crochet_non_ferme_intervalle|[0;1|4|[0;1
+Decimale_dans_parenthese_non_fermee|(1.5 ;2.5|9|(1.5 ;2.5
+Matrice_fermee_inchangee|(a,b,c;d,e,f)|13|(a,b,c;d,e,f)
+Point_virgule_hors_parenthese_coupe_toujours|a ; b|5|b

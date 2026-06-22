@@ -57,6 +57,8 @@
     <!-- ChainComposer (M2 multiligne) greffe des fragments LatexToOmml. -->
     <ProjectReference Include="..\..\..\serialization\src\MathCursor.Serialization\MathCursor.Serialization.csproj" />
     <None Include="..\..\..\engine\tests\MathCursor.Engine.Tests\fixtures.json" Link="fixtures.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Parité SpanComputer : source unique partagée avec le port JS. ADR 2026-06-23. -->
+    <None Include="Host\spancomputer-fixtures.txt" Link="spancomputer-fixtures.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
