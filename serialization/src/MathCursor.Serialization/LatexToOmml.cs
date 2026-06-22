@@ -8,11 +8,11 @@ namespace MathCursor.Serialization
 {
     /// <summary>
     /// Convertit notre LaTeX en <b>OMML</b> (OfficeMath) — la STRUCTURE native
-    /// que Word stocke pour ses équations. Contrairement à
-    /// <see cref="LatexToUnicodeMath"/> (ligne linéaire que Word re-parse au
-    /// BuildUp, avec des bugs de précédence : lim happe le numérateur, etc.),
-    /// l'OMML est inséré tel quel via <c>Range.InsertXML</c> et Word ne
-    /// re-devine RIEN.
+    /// que Word stocke pour ses équations. Contrairement à l'ancien chemin
+    /// UnicodeMath (ligne linéaire que Word re-parsait au BuildUp, avec des
+    /// bugs de précédence : lim happait le numérateur, \in avant \int, etc. —
+    /// code mort supprimé, ADR 2026-06-22), l'OMML est inséré tel quel via
+    /// <c>Range.InsertXML</c> et Word ne re-devine RIEN.
     ///
     /// <para>Retourne l'élément <c>&lt;m:oMath&gt;</c> (namespace math). À
     /// insérer dans un <c>&lt;w:p&gt;</c>. Cf. ADR 2026-06-02-Feat-omml-insertion

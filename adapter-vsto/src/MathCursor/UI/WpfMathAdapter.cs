@@ -222,7 +222,7 @@ namespace MathCursor.UI
             // (espace large) sur chaque ligne. WpfMath 2.1 ne supporte pas
             // \begin{array}/\matrix donc l'alignement vertical des colonnes
             // est sacrifié au profit d'un rendu lisible : `(a  b ; c  d)`
-            // visuellement. Le rendu final Word OMath via LatexToUnicodeMath
+            // visuellement. Le rendu final Word OMath (via LatexToOmml → OMML)
             // reste une vraie matrice 2D — ce code n'affecte QUE l'aperçu popup.
             for (int i = 0; i < lines.Length; i++)
                 lines[i] = Regex.Replace(lines[i], @"\s*&\s*", " \\quad ");
@@ -239,7 +239,7 @@ namespace MathCursor.UI
             //
             // \genfrac est la généralisation \binom : \binom{a}{b} = \genfrac{(}{)}{0pt}{}{a}{b}.
             // Donc si \binom marche en popup, \genfrac avec d'autres délim doit aussi.
-            // L'output Word OMath (LatexToUnicodeMath → BuildUp) reste une vraie
+            // L'output Word OMath (LatexToOmml → OMML) reste une vraie
             // matrice avec parens — le fallback ici n'affecte QUE l'aperçu popup.
             if (lines.Length == 2 && leftDelim == "(" && rightDelim == ")")
                 return "\\binom{" + lines[0].Trim() + "}{" + lines[1].Trim() + "}";

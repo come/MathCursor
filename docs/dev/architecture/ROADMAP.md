@@ -87,7 +87,7 @@ plans en cours. **Mis à jour à chaque fin de sous-livraison.**
 
 | ID | Smell | Severity | Hits actuels |
 |---|---|---|---|
-| MC0001 | Regex sur XML/OMath/MathML | warning | 6 Core (`LatexToUnicodeMath`) + 1 test + 10 Adapter (`WpfMathAdapter`, `MixedLatexRenderer`, `OMathParaJcPatcher`) |
+| MC0001 | Regex sur XML/OMath/MathML | warning | ~~6 Core (`LatexToUnicodeMath`)~~ (code mort supprimé, ADR 2026-06-22) + 1 test + 10 Adapter (`WpfMathAdapter`, `MixedLatexRenderer`, `OMathParaJcPatcher`) |
 | MC0006 | Splice LaTeX sur texte rendu | warning | 2 Core (`ZoneResolver:205` — éliminés par S2+S3) + 2 test (légitimes, ADR SuppressMessage à venir) |
 | MC0009 | SuppressMessage sans ADR | warning | 0 |
 
@@ -167,7 +167,7 @@ plans en cours. **Mis à jour à chaque fin de sous-livraison.**
 ## Chantier 3 — Dette de cleanup post-refacto S0
 
 - [ ] **Cleanup S0.7+** : déplacer le vrai code des `Scan*` `internal static` de `AlternativeGenerator` vers les classes scanners (delegation actuelle remplacée par implémentation autonome). Trigger : quand on doit modifier le comportement d'un scanner (typiquement S1 sur `UppercaseSequencesScanner`)
-- [ ] **Refacto `LatexToUnicodeMath`** : Regex → XDocument ou parser dédié, élimine 6 MC0001
+- [x] ~~**Refacto `LatexToUnicodeMath`** : Regex → XDocument ou parser dédié~~ → **code mort supprimé** (ADR 2026-06-22-Refactor-delete-dead-latextounicodemath), élimine les 6 MC0001 d'un coup
 - [ ] **Refacto `OMathParaJcPatcher`** : Regex → XDocument, élimine 5 MC0001
 - [ ] **Refacto `WpfMathAdapter` / `MixedLatexRenderer`** : élimine 5 MC0001 résiduels
 - [ ] **`SuggestionService.cs`** (~1775 lignes) : poursuite extraction DDD si volonté de descendre sous 500 lignes
