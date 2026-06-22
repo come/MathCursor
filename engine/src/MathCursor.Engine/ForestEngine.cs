@@ -171,24 +171,33 @@ public sealed class ForestEngine
         }
         var n = bestP.N;
         if (n.Type != "nary" || n.Sym == null || n.Parts == null) return kept;
-        if (!n.Parts.Any(c => c.Hole)) return kept;
         if (Vocabulary.Vocab[n.Sym].Variants == null) return kept;
 
+        // Le frère est TOUJOURS un squelette (à trous). Selon que le meilleur parse
+        // est lui-même un squelette ou une forme COURTE complète, on ne cherche pas
+        // la même chose :
+        //  • INCOMPLET (le meilleur a des trous) : frère d'AUTRE arité (ADR 2026-06-12).
+        //  • COMPLET (forme courte sans trous) : frère PLUS LONG, qui réinterprète la
+        //    forme tapée en remplissant des slots supplémentaires (ADR 2026-06-22).
+        bool incomplete = n.Parts.Any(c => c.Hole);
         (Node N, double Off) sib = default; double sibC = double.PositiveInfinity;
         foreach (var p in all)
         {
             var m = p.N;
             if (m.Type != "nary" || m.Sym != n.Sym || m.Parts == null) continue;
-            if (m.Parts.Count == n.Parts.Count || !m.Parts.Any(c => c.Hole)) continue;
+            if (!m.Parts.Any(c => c.Hole)) continue;
+            if (incomplete ? m.Parts.Count == n.Parts.Count : m.Parts.Count <= n.Parts.Count) continue;
             double c = Score.Cost(p.N) + p.Off;
             if (c < sibC) { sibC = c; sib = p; }
         }
         if (sib.N == null) return kept;
 
-        var pair = new[] { (P: bestP, C: bestC), (P: sib, C: sibC) }
-            .OrderByDescending(x => x.P.N.Parts!.Count)        // forme LONGUE d'abord
-            .Select(x => new EngineCandidate(LatexRenderer.Render(x.P.N, _culture), x.C))
-            .ToList();
+        // INCOMPLET : forme LONGUE présélectionnée (sélection de gabarit, ADR 2026-06-12).
+        // COMPLET : forme COURTE (ce qui est tapé, la moins chère) présélectionnée, la
+        // longue en alternative — règle GÉNÉRIQUE, l'utilisateur tranche (ADR 2026-06-22).
+        var pairNodes = new List<(Node N, double C)> { (bestP.N, bestC), (sib.N, sibC) };
+        if (incomplete) pairNodes = pairNodes.OrderByDescending(x => x.N.Parts!.Count).ToList();
+        var pair = pairNodes.Select(x => new EngineCandidate(LatexRenderer.Render(x.N, _culture), x.C)).ToList();
         var outk = new List<EngineCandidate>(pair);
         foreach (var k in kept)
             if (outk.All(o => o.Latex != k.Latex)) outk.Add(k);

@@ -288,7 +288,7 @@ internal static class Lexer
                 bool detachedR = IsSpace(after) || ")],;".IndexOf(after) >= 0;
                 if (len == 1 && v.PostSign != null && binaryPos && !sawSpace && detachedR)
                 {
-                    Push(new Token { Kind = "infix", Sym = Vocabulary.Role["sup"], Sticky = true });
+                    Push(new Token { Kind = "infix", Sym = Vocabulary.Role["sup"], Sticky = true, SignSup = true });
                     Push(new Token { Kind = "atom", Sym = v.PostSign });
                 }
                 else if (len == 1 && v.Unary != null && !binaryPos)

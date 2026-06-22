@@ -77,6 +77,7 @@ internal sealed class Token
     public bool Virtual;             // ) ou ] ajouté en fin de frappe
     public bool Num;                 // atome numérique
     public bool Sticky;              // infixe qui ne prend qu'un atome à droite
+    public bool SignSup;             // sup issu d'un postSign (0⁺) : signe d'exposant, jamais un chapeau orphelin
     public bool Implicit;            // juxtaposition (rendu collé)
     public int Rank;                 // sep : rang (0 = "," , 2 = ";")
     public bool UnitWord;            // atome mot-unité

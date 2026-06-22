@@ -394,7 +394,10 @@ internal sealed class Forest
         }
         var res = new List<List<Node>>();
         var headTok = _toks[a];
-        string? unary = headTok.Kind == "infix" && headTok.Sym != null && Vocabulary.Vocab.TryGetValue(headTok.Sym, out var hv) ? hv.Unary : null;
+        // Un sup issu d'un postSign (0⁺) ne peut PAS s'orienter en chapeau orphelin
+        // quand la découpe n-aire coupe sa base : sinon « lim x 0+ » → \lim_{x→0} \hat{+}
+        // au lieu de \lim_{x→0⁺} □ (ADR 2026-06-22 orphan-postsign-sup-not-hat).
+        string? unary = !headTok.SignSup && headTok.Kind == "infix" && headTok.Sym != null && Vocabulary.Vocab.TryGetValue(headTok.Sym, out var hv) ? hv.Unary : null;
         for (int m = a + 1; m <= b; m++)
         {
             var firsts = ParseSpan(a, m);
