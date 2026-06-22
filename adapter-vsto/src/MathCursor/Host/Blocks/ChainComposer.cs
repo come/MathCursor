@@ -36,10 +36,13 @@ namespace MathCursor.Host.Blocks
         /// <item>AUCUN connecteur (suite de « = ») → 2 colonnes, UN « &amp; »
         ///   par ligne devant le signe (<c>[lhs &amp; =rhs]</c>) — V. POC
         ///   « simple » + bissection B-series : aligné.</item>
-        /// <item>Au moins un ⟺/⟹ → 3 colonnes, DEUX « &amp; » par ligne
-        ///   (<c>[conn &amp; lhs &amp; =rhs]</c>) — variantes V4/V5 : aligné
-        ///   (la forme single-&amp; désalignait les lignes à connecteur,
-        ///   variantes V1-V3).</item>
+        /// <item>Au moins un ⟺/⟹ → 4 colonnes, TROIS « &amp; » par ligne
+        ///   (<c>[pad &amp; conn &amp; lhs &amp; =rhs]</c>) — la colonne pad vide
+        ///   en tête corrige la parité d'alignement de l'eqArr natif Word
+        ///   (alternance droite/gauche) pour que le signe retombe en colonne
+        ///   gauche-alignée. La forme 2-&amp; mettait le signe en colonne
+        ///   droite-alignée → désaligné via le walker natif (bug 2026-06-22) ;
+        ///   la forme single-&amp; désalignait déjà les lignes à connecteur.</item>
         /// </list>
         /// Le jc=left posé par Word à la promotion display est conservé
         /// (V5 : aligné ET à gauche, validé).</summary>
@@ -121,12 +124,17 @@ namespace MathCursor.Host.Blocks
             return e;
         }
 
-        /// <summary>Ligne 3 colonnes (chaîne AVEC connecteur) — forme V4/V5 :
-        /// <c>[⇔ &amp; f(x)-1 &amp; =2+4]</c>, colonne 1 vide sur les lignes
-        /// sans connecteur.</summary>
+        /// <summary>Ligne 4 colonnes / 3 marques &amp; (chaîne AVEC connecteur).
+        /// Une colonne PAD vide en tête décale la PARITÉ d'alignement de l'eqArr
+        /// natif Word — qui alterne [droite][gauche][droite][gauche]… : en 2-&amp;
+        /// le signe tombait en colonne DROITE-alignée (les signes ne s'alignaient
+        /// plus, via le walker natif — bug 2026-06-22) ; en 3-&amp; il revient en
+        /// colonne GAUCHE-alignée. Colonnes : <c>[pad &amp; conn &amp; lhs &amp; =rhs]</c>,
+        /// colonnes conn/lhs vides sur les lignes sans connecteur / marqueur-relation.</summary>
         private static XElement Row3(string conn, string lhs, string relRhs)
         {
             var e = new XElement(M + "e");
+            Amp(e);            // colonne pad vide → corrige la parité d'alignement
             Graft(e, conn);
             Amp(e);
             Graft(e, lhs);

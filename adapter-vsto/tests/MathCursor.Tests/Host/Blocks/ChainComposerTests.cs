@@ -54,11 +54,13 @@ namespace MathCursor.Tests.Host.Blocks
         // ── ChainComposer : chaînes ──────────────────────────────────────
 
         [Fact]
-        public void Chain_with_connector_uses_three_columns_two_amp_marks()
+        public void Chain_with_connector_uses_four_columns_three_amp_marks()
         {
-            // Forme V4/V5 prouvée par le docx de variantes (2026-06-10) :
-            // dès qu'un connecteur apparaît, 3 colonnes / 2 marques & par
-            // ligne — la forme single-& désalignait les lignes à ⟺ (V1-V3).
+            // Dès qu'un connecteur apparaît : 4 colonnes / 3 marques & par ligne
+            // — une colonne PAD vide en tête décale la parité d'alignement de
+            // l'eqArr natif Word (alternance droite/gauche) pour que le signe
+            // retombe en colonne gauche-alignée (la forme 2-& le mettait en
+            // colonne droite = désaligné via le walker, bug 2026-06-22).
             // Ligne 1 = équation simple (scindée au =) ; ligne 2 = marqueur-
             // relation « = 2x » ; ligne 3 = connecteur « ⟺ x=1 ».
             var oMath = ChainComposer.ComposeChain(
@@ -69,16 +71,16 @@ namespace MathCursor.Tests.Host.Blocks
             var rows = eqArr.Elements(M + "e").ToList();
             Assert.Equal(3, rows.Count);
 
-            // 2 marques & par ligne, sur TOUTES les lignes.
+            // 3 marques & par ligne, sur TOUTES les lignes.
             foreach (var row in rows)
-                Assert.Equal(2, row.Elements(M + "r")
+                Assert.Equal(3, row.Elements(M + "r")
                     .Count(r => r.Element(M + "t")?.Value == "&"));
 
-            Assert.Equal("&f(x)&=2x+2-2", AllText(rows[0]));
-            // Ligne 2 (marqueur-relation) : colonnes 1 et 2 vides.
-            Assert.Equal("&&=2x", AllText(rows[1]));
-            // Ligne 3 (connecteur) : ⇔ en colonne 1.
-            Assert.Equal("⇔&x&=1", AllText(rows[2]));
+            // [pad & conn & lhs & =rhs] — pad toujours vide ; conn/lhs vides
+            // quand absents.
+            Assert.Equal("&&f(x)&=2x+2-2", AllText(rows[0]));   // pas de connecteur
+            Assert.Equal("&&&=2x", AllText(rows[1]));            // marqueur-relation
+            Assert.Equal("&⇔&x&=1", AllText(rows[2]));           // connecteur ⇔
         }
 
         [Fact]
