@@ -52,3 +52,14 @@ dans `train_mathcursor.ipynb`.
 - **Notebook** : `EXTENSIONS` complétée (v9, v10, v11×3) — corrige l'oubli v9/v10.
 - **Activation** : rappel — le NER (auto-détection) n'est **pas branché** dans la beta (déclenchement = Ctrl+Espace → `SpanComputer`, déjà testé sur matrices). Ce corpus prépare l'activation / un meilleur modèle.
 - **À retrain** : cible F1 ≥ baseline ; surveiller particulièrement les faux positifs sur les homonymes (bar/module/parmi) et la détection matrice entière.
+
+## Addendum 2026-06-23 — chargement robuste (glob)
+
+La cause racine de l'oubli v9/v10 = liste `EXTENSIONS` codée en dur dans les
+notebooks. Corrigé en profondeur : **les deux** notebooks (`train_mathcursor.ipynb`
+ET `train_mathcursor_benchmark.ipynb`) **auto-découvrent** tous les
+`extension_*.jsonl` par **glob** — plus aucune liste à maintenir, donc plus
+d'extension oubliée (`extension_fr`/`extension_en`, 2000 l. synthétiques, sont
+désormais incluses elles aussi). `regression_v1_gold.jsonl` (hold-out d'éval) ne
+matche pas `extension_*` → reste hors train. `dataset_v2_all.jsonl` (snapshot
+périmé, référencé nulle part) **supprimé**.

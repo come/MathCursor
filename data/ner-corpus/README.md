@@ -26,7 +26,8 @@ de l'entraînement, dans le notebook (`tokenize_and_align`).
 | `test.jsonl` | 803 lignes | Hold-out pour métriques finales |
 | `extension_fr.jsonl` | 1000 lignes FR | Extension synthétique : prose avec vocab math, prose mixte, SMS |
 | `extension_en.jsonl` | 1000 lignes EN | Extension synthétique EN équivalente |
-| `dataset_v2_all.jsonl` | ~8200 lignes | Concat de tout (train + val + test + extensions) |
+| `extension_v*.jsonl` | variées | Extensions thématiques (v3→v11) — **auto-découvertes par glob** au chargement |
+| `regression_v1_gold.jsonl` | gold curé | Hold-out d'éval (benchmark) — **jamais** dans le train |
 
 Les fichiers `extension_v3_*.jsonl` et suivants sont générés par les scripts
 `tools/ner-training/build_v*.py` (un script par extension, sauf v7 dont le
@@ -90,8 +91,9 @@ script n'a pas été retrouvé lors du rapatriement DocMath → MathCursor) :
 > **⚠️ Liste d'entraînement corrigée (2026-06-23)** : la liste `EXTENSIONS` de
 > `train_mathcursor.ipynb` s'arrêtait à **v8** → **v9 (marqueurs relation) et
 > v10 (@grec/fractions) n'avaient jamais été inclus dans un retrain**. v9, v10
-> et v11 (×3) ajoutés. `dataset_v2_all.jsonl` = snapshot périmé (8000 l.) **non
-> utilisé** par le notebook (lit train/val/test + `EXTENSIONS`).
+> et v11 (×3) ajoutés. **Depuis, les deux notebooks auto-découvrent les
+> `extension_*.jsonl` par glob** (plus de liste manuelle → fini les oublis).
+> `dataset_v2_all.jsonl` (snapshot périmé, inutilisé) **supprimé**.
 
 ## Accents : FOLDÉS partout (décision 2026-06-11)
 
@@ -109,21 +111,18 @@ les diacritiques au lexer, les accents sont **strippés en amont** (mapping
 
 ## Provenance
 
-- `train.jsonl`, `val.jsonl`, `test.jsonl`, `dataset_v2_all.jsonl` : annotés à
-  la main sur corpus FR/EN de cours de maths lycée (sources hétérogènes,
-  synthétiques pour la plupart).
+- `train.jsonl`, `val.jsonl`, `test.jsonl` : annotés à la main sur corpus FR/EN
+  de cours de maths lycée (sources hétérogènes, synthétiques pour la plupart).
 - `extension_fr.jsonl`, `extension_en.jsonl` : générés par
   `tools/ner-training/generate_extension.py` (graine 123, 2000 lignes au total).
 
 ## Règle
 
 **Ne pas modifier les splits train/val/test existants sans raison.** Les
-métriques publiées dans `metrics.json` y sont rattachées. Ajouter des
-données = créer un fichier `extension_*.jsonl` et le concaténer au moment
-de l'entraînement dans le notebook.
+métriques publiées dans `metrics.json` y sont rattachées.
 
-Pour régénérer `dataset_v2_all.jsonl` après ajout :
-```bash
-cat train.jsonl val.jsonl test.jsonl extension_fr.jsonl extension_en.jsonl \
-    extension_v3_*.jsonl > dataset_v2_all.jsonl
-```
+Ajouter des données = créer un `extension_*.jsonl` (idéalement via un
+`tools/ner-training/build_v*.py`) et le déposer dans le Drive. **Les deux
+notebooks auto-découvrent TOUS les `extension_*.jsonl` par glob** — plus aucune
+liste à maintenir, rien n'est jamais oublié. (`regression_v1_gold.jsonl` ne
+matche pas `extension_*` → reste hors train, c'est le hold-out d'éval.)
