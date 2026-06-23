@@ -50,45 +50,54 @@ Si ce critère est atteint → on attaque la phase 2.
 - **xUnit** pour les tests
 - Pas de dépendances lourdes
 
-## Architecture en 3 couches
+## Architecture
+
+Le **moteur** est une fonction PURE (texte → candidats LaTeX classés), portable,
+sans aucune dépendance plateforme. L'**adapter** VSTO l'orchestre et l'appelle
+directement.
 
 ```
-adapter-vsto              (Couche 3 : plateforme Word Desktop / VSTO)
-   ↓
-host-contract-csharp      (Couche 2 : 4 interfaces abstraites)
-   ↓
-core-csharp               (Couche 1 : logique métier pure, .NET Standard 2.0)
+adapter-vsto/MathCursor                  (plateforme Word/VSTO : orchestration, popup WPF, interop)
+   ↓ appelle directement
+engine/MathCursor.Engine                 (moteur « forest » PUR : texte → candidats, netstandard2.0)
+serialization/MathCursor.Serialization   (LaTeX → OMML pour l'insertion Word)
+host-contract                            (types partagés légers — EquationHandle)
 ```
 
-**Règle dure :** le core ne connaît ni Word, ni VSTO, ni Office.js. Il voit
-seulement les interfaces :
-- `IDocumentHost` — lire contexte, insérer/éditer équations, events curseur
-- `IEquationStore` — persister les sources (CustomXMLParts en VSTO)
-- `IEditorSurface` — UI des suggestions et mode édition
-- `IUserFeedback` — logging local opt-in
+**Règle dure :** le moteur (`engine/`) et la sérialisation (`serialization/`) ne
+connaissent ni Word, ni VSTO, ni Office.js — `netstandard2.0`, zéro
+`Microsoft.Office.*`, zéro WPF. C'est ce qui rend la **phase 2** (Office.js / Mac /
+Web) possible : un autre hôte réutilise le **même moteur** (la démo WASM le fait
+déjà). L'adapter appelle le moteur **en direct** — pas d'interface d'inversion.
+L'ancien « contrat à 4 interfaces » (core-pilote-hôte) a été supprimé comme code
+mort (ADR 2026-06-23-Refactor-delete-dead-host-contract) ; il datait de l'archi
+`core-csharp`/lattice abandonnée au profit du portage forest.
 
 ## Structure
 
 ```
-D:\Software\DocMath\
+D:\Software\MathCursor\
 ├── MathCursor.sln
-├── specs/                      # ADRs, schéma AST, fixtures de tests
-├── data/                       # JSON multilingues (stopwords, operators...)
-├── core-csharp/                # Couche 1 — logique pure
-├── host-contract-csharp/       # Couche 2 — interfaces
-├── adapter-vsto/               # Couche 3 — VSTO Word Desktop
-├── tools/                      # Validation données, futur conformance runner
-└── archive/officejs-prototype/ # Prototype Office.js figé (référence seule)
+├── data/                        # JSON embarqués (symbols.json, cultures.json…) via EmbeddedResource
+├── engine/                      # moteur forest PUR — src + tests + fixtures.json (source de vérité)
+├── serialization/               # LaTeX → OMML — src + tests
+├── host-contract/               # types partagés légers (EquationHandle)
+├── adapter-vsto/                # add-in VSTO Word Desktop — src + tests + installer
+├── analyzers/                   # analyzers Roslyn (MC0001/0006/0009) + tests
+├── web-demo/                    # démo Blazor WASM (réutilise le moteur compilé)
+├── engine-python/               # port Python de parité (conformance, hors produit)
+├── scripts/                     # outillage (run-tests.ps1 = gate de test local)
+└── archive/officejs-prototype/  # prototype Office.js figé (référence seule)
 ```
 
 ## Règles de dev
 
-- **Règle de dépendances** : Couche 1 → Couche 2 uniquement. Pas de `Microsoft.Office.*` dans le core.
+- **Règle de dépendances** : `engine` + `serialization` = PUR (netstandard2.0), zéro `Microsoft.Office.*` / WPF. L'adapter dépend du moteur, **jamais l'inverse**.
 - **Triggers explicites** : conversion via raccourci (`Ctrl+Espace`) ou bouton, pas de polling.
 - **Events natifs VSTO** : `ContentControlOnEnter`, `WindowSelectionChange`, `Application.Undo` → pas d'heuristiques fragiles.
 - **Stockage sources** : `Document.CustomXMLParts`, pas de storage global.
-- **Tests unitaires xUnit** dans `core-csharp/tests/`, tests d'intégration dans `adapter-vsto/tests/`.
-- **Fixtures partagées** : `specs/test-fixtures/*.json` — lu par les tests. Source de vérité cross-implémentations.
+- **Tests xUnit** : `engine/tests/` + `serialization/tests/` + `analyzers/` (purs), intégration dans `adapter-vsto/tests/`. Gate local complet : `scripts/run-tests.ps1`.
+- **Fixtures partagées** : `engine/tests/MathCursor.Engine.Tests/fixtures.json` — source de vérité, rejouée par plusieurs pipelines (moteur, tolérance, OMML, walker, popup).
 - **Données multilingues** : `data/*.json` à la racine, embarquées via `EmbeddedResource`.
 
 ## Ce qu'on ne fait PAS (phase 1)
