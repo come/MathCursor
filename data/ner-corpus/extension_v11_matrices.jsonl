@@ -1,0 +1,112 @@
+{"text": "A = (x^2,y,f(x),2^n;1,5,3/4,1/n,d;n^2,x^3,y,c)", "spans": [{"start": 0, "end": 46, "label": "MATH"}], "lang": "fr"}
+{"text": "[a,a_n;n+1,d]", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "(c,a;a,d)", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "(d;3;x;a;e)", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "(-1, 2, f, 0;c, 1, x, f)", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "M = (d, -1, a, x;c, c, c, b;d, d, 0, f;1, -1, e, 2)", "spans": [{"start": 0, "end": 51, "label": "MATH"}], "lang": "fr"}
+{"text": "[-3 a_2 -0,5;-0,5 y sqrt(x)]", "spans": [{"start": 0, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "[3x,1/2,x+1;1/2,3/4,x-1]", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "Bring your supplies (pen, ruler, notebook).", "spans": [], "lang": "en"}
+{"text": "[a_n, n^2;3x, 3/4;2x, x-1]", "spans": [{"start": 0, "end": 26, "label": "MATH"}], "lang": "fr"}
+{"text": "(-1 1/n a_n;0,5 x -1/2;-0,5 2x 2^n;a_2 sin(x) 1)", "spans": [{"start": 0, "end": 48, "label": "MATH"}], "lang": "fr"}
+{"text": "[n, 2pi, sqrt(2), 0,5;1,5, -1/2, 3/4, pi;x^3, -a, x+1, a_1]", "spans": [{"start": 0, "end": 59, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer le déterminant de [2;d;0;f;c].", "spans": [{"start": 27, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "(n^2;u_n;x;n;n^2)", "spans": [{"start": 0, "end": 17, "label": "MATH"}], "lang": "fr"}
+{"text": "La matrice A = (a_n,b,1/n;1,sin(x),n^2;d,-0,5,b).", "spans": [{"start": 15, "end": 48, "label": "MATH"}], "lang": "fr"}
+{"text": "Pick the right answer (among the four).", "spans": [], "lang": "en"}
+{"text": "[y,x+1,x,-1/2;2^n,-1/2,3x,-x;sin(x),sqrt(2),1/2,a_n;u_n,b,2/3,-1/2]", "spans": [{"start": 0, "end": 67, "label": "MATH"}], "lang": "fr"}
+{"text": "On a (0, a_2, 1/n;a^2, sqrt(x), k;y, n, x).", "spans": [{"start": 5, "end": 42, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose M = [d f(x) 3/4 2x;2^n u_n x 1,5;a_1 1/2 0,5 x^3;x^2 sin(x) n -a].", "spans": [{"start": 12, "end": 73, "label": "MATH"}], "lang": "fr"}
+{"text": "(x, y)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "A = [n+1;-3;n]", "spans": [{"start": 0, "end": 14, "label": "MATH"}], "lang": "fr"}
+{"text": "P = [a, 0, -1, a, -1;x, a, 2, e, -1;c, -1, x, b, b;y, 1, -1, -1, -1;2, 3, x, d, 0]", "spans": [{"start": 0, "end": 82, "label": "MATH"}], "lang": "fr"}
+{"text": "P = (b -2 sqrt(2) y x+1;sqrt(2) f(x) f(x) x_i 1/2;2,5 c 0 cos(x) 1/n;b x^2 sqrt(2) 1/n 1;cos(x) -a 2 a_n a)", "spans": [{"start": 0, "end": 107, "label": "MATH"}], "lang": "fr"}
+{"text": "(0, 0)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose M = [cos(x) a_n k 2/3 sin(x);k n+1 f(x) x+1 sqrt(x);-x y 1/n 1 0,5;sqrt(2) a_2 c -3 a;-1/2 b cos(x) 1/2 a_n].", "spans": [{"start": 12, "end": 116, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer le déterminant de [x;a_2;x+1].", "spans": [{"start": 27, "end": 38, "label": "MATH"}], "lang": "fr"}
+{"text": "(x^2,y,f(x),2^n;1,5,3/4,1/n,d;n^2,x^3,y,c)", "spans": [{"start": 0, "end": 42, "label": "MATH"}], "lang": "fr"}
+{"text": "A = [d f(x) 3/4 2x;2^n u_n x 1,5;a_1 1/2 0,5 x^3;x^2 sin(x) n -a]", "spans": [{"start": 0, "end": 65, "label": "MATH"}], "lang": "fr"}
+{"text": "(b,-1,1,5,0,5,cos(x);f(x),n^2,a_2,-x,x^3;0,5,y,0,k,x-1;-x,-a,2/3,2x,pi;sin(x),-a,k,2x,3x)", "spans": [{"start": 0, "end": 89, "label": "MATH"}], "lang": "fr"}
+{"text": "(0, a_2, 1/n;a^2, sqrt(x), k;y, n, x)", "spans": [{"start": 0, "end": 37, "label": "MATH"}], "lang": "fr"}
+{"text": "Read the instructions (see page 12) first.", "spans": [], "lang": "en"}
+{"text": "(cos(x), sin(x))", "spans": [{"start": 0, "end": 16, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose M = (d, -1, a, x;c, c, c, b;d, d, 0, f;1, -1, e, 2).", "spans": [{"start": 12, "end": 59, "label": "MATH"}], "lang": "fr"}
+{"text": "On a (1,2).", "spans": [{"start": 5, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère (-0,5;k;-x;a_1).", "spans": [{"start": 13, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "He almost (but not quite) solved it.", "spans": [], "lang": "en"}
+{"text": "(a_n,b,1/n;1,sin(x),n^2;d,-0,5,b)", "spans": [{"start": 0, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "(1/2, 3/4)", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "Résoudre avec (0;3;1;d).", "spans": [{"start": 14, "end": 23, "label": "MATH"}], "lang": "fr"}
+{"text": "P = (-1 1/n a_n;0,5 x -1/2;-0,5 2x 2^n;a_2 sin(x) 1)", "spans": [{"start": 0, "end": 52, "label": "MATH"}], "lang": "fr"}
+{"text": "[cos(x) a_n k 2/3 sin(x);k n+1 f(x) x+1 sqrt(x);-x y 1/n 1 0,5;sqrt(2) a_2 c -3 a;-1/2 b cos(x) 1/2 a_n]", "spans": [{"start": 0, "end": 104, "label": "MATH"}], "lang": "fr"}
+{"text": "[-1, d, e, d, e;-1, -1, -1, f, y;a, c, 1, f, 2;x, x, 3, a, 2;c, -1, 2, f, 1]", "spans": [{"start": 0, "end": 76, "label": "MATH"}], "lang": "fr"}
+{"text": "On a [n+1;-3;n].", "spans": [{"start": 5, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit (0,5;x^3;x+1).", "spans": [{"start": 5, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "(a x-1 x;pi n^2 x+1;0,5 sqrt(2) 2pi)", "spans": [{"start": 0, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "(1, 2)", "spans": [{"start": 0, "end": 6, "label": "MATH"}], "lang": "fr"}
+{"text": "(O, veci, vecj)", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "(3x, x;n+1, a_1;-1/2, d)", "spans": [{"start": 0, "end": 24, "label": "MATH"}], "lang": "fr"}
+{"text": "[-x, d, 2, a_n, 2;k, 2,5, 2^n, -x, 2;-3, -1, 2^n, x_i, a^2;k, -0,5, x+1, c, x-1;d, -a, x_i, n, 2x]", "spans": [{"start": 0, "end": 98, "label": "MATH"}], "lang": "fr"}
+{"text": "(a, b, c)", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "Note la date (lundi 3 mars) sur ton agenda.", "spans": [], "lang": "fr"}
+{"text": "(1/2 2^n -1/2 a_2;f(x) pi cos(x) sqrt(2);x x_i 2^n a;2pi 2,5 -2 -2)", "spans": [{"start": 0, "end": 67, "label": "MATH"}], "lang": "fr"}
+{"text": "Relis la consigne (voir page 12) avant de commencer.", "spans": [], "lang": "fr"}
+{"text": "The chapters (1, 2 and 3) are on the syllabus.", "spans": [], "lang": "en"}
+{"text": "(d, -1, a, x;c, c, c, b;d, d, 0, f;1, -1, e, 2)", "spans": [{"start": 0, "end": 47, "label": "MATH"}], "lang": "fr"}
+{"text": "[n, 2pi, sqrt(2), 0,5;1,5, -1/2, 3/4, pi;x^3, -a, x+1, a_1]", "spans": [{"start": 0, "end": 59, "label": "MATH"}], "lang": "fr"}
+{"text": "(-a,-x,a_n;-0,5,x_i,pi;u_n,2/3,n+1)", "spans": [{"start": 0, "end": 35, "label": "MATH"}], "lang": "fr"}
+{"text": "(3x;y;3x;-3)", "spans": [{"start": 0, "end": 12, "label": "MATH"}], "lang": "fr"}
+{"text": "(2/3 cos(x) a -a;x-1 n^2 n 3/4;-1 0,5 3x y;n a^2 2x x+1)", "spans": [{"start": 0, "end": 56, "label": "MATH"}], "lang": "fr"}
+{"text": "[2;d;0;f;c]", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "[a, 0, -1, a, -1;x, a, 2, e, -1;c, -1, x, b, b;y, 1, -1, -1, -1;2, 3, x, d, 0]", "spans": [{"start": 0, "end": 78, "label": "MATH"}], "lang": "fr"}
+{"text": "Answer the questions (a, b and c) of the exercise.", "spans": [], "lang": "en"}
+{"text": "(3x -1/2;sqrt(x) 2pi)", "spans": [{"start": 0, "end": 21, "label": "MATH"}], "lang": "fr"}
+{"text": "(1/2 2^n -1/2 a_2;f(x) pi cos(x) sqrt(2);x x_i 2^n a;2pi 2,5 -2 -2)", "spans": [{"start": 0, "end": 67, "label": "MATH"}], "lang": "fr"}
+{"text": "(x;y;z)", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "B = [x;a_2;x+1]", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "(d,c,2,1;2,3,x,y;e,b,3,b)", "spans": [{"start": 0, "end": 25, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer le déterminant de (x, y).", "spans": [{"start": 27, "end": 33, "label": "MATH"}], "lang": "fr"}
+{"text": "Le système s'écrit [-1, d, e, d, e;-1, -1, -1, f, y;a, c, 1, f, 2;x, x, 3, a, 2;c, -1, 2, f, 1].", "spans": [{"start": 19, "end": 95, "label": "MATH"}], "lang": "fr"}
+{"text": "Les chapitres (1, 2 et 3) sont au programme.", "spans": [], "lang": "fr"}
+{"text": "(1;2;3)", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "(1,2)", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "(f,d,1,b;2,y,f,-1)", "spans": [{"start": 0, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "La matrice A = (1;2;3).", "spans": [{"start": 15, "end": 22, "label": "MATH"}], "lang": "fr"}
+{"text": "(b -2 sqrt(2) y x+1;sqrt(2) f(x) f(x) x_i 1/2;2,5 c 0 cos(x) 1/n;b x^2 sqrt(2) 1/n 1;cos(x) -a 2 a_n a)", "spans": [{"start": 0, "end": 103, "label": "MATH"}], "lang": "fr"}
+{"text": "Soit [1/2, 2,5, 2x;-3, x+1, -0,5;b, y, cos(x)].", "spans": [{"start": 5, "end": 46, "label": "MATH"}], "lang": "fr"}
+{"text": "Calculer le déterminant de (-a,-x,a_n;-0,5,x_i,pi;u_n,2/3,n+1).", "spans": [{"start": 27, "end": 62, "label": "MATH"}], "lang": "fr"}
+{"text": "P = (2/3 cos(x) a -a;x-1 n^2 n 3/4;-1 0,5 3x y;n a^2 2x x+1)", "spans": [{"start": 0, "end": 60, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose M = (b,-1,1,5,0,5,cos(x);f(x),n^2,a_2,-x,x^3;0,5,y,0,k,x-1;-x,-a,2/3,2x,pi;sin(x),-a,k,2x,3x).", "spans": [{"start": 12, "end": 101, "label": "MATH"}], "lang": "fr"}
+{"text": "A = [-3 a_2 -0,5;-0,5 y sqrt(x)]", "spans": [{"start": 0, "end": 32, "label": "MATH"}], "lang": "fr"}
+{"text": "[-x,-3,1,5,2;y,sin(x),d,a_2]", "spans": [{"start": 0, "end": 28, "label": "MATH"}], "lang": "fr"}
+{"text": "Il a réussi (enfin presque) à finir l'exercice.", "spans": [], "lang": "fr"}
+{"text": "(sin(x), -1, 2^n;-2, x+1, sqrt(2);pi, c, x^3;cos(x), d, x)", "spans": [{"start": 0, "end": 58, "label": "MATH"}], "lang": "fr"}
+{"text": "(b,2^n,f(x);1,n^2,a_2;-0,5,y,0;3x,x,pi)", "spans": [{"start": 0, "end": 39, "label": "MATH"}], "lang": "fr"}
+{"text": "[n+1;-3;n]", "spans": [{"start": 0, "end": 10, "label": "MATH"}], "lang": "fr"}
+{"text": "On range le matériel (compas, équerre) dans la trousse.", "spans": [], "lang": "fr"}
+{"text": "Le professeur (M. Durand) corrige les copies.", "spans": [], "lang": "fr"}
+{"text": "[pi 3x 2,5 3/4;a 2,5 d d;1/n b 1/2 1,5;3/4 x n^2 3/4]", "spans": [{"start": 0, "end": 53, "label": "MATH"}], "lang": "fr"}
+{"text": "Compute the determinant of [pi 3x 2,5 3/4;a 2,5 d d;1/n b 1/2 1,5;3/4 x n^2 3/4].", "spans": [{"start": 27, "end": 80, "label": "MATH"}], "lang": "en"}
+{"text": "A = [a_n, n^2;3x, 3/4;2x, x-1]", "spans": [{"start": 0, "end": 30, "label": "MATH"}], "lang": "fr"}
+{"text": "On pose M = (3x, x;n+1, a_1;-1/2, d).", "spans": [{"start": 12, "end": 36, "label": "MATH"}], "lang": "fr"}
+{"text": "(a;b)", "spans": [{"start": 0, "end": 5, "label": "MATH"}], "lang": "fr"}
+{"text": "(-0,5;k;-x;a_1)", "spans": [{"start": 0, "end": 15, "label": "MATH"}], "lang": "fr"}
+{"text": "Apporte tes affaires (cahier, stylo, règle).", "spans": [], "lang": "fr"}
+{"text": "[x;a_2;x+1]", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "(0,5;x^3;x+1)", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "[x;a_2;x+1]", "spans": [{"start": 0, "end": 11, "label": "MATH"}], "lang": "fr"}
+{"text": "A = (0, a_2, 1/n;a^2, sqrt(x), k;y, n, x)", "spans": [{"start": 0, "end": 41, "label": "MATH"}], "lang": "fr"}
+{"text": "(1, 2, 3)", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "[a,0;b,b;0,2]", "spans": [{"start": 0, "end": 13, "label": "MATH"}], "lang": "fr"}
+{"text": "Réponds aux questions (a, b et c) de l'exercice.", "spans": [], "lang": "fr"}
+{"text": "(x, y, z)", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "On considère (a x-1 x;pi n^2 x+1;0,5 sqrt(2) 2pi).", "spans": [{"start": 13, "end": 49, "label": "MATH"}], "lang": "fr"}
+{"text": "[d f(x) 3/4 2x;2^n u_n x 1,5;a_1 1/2 0,5 x^3;x^2 sin(x) n -a]", "spans": [{"start": 0, "end": 61, "label": "MATH"}], "lang": "fr"}
+{"text": "(-x x 3x;3x 1/2 x_i;u_n f(x) c)", "spans": [{"start": 0, "end": 31, "label": "MATH"}], "lang": "fr"}
+{"text": "Coche la bonne réponse (parmi les quatre proposées).", "spans": [], "lang": "fr"}
+{"text": "Prends une feuille (grand format) pour le devoir.", "spans": [], "lang": "fr"}
+{"text": "(d,2,x;-3,2^n,x^3)", "spans": [{"start": 0, "end": 18, "label": "MATH"}], "lang": "fr"}
+{"text": "[y,x+1,x,-1/2;2^n,-1/2,3x,-x;sin(x),sqrt(2),1/2,a_n;u_n,b,2/3,-1/2]", "spans": [{"start": 0, "end": 67, "label": "MATH"}], "lang": "fr"}
+{"text": "(-1, 2)", "spans": [{"start": 0, "end": 7, "label": "MATH"}], "lang": "fr"}
+{"text": "(0;3;1;d)", "spans": [{"start": 0, "end": 9, "label": "MATH"}], "lang": "fr"}
+{"text": "[1/2, 2,5, 2x;-3, x+1, -0,5;b, y, cos(x)]", "spans": [{"start": 0, "end": 41, "label": "MATH"}], "lang": "fr"}

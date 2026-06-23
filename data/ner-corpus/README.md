@@ -69,6 +69,30 @@ script n'a pas été retrouvé lors du rapatriement DocMath → MathCursor) :
   `@` manquait. 204 lignes, 184 positifs / 20 négatifs. Commits `f054ad9`
   (`**`), `ba503d1` (varphi), `bfbf1ad` (0.11.0 fractions).
 
+- `extension_v11_matrices.jsonl` + `extension_v11_keywords.jsonl` +
+  `extension_v11_intervals.jsonl` — **3 angles morts comblés** (analyse de
+  couverture 2026-06-23 : tous à 0 ou quasi-0 sur 12 824 exemples) :
+  - **matrices** (112 l.) — **0 vraie matrice (≥2 colonnes) dans tout le corpus
+    avant v11** ; 2×2→5×5 + vecteurs colonne + tuples/points, cellules
+    **complexes** (fractions, puissances, indices, fonctions, décimales,
+    négatifs), séparateur `,`/espace, délimiteurs `()`/`[]`, isolé+prose+autocap
+    FR/EN. Distractors : parenthèses de prose (`(cahier, stylo, règle)`).
+  - **keywords** (264 l.) — mots-clés en **TÊTE DE LIGNE** jamais couverts :
+    décorations (bar/conj, abs/module, hat, racine, floor/ceil, norme, det,
+    dim, nabla, partial), lycée (pgcd/ppcm, parmi, pourtout/ilexiste FR pleins),
+    marqueurs (rond, congru, ±). **Distractors homonymes** (point critique) :
+    bar=comptoir, module=cours, conj=conjugaison, racine=du mot, angle=pièce,
+    parmi=préposition, rond=rond-point, floor=étage, hat=chapeau.
+  - **intervals** (121 l.) — renfort `[a;b]`/`]a;b[`, bornes décimales/±inf/
+    fractions, appartenance, unions ; distractors `;` de prose + citations `[3]`.
+  Générés par `tools/ner-training/build_v11_{matrices,keywords,intervals}.py`.
+
+> **⚠️ Liste d'entraînement corrigée (2026-06-23)** : la liste `EXTENSIONS` de
+> `train_mathcursor.ipynb` s'arrêtait à **v8** → **v9 (marqueurs relation) et
+> v10 (@grec/fractions) n'avaient jamais été inclus dans un retrain**. v9, v10
+> et v11 (×3) ajoutés. `dataset_v2_all.jsonl` = snapshot périmé (8000 l.) **non
+> utilisé** par le notebook (lit train/val/test + `EXTENSIONS`).
+
 ## Accents : FOLDÉS partout (décision 2026-06-11)
 
 Le lexer moteur jette « caractère inattendu: é » → plutôt que d'apprendre
