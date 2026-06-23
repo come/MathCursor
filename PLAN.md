@@ -8,6 +8,12 @@
 
 L'enjeu : extraire le **bon socle** de DocMath + **porter le moteur `forest`** en C#, pour une **beta propre, sobre, à architecture découplée**, qui devienne réellement *prodable*.
 
+> **⚠️ MAJ 2026-06-23 — plan largement EXÉCUTÉ.** Moteur `forest` porté
+> (`engine/MathCursor.Engine`), beta livrée, archi découplée (moteur pur ← adapter).
+> Document conservé comme trace de la décision initiale ; **pour l'état réel** :
+> `docs/dev/decisions/README.md` + `git log`. Plusieurs chemins/keepers ci-dessous
+> sont périmés (`core-csharp`, contrat `host-contract` à 4 interfaces — supprimés).
+
 ---
 
 ## 1. Décisions actées (2026-06-09)

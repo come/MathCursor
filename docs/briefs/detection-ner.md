@@ -3,6 +3,12 @@
 Ce document décrit la **chaîne de détection des expressions math** dans MathCursor :
 quel modèle, quels fichiers, comment c'est branché dans Word, comment mettre à jour.
 
+> **⚠️ Partiellement daté.** L'auto-détection NER n'est **pas branchée** dans la beta
+> (déclenchement = **Ctrl+Espace** manuel). Les mentions `SuggestionService`/polling
+> sont périmées (→ `ConversionController`, déclenchement explicite) ; chemins
+> `D:\Software\DocMath\models` historiques. Conservé pour la **chaîne d'entraînement**
+> du modèle NER (corpus `data/ner-corpus/`).
+
 ---
 
 ## 1. Vue d'ensemble
