@@ -4,6 +4,12 @@ Ce document est la **source de vérité** pour les règles de fonctionnement.
 Avant d'ajouter du code dans le pipeline ou la popup, vérifier ici. Toute
 duplication de logique doit être éliminée.
 
+> **⚠️ Réfs d'archi/nommage partiellement datées.** Le pipeline est aujourd'hui
+> orchestré par `ConversionController` (ex-`SuggestionService`) et appelle le moteur
+> **PUR** `engine/MathCursor.Engine` (`ForestEngine`) + `serialization` (`LatexToOmml`).
+> L'ancien `core-csharp` / contrat 4-interfaces n'existe plus (ADR 2026-06-23). Les
+> règles de flow ci-dessous restent globalement valides ; pour l'archi, voir `CLAUDE.md`.
+
 ---
 
 ## 1. Lecture du contexte (`WordContextReader`)
@@ -139,13 +145,12 @@ Tout ce qui est "knowledge" est en table/dictionnaire/regex, jamais en code cond
 ## 7. Architecture des couches (rappel)
 
 ```
-adapter-vsto         ← couche plateforme (Word interop, hook, popup WPF)
-   ↓ implémente
-host-contract-csharp ← interfaces abstraites (IDocumentHost, IEquationStore, ...)
-   ↓ utilise
-core-csharp          ← logique pure (Tokenizer, Scorer, ZoneDetector, Pipeline,
-                       SymbolMatcher, Parser, OmmlSerializer, Orchestrator)
+adapter-vsto/MathCursor                  ← plateforme (Word interop, hook, popup WPF, orchestration)
+   ↓ appelle directement
+engine/MathCursor.Engine                 ← moteur PUR (Lexer, Parser/Forest, Score, LatexRenderer)
+serialization/MathCursor.Serialization   ← LaTeX → OMML
 ```
 
-**Règle dure** : `core-csharp` n'a aucune référence à `Microsoft.Office.*`. Il ne
-voit que les interfaces `host-contract-csharp`.
+**Règle dure** : `engine/` + `serialization/` n'ont aucune référence à
+`Microsoft.Office.*` / WPF (netstandard2.0). L'adapter les appelle **en direct** —
+pas d'interface d'inversion (ancien contrat host-contract supprimé, ADR 2026-06-23).

@@ -12,7 +12,7 @@ installer/
 ├── after-install.txt     # texte montré après install (auto-généré)
 ├── payload/              # (auto) binaires copiés depuis bin/Release
 │   ├── MathCursor.dll, .vsto, .manifest, .config
-│   ├── MathCursor.Core.dll, MathCursor.HostContract.dll
+│   ├── MathCursor.Engine.dll, MathCursor.Serialization.dll, MathCursor.HostContract.dll
 │   ├── WpfMath.dll, OnnxRuntime.dll, ...
 │   └── models/           # modèle NER (à placer manuellement, ~200 Mo)
 └── output/               # (auto) EXE final

@@ -9,57 +9,53 @@ Add-in VSTO pour Word Desktop Windows — **Phase 1 du projet MathCursor**.
 - **.NET Framework 4.8 Developer Pack**
 - Microsoft Office Word 2016+ (Desktop) pour tester
 
-## Création du projet VSTO
+## Build
 
-Le fichier `.csproj` VSTO doit être généré par Visual Studio (template spécifique).
-Depuis ce dossier :
+Le projet VSTO est dans le repo : `adapter-vsto/src/MathCursor/MathCursor.csproj`
+(nom du projet : **`MathCursor`**). Il référence le moteur pur :
+- `engine/src/MathCursor.Engine/MathCursor.Engine.csproj`
+- `serialization/src/MathCursor.Serialization/MathCursor.Serialization.csproj`
+- `host-contract/src/MathCursor.HostContract/MathCursor.HostContract.csproj` (DTO `EquationHandle`)
 
-1. Visual Studio → `File > New > Project`
-2. Template : **"Word VSTO Add-in"** (.NET Framework 4.8)
-3. Emplacement : `D:\Software\DocMath\adapter-vsto\src\`
-4. Nom du projet : `MathCursor.Vsto`
-5. Une fois créé, ajouter une référence au projet :
-   - `host-contract-csharp/src/MathCursor.HostContract/MathCursor.HostContract.csproj`
-   - `core-csharp/src/MathCursor.Core/MathCursor.Core.csproj`
+Ouvre `MathCursor.sln` dans VS2022 → régénérer → F5 (détails : [`INSTALL.md`](INSTALL.md)).
 
-## Structure actuelle
+## Structure (principaux fichiers)
 
 ```
 adapter-vsto/src/MathCursor/
 ├── Host/
-│   ├── SuggestionService.cs       # orchestration : tick NER + popup + commit OMath
-│   ├── KeyboardInterceptor.cs     # hook Up/Down/Enter/Esc pour la popup
-│   ├── WordContextReader.cs       # lecture du paragraphe courant
-│   └── VstoEquationStore.cs       # IEquationStore via CustomXMLParts (phase édition)
-├── Detection/
-│   ├── MathNerDetector.cs         # modèle NER XLM-RoBERTa ONNX
-│   └── Sp/                        # tokenizer SentencePiece C# pur
+│   ├── ConversionController.cs        # orchestration : zone → moteur → popup → commit OMath
+│   ├── OMathInserter.cs              # insertion OMML dans Word + SourceMap
+│   ├── SpanComputer.cs              # zone Ctrl+Espace (délimiteurs)
+│   ├── EditMode/EditModeController.cs # « revenir à la saisie » (mode édition)
+│   ├── SourceMap/                    # persistance source ↔ OMath (CustomXMLParts)
+│   └── Detection/MathNerDetector.cs  # NER ONNX (auto-détection) + fenêtrage
 ├── UI/
-│   └── SuggestionPopupWindow.cs   # popup WPF TopMost au caret (WPF-Math)
-├── ThisAddIn.cs                   # point d'entrée VSTO
-├── RibbonCallback.cs              # bouton "À propos"
+│   ├── SuggestionPopupWindow.cs      # popup WPF au caret (rendu WpfMath)
+│   └── EditModePopupWindow.cs
+├── ThisAddIn.cs                      # point d'entrée VSTO
+├── RibbonCallback.cs                 # ruban (convertir, encadrer, colonnes, police…)
 └── MathCursor.csproj
 ```
 
 ## Flux runtime
 
-1. `ThisAddIn` charge le NER, l'engine YAML, le store (CustomXMLParts),
-   et installe `SuggestionService` + `KeyboardInterceptor`.
-2. `SuggestionService` tick toutes les 200 ms + `WindowSelectionChange` :
-   lit le paragraphe, invoque le NER (thread pool), affiche la popup.
-3. Popup masquée si le caret est sur/collé à un OMath existant (évite
-   de relancer l'algo sur du LaTeX déjà rendu).
-4. `KeyboardInterceptor` : Down → NavMode, Up/Down navigue, Enter →
-   commit (insère OMath à partir du LaTeX via UnicodeMath), Esc masque.
+1. Déclenchement **explicite** : **Ctrl+Espace** ou bouton ruban — *pas de polling*.
+2. `ConversionController` calcule la zone (`SpanComputer`) puis appelle le **moteur pur**
+   `ForestEngine.Analyze` (texte → candidats LaTeX classés).
+3. Popup WPF au caret si plusieurs candidats : Entrée commit, ↓/↑ navigue, Échap masque.
+   Popup masquée si le caret est sur un OMath existant.
+4. Commit : `LatexToOmml` → OMML inséré via `Range.InsertXML` ; la source est
+   enregistrée (`SourceMap`) → « revenir à la saisie » possible. (Une auto-détection
+   NER peut armer la popup en plus du déclenchement manuel.)
 
-## Packaging / déploiement (phase ultérieure)
+## Packaging / déploiement
 
-- MSI signé via WiX Toolset — script de build séparé à venir
-- Installation per-user dans `%AppData%\MathCursor\`
-- Auto-update via ClickOnce ou vérification manifest.xml distant
+Installeur **Inno Setup** (`adapter-vsto/installer/`, build via `build.ps1`), distribué
+sur R2 + page de téléchargement Cloudflare Pages. Skills `/build-iss` et `/deploy-prod`.
 
 ## Tests
 
-Les tests unitaires du core sont dans `core-csharp/tests/`. Pour l'adapter,
-les tests intégration mockent les 4 interfaces et vérifient le comportement
-bout en bout dans `adapter-vsto/tests/MathCursor.Vsto.Tests/`.
+Tests de l'adapter dans `adapter-vsto/tests/MathCursor.Tests/` (logique pure extraite :
+SpanComputer, zones, fenêtre NER, walker, canonicalizer…). Moteur : `engine/tests/`.
+Gate de test complet : `scripts/run-tests.ps1`.

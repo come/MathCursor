@@ -1,14 +1,19 @@
 # MathCursor VSTO — Installation et test local
 
+> **⚠️ Guide partiellement daté (MVP phase C1).** Depuis, le produit a : popup au
+> caret, mode édition (revenir à la saisie), opérateurs n-aires (lim/sum/int…),
+> déclencheur **Ctrl+Espace**, installeur **Inno Setup**. Les sections « Limites
+> actuelles » et les mentions « Alt+M » plus bas sont périmées. Pour l'état réel :
+> [`CLAUDE.md`](../CLAUDE.md) + `git log`. Gate de test : `scripts/run-tests.ps1`.
+
 ## Étape 1 — Build complet de la solution
 
 1. Ouvre `MathCursor.sln` dans Visual Studio 2022.
 2. Dans l'**Explorateur de solutions**, fais clic droit sur la solution → **Régénérer la solution** (`Ctrl+Shift+B`).
-3. Vérifie la **Sortie** : 4 projets doivent réussir :
-   - `MathCursor.HostContract`
-   - `MathCursor.Core`
-   - `MathCursor.Core.Tests`
-   - `MathCursor` (le VSTO)
+3. Vérifie la **Sortie** : tous les projets réussissent — le moteur pur
+   (`MathCursor.Engine`, `MathCursor.Serialization`), `MathCursor.HostContract`,
+   l'adapter `MathCursor` (VSTO) et leurs projets de tests. *(Le build/test complet
+   en ligne de commande passe par `scripts/run-tests.ps1`.)*
 
 Si erreur sur le VSTO : vérifie que **.NET Framework 4.8 Developer Pack** est installé (Visual Studio Installer → Modifier → onglet "Composants individuels").
 
@@ -61,7 +66,7 @@ Dans le document Word vide :
 
 ### Word ne se lance pas au F5
 - Vérifie que tu as fermé TOUTES les instances de Word avant F5
-- Vérifie que **MathCursor** est bien défini comme projet de démarrage (pas Core.Tests ou autre)
+- Vérifie que **MathCursor** est bien défini comme projet de démarrage (pas un projet de test ou autre)
 
 ### Erreur de certificat au premier lancement
 - Normal : clique **Installer** dans la boîte de dialogue. VS installe un certificat auto-signé valable en dev uniquement.

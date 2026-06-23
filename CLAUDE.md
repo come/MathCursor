@@ -10,10 +10,12 @@ de façon fluide au clavier. Objectif : comportement prévisible et sans frictio
 
 ## Où trouver l'état d'avancement (lire en premier)
 
-- **[`docs/dev/architecture/ROADMAP.md`](docs/dev/architecture/ROADMAP.md)** — état des chantiers en cours (refacto archi axes 1-8, harnais phases 0-9, source-mutation S0-S3), case à case. À jour à chaque sous-livraison.
-- **[`docs/dev/decisions/README.md`](docs/dev/decisions/README.md)** — index chrono de tous les ADRs.
+- **[`docs/dev/decisions/README.md`](docs/dev/decisions/README.md)** — index chrono de tous les ADRs : le journal vivant des décisions.
+- **`git log --oneline -30`** — état réel le plus fiable.
+- **[`PLAN.md`](PLAN.md)** — plan de consolidation beta (daté, partiellement exécuté).
+- **[`docs/dev/architecture/ROADMAP.md`](docs/dev/architecture/ROADMAP.md)** — ⚠️ **gelé** (chantiers DocMath, 2026-05-21) : référence historique, ne pas suivre ses chemins.
 
-Quand tu reprends une session : ROADMAP.md → première case `[ ]` non cochée du chantier en cours. Si plusieurs chantiers ouverts, demander la priorité utilisateur.
+Quand tu reprends une session : `decisions/README.md` + `git log` pour l'état réel. Si plusieurs chantiers ouverts, demander la priorité utilisateur.
 
 ## ⚠️ Avant de toucher à l'ergo VSTO Word (OBLIGATOIRE)
 
@@ -45,7 +47,7 @@ Si ce critère est atteint → on attaque la phase 2.
 ## Stack
 
 - **VSTO** Word Add-in, .NET Framework 4.8
-- **C#** pour tout le code (core, contrats, adapter)
+- **C#** pour tout le code (moteur pur, sérialisation, adapter)
 - **WPF** pour les popups au caret
 - **xUnit** pour les tests
 - Pas de dépendances lourdes
@@ -86,8 +88,7 @@ D:\Software\MathCursor\
 ├── analyzers/                   # analyzers Roslyn (MC0001/0006/0009) + tests
 ├── web-demo/                    # démo Blazor WASM (réutilise le moteur compilé)
 ├── engine-python/               # port Python de parité (conformance, hors produit)
-├── scripts/                     # outillage (run-tests.ps1 = gate de test local)
-└── archive/officejs-prototype/  # prototype Office.js figé (référence seule)
+└── scripts/                     # outillage (run-tests.ps1 = gate de test local)
 ```
 
 ## Règles de dev
@@ -108,20 +109,13 @@ D:\Software\MathCursor\
 - Pas de backend, pas de télémétrie réseau, pas de cloud.
 - Pas de VBA.
 
-## Algorithmes à porter du prototype Office.js
+## Moteur : portage « forest » (fait)
 
-Validés empiriquement (47/47 tests sur corpus FR/EN/DE/ES), à réimplémenter en C# :
-
-| Module prototype TS | Cible C# |
-|---------------------|----------|
-| `conversion/tokenizer.ts` | `Tokenization/Tokenizer.cs` |
-| `conversion/scorer.ts` | `ZoneDetection/Scorer.cs` |
-| `conversion/zone-detector.ts` | `ZoneDetection/ZoneDetector.cs` |
-| `conversion/parser.ts` | `Ast/Parser.cs` (à créer) |
-| `conversion/render.ts` | `Serialization/OmmlSerializer.cs` |
-
-Le prototype reste accessible dans `archive/officejs-prototype/` comme référence
-uniquement. **Ne pas modifier le prototype** — c'est une photo figée.
+Le moteur de reconnaissance/conversion est porté en C# pur :
+**`engine/MathCursor.Engine`** (« forest engine » — `Lexer`, `Parser`/`Forest`,
+`Score`, `LatexRenderer`, `Vocabulary`) + **`serialization/MathCursor.Serialization`**
+(`LatexToOmml`). Verrouillé par le corpus `engine/tests/.../fixtures.json` (rejoué
+par plusieurs pipelines) + un port Python de parité (`engine-python/`).
 
 ## Roadmap phase 1
 

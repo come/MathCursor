@@ -9,39 +9,42 @@ avec un PAP concret (le fils d'un utilisateur) et quelques profs en beta.
 
 Office.js (Word Web / Mac / iPad) viendra en phase 2 **une fois l'UX validée**.
 
-## Architecture 3 couches
+## Architecture
+
+Le **moteur** est une fonction pure (texte → candidats LaTeX classés), portable,
+sans dépendance plateforme. L'**adapter** VSTO l'orchestre et l'appelle en direct.
 
 ```
-adapter-vsto              (Couche 3 : plateforme VSTO/.NET Framework)
-   ↓
-host-contract-csharp      (Couche 2 : interfaces abstraites)
-   ↓
-core-csharp               (Couche 1 : logique métier pure, .NET Standard 2.0)
+adapter-vsto/MathCursor                  (plateforme Word/VSTO : orchestration, popup WPF, interop)
+   ↓ appelle
+engine/MathCursor.Engine                 (moteur « forest » PUR : texte → candidats, netstandard2.0)
+serialization/MathCursor.Serialization   (LaTeX → OMML pour l'insertion Word)
 ```
 
-Règle de dépendances : le core ne connaît ni Word, ni VSTO, ni Office.js. Il voit
-seulement les interfaces `IDocumentHost`, `IEquationStore`, `IEditorSurface`,
-`IUserFeedback`.
+Règle dure : le moteur et la sérialisation ne connaissent ni Word, ni VSTO, ni
+Office.js (netstandard2.0, zéro `Microsoft.Office.*` / WPF). C'est ce qui rendra la
+phase 2 (Office.js / Mac / Web) possible — la démo WASM réutilise déjà le même moteur.
 
 ## Structure du monorepo
 
 | Dossier | Rôle |
 |---------|------|
-| `specs/` | Specs formelles, ADRs, test fixtures partagés |
-| `data/` | Données multilingues (stopwords, operators, etc.) |
-| `core-csharp/` | Core métier C# (tokenization → AST → serialization) |
-| `host-contract-csharp/` | Interfaces C# que chaque adapter implémente |
-| `adapter-vsto/` | Add-in VSTO Word Desktop (phase 1) |
-| `tools/` | Outillage : validation données, conformance runner |
-| `archive/officejs-prototype/` | Prototype Office.js (figé, référence seulement) |
+| `data/` | Données embarquées (`engine/symbols.json`, `cultures.json`, corpus NER) |
+| `engine/` | Moteur « forest » C# PUR (texte → candidats) + tests + `fixtures.json` |
+| `serialization/` | LaTeX → OMML (insertion Word) + tests |
+| `host-contract/` | Types partagés légers (`EquationHandle`) |
+| `adapter-vsto/` | Add-in VSTO Word Desktop (orchestration, UI WPF, interop) + tests + installer |
+| `analyzers/` | Analyzers Roslyn (règles MC) + tests |
+| `web-demo/` | Démo Blazor WASM (réutilise le moteur compilé) |
+| `engine-python/` | Port Python de parité (conformance) |
+| `scripts/` | Outillage (`run-tests.ps1` = gate de test local) |
 
-## Ce qu'on porte du prototype Office.js
+## Moteur (porté)
 
-Les algorithmes validés empiriquement (corpus de 47 cas multilingues) :
-- Tokenizer avec catégorisation Unicode + normalisation math italic
-- Mathiness scorer (heuristique 0..1 par token)
-- Zone detector (frontière prose/math via scoring + stopwords)
-- Pipeline AST → render OOXML pour `<m:oMath>`
+Le pipeline de reconnaissance/conversion est porté en C# pur dans `engine/` :
+tokenizer, scoring, parser « forest », rendu LaTeX, puis sérialisation OMML dans
+`serialization/`. Verrouillé par le corpus `fixtures.json` (rejoué par plusieurs
+pipelines) + un port Python de parité.
 
 ## Ce qu'on NE porte PAS
 
