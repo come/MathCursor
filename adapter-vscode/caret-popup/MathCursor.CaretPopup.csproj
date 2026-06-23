@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>MathCursor.CaretPopup</AssemblyName>
+    <RootNamespace>MathCursor.CaretPopup</RootNamespace>
+    <!-- net48 = in-box sur Win10/11 → exe minuscule, aucun runtime à installer. -->
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- IAccessible (MSAA) pour lire la position du caret via OBJID_CARET. -->
+    <Reference Include="Accessibility" />
+  </ItemGroup>
+</Project>

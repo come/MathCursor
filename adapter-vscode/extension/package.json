@@ -1,0 +1,73 @@
+{
+  "name": "mathcursor",
+  "displayName": "MathCursor",
+  "description": "Écris les maths comme elles te viennent : notation au clavier → LaTeX propre inline, avec aperçu de la formule au caret.",
+  "version": "0.1.0",
+  "publisher": "mathcursor",
+  "license": "SEE LICENSE IN LICENSE",
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["Other", "Snippets"],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:latex",
+    "onLanguage:tex",
+    "onLanguage:markdown"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "mathcursor.convert",
+        "title": "MathCursor : convertir en LaTeX au caret"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "mathcursor.convert",
+        "key": "ctrl+alt+space",
+        "when": "editorTextFocus && (editorLangId == latex || editorLangId == tex || editorLangId == markdown)"
+      }
+    ],
+    "configuration": {
+      "title": "MathCursor",
+      "properties": {
+        "mathcursor.culture": {
+          "type": "string",
+          "enum": ["fr", "us"],
+          "default": "fr",
+          "description": "Convention math : fr (virgule décimale, matrices ()) ou us (point décimal, matrices [])."
+        },
+        "mathcursor.delimiters": {
+          "type": "string",
+          "enum": ["dollar", "paren", "none"],
+          "enumDescriptions": [
+            "Entoure de $ … $",
+            "Entoure de \\( … \\)",
+            "Insère le LaTeX brut, sans délimiteurs"
+          ],
+          "default": "dollar",
+          "description": "Délimiteurs ajoutés autour du LaTeX inséré."
+        },
+        "mathcursor.maxCandidates": {
+          "type": "number",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Nombre maximum de candidats proposés (comme la popup Word)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch"
+  },
+  "dependencies": {
+    "mathjax-full": "^3.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/vscode": "^1.90.0",
+    "esbuild": "^0.21.0",
+    "typescript": "^5.4.0"
+  }
+}

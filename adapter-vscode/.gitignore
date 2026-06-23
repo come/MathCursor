@@ -1,0 +1,9 @@
+# Sorties de build .NET (engine-wasm) et artefacts JS
+bin/
+obj/
+node_modules/
+out/
+
+# Spikes jetables (à retirer après stabilisation — cf. ADR vscode-host)
+spike-extension/node_modules/
+spike-extension/out/
