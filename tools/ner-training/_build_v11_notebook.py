@@ -69,8 +69,8 @@ Drive attendu `MyDrive/mathcursor/` : `train/val/test.jsonl`,
 `regression_v1_gold.jsonl`, et tous les `extension_*.jsonl`.
 """))
 
-cells.append(code(r"""# 1. Dépendances
-get_ipython().system('pip install -q "transformers>=4.40" datasets evaluate seqeval "optimum[onnxruntime]>=1.19" textpruner')
+cells.append(code(r"""# 1. Dépendances (élagage vocab fait à la main -> pas de textpruner)
+get_ipython().system('pip install -q "transformers>=4.40" datasets evaluate seqeval "optimum[onnxruntime]>=1.19"')
 """))
 
 cells.append(code(r"""# 2. Drive + corpus (glob auto-découverte : aucune extension oubliée)
@@ -107,10 +107,12 @@ RESULTS_DIR = os.path.join(WORKDIR, 'v11-results')
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 # Candidats à arbitrer (commente une ligne pour l'exclure).
+# NB: l'élagage manuel ci-dessous est WordPiece (distilbert). MiniLM/XLM-R ont un
+# tokenizer SentencePiece -> autre méthode ; MiniLM avait en plus un bug
+# d'alignement. Pour <30 Mo : distillation (voie séparée).
 CANDIDATES = [
-    {'short': 'distilmult-full',   'base': 'distilbert-base-multilingual-cased',     'lr': 5e-5, 'prune': False},
-    {'short': 'distilmult-pruned', 'base': 'distilbert-base-multilingual-cased',     'lr': 5e-5, 'prune': True},
-    {'short': 'minilm-pruned',     'base': 'microsoft/Multilingual-MiniLM-L12-H384', 'lr': 5e-5, 'prune': True},
+    {'short': 'distilmult-full',   'base': 'distilbert-base-multilingual-cased', 'lr': 5e-5, 'prune': False},
+    {'short': 'distilmult-pruned', 'base': 'distilbert-base-multilingual-cased', 'lr': 5e-5, 'prune': True},
 ]
 
 # Critère d'adoption (ajustable).
@@ -155,21 +157,48 @@ datasets = DatasetDict({
 print(f'Train {len(train)} (base {n0} + {len(train)-n0} ext) | Val {len(val)} | Test {len(test)} | Gold {len(gold)}')
 """))
 
-cells.append(code(r"""# 5. Élagage de vocabulaire (FR+EN) — réduit l'embedding multilingue
-from transformers import AutoTokenizer, AutoModelForTokenClassification
+cells.append(code(r"""# 5. Élagage de vocabulaire FR+EN — MANUEL (WordPiece, zéro dépendance externe)
+#    On garde : specials + subwords vus dans le corpus + tous les caractères
+#    latins seuls (-> n'importe quel mot FR/EN se décompose, pas de [UNK] massif).
+import torch
+from transformers import AutoTokenizer, AutoModelForTokenClassification, BertTokenizerFast
 
 def prune_vocab(base, out_dir):
-    from textpruner import VocabularyPruner
     texts = (list(datasets['train']['text']) + list(datasets['validation']['text'])
              + list(datasets['test']['text']) + list(datasets['gold']['text']))
-    tok = AutoTokenizer.from_pretrained(base, add_prefix_space=False)
+    tok = AutoTokenizer.from_pretrained(base)
+    vocab = tok.get_vocab()                       # token -> id
+    keep = set(tok.all_special_tokens)
+    for t in texts:
+        keep.update(tok.tokenize(t))
+    def single_latin(tk):
+        s = tk[2:] if tk.startswith('##') else tk
+        return len(s) == 1 and (ord(s) < 0x250 or s.isdigit())
+    keep.update(t for t in vocab if single_latin(t))
+    kept = sorted(keep, key=lambda t: vocab[t])   # ordre id original -> specials en tête
+    old_ids = [vocab[t] for t in kept]
+
+    os.makedirs(out_dir, exist_ok=True)
+    with open(os.path.join(out_dir, 'vocab.txt'), 'w', encoding='utf-8') as f:
+        f.write('\n'.join(kept) + '\n')
+    new_tok = BertTokenizerFast(
+        vocab_file=os.path.join(out_dir, 'vocab.txt'),
+        do_lower_case=getattr(tok, 'do_lower_case', False),
+        unk_token=tok.unk_token, sep_token=tok.sep_token, pad_token=tok.pad_token,
+        cls_token=tok.cls_token, mask_token=tok.mask_token,
+        tokenize_chinese_chars=True, strip_accents=False)
+    new_tok.save_pretrained(out_dir)
+
     mdl = AutoModelForTokenClassification.from_pretrained(
         base, num_labels=len(LABELS), id2label=ID2LABEL, label2id=LABEL2ID)
-    v0 = tok.vocab_size
-    VocabularyPruner(mdl, tok).prune(dataiter=texts, save_model=False)
-    os.makedirs(out_dir, exist_ok=True)
-    mdl.save_pretrained(out_dir); tok.save_pretrained(out_dir)
-    print(f'  élagage {base}: vocab {v0} -> {len(tok)} ({100*(1-len(tok)/v0):.0f}% en moins)')
+    emb = mdl.get_input_embeddings().weight.data
+    new_emb = torch.nn.Embedding(len(kept), emb.shape[1], padding_idx=new_tok.pad_token_id)
+    new_emb.weight.data.copy_(emb[old_ids])
+    mdl.set_input_embeddings(new_emb)
+    mdl.config.vocab_size = len(kept)
+    mdl.save_pretrained(out_dir)
+    print(f'  élagage {base}: vocab {len(vocab)} -> {len(kept)} '
+          f'({100*(1-len(kept)/len(vocab)):.0f}% en moins)')
     return out_dir
 """))
 
