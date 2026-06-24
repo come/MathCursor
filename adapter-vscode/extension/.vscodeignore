@@ -1,0 +1,15 @@
+# Tout est inclus SAUF ces motifs. On garde out/ (bundle + binaires Rust +
+# modèle NER), package.json, LICENSE, README. On exclut tout le dev.
+.vscode/**
+.gitignore
+.vscodeignore
+tsconfig.json
+build.mjs
+src/**
+popup/**
+node_modules/**
+**/*.ts
+**/*.map
+package-lock.json
+*.vsix
+demo.*

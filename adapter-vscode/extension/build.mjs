@@ -7,6 +7,10 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const watch = process.argv.includes('--watch');
 
+// LICENSE dans le dossier extension (exigé par vsce pour le packaging VSIX) —
+// copié depuis la racine pour ne pas dupliquer en git (cf. .gitignore).
+cpSync(path.join(__dirname, '..', '..', 'LICENSE'), path.join(__dirname, 'LICENSE'));
+
 const rustDir = path.join(__dirname, '..', '..', 'rust');
 const outEngine = path.join(__dirname, 'out', 'engine');
 

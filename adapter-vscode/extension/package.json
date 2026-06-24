@@ -5,6 +5,7 @@
   "version": "0.1.0",
   "publisher": "mathcursor",
   "license": "SEE LICENSE IN LICENSE",
+  "repository": { "type": "git", "url": "https://github.com/come/MathCursor.git" },
   "engines": { "vscode": "^1.90.0" },
   "categories": ["Other", "Snippets"],
   "main": "./out/extension.js",
