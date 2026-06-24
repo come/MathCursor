@@ -1,117 +1,302 @@
 using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
+using MathCursor.UI;          // MixedLatexRenderer — rendu réutilisé de l'adapter Word
+using WpfMath.Controls;
 
 namespace MathCursor.CaretPopup
 {
-    // Popup borderless topmost positionnée au caret (coords écran MSAA → DIP WPF).
-    // Spike : labels texte (le rendu LaTeX viendra du WpfMath de l'adapter Word).
+    // Popup persistante au caret, modèle « comme Word » :
+    //  - ne prend JAMAIS le focus (WS_EX_NOACTIVATE) ; le caret reste dans VSCode ;
+    //  - vit entre les SHOW (le process ne meurt pas) ; suit le caret à chaque SHOW ;
+    //  - hook clavier global actif UNIQUEMENT quand visible (↑↓ nav, Entrée/Tab
+    //    commit, Échap dismiss ; le reste passe à l'éditeur → refresh live) ;
+    //  - nav-mode opt-in : pas de surbrillance avant la 1re flèche.
     internal sealed class PopupWindow : Window
     {
-        public int PickedIndex { get; private set; } = -1;
+        public event Action<int> Commit;   // index choisi (Entrée/Tab/clic)
+        public event Action Dismiss;        // Échap
 
-        private readonly ListBox _list;
-        private readonly double _px, _py, _ph;
-        private readonly IntPtr _restoreFg;
+        private readonly StackPanel _rows;
+        private string[] _candidates = Array.Empty<string>();
+        private int _sel;
+        private bool _nav;
+        private bool _dark = true;
 
-        [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
+        private IntPtr _hwnd;
+        private IntPtr _ownerFg;             // VSCode (garde le focus)
+        private IntPtr _hook;
+        private HookProc _hookProc;
+        private DispatcherTimer _fgTimer;
+        private bool _hasPos;
 
-        public PopupWindow(List<string> cands, double px, double py, double ph, IntPtr restoreFg)
+        public PopupWindow()
         {
-            _px = px; _py = py; _ph = ph; _restoreFg = restoreFg;
-
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.NoResize;
             ShowInTaskbar = false;
+            ShowActivated = false;
             Topmost = true;
             AllowsTransparency = true;
             Background = Brushes.Transparent;
             SizeToContent = SizeToContent.WidthAndHeight;
             WindowStartupLocation = WindowStartupLocation.Manual;
+            Opacity = 0;                     // créée cachée
 
-            var border = new Border
+            _rows = new StackPanel { Orientation = Orientation.Vertical };
+            Content = new Border
             {
-                Background = Brush("#252526"),
-                BorderBrush = Brush("#454545"),
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(4),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(5),
+                Child = _rows,
                 Effect = new System.Windows.Media.Effects.DropShadowEffect
-                { BlurRadius = 8, ShadowDepth = 2, Opacity = 0.5 }
+                { BlurRadius = 10, ShadowDepth = 2, Opacity = 0.35 }
             };
+        }
 
-            _list = new ListBox
+        // ── API pilotée par Program (thread UI) ───────────────────────────────
+
+        // colDelta = nb de caractères entre le DÉBUT de la formule et le caret ;
+        // charWidth = largeur d'un caractère (DIP, police monospace de l'éditeur).
+        // → on ancre la popup au début de la formule, pas au caret.
+        public void ShowCandidates(string[] candidates, bool dark, bool reposition, int colDelta, double charWidth)
+        {
+            EnsureSource();
+            if (_ownerFg == IntPtr.Zero)
             {
-                Background = Brushes.Transparent,
-                BorderThickness = new Thickness(0),
-                Foreground = Brushes.White,
-                MinWidth = 160
-            };
-            foreach (var c in cands)
-                _list.Items.Add(new TextBlock
+                IntPtr fg = CaretReader.GetForegroundWindow();
+                if (fg != _hwnd && fg != IntPtr.Zero) _ownerFg = fg;
+            }
+
+            bool wasVisible = IsVisible && Opacity > 0;
+            // Refresh : on préserve nav + sélection (clampée) ; sinon repart à 0.
+            if (!wasVisible || !_nav) { _sel = 0; _nav = false; }
+
+            _candidates = candidates ?? Array.Empty<string>();
+            _dark = dark;
+            if (_sel > _candidates.Length - 1) _sel = Math.Max(0, _candidates.Length - 1);
+
+            ApplyTheme();
+            BuildRows();
+
+            // Position : caret courant (MSAA, pixels physiques → DIP).
+            // On ne (re)positionne QUE si la zone a changé (reposition) ou si on
+            // n'a pas encore de position → sinon on fige (pas de dérive en frappe).
+            if ((reposition || !_hasPos)
+                && CaretReader.TryGet(_ownerFg, out double px, out double py, out double ph))
+            {
+                var src = PresentationSource.FromVisual(this);
+                var p = new Point(px, py + ph);
+                if (src?.CompositionTarget != null)
+                    p = src.CompositionTarget.TransformFromDevice.Transform(p);
+                // Recule au début de la formule (caret − colDelta caractères).
+                Left = Math.Max(0, p.X - colDelta * charWidth);
+                Top = p.Y; _hasPos = true;
+            }
+
+            if (!_hasPos) { Left = 200; Top = 200; }
+
+            Opacity = _dark ? 0.97 : 1.0;
+            if (!IsVisible) Show();
+
+            InstallHook();
+            StartFgTimer();
+        }
+
+        public void HidePopup()
+        {
+            if (Opacity == 0 && !IsVisible) { UninstallHook(); return; }
+            Opacity = 0;
+            Hide();
+            UninstallHook();
+            _fgTimer?.Stop();
+            _nav = false;
+        }
+
+        // ── rendu ─────────────────────────────────────────────────────────────
+
+        private SolidColorBrush _cardBg, _cardBorder, _selBg, _fg, _fgDim;
+
+        private void ApplyTheme()
+        {
+            _cardBg = Brush(_dark ? "#252526" : "#FBFBFB");
+            _cardBorder = Brush(_dark ? "#454545" : "#C8C8C8");
+            _selBg = Brush(_dark ? "#094771" : "#D6E8FF");
+            _fg = Brush(_dark ? "#D4D4D4" : "#1E1E1E");
+            _fgDim = Brush(_dark ? "#7C7C7C" : "#9A9A9A");
+            if (Content is Border b) { b.Background = _cardBg; b.BorderBrush = _cardBorder; }
+        }
+
+        private void BuildRows()
+        {
+            _rows.Children.Clear();
+            for (int i = 0; i < _candidates.Length; i++)
+            {
+                var latex = _candidates[i] ?? "";
+
+                var visual = MixedLatexRenderer.Render(latex, 18);
+                ApplyForeground(visual, _fg);
+
+                // LaTeX généré, petit et discret SOUS le rendu.
+                var code = new TextBlock
                 {
-                    Text = c,
-                    Padding = new Thickness(6, 2, 6, 2),
-                    FontFamily = new FontFamily("Consolas"),
-                    FontSize = 14
-                });
-            _list.SelectedIndex = 0;
+                    Text = latex,
+                    FontFamily = new FontFamily("Consolas, Cascadia Mono, monospace"),
+                    FontSize = 10.5,
+                    Foreground = _fgDim,
+                    Margin = new Thickness(0, 4, 0, 0),
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                };
 
-            border.Child = _list;
-            Content = border;
+                var stack = new StackPanel { Orientation = Orientation.Vertical };
+                stack.Children.Add(visual);
+                stack.Children.Add(code);
 
-            PreviewKeyDown += OnKey;
-            _list.MouseDoubleClick += (s, e) => Pick(_list.SelectedIndex);
-            Loaded += (s, e) => { Activate(); _list.Focus(); Keyboard.Focus(_list); };
-        }
-
-        protected override void OnSourceInitialized(EventArgs e)
-        {
-            base.OnSourceInitialized(e);
-            // MSAA renvoie des pixels physiques ; WPF positionne en DIP.
-            var src = PresentationSource.FromVisual(this);
-            var px = new Point(_px, _py + _ph); // juste sous le caret
-            if (src?.CompositionTarget != null)
-                px = src.CompositionTarget.TransformFromDevice.Transform(px);
-            Left = px.X;
-            Top = px.Y;
-        }
-
-        private void OnKey(object sender, KeyEventArgs e)
-        {
-            switch (e.Key)
-            {
-                case Key.Down:
-                    _list.SelectedIndex = Math.Min(_list.Items.Count - 1, _list.SelectedIndex + 1);
-                    e.Handled = true; break;
-                case Key.Up:
-                    _list.SelectedIndex = Math.Max(0, _list.SelectedIndex - 1);
-                    e.Handled = true; break;
-                case Key.Enter:
-                case Key.Tab:
-                    Pick(_list.SelectedIndex); e.Handled = true; break;
-                case Key.Escape:
-                    PickedIndex = -1; CloseAndRestore(); e.Handled = true; break;
+                var cell = new Border
+                {
+                    MinWidth = 150,
+                    Padding = new Thickness(14, 9, 14, 9),   // plus aéré
+                    Margin = new Thickness(0, 1, 0, 1),
+                    CornerRadius = new CornerRadius(4),
+                    Background = (_nav && i == _sel) ? _selBg : Brushes.Transparent,
+                    Child = stack,
+                };
+                int idx = i;
+                cell.MouseEnter += (_, __) => { _sel = idx; _nav = true; Highlight(); };
+                cell.PreviewMouseLeftButtonUp += (_, __) => Commit?.Invoke(idx);
+                _rows.Children.Add(cell);
             }
         }
 
-        private void Pick(int i)
+        private void Highlight()
         {
-            PickedIndex = i;
-            CloseAndRestore();
+            for (int i = 0; i < _rows.Children.Count; i++)
+                if (_rows.Children[i] is Border cell)
+                    cell.Background = (_nav && i == _sel) ? _selBg : Brushes.Transparent;
         }
 
-        private void CloseAndRestore()
+        private void Move(int delta)
         {
-            if (_restoreFg != IntPtr.Zero) SetForegroundWindow(_restoreFg);
-            Close();
+            if (_candidates.Length == 0) return;
+            // 1re flèche : on ne bouge pas, on RÉVÈLE juste la surbrillance sur la
+            // sélection courante (le 1er candidat). Les flèches suivantes déplacent.
+            if (!_nav) { _nav = true; Highlight(); return; }
+            _sel = Math.Max(0, Math.Min(_candidates.Length - 1, _sel + delta));
+            Highlight();
+        }
+
+        // ── hook clavier (actif seulement quand visible) ──────────────────────
+
+        private void EnsureSource()
+        {
+            if (_hwnd != IntPtr.Zero) return;
+            // Force la création du HWND sans activer la fenêtre.
+            var helper = new System.Windows.Interop.WindowInteropHelper(this);
+            _hwnd = helper.EnsureHandle();
+            int ex = GetWindowLong(_hwnd, GWL_EXSTYLE);
+            SetWindowLong(_hwnd, GWL_EXSTYLE, ex | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
+        }
+
+        private void InstallHook()
+        {
+            if (_hook != IntPtr.Zero) return;
+            _hookProc = HookCallback;
+            _hook = SetWindowsHookEx(WH_KEYBOARD_LL, _hookProc, GetModuleHandle(null), 0);
+        }
+
+        private void UninstallHook()
+        {
+            if (_hook != IntPtr.Zero) { UnhookWindowsHookEx(_hook); _hook = IntPtr.Zero; }
+        }
+
+        private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode >= 0 && (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN)
+                && Opacity > 0)
+            {
+                int vk = Marshal.ReadInt32(lParam, 0);
+                int flags = Marshal.ReadInt32(lParam, 8);
+                bool alt = (flags & LLKHF_ALTDOWN) != 0;
+                bool ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+                if (!alt && !ctrl)
+                {
+                    switch (vk)
+                    {
+                        case VK_UP: Move(-1); return (IntPtr)1;
+                        case VK_DOWN: Move(+1); return (IntPtr)1;
+                        case VK_RETURN:
+                        case VK_TAB:
+                            int sel = _sel;
+                            HidePopup();
+                            Commit?.Invoke(sel);
+                            return (IntPtr)1;
+                        case VK_ESCAPE:
+                            HidePopup();
+                            Dismiss?.Invoke();
+                            return (IntPtr)1;
+                    }
+                }
+            }
+            return CallNextHookEx(_hook, nCode, wParam, lParam);
+        }
+
+        // ── fermeture si VSCode n'est plus au premier plan ────────────────────
+
+        private void StartFgTimer()
+        {
+            if (_fgTimer == null)
+            {
+                _fgTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+                _fgTimer.Tick += (_, __) =>
+                {
+                    IntPtr fg = CaretReader.GetForegroundWindow();
+                    if (Opacity > 0 && fg != _ownerFg && fg != _hwnd) HidePopup();
+                };
+            }
+            _fgTimer.Start();
+        }
+
+        // ── helpers ───────────────────────────────────────────────────────────
+
+        private static void ApplyForeground(UIElement el, Brush fg)
+        {
+            switch (el)
+            {
+                case FormulaControl fc: fc.Foreground = fg; break;
+                case TextBlock tb: tb.Foreground = fg; break;
+                case Border b when b.Child is UIElement bc: ApplyForeground(bc, fg); break;
+                case Panel p: foreach (UIElement ch in p.Children) ApplyForeground(ch, fg); break;
+                case ContentControl cc when cc.Content is UIElement cv: ApplyForeground(cv, fg); break;
+            }
         }
 
         private static SolidColorBrush Brush(string hex) =>
             (SolidColorBrush)new BrushConverter().ConvertFromString(hex);
+
+        // ── interop ───────────────────────────────────────────────────────────
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_EX_TOOLWINDOW = 0x00000080;
+        private const int WS_EX_NOACTIVATE = 0x08000000;
+        private const int WH_KEYBOARD_LL = 13;
+        private const int WM_KEYDOWN = 0x0100, WM_SYSKEYDOWN = 0x0104;
+        private const int LLKHF_ALTDOWN = 0x20, VK_CONTROL = 0x11;
+        private const int VK_RETURN = 0x0D, VK_TAB = 0x09, VK_ESCAPE = 0x1B, VK_UP = 0x26, VK_DOWN = 0x28;
+
+        private delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")] private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+        [DllImport("user32.dll")] private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+        [DllImport("user32.dll")] private static extern short GetKeyState(int nVirtKey);
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetWindowsHookEx(int idHook, HookProc lpfn, IntPtr hMod, uint dwThreadId);
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+        [DllImport("user32.dll")]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+        [DllImport("kernel32.dll")] private static extern IntPtr GetModuleHandle(string lpModuleName);
     }
 }

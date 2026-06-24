@@ -4,7 +4,7 @@ import * as url from 'url';
 // Charge LE moteur forest (MathCursor.Engine) compilé en WASM, dans l'extension
 // host (Node). Même Analyze que Word et que la démo web → zéro divergence.
 // Chargement LAZY : le runtime .NET ne démarre qu'au 1er trigger (boot ~230 ms,
-// puis ~2 ms/analyse). Cf. ADR 2026-06-23-Feat-vscode-host + spike node-smoketest.
+// puis ~2 ms/analyse). Cf. ADR docs/dev/decisions sur le host VSCode.
 
 export interface Candidate { latex: string; cost: number; }
 export interface AnalyzeResult { decision: string; hasNote: boolean; ranked: Candidate[]; }
@@ -24,7 +24,11 @@ async function loadEngine(): Promise<any> {
 }
 
 export async function analyze(src: string, culture: string): Promise<AnalyzeResult> {
-  if (!exportsPromise) exportsPromise = loadEngine();
+  // En cas d'échec de chargement, on réarme (sinon la promesse rejetée mémoïsée
+  // ferait échouer toute analyse ultérieure jusqu'au reload).
+  if (!exportsPromise) {
+    exportsPromise = loadEngine().catch(e => { exportsPromise = undefined; throw e; });
+  }
   const asm = await exportsPromise;
   const json: string = asm.Bridge.Analyze(src, culture);
   return JSON.parse(json) as AnalyzeResult;

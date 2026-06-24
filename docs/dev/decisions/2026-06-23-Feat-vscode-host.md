@@ -3,7 +3,8 @@
 **Date :** 2026-06-23
 **Kind :** Feat
 **Température :** forte
-**Statut :** acté
+**Statut :** retracté
+**Superseded by :** [2026-06-24-Feat-vscode-host-popup-ner.md](2026-06-24-Feat-vscode-host-popup-ner.md) — l'UI livrée est une **popup WPF persistante au caret (helper natif MSAA) + détection NER**, pas la complétion native (rangs texte seul ; webview flottante au caret impossible côté VSCode). Le reste (host VSCode, réutilisation du moteur via WASM) demeure.
 **Lié à :** [2026-06-23-Refactor-delete-dead-host-contract.md](2026-06-23-Refactor-delete-dead-host-contract.md) (portabilité du moteur pur prouvée par la démo WASM), [2026-06-19-Feat-web-demo-real-mode-editor.md](2026-06-19-Feat-web-demo-real-mode-editor.md) (précédent : un hôte non-Word réutilise `Bridge.Analyze` tel quel)
 
 ## Citation acté

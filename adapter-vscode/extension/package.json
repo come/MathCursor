@@ -16,13 +16,22 @@
   "contributes": {
     "commands": [
       {
+        "command": "mathcursor.popup",
+        "title": "MathCursor : popup au caret"
+      },
+      {
         "command": "mathcursor.convert",
-        "title": "MathCursor : convertir en LaTeX au caret"
+        "title": "MathCursor : complétion LaTeX (Ctrl+Espace)"
       }
     ],
     "keybindings": [
       {
-        "command": "mathcursor.convert",
+        "command": "mathcursor.popup",
+        "key": "ctrl+space",
+        "when": "editorTextFocus && (editorLangId == latex || editorLangId == tex || editorLangId == markdown)"
+      },
+      {
+        "command": "mathcursor.popup",
         "key": "ctrl+alt+space",
         "when": "editorTextFocus && (editorLangId == latex || editorLangId == tex || editorLangId == markdown)"
       }
@@ -38,13 +47,15 @@
         },
         "mathcursor.delimiters": {
           "type": "string",
-          "enum": ["dollar", "paren", "none"],
+          "enum": ["auto", "inline", "display", "paren", "none"],
           "enumDescriptions": [
-            "Entoure de $ … $",
-            "Entoure de \\( … \\)",
-            "Insère le LaTeX brut, sans délimiteurs"
+            "Contextuel : formule seule sur sa ligne → display centré ($$…$$ en Markdown, \\[…\\] en LaTeX) ; sinon inline $…$",
+            "Toujours inline : $ … $",
+            "Toujours display centré : $$ … $$ (Markdown) ou \\[ … \\] (LaTeX)",
+            "Inline avec \\( … \\)",
+            "LaTeX brut, sans délimiteurs"
           ],
-          "default": "dollar",
+          "default": "auto",
           "description": "Délimiteurs ajoutés autour du LaTeX inséré."
         },
         "mathcursor.maxCandidates": {
@@ -53,6 +64,27 @@
           "minimum": 1,
           "maximum": 20,
           "description": "Nombre maximum de candidats proposés (comme la popup Word)."
+        },
+        "mathcursor.autoDetect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Proposer automatiquement la conversion LaTeX au fil de la frappe (zone math détectée au caret)."
+        },
+        "mathcursor.autoPackages": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ajouter automatiquement \\usepackage{amsmath}/{amssymb} dans le préambule LaTeX quand une formule insérée en a besoin (\\mathbb, matrices, cases…)."
+        },
+        "mathcursor.inlineDisplaystyle": {
+          "type": "string",
+          "enum": ["auto", "always", "never"],
+          "enumDescriptions": [
+            "Pleine taille (\\displaystyle) en inline UNIQUEMENT si utile (fractions, sommes, intégrales, lim, binom) ; sinon textstyle propre",
+            "Toujours \\displaystyle en inline (tout en grand)",
+            "Jamais : textstyle compact LaTeX standard"
+          ],
+          "default": "auto",
+          "description": "Quand mettre le math inline en pleine taille (\\displaystyle)."
         }
       }
     }

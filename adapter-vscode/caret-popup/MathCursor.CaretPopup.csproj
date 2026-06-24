@@ -12,5 +12,12 @@
   <ItemGroup>
     <!-- IAccessible (MSAA) pour lire la position du caret via OBJID_CARET. -->
     <Reference Include="Accessibility" />
+    <!-- Rendu LaTeX popup : MÊME stack que la popup Word (WpfMath 2.1). -->
+    <PackageReference Include="WpfMath" Version="2.1.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Rendu réutilisé À L'IDENTIQUE de l'adapter Word (parité visuelle). -->
+    <Compile Include="..\..\adapter-vsto\src\MathCursor\UI\WpfMathAdapter.cs" Link="Reused\WpfMathAdapter.cs" />
+    <Compile Include="..\..\adapter-vsto\src\MathCursor\UI\MixedLatexRenderer.cs" Link="Reused\MixedLatexRenderer.cs" />
   </ItemGroup>
 </Project>

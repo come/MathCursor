@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AssemblyName>MathCursor.Ner</AssemblyName>
+    <RootNamespace>MathCursor.Ner</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.16.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- NER réutilisé À L'IDENTIQUE de l'adapter Word (parité). -->
+    <Compile Include="..\..\adapter-vsto\src\MathCursor\Detection\MathNerDetector.cs" Link="Ner\MathNerDetector.cs" />
+    <Compile Include="..\..\adapter-vsto\src\MathCursor\Detection\DetectedZone.cs" Link="Ner\DetectedZone.cs" />
+    <Compile Include="..\..\adapter-vsto\src\MathCursor\Detection\WordPiece\WordPieceTokenizer.cs" Link="Ner\WordPieceTokenizer.cs" />
+    <Compile Include="..\..\adapter-vsto\src\MathCursor\Host\Detection\ZoneRefiner.cs" Link="Ner\ZoneRefiner.cs" />
+  </ItemGroup>
+</Project>
