@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="./katex/katex.min.css" />
+<script defer src="./katex/katex.min.js"></script>
+<style>
+  /* Thème via [data-theme] sur <html> (dark/light), couleurs façon VSCode. */
+  :root, html[data-theme="dark"] {
+    --bg: #252526; --border: #454545; --fg: #d4d4d4; --dim: #7c7c7c; --sel: #094771;
+  }
+  html[data-theme="light"] {
+    --bg: #fbfbfb; --border: #c8c8c8; --fg: #1e1e1e; --dim: #9a9a9a; --sel: #d6e8ff;
+  }
+  /* Fond opaque thémé partout → aucune zone blanche ; la fenêtre est
+     dimensionnée exactement à #card (pas de transparence, fiable WebView2). */
+  html, body { margin: 0; overflow: hidden; background: var(--bg); line-height: 0; }
+  #card {
+    display: inline-block;
+    background: var(--bg);
+    padding: 4px;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    color: var(--fg);
+    user-select: none;
+    white-space: nowrap;
+    line-height: normal;   /* annule le line-height:0 du body pour le contenu */
+  }
+  .row { padding: 8px 14px; border-radius: 4px; cursor: pointer; text-align: left; }
+  .row.sel { background: var(--sel); }
+  .row .formula { text-align: left; }
+  .row .formula .katex { color: var(--fg); }
+  /* displayMode=true → bloc à hauteur réelle (mesurable) ; marge 1em retirée,
+     calé à gauche. */
+  .row .formula .katex-display { margin: 0; text-align: left; }
+  .row .formula .katex-display > .katex { text-align: left; }
+  .row .code {
+    margin-top: 3px;   /* petit espace entre la formule et le LaTeX */
+    font-family: Consolas, "Cascadia Mono", monospace;
+    font-size: 10.5px;
+    color: var(--dim);
+    text-align: right;   /* LaTeX poussé à droite */
+  }
+</style>
+</head>
+<body>
+<div id="card"></div>
+<script>
+  var _cands = [];
+  var _sel = -1;
+
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+  function postSize() {
+    // UNIQUEMENT la carte (inline-block = ajustée au contenu). Surtout PAS
+    // scrollWidth/Height du documentElement : ils valent ≥ la taille de la
+    // fenêtre → boucle qui fige la fenêtre à sa taille courante.
+    var card = document.getElementById("card");
+    var dpr = window.devicePixelRatio || 1;
+    var w = Math.ceil(card.offsetWidth * dpr);
+    var h = Math.ceil(card.offsetHeight * dpr);
+    if (w > 0 && h > 0 && window.ipc) {
+      window.ipc.postMessage("size:" + JSON.stringify({ w: w, h: h }));
+    }
+  }
+  // Mesure à plusieurs instants (reflow des fontes KaTeX async).
+  function postSizeSoon() {
+    requestAnimationFrame(postSize);
+    setTimeout(postSize, 60);
+    setTimeout(postSize, 200);
+  }
+
+  function render() {
+    var card = document.getElementById("card");
+    card.innerHTML = "";
+    for (var i = 0; i < _cands.length; i++) {
+      var latex = _cands[i].latex || "";
+      var row = document.createElement("div");
+      row.className = "row" + (i === _sel ? " sel" : "");
+      row.dataset.i = i;
+
+      var f = document.createElement("div");
+      f.className = "formula";
+      try {
+        // displayMode:true → formule en bloc, pleine taille, hauteur mesurable.
+        katex.render(latex, f, { throwOnError: false, displayMode: true });
+      } catch (e) { f.textContent = latex; }
+      row.appendChild(f);
+
+      var c = document.createElement("div");
+      c.className = "code";
+      c.innerHTML = esc(latex);
+      row.appendChild(c);
+
+      row.addEventListener("mousedown", function (ev) {
+        ev.preventDefault();
+        if (window.mcCommit) { window.mcCommit(parseInt(this.dataset.i, 10)); }
+      });
+      card.appendChild(row);
+    }
+    postSizeSoon();
+  }
+
+  window.mcRender = function (cands, sel, theme) {
+    _cands = cands || [];
+    _sel = (typeof sel === "number") ? sel : -1;
+    if (theme) { document.documentElement.dataset.theme = (theme === "light") ? "light" : "dark"; }
+    render();
+  };
+  window.mcSetIndex = function (i) {
+    _sel = i;
+    var rows = document.querySelectorAll(".row");
+    for (var k = 0; k < rows.length; k++) { rows[k].classList.toggle("sel", k === _sel); }
+  };
+
+  // Re-poste la taille à chaque changement réel de #card (reflow des fontes
+  // KaTeX inclus) → fenêtre toujours ajustée au contenu.
+  if (window.ResizeObserver) {
+    new ResizeObserver(postSize).observe(document.getElementById("card"));
+  }
+
+  window.addEventListener("load", function () {
+    function ready() {
+      if (window.katex && window.ipc) { window.ipc.postMessage("loaded"); }
+      else { setTimeout(ready, 20); }
+    }
+    ready();
+  });
+</script>
+</body>
+</html>

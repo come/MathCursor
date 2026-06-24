@@ -29,28 +29,30 @@ cpSync(publishFramework, path.join(outEngine, '_framework'), {
 });
 console.log('[build] assets WASM copiés → out/engine/_framework');
 
-// 2b. Helper natif popup au caret (Windows). Build net48 + copie de l'exe et de
-//     ses dll (WpfMath…) dans out/bin.
-const helperProj = path.join(__dirname, '..', 'caret-popup');
-const helperOut = path.join(helperProj, 'bin', 'Release', 'net48');
-const outBin = path.join(__dirname, 'out', 'bin');
-if (!process.argv.includes('--skip-helper')) {
-  console.log('[build] dotnet build caret-popup (Release)…');
-  const h = spawnSync('dotnet', ['build', helperProj, '-c', 'Release'],
-    { stdio: 'inherit', shell: true });
-  if (h.status !== 0) process.exit(h.status ?? 1);
-}
-// Le helper persistant peut être en cours d'exécution (lancé par une fenêtre de
-// dev) et verrouiller l'exe → on le tue avant de copier (Windows).
+// 2b. Coquille popup Rust (mc-popup, mode actif Windows : MSAA caret + hook
+//     clavier) + assets KaTeX → out/popup. Remplace l'ancien helper WPF.
+const rustDir = path.join(__dirname, '..', '..', 'rust');
+const popupExe = path.join(rustDir, 'target', 'release', 'mc-popup.exe');
+const katexSrc = path.join(__dirname, 'popup', 'katex');       // KaTeX vendorisé (extension)
+const htmlSrc = path.join(__dirname, 'popup', 'index.html');   // HTML thémé VSCode
+const outPopup = path.join(__dirname, 'out', 'popup');
+const outPopupAssets = path.join(outPopup, 'assets', 'popup');
+// La coquille peut tourner (fenêtre de dev) et verrouiller out/popup → on la tue.
 if (process.platform === 'win32') {
-  spawnSync('taskkill', ['/F', '/IM', 'MathCursor.CaretPopup.exe'], { stdio: 'ignore', shell: true });
+  spawnSync('taskkill', ['/F', '/IM', 'mc-popup.exe'], { stdio: 'ignore', shell: true });
 }
-rmSync(outBin, { recursive: true, force: true });
-cpSync(helperOut, outBin, {
-  recursive: true,
-  filter: (src) => !src.endsWith('.pdb'),
-});
-console.log('[build] helper natif copié → out/bin');
+if (!process.argv.includes('--skip-popup')) {
+  console.log('[build] cargo build mc-popup (release)…');
+  const c = spawnSync('cargo', ['build', '--release', '-p', 'mc-popup'],
+    { cwd: rustDir, stdio: 'inherit', shell: true });
+  if (c.status !== 0) process.exit(c.status ?? 1);
+}
+rmSync(outPopup, { recursive: true, force: true });
+mkdirSync(outPopupAssets, { recursive: true });
+cpSync(popupExe, path.join(outPopup, 'mc-popup.exe'));
+cpSync(htmlSrc, path.join(outPopupAssets, 'index.html'));            // HTML VSCode thémé
+cpSync(katexSrc, path.join(outPopupAssets, 'katex'), { recursive: true }); // fonts/css/js KaTeX
+console.log('[build] coquille Rust + HTML thémé + KaTeX copiés → out/popup');
 
 // 2c. Helper NER persistant (ONNX) + modèle (bundle dans le VSIX).
 const nerProj = path.join(__dirname, '..', 'ner-helper');

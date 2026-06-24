@@ -2,19 +2,37 @@ import * as vscode from 'vscode';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 
-// Pilote le helper natif PERSISTANT (popup WPF au caret, façon Word). Un seul
-// process reste en vie ; on lui envoie SHOW/HIDE et il renvoie COMMIT/DISMISS.
-// Protocole : lignes, champs séparés par TAB (le LaTeX ne contient ni tab ni \n).
-// Windows-only ; ailleurs isAvailable=false (l'appelant retombe sur la complétion).
+// Pilote la coquille popup Rust (mc-popup, wry+tao+KaTeX) en MODE ACTIF : la
+// coquille lit elle-même le caret (MSAA) et capte le clavier (↑↓/Entrée/Échap) —
+// VSCode n'expose ni l'un ni l'autre. L'extension n'envoie que les candidats et
+// reçoit commit/dismiss. Protocole : 1 JSON par ligne (stdin/stdout).
+// Cf. ADR 2026-06-24-Feat-rust-unified-toolkit (Phase 1).
 
 export function isHelperAvailable(): boolean {
   return process.platform === 'win32';
+}
+
+function themeName(): string {
+  const k = vscode.window.activeColorTheme.kind;
+  return (k === vscode.ColorThemeKind.Light || k === vscode.ColorThemeKind.HighContrastLight)
+    ? 'light' : 'dark';
+}
+
+export interface ShowArgs {
+  candidates: string[];
+  colDelta: number;    // nb de caractères du début de zone au caret
+  fontSize: number;    // editor.fontSize (logique)
+  reposition: boolean; // recalculer l'ancrage (nouvelle zone) ou figer
 }
 
 export class PopupController {
   private proc: ChildProcess | undefined;
   private buf = '';
   private shown = false;
+  private ready = false;
+  private pending: ShowArgs | undefined;   // show en attente du 'ready' (1er lancement)
+  private failures = 0;                     // spawns morts avant 'ready' (anti-boucle)
+  private dead = false;                     // abandon après trop d'échecs
 
   constructor(
     private readonly ctx: vscode.ExtensionContext,
@@ -24,27 +42,39 @@ export class PopupController {
 
   get isShown(): boolean { return this.shown; }
 
-  // reposition=false → garde la position courante (zone inchangée → pas de
-  // dérive en frappe). colDelta/charWidth ne servent qu'au (re)positionnement.
-  show(candidates: string[], theme: string, reposition: boolean, colDelta: number, charWidth: number): void {
+  show(args: ShowArgs): void {
     const p = this.ensureProc();
-    if (!p || candidates.length === 0) { return; }
-    // Garde-fou : pas de TAB/retour ligne dans le LaTeX (sinon casse le cadrage).
-    const safe = candidates.map(c => c.replace(/[\t\r\n]/g, ' '));
-    p.stdin!.write(
-      `SHOW\t${theme}\t${reposition ? 1 : 0}\t${colDelta}\t${charWidth.toFixed(2)}\t${safe.join('\t')}\n`
-    );
-    this.shown = true;
+    if (!p || args.candidates.length === 0) { return; }
+    if (!this.ready) { this.pending = args; return; } // attend que la page charge
+    this.sendShow(p, args);
+  }
+
+  private sendShow(p: ChildProcess, a: ShowArgs): void {
+    const msg = {
+      cmd: 'show',
+      candidates: a.candidates.map(latex => ({ latex })),
+      x: 0, y: 0, lineHeight: 0,   // ignorés en mode actif (coquille lit le caret)
+      selectedIndex: -1,           // nav-mode opt-in (aucun surlignage au départ)
+      theme: themeName(),          // dark / light (suit le thème VSCode)
+      colDelta: a.colDelta,        // ancrage au début du texte reconnu
+      fontSize: a.fontSize,
+      reposition: a.reposition,
+    };
+    try { p.stdin!.write(JSON.stringify(msg) + '\n'); this.shown = true; }
+    catch { /* ignore */ }
   }
 
   hide(): void {
-    if (this.proc && this.shown) { this.proc.stdin!.write('HIDE\n'); }
+    this.pending = undefined;
+    if (this.proc && this.shown) {
+      try { this.proc.stdin!.write('{"cmd":"close"}\n'); } catch { /* ignore */ }
+    }
     this.shown = false;
   }
 
   dispose(): void {
     if (this.proc) {
-      try { this.proc.stdin!.write('QUIT\n'); } catch { /* ignore */ }
+      try { this.proc.stdin!.write('{"cmd":"quit"}\n'); } catch { /* ignore */ }
       this.proc.kill();
       this.proc = undefined;
     }
@@ -52,15 +82,24 @@ export class PopupController {
   }
 
   private ensureProc(): ChildProcess | undefined {
-    if (!isHelperAvailable()) { return undefined; }
+    if (!isHelperAvailable() || this.dead) { return undefined; }
     if (this.proc && !this.proc.killed) { return this.proc; }
 
-    const exe = path.join(this.ctx.extensionPath, 'out', 'bin', 'MathCursor.CaretPopup.exe');
-    const p = spawn(exe, [], { windowsHide: true });
+    const exe = path.join(this.ctx.extensionPath, 'out', 'popup', 'mc-popup.exe');
+    const html = path.join(this.ctx.extensionPath, 'out', 'popup', 'assets', 'popup', 'index.html');
+    const p = spawn(exe, [html, '--active'], { windowsHide: true });
     p.stdout!.setEncoding('utf8');
     p.stdout!.on('data', d => this.onData(d));
-    p.on('error', e => console.error('[mathcursor] helper:', e.message));
-    p.on('exit', () => { if (this.proc === p) { this.proc = undefined; this.shown = false; } });
+    p.stderr!.setEncoding('utf8');
+    p.stderr!.on('data', d => console.error('[mathcursor] popup stderr:', d.toString().trim()));
+    p.on('error', e => console.error('[mathcursor] popup spawn:', e.message));
+    p.on('exit', () => {
+      if (this.proc !== p) { return; }
+      // Mort avant d'avoir été prête = échec ; au bout de 3, on abandonne (pas de
+      // boucle de re-spawn invisible si WebView2/desktop indisponible).
+      if (!this.ready && ++this.failures >= 3) { this.dead = true; }
+      this.proc = undefined; this.shown = false; this.ready = false; this.pending = undefined;
+    });
     this.proc = p;
     return p;
   }
@@ -69,12 +108,23 @@ export class PopupController {
     this.buf += d;
     let nl: number;
     while ((nl = this.buf.indexOf('\n')) >= 0) {
-      const line = this.buf.slice(0, nl).replace(/\r$/, '');
+      const line = this.buf.slice(0, nl).trim();
       this.buf = this.buf.slice(nl + 1);
       if (!line) { continue; }
-      const parts = line.split('\t');
-      if (parts[0] === 'COMMIT') { this.shown = false; this.onCommit(parseInt(parts[1], 10)); }
-      else if (parts[0] === 'DISMISS') { this.shown = false; this.onDismiss(); }
+      let evt: { evt?: string; index?: number; msg?: string };
+      try { evt = JSON.parse(line); } catch { continue; }
+      switch (evt.evt) {
+        case 'ready':
+          this.ready = true; this.failures = 0;
+          if (this.pending && this.proc) { const c = this.pending; this.pending = undefined; this.sendShow(this.proc, c); }
+          break;
+        case 'commit': this.shown = false; this.onCommit(Number(evt.index)); break;
+        case 'dismiss': this.shown = false; this.onDismiss(); break;
+        // 'closed' = fermeture spontanée (perte de focus) : resync SANS marquer
+        // la zone comme rejetée (≠ Échap), pour qu'elle réapparaisse au retour.
+        case 'closed': this.shown = false; break;
+        case 'error': console.warn('[mathcursor] popup:', evt.msg); break;
+      }
     }
   }
 }

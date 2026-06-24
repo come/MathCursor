@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { analyze } from './engine';
-import { renderSvgDataUri } from './render';
 import { PopupController, isHelperAvailable } from './popup';
 import { resolveSource, lineMasked, containsMath, Source } from './detect';
 import { NerController } from './ner';
@@ -21,8 +20,9 @@ interface Current { range: vscode.Range; candidates: string[]; src: string; }
 export function activate(context: vscode.ExtensionContext): void {
   let current: Current | undefined;
   let dismissedSrc: string | undefined;
-  let lastAnchorKey: string | undefined;   // identité de zone (ligne:colDébut)
+  let lastAnchorKey: string | undefined;   // identité de zone (ligne:colDébut) → fige l'ancrage
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let refreshGen = 0;                       // jeton anti-réentrance (refresh async concurrent)
   let manualLevel = 0;                      // Ctrl+Espace répété → agrandit la zone
   let manualKey: string | undefined;        // position du dernier déclenchement manuel
 
@@ -81,7 +81,12 @@ export function activate(context: vscode.ExtensionContext): void {
     const cfg = vscode.workspace.getConfiguration('mathcursor');
     if (!force && !cfg.get<boolean>('autoDetect', true)) { popup.hide(); return; }
 
+    // Anti-réentrance : si un refresh plus récent démarre pendant nos await, on
+    // abandonne (sinon candidats/ancrage/current d'une zone écrasés par une autre).
+    const myGen = ++refreshGen;
+
     const found = await resolveSrc(ner, editor, force, level);
+    if (myGen !== refreshGen) { return; }
     if (!found) { popup.hide(); current = undefined; return; }
 
     if (found.src !== dismissedSrc) { dismissedSrc = undefined; }
@@ -92,6 +97,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // 0⁺), comme la détection live de Word. La zone remplacée, elle, reste trimmée.
     try { result = await analyze(found.src + ' ', cfg.get<string>('culture', 'fr')); }
     catch { return; }
+    if (myGen !== refreshGen) { return; }
 
     const candidates = (result.ranked ?? []).slice(0, cfg.get<number>('maxCandidates', 3)).map(c => c.latex);
     if (result.decision === 'erreur' || candidates.length === 0) {
@@ -102,16 +108,16 @@ export function activate(context: vscode.ExtensionContext): void {
 
     current = { range: found.range, candidates, src: found.src };
 
-    // Ancrage figé tant que le DÉBUT de zone ne change pas (sinon dérive en
-    // frappe). On ne (re)positionne que sur nouvelle zone ou popup ré-affichée.
+    // Ancrage au DÉBUT du texte reconnu : la coquille lit le caret (MSAA) et
+    // recule de colDelta caractères. Figé tant que la zone ne change pas.
     const caret = editor.selection.active;
+    const colDelta = found.range.start.line === caret.line
+      ? Math.max(0, caret.character - found.range.start.character) : 0;
+    const fontSize = vscode.workspace.getConfiguration('editor').get<number>('fontSize', 14);
     const startKey = `${found.range.start.line}:${found.range.start.character}`;
     const reposition = startKey !== lastAnchorKey || !popup.isShown;
     lastAnchorKey = startKey;
-    const startCol = found.range.start.line === caret.line ? found.range.start.character : caret.character;
-    const colDelta = Math.max(0, caret.character - startCol);
-    const fontSize = vscode.workspace.getConfiguration('editor').get<number>('fontSize', 14);
-    popup.show(candidates, themeArg(), reposition, colDelta, fontSize * 0.6);
+    popup.show({ candidates, colDelta, fontSize, reposition });
   }
 
   function scheduleRefresh(): void {
@@ -130,23 +136,18 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('mathcursor.popup', () => runManual()),
     vscode.workspace.onDidChangeTextDocument(e => {
       const ed = vscode.window.activeTextEditor;
-      if (ed && e.document === ed.document && e.contentChanges.length > 0) { scheduleRefresh(); }
+      if (!ed || e.document !== ed.document || e.contentChanges.length === 0) { return; }
+      // Toute édition à/avant la fin de la zone décale les offsets → on invalide
+      // `current` pour qu'un commit (hook clavier async) ne remplace pas la
+      // mauvaise plage. Le refresh debouncé reconstruira la zone.
+      if (current && e.contentChanges.some(c => c.range.start.isBeforeOrEqual(current!.range.end))) {
+        current = undefined;
+      }
+      scheduleRefresh();
     }),
     vscode.window.onDidChangeTextEditorSelection(() => scheduleRefresh()),
     vscode.window.onDidChangeActiveTextEditor(() => { popup.hide(); current = undefined; })
   );
-}
-
-function themeArg(): string {
-  switch (vscode.window.activeColorTheme.kind) {
-    case vscode.ColorThemeKind.Light:
-    case vscode.ColorThemeKind.HighContrastLight:
-      return 'light';
-    case vscode.ColorThemeKind.HighContrast:
-      return 'hc';
-    default:
-      return 'dark';
-  }
 }
 
 // Source à convertir : sélection (manuel) > NER (détecteur primaire) >
@@ -174,8 +175,10 @@ async function resolveSrc(
     const z = await ner.detect(lineMasked(document, pos.line), pos.character);
     if (z && z.end > z.start) {
       range = new vscode.Range(pos.line, z.start, pos.line, z.end);
-    } else if (force) {
-      // NER muet/timeout EN MANUEL → repli heuristique (Ctrl+Espace répond tjs).
+    } else {
+      // NER muet (formule SEULE sur sa ligne : le modèle est entraîné pour la
+      // prose, pas les formules isolées ; aussi en cas de timeout) → repli
+      // heuristique SpanComputer. La prose reste filtrée par le moteur (erreur).
       range = resolveSource(document, pos, force)?.range;
     }
   } else {
@@ -251,10 +254,10 @@ class MathCursorCompletionProvider implements vscode.CompletionItemProvider {
   }
 }
 
-function buildDocs(latex: string, inserted: string): vscode.MarkdownString {
+function buildDocs(_latex: string, inserted: string): vscode.MarkdownString {
+  // Repli complétion native (hors Windows) : LaTeX en bloc, sans aperçu image
+  // (le rendu SVG MathJax a été retiré — la popup WPF→Rust est l'UI principale).
   const md = new vscode.MarkdownString();
-  const dataUri = renderSvgDataUri(latex);
-  if (dataUri) { md.appendMarkdown(`![aperçu](${dataUri})\n\n`); }
   md.appendCodeblock(inserted, 'latex');
   return md;
 }

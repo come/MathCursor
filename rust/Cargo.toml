@@ -1,0 +1,12 @@
+# Workspace Rust MathCursor — cœur partagé des hosts non-Word (cf. ADR
+# 2026-06-24-Feat-rust-unified-toolkit). Phase 1 : mc-popup (coquille au caret).
+[workspace]
+resolver = "2"
+members = ["mc-popup"]
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
