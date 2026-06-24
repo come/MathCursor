@@ -1,0 +1,13 @@
+# Détecteur de zone math (NER) porté en Rust — remplace ner-helper (.NET).
+# DistilBERT token-classification (BIO) via onnxruntime (crate `ort`) +
+# tokenizer natif du modèle (crate `tokenizers`, tokenizer.json).
+# Cf. ADR 2026-06-24-Feat-rust-ner-port (Phase 3 du toolkit Rust).
+[package]
+name = "mc-ner"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokenizers = { version = "0.20", default-features = false, features = ["onig"] }
+ort = "=2.0.0-rc.10"
+serde_json = "1"

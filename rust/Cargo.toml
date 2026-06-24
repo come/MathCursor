@@ -3,7 +3,7 @@
 # Phase 2 : mc-engine (moteur forest porté du C#/Python, gate fixtures.json).
 [workspace]
 resolver = "2"
-members = ["mc-popup", "mc-engine"]
+members = ["mc-popup", "mc-engine", "mc-ner"]
 
 # panic = "unwind" (défaut) : le binaire `analyze` rattrape les panics moteur
 # (caractère inattendu sur entrée libre) via catch_unwind → renvoie "erreur" sans

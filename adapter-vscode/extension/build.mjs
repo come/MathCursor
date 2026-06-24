@@ -52,32 +52,31 @@ cpSync(htmlSrc, path.join(outPopupAssets, 'index.html'));            // HTML VSC
 cpSync(katexSrc, path.join(outPopupAssets, 'katex'), { recursive: true }); // fonts/css/js KaTeX
 console.log('[build] coquille Rust + HTML thémé + KaTeX copiés → out/popup');
 
-// 2c. Helper NER persistant (ONNX) + modèle (bundle dans le VSIX).
-const nerProj = path.join(__dirname, '..', 'ner-helper');
-const nerOut = path.join(nerProj, 'bin', 'Release', 'net48', 'win-x64');
+// 2c. Service NER persistant en RUST (mc-ner, onnxruntime STATIQUE → exe
+//     autonome, aucune DLL). Remplace le helper .NET ner-helper : VSCode = 0
+//     .NET. Tokenizer NATIF du modèle (tokenizer.json). Cf. ADR Phase 3.
+const mcNerExe = path.join(rustDir, 'target', 'release', 'mc-ner.exe');
 const outNer = path.join(__dirname, 'out', 'ner');
+if (process.platform === 'win32') {
+  spawnSync('taskkill', ['/F', '/IM', 'mc-ner.exe'], { stdio: 'ignore', shell: true });
+}
 if (!process.argv.includes('--skip-ner')) {
-  console.log('[build] dotnet build ner-helper (Release win-x64)…');
-  const n = spawnSync('dotnet', ['build', nerProj, '-c', 'Release', '-r', 'win-x64'],
-    { stdio: 'inherit', shell: true });
+  console.log('[build] cargo build mc-ner (release)…');
+  const n = spawnSync('cargo', ['build', '--release', '-p', 'mc-ner', '--bin', 'mc-ner'],
+    { cwd: rustDir, stdio: 'inherit', shell: true });
   if (n.status !== 0) process.exit(n.status ?? 1);
 }
-if (process.platform === 'win32') {
-  spawnSync('taskkill', ['/F', '/IM', 'MathCursor.Ner.exe'], { stdio: 'ignore', shell: true });
-}
 rmSync(outNer, { recursive: true, force: true });
-cpSync(nerOut, outNer, {
-  recursive: true,
-  filter: (src) => !src.endsWith('.pdb') && !src.endsWith('.lib'),
-});
-console.log('[build] helper NER copié → out/ner');
+mkdirSync(outNer, { recursive: true });
+cpSync(mcNerExe, path.join(outNer, 'mc-ner.exe'));
+console.log('[build] service NER Rust copié → out/ner/mc-ner.exe');
 
-// Modèle (model_quantized.onnx + vocab.txt) → bundle.
+// Modèle (model_quantized.onnx + tokenizer.json) → bundle.
 const modelSrc = path.join(__dirname, '..', '..', 'models', 'latest');
 const modelDst = path.join(__dirname, 'out', 'models', 'latest');
 rmSync(path.join(__dirname, 'out', 'models'), { recursive: true, force: true });
 mkdirSync(modelDst, { recursive: true });
-for (const f of ['model_quantized.onnx', 'vocab.txt']) {
+for (const f of ['model_quantized.onnx', 'tokenizer.json']) {
   cpSync(path.join(modelSrc, f), path.join(modelDst, f));
 }
 console.log('[build] modèle NER copié → out/models/latest');

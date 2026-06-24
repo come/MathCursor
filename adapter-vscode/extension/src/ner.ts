@@ -3,11 +3,12 @@ import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 
-// Pilote le helper NER PERSISTANT (MathNerDetector ONNX, parité Word). Charge le
-// modèle une fois (~1,1 s) puis répond en ~7 ms. Robuste : chaque requête a un
-// timeout ; si le helper se bloque, on le tue et on le re-spawn au prochain
-// appel (auto-réparation) → jamais de blocage durable de l'UI.
+// Pilote le service NER PERSISTANT en RUST (mc-ner : DistilBERT ONNX via `ort`
+// + tokenizer natif du modèle). Charge le modèle une fois puis répond en ~ms.
+// Robuste : chaque requête a un timeout ; si le service se bloque, on le tue et
+// on le re-spawn au prochain appel (auto-réparation) → jamais de blocage durable.
 // Windows + modèle présent ; sinon isAvailable=false → repli SpanComputer.
+// Cf. ADR 2026-06-24-Feat-rust-ner-port (Phase 3).
 
 type Resolver = (z: { start: number; end: number } | undefined) => void;
 interface Pending { resolve: Resolver; timer: ReturnType<typeof setTimeout>; }
@@ -100,7 +101,7 @@ export class NerController {
     if (this.proc && !this.proc.killed) { return this.proc; }
     if (!this.modelExists()) { this.dead = true; return undefined; }
 
-    const exe = path.join(this.ctx.extensionPath, 'out', 'ner', 'MathCursor.Ner.exe');
+    const exe = path.join(this.ctx.extensionPath, 'out', 'ner', 'mc-ner.exe');
     const p = spawn(exe, [this.modelDir()], { windowsHide: true });
     p.stdout!.setEncoding('utf8');
     p.stdout!.on('data', d => this.onData(d));
