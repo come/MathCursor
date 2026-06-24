@@ -181,41 +181,37 @@ foreach ($arch in @('x86', 'x64')) {
     }
 }
 
-# 3) Modèle NER
-# On déploie UNIQUEMENT distilmult-v7 (retrain corpus v10 du 2026-06-19 —
-# F1 test 0.998, gold 0.947 ; ajoute les syntaxes @-grec (@a/@p/2@p), marqueurs
-# ≈ environ/env, puissance **, fractions ½ — sondé OK, distractors handles/
-# emails/gras markdown correctement ignorés. Cf. extensions corpus v9/v10).
-# L'ancien XLM-R laissé à la racine de models/ en dev est ignoré ici —
-# il ferait ~265 Mo de poids mort dans l'installer et ne sert plus
-# (FindModelDir priorise distilmult-v7 et tombe sur celui-ci).
-Write-Host "[3/4] Modèle NER (distilmult-v7)..." -ForegroundColor Yellow
+# 3) Modèle NER — dossier 'latest' (alias STABLE, partagé entre adapters
+# VSTO/VS Code/LibreOffice : on ne change plus jamais le nom de dossier quand
+# on retrain, on remplace juste le contenu). Fallback sur les versionnés
+# distilmult-v7/v6. models/ n'est pas dans git (~44 Mo après élagage v11).
+Write-Host "[3/4] Modèle NER..." -ForegroundColor Yellow
 if (Test-Path $ModelDstDir) { Remove-Item -Recurse -Force $ModelDstDir }
-# beta-clean : le repo MathCursor ne versionne pas models/ (~129 Mo).
-# Fallbacks : install dev locale, puis DocMath (lecture seule, figé).
-if (-not (Test-Path (Join-Path $ModelSrcDir 'distilmult-v7'))) {
-    foreach ($cand in @(
-        (Join-Path $env:LOCALAPPDATA 'MathCursor\models'),
-        'D:\Software\DocMath\models')) {
-        if (Test-Path (Join-Path $cand 'distilmult-v7\model_quantized.onnx')) {
-            $ModelSrcDir = $cand
-            Write-Host "  source modèle : $ModelSrcDir (fallback)"
-            break
+
+# Trouve la source : 'latest' préféré, sinon versionné, sur toutes les racines
+# (repo models/, install dev locale, DocMath figé).
+$ModelName = $null
+$ModelRoots = @($ModelSrcDir, (Join-Path $env:LOCALAPPDATA 'MathCursor\models'), 'D:\Software\DocMath\models')
+foreach ($n in @('latest', 'distilmult-v7', 'distilmult-v6')) {
+    foreach ($root in $ModelRoots) {
+        if (Test-Path (Join-Path $root "$n\model_quantized.onnx")) {
+            $ModelSrcDir = $root; $ModelName = $n; break
         }
     }
+    if ($ModelName) { break }
 }
-$DistilSrc = Join-Path $ModelSrcDir 'distilmult-v7'
-$DistilDst = Join-Path $ModelDstDir 'distilmult-v7'
+
 $modelOk = $false
-if (Test-Path (Join-Path $DistilSrc 'model_quantized.onnx')) {
-    Write-Host "  copie depuis $DistilSrc → $DistilDst"
+if ($ModelName) {
+    $DistilSrc = Join-Path $ModelSrcDir $ModelName
+    $DistilDst = Join-Path $ModelDstDir 'latest'        # toujours déployé sous 'latest'
+    Write-Host "  source modèle : $DistilSrc → $DistilDst"
     New-Item -ItemType Directory -Force -Path $DistilDst | Out-Null
     Copy-Item -Path "$DistilSrc\*" -Destination $DistilDst -Force -Recurse
     $modelOk = $true
 }
 else {
-    Write-Warning "Modèle distilmult-v7 introuvable. Copier les fichiers dans :"
-    Write-Warning "  $DistilSrc"
+    Write-Warning "Modèle NER introuvable. Copier les fichiers dans : $ModelSrcDir\latest"
     Write-Warning "Fichiers requis : model_quantized.onnx, vocab.txt, tokenizer.json, config.json, special_tokens_map.json, tokenizer_config.json, ort_config.json"
 }
 

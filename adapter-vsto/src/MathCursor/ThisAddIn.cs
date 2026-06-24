@@ -201,8 +201,8 @@ namespace MathCursor
 
         /// <summary>
         /// Cherche le modèle NER (model_quantized.onnx + vocab.txt) dans les
-        /// emplacements standards, en préférant la version la plus récente
-        /// (<c>distilmult-v7</c>, fallback <c>distilmult-v6</c>). Null si absent
+        /// emplacements standards, en préférant l'alias stable <c>latest</c>
+        /// (partagé entre adapters), fallback versionnés <c>distilmult-v7/v6</c>). Null si absent
         /// (le modèle ~132 Mo n'est pas dans git ; l'installer le déploie, et en
         /// dev le fallback DocMath s'applique).
         /// </summary>
@@ -219,7 +219,7 @@ namespace MathCursor
             };
             // Préférence à la version la plus récente, TOUTES racines confondues
             // (un v7 en dev prime sur un v6 résiduel ailleurs).
-            foreach (var name in new[] { "distilmult-v7", "distilmult-v6" })
+            foreach (var name in new[] { "latest", "distilmult-v7", "distilmult-v6" })
                 foreach (var root in roots)
                 {
                     if (string.IsNullOrEmpty(root)) continue;
