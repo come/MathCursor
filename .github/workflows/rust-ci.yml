@@ -1,0 +1,56 @@
+# CI cross-OS du cœur Rust (Phase 4) : build les 3 crates (mc-engine, mc-ner,
+# mc-popup) sur Windows/macOS/Linux + rejoue le gate moteur 456/456. Valide la
+# buildabilité cross-OS (mac/linux non testables sur la machine Windows de dev).
+# Déclenché au push touchant rust/ + manuellement (workflow_dispatch).
+name: rust-ci
+
+on:
+  push:
+    paths:
+      - 'rust/**'
+      - 'data/engine/**'
+      - 'engine/tests/MathCursor.Engine.Tests/fixtures.json'
+      - '.github/workflows/rust-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      # wry/tao sous Linux : backend WebKitGTK + GTK (fournis par l'OS sur
+      # mac = WKWebView et Windows = WebView2).
+      - name: Dépendances webview (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev \
+            libxdo-dev librsvg2-dev libayatana-appindicator3-dev
+
+      - name: Build workspace (release)
+        working-directory: rust
+        run: cargo build --release --workspace
+
+      - name: Gate moteur — conformance 456/456
+        working-directory: rust
+        run: cargo run --release -p mc-engine --bin conformance
+
+      - name: Upload binaires
+        uses: actions/upload-artifact@v4
+        with:
+          name: mc-binaries-${{ matrix.os }}
+          path: |
+            rust/target/release/analyze
+            rust/target/release/analyze.exe
+            rust/target/release/mc-ner
+            rust/target/release/mc-ner.exe
+            rust/target/release/mc-popup
+            rust/target/release/mc-popup.exe
+          if-no-files-found: warn
