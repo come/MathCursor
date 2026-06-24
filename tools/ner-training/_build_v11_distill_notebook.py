@@ -154,7 +154,7 @@ trainer.save_model(OUT_PT); tok.save_pretrained(OUT_PT)
 
 cells.append(code(r"""# 8. Export ONNX int8 + métriques (élève ET prof)
 import time
-from transformers import Trainer as PlainTrainer
+from transformers import Trainer as PlainTrainer, pipeline
 from optimum.onnxruntime import ORTModelForTokenClassification, ORTQuantizer
 from optimum.onnxruntime.configuration import AutoQuantizationConfig
 
