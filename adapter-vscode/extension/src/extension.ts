@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { analyze } from './engine';
+import { analyze, disposeEngine } from './engine';
 import { PopupController, isHelperAvailable } from './popup';
 import { resolveSource, lineMasked, containsMath, Source } from './detect';
 import { NerController } from './ner';
@@ -35,7 +35,8 @@ export function activate(context: vscode.ExtensionContext): void {
   ner.warmup(); // charge le modèle en avance (≈1,1 s) → prêt quand l'élève tape
   context.subscriptions.push(
     { dispose: () => popup.dispose() },
-    { dispose: () => ner.dispose() }
+    { dispose: () => ner.dispose() },
+    { dispose: () => disposeEngine() }
   );
 
   async function commit(index: number): Promise<void> {

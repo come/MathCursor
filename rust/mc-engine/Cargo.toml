@@ -1,0 +1,13 @@
+# Moteur « forest » porté en Rust — transcription fidèle du C#
+# (engine/src/MathCursor.Engine) en suivant le patron du port Python
+# (engine-python/mc_engine). PUR : texte → candidats LaTeX classés.
+# Bins (auto-découverts dans src/bin/) : `conformance` (gate fixtures.json) et
+# `analyze` (service stdio persistant piloté par l'extension VSCode).
+# Cf. ADR 2026-06-24-Feat-rust-unified-toolkit (Phase 2).
+[package]
+name = "mc-engine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde_json = "1"

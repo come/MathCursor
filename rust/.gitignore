@@ -1,1 +1,6 @@
 /target/
+
+# Le pattern `bin/` de la .gitignore racine (sorties build .NET) capture aussi
+# les répertoires `src/bin/` des crates Rust (binaires du paquet). On les ré-inclut.
+!**/src/bin/
+!**/src/bin/**
