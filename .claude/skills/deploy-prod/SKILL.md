@@ -18,6 +18,7 @@ Pipeline de release pour MathCursor. Orchestre :
 2. Rebuild WASM démo + mirror vers `docs/demo/`
 3. Vérification de l'installer (déjà buildé par l'utilisateur)
 4. Upload R2 (nouvelle version)
+4b. **(Conditionnel)** Re-upload du modèle NER sur R2 — UNIQUEMENT s'il a été réentraîné depuis le dernier déploiement (consommé par la CI VSIX VSCode, pas par l'installer Word)
 5. Ajout carte changelog FR sur `docs/releases.html` + bump CTA
 6. Deploy Cloudflare Pages
 7. **Cleanup R2 à la fin** : garde les 2 versions les plus récentes, supprime le reste après confirmation
@@ -105,6 +106,33 @@ tools/cloudflare/deploy.sh installer <NEW_VERSION>
 ```
 
 Le script lit `~/.mathcursor/cloudflare.env`, source les credentials et upload via wrangler. Si exit code ≠ 0 → stop.
+
+---
+
+## Étape 4b — Re-upload du modèle NER (CONDITIONNEL)
+
+⚠️ **Étape indépendante de la release Word.** Le modèle NER vit sur le bucket
+**public** `mathcursor-models` et n'est consommé que par la **CI VSIX VSCode**
+(workflow `vscode-vsix`), pas par l'installer Word. Le ré-uploader n'a de sens
+**que si le modèle a été réentraîné** depuis le dernier déploiement (cf.
+`/update-ner-model`). Cf. ADR `2026-06-25-Feat-vscode-marketplace-publishing-model`.
+
+Demande via AskUserQuestion : **« Le modèle NER (`models/latest/`) a-t-il changé
+depuis le dernier déploiement ? »**
+
+- **Non** (défaut) → **skip** cette étape (le modèle sur R2 est déjà à jour).
+- **Oui** → upload :
+
+```bash
+tools/cloudflare/deploy.sh model
+```
+
+Le script vérifie la présence de `models/latest/model_quantized.onnx` +
+`tokenizer.json` et les pousse vers `mathcursor-models/latest/`. Si exit code ≠ 0
+→ stop. Le prochain run de la CI VSIX prendra le nouveau modèle.
+
+> Note : le bucket `mathcursor-models` n'est **pas** touché par le cleanup de
+> l'étape 7 (qui ne vise que `mathcursor-releases`) — aucune interaction.
 
 ---
 
@@ -209,6 +237,7 @@ Loope séquentiellement (pas en parallèle, pour avoir des erreurs lisibles). Si
 ✓ Version : <OLD_VERSION> → <NEW_VERSION>
 ✓ WASM rebuild : OK
 ✓ Installer R2 : MathCursor-Setup-<NEW_VERSION>.exe uploadé
+✓ Modèle NER R2 : ré-uploadé / skip (inchangé)
 ✓ Changelog : carte FR ajoutée, CTA bumpé
 ✓ Site Pages : déployé sur mathcursor.pages.dev
 ✓ Cleanup R2 : N fichier(s) supprimé(s), 2 conservés

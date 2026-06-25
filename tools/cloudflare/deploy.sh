@@ -2,7 +2,11 @@
 # MathCursor — script de déploiement Cloudflare Pages.
 #
 # Usage :
-#   tools/cloudflare/deploy.sh [site|installer VERSION]
+#   tools/cloudflare/deploy.sh [site|installer VERSION|model]
+#
+#   model = (ré)upload du modèle NER (models/latest/) vers le bucket public
+#           mathcursor-models, consommé par la CI VSIX VSCode (workflow
+#           vscode-vsix). À lancer après un réentraînement NER.
 #
 # Prérequis :
 #   - ~/.mathcursor/cloudflare.env configuré (voir tools/cloudflare/README.md)
@@ -64,8 +68,37 @@ case "$cmd" in
     echo "  - Re-déployer le site : $0 site"
     ;;
 
+  model)
+    # Modèle NER pour la CI VSIX VSCode (bucket PUBLIC mathcursor-models). À
+    # lancer après un réentraînement (cf. /update-ner-model) pour que le workflow
+    # vscode-vsix récupère le nouveau modèle. Cf. ADR
+    # 2026-06-25-Feat-vscode-marketplace-publishing-model.
+    model_dir="$ROOT/models/latest"
+    onnx="$model_dir/model_quantized.onnx"
+    tok="$model_dir/tokenizer.json"
+    for f in "$onnx" "$tok"; do
+      if [ ! -f "$f" ]; then
+        echo "ERREUR : $f introuvable (modèle NER absent dans models/latest)." >&2
+        exit 1
+      fi
+    done
+    echo "Upload modèle NER → R2://mathcursor-models/latest/"
+    npx --yes wrangler@latest r2 object put \
+      "mathcursor-models/latest/model_quantized.onnx" \
+      --file="$onnx" \
+      --content-type="application/octet-stream" \
+      --remote
+    npx --yes wrangler@latest r2 object put \
+      "mathcursor-models/latest/tokenizer.json" \
+      --file="$tok" \
+      --content-type="application/json" \
+      --remote
+    echo ""
+    echo "Modèle NER uploadé. Le prochain run du workflow vscode-vsix le prendra."
+    ;;
+
   *)
-    echo "Usage : $0 [site | installer <version>]" >&2
+    echo "Usage : $0 [site | installer <version> | model]" >&2
     exit 1
     ;;
 esac
