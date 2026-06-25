@@ -64,7 +64,10 @@ _CULTURE = culture.FR
 # vendor ou modèle absents -> _DETECTOR = None, l'extension charge quand même et
 # Ctrl+Espace marche (dégradation gracieuse, parité AutoDetectController Word).
 _DEV_EXT = r"D:\Software\MathCursor\libreoffice-ext"
-_DEV_MODEL = r"D:\Software\MathCursor\adapter-vsto\installer\payload\models\distilmult-v6"
+# Alias stable partagé VSTO/vscode/libreoffice : on remplace le CONTENU de
+# models/latest/ au retrain (le nom de dossier ne change plus). Cf. commit
+# 8deab5f. Fallback sur les anciens dossiers versionnés v7/v6.
+_DEV_MODEL = r"D:\Software\MathCursor\models\latest"
 
 
 def _platform_tag():
@@ -103,17 +106,48 @@ try:
     )
     if _vendor and _vendor not in sys.path:
         sys.path.insert(0, _vendor)
-    # 3) modèle ONNX : bundlé -> env -> dev
+    # 3) modèle ONNX : alias 'latest' (bundlé -> env -> dev) puis fallback versionné
     _model = _first_dir(
-        os.path.join(_root, "models", "distilmult-v6") if _root else None,
+        os.path.join(_root, "models", "latest") if _root else None,
         os.environ.get("MATHCURSOR_MODEL"),
         _DEV_MODEL,
+        os.path.join(_root, "models", "distilmult-v7") if _root else None,
+        r"D:\Software\MathCursor\adapter-vsto\installer\payload\models\distilmult-v7",
     )
     if _model:
         import mc_ner  # noqa: E402
         _DETECTOR = mc_ner.load_detector(_model)
 except Exception:
     _DETECTOR = None
+
+
+# ── coquille popup webview (process séparé, KaTeX) ───────────────────────────
+# popup_client.py est bundlé à la racine de l'ext (donc importable via _root sur
+# sys.path) ; en dev il vit dans _DEV_EXT.
+try:
+    import popup_client  # noqa: E402
+except ImportError:
+    if _DEV_EXT and _DEV_EXT not in sys.path:
+        sys.path.insert(0, _DEV_EXT)
+    try:
+        import popup_client  # noqa: E402
+    except ImportError:
+        popup_client = None
+
+
+def _shell_exe_html():
+    """(exe, html) de la coquille pour cet OS : installé (_root) sinon dev
+    (_DEV_EXT). (None, None) si introuvable."""
+    tag = _platform_tag()
+    exe_name = "mc_popup_shell.exe" if sys.platform.startswith("win") else "mc_popup_shell"
+    for b in (_root, _DEV_EXT):
+        if not b:
+            continue
+        exe = os.path.join(b, "shell", tag, exe_name)
+        html = os.path.join(b, "assets", "popup", "index.html")
+        if os.path.isfile(exe) and os.path.isfile(html):
+            return exe, html
+    return None, None
 
 
 def _insert_formula(text_range, starmath):
@@ -155,52 +189,11 @@ def _msg(text):
     box.execute()
 
 
-def _render_doc():
-    """Document Writer CACHÉ pour rendre les formules, créé UNE fois et réutilisé.
-
-    Auparavant, _previews appelait loadComponentFromURL à CHAQUE popup : cet appel
-    pompe la boucle d'événements et provoquait des ré-entrances / gels (AppHang).
-    On garde donc un seul doc caché vivant tout le temps."""
-    d = _autodet.get("renderdoc")
-    if d is not None:
-        try:
-            d.getText()  # encore vivant ?
-            return d
-        except Exception:
-            _autodet["renderdoc"] = None
-    ctx = XSCRIPTCONTEXT.getComponentContext()  # noqa: F821
-    smgr = ctx.ServiceManager
-    from com.sun.star.beans import PropertyValue
-    hidden = PropertyValue()
-    hidden.Name = "Hidden"
-    hidden.Value = True
-    desktop = smgr.createInstanceWithContext("com.sun.star.frame.Desktop", ctx)
-    d = desktop.loadComponentFromURL("private:factory/swriter", "_blank", 0, (hidden,))
-    _autodet["renderdoc"] = d
-    return d
-
-
-def _previews(starmaths):
-    """Rend chaque StarMath en image (XGraphic) via le doc caché RÉUTILISÉ.
-    Renvoie une liste d'XGraphic (None par élément si échec)."""
-    out = [None] * len(starmaths)
-    try:
-        hdoc = _render_doc()
-        text = hdoc.getText()
-        text.setString("")  # vider le rendu précédent
-        for i, sm in enumerate(starmaths):
-            try:
-                cur = text.createTextCursorByRange(text.getEnd())
-                obj = hdoc.createInstance("com.sun.star.text.TextEmbeddedObject")
-                obj.CLSID = _STARMATH_CLSID
-                text.insertTextContent(cur, obj, False)
-                obj.Component.Formula = sm
-                out[i] = obj.ReplacementGraphic
-            except Exception:
-                out[i] = None
-    except Exception:
-        pass
-    return out
+# NOTE : l'ancien rendu d'aperçu (_render_doc + _previews, doc Writer caché +
+# loadComponentFromURL) a été SUPPRIMÉ — il pompait la boucle d'événements UNO et
+# provoquait des gels (AppHang). L'aperçu est désormais rendu en KaTeX par la
+# coquille webview externe (popup_client). StarMath ne sert plus qu'à l'insertion
+# finale (_insert_formula). Cf. ADR 2026-06-24-Feat-libreoffice-popup-webview-shell-rust.
 
 
 _pos_err_shown = [False]
@@ -316,7 +309,23 @@ def _caret_pos_geometric():
         zoom = ctrl.getViewSettings().ZoomValue
     except Exception:
         pass
-    f = (96.0 / 2540.0) * (zoom / 100.0)
+    # DPI RÉEL (device) pour rester cohérent avec _caret_pos_exact et avec le
+    # positionnement PHYSIQUE de la coquille : sur écran HiDPI (ex. 125%) un 96 dpi
+    # codé en dur décalerait la popup. convertPointToPixel mesure le vrai DPI.
+    dpi = 96.0
+    try:
+        from com.sun.star.awt import Point as _P
+        MM100 = uno.getConstantByName("com.sun.star.util.MeasureUnit.MM_100TH")
+        p0 = _P(); p0.X = 0; p0.Y = 0
+        p1 = _P(); p1.X = 2540; p1.Y = 0  # 2540/100 mm = 1 pouce
+        r0 = comp.convertPointToPixel(p0, MM100)
+        r1 = comp.convertPointToPixel(p1, MM100)
+        d = abs(r1.X - r0.X)
+        if d > 0:
+            dpi = float(d)
+    except Exception:
+        pass
+    f = (dpi / 2540.0) * (zoom / 100.0)
     page_w = 21000
     try:
         styles = XSCRIPTCONTEXT.getDocument().getStyleFamilies().getByName("PageStyles")  # noqa: F821
@@ -334,8 +343,10 @@ def _caret_pos_geometric():
     return x, y
 
 
-def _caret_pos_exact():
-    """(x, y) du caret RELATIVES à la fenêtre conteneur, EXACT, sans accessibilité.
+def _caret_pos_exact(target=None):
+    """(x, y) RELATIVES à la fenêtre conteneur, EXACT, sans accessibilité. Par
+    défaut = position du caret ; si `target` (un XTextRange) est fourni, position
+    de SON début (ex. le 1ᵉʳ caractère de la formule détectée, à gauche du caret).
 
     Principe : la relation doc->pixel est affine, pixel = origine + scale(doc).
     `convertPointToPixel` donne le scale exact (DPI réel). On trouve l'`origine`
@@ -364,16 +375,16 @@ def _caret_pos_exact():
         line_mm = 600.0
     ew, eh = off.Width, off.Height
 
-    def maps_to_caret(px, py):
-        """True si le pixel (px,py) se recale EXACTEMENT sur le caret. Ne déplace
-        PAS le view-cursor : compare juste les débuts de range."""
+    def cmp_pos(px, py, rng):
+        """compareRegionStarts(pixel->début de range, rng) : 1 si AVANT rng, 0 si
+        égal, -1 si APRÈS. None si non sondable. Ne déplace PAS le view-cursor."""
         pp = Point()
         pp.X, pp.Y = int(px), int(py)
         try:
-            rng = ctrl.createTextRangeByPixelPosition(pp)
-            if rng is None:
+            r = ctrl.createTextRangeByPixelPosition(pp)
+            if r is None:
                 return None
-            return text.compareRegionStarts(rng.getStart(), caret) == 0
+            return text.compareRegionStarts(r.getStart(), rng)
         except Exception:
             return None
 
@@ -382,7 +393,7 @@ def _caret_pos_exact():
     # que le coin bas-droit de la zone d'édition mappe au caret (sinon du texte
     # existe APRÈS le caret -> méthode inapplicable, repli géométrie). Robuste même
     # quand le doc est quasi vide (≠ la calibration par sondes, foireuse au 1er popup).
-    if maps_to_caret(ew - 4, eh - 4) is not True:
+    if cmp_pos(ew - 4, eh - 4, caret) != 0:
         _posdbg.append("exact: coin bas-droit ne mappe pas au caret -> repli geometrie")
         return None
     # caret_y : plus petit Y (X très à droite) mappant encore au caret = haut de ligne.
@@ -391,29 +402,53 @@ def _caret_pos_exact():
         if hi - lo <= 1:
             break
         mid = (lo + hi) // 2
-        lo, hi = (lo, mid) if maps_to_caret(ew - 4, mid) is True else (mid, hi)
+        lo, hi = (lo, mid) if cmp_pos(ew - 4, mid, caret) == 0 else (mid, hi)
     caret_y = hi
-    # caret_x : à un Y dans la ligne du caret, plus petit X mappant au caret.
+    # X (bord gauche) d'un range sur la ligne du caret : plus petit X dont le pixel
+    # mappe AU/APRÈS le range. Renvoie None si non sondable (NE PAS s'effondrer à 0).
     probe_y = min(eh - 2, caret_y + 3)
-    lo, hi = 0, ew - 4
-    for _ in range(20):
-        if hi - lo <= 1:
-            break
-        mid = (lo + hi) // 2
-        lo, hi = (lo, mid) if maps_to_caret(mid, probe_y) is True else (mid, hi)
-    caret_x = hi
-    _posdbg.append("exact: caret_x=%d caret_y=%d ew=%d eh=%d" % (caret_x, caret_y, ew, eh))
+
+    def find_x(rng):
+        lo, hi = 0, ew - 4
+        ok = False
+        for _ in range(20):
+            if hi - lo <= 1:
+                break
+            mid = (lo + hi) // 2
+            c = cmp_pos(mid, probe_y, rng)
+            if c is None:
+                return None  # sondage impossible -> abandon (pas de collapse à gauche)
+            ok = True
+            # c == 1 : pixel AVANT le range -> aller à DROITE ; sinon à gauche.
+            lo, hi = (mid, hi) if c == 1 else (lo, mid)
+        return hi if ok else None
+
+    caret_x = find_x(caret)
+    if caret_x is None:
+        _posdbg.append("exact: caret_x introuvable -> repli geometrie")
+        return None
+    # cible = début de la formule détectée (à gauche du caret, même ligne) si fourni ;
+    # si son sondage échoue, on RETOMBE sur le caret (jamais collé au bord gauche).
+    x = caret_x
+    if target is not None:
+        tx = find_x(target)
+        if tx is not None:
+            x = tx
+        else:
+            _posdbg.append("exact: target_x KO -> repli sur caret_x")
+    _posdbg.append("exact: x=%d caret_x=%d caret_y=%d target=%s"
+                   % (x, caret_x, caret_y, target is not None))
     _, lh = cpp(0, line_mm)
-    return off.X + caret_x, off.Y + caret_y + 2 * lh  # ~une ligne sous le caret
+    return off.X + x, off.Y + caret_y + 2 * lh  # ~une ligne sous la ligne
 
 
-def _caret_screen_xy(win):
-    """(x, y) du caret RELATIVES à `win`. Calibration exacte
-    (createTextRangeByPixelPosition + convertPointToPixel) si possible, sinon
-    géométrie (APPROX). Trace dans _posdbg."""
+def _caret_screen_xy(win, target=None):
+    """(x, y) RELATIVES à `win`. Calibration exacte (createTextRangeByPixelPosition
+    + convertPointToPixel) si possible, sinon géométrie (APPROX). `target` = début
+    de zone à pointer (sinon le caret). Trace dans _posdbg."""
     del _posdbg[:]
     try:
-        xy = _caret_pos_exact()
+        xy = _caret_pos_exact(target)
         if xy is not None:
             _posdbg.append("methode=exacte (calibration pixel) -> %r" % (xy,))
             return xy
@@ -425,175 +460,31 @@ def _caret_screen_xy(win):
     return xy
 
 
-def _apply_caret_pos(dlg, win, xy):
-    """Positionne `dlg` aux coords `xy` RELATIVES à `win` (la fenêtre parente)."""
-    if xy is None:
-        return
-    try:
-        POS = uno.getConstantByName("com.sun.star.awt.PosSize.POS")
-        x, y = xy
+def _win_screen_origin(win):
+    """(X, Y) ÉCRAN absolus du coin haut-gauche de `win`. Accessibilité si dispo
+    (getLocationOnScreen), sinon getPosSize (top-level = coords écran)."""
+    a = _acc_of(win)
+    if a is not None:
         try:
-            ds = dlg.getPosSize()
-            cont = win.getPosSize()
-            if ds.Height:
-                y += ds.Height // 2   # descendre la popup d'une demi-hauteur
-            if ds.Width:
-                x = max(0, min(x, max(0, cont.Width - ds.Width)))
-            if ds.Height:
-                y = max(0, min(y, max(0, cont.Height - ds.Height)))
+            p = a.getLocationOnScreen()
+            return p.X, p.Y
         except Exception:
             pass
-        dlg.setPosSize(x, y, 0, 0, POS)
+    try:
+        ps = win.getPosSize()
+        return ps.X, ps.Y
     except Exception:
-        if not _pos_err_shown[0]:
-            _pos_err_shown[0] = True
-            try:
-                import traceback
-                _msg("MathCursor — position (diag, 1×) :\n" + traceback.format_exc())
-            except Exception:
-                pass
+        return 0, 0
 
 
-def _place_at_caret(dlg, win):
-    """Calcule la position du caret puis l'applique (chemin modal)."""
-    _apply_caret_pos(dlg, win, _caret_screen_xy(win))
-
-
-def _choose_rendered(starmaths, labels):
-    """Fenêtre de choix avec FORMULES RENDUES (image par candidat + radio).
-    Repli sur la liste texte (_choose) si aucune image n'a pu être rendue."""
-    graphics = _previews(starmaths)
-    if not any(g is not None for g in graphics):
-        return _choose(labels)  # repli texte
-
-    ctx = XSCRIPTCONTEXT.getComponentContext()  # noqa: F821
-    smgr = ctx.ServiceManager
-    n = len(starmaths)
-    img_h = 26          # hauteur d'image fixe ; la largeur suit le RATIO réel
-    row = img_h + 12
-    max_w = 210
-    dm = smgr.createInstanceWithContext("com.sun.star.awt.UnoControlDialogModel", ctx)
-    dm.Title = "MathCursor — choisir la lecture"
-    dm.Width = 250
-    dm.Height = 8 + row * n + 26
-
-    def ctrl(service, name, **props):
-        m = dm.createInstance("com.sun.star.awt." + service)
-        for k, v in props.items():
-            setattr(m, k, v)
-        dm.insertByName(name, m)
-        return m
-
-    def aspect(g):
-        # ratio largeur/hauteur de la formule (préférer la taille vectorielle).
-        for attr in ("Size100thMM", "SizePixel"):
-            try:
-                s = getattr(g, attr)
-                if s.Width and s.Height:
-                    return s.Width / float(s.Height)
-            except Exception:
-                pass
-        return 3.0
-
-    # 1) TOUS les radios d'abord, consécutivement = un seul groupe. Sinon (un
-    #    contrôle image inséré entre deux radios) le groupe se brise : cliquer le
-    #    2e ne décoche pas le 1er -> la lecture renvoie toujours l'index 0.
-    y = 6
-    for i in range(n):
-        rb = ctrl("UnoControlRadioButtonModel", "r%d" % i,
-                  PositionX=6, PositionY=y + row // 2 - 6, Width=12, Height=12, Label="")
-        if i == 0:
-            rb.State = 1
-        y += row
-    # 2) images / textes ensuite (la position visuelle est indépendante de l'ordre).
-    y = 6
-    for i in range(n):
-        if graphics[i] is not None:
-            w = max(12, min(max_w, int(round(img_h * aspect(graphics[i])))))
-            img = ctrl("UnoControlImageControlModel", "img%d" % i,
-                       PositionX=24, PositionY=y + (row - img_h) // 2,
-                       Width=w, Height=img_h, ScaleImage=True, Border=0)
-            try:
-                img.Graphic = graphics[i]
-            except Exception:
-                pass
-            try:
-                img.ScaleMode = 1   # ISOTROPIC (préserve le ratio si supporté)
-            except Exception:
-                pass
-        else:
-            ctrl("UnoControlFixedTextModel", "txt%d" % i,
-                 PositionX=24, PositionY=y + row // 2 - 5, Width=max_w, Height=12, Label=labels[i])
-        y += row
-
-    by = dm.Height - 18
-    ctrl("UnoControlButtonModel", "ok", PositionX=142, PositionY=by, Width=48, Height=14,
-         Label="OK", PushButtonType=1, DefaultButton=True)
-    ctrl("UnoControlButtonModel", "cancel", PositionX=194, PositionY=by, Width=48, Height=14,
-         Label="Annuler", PushButtonType=2)
-
-    dlg = smgr.createInstanceWithContext("com.sun.star.awt.UnoControlDialog", ctx)
-    dlg.setModel(dm)
-    toolkit = smgr.createInstanceWithContext("com.sun.star.awt.Toolkit", ctx)
-    win = XSCRIPTCONTEXT.getDocument().getCurrentController().getFrame().getContainerWindow()  # noqa: F821
-    dlg.createPeer(toolkit, win)
-    _place_at_caret(dlg, win)
-    ret = dlg.execute()
-    idx = None
-    if ret == 1:
-        idx = 0
-        for i in range(n):
-            if dm.getByName("r%d" % i).State == 1:
-                idx = i
-                break
-    dlg.dispose()
-    return idx
-
-
-def _choose(labels):
-    """Popup de choix (UNO) : liste `labels`, renvoie l'index choisi ou None.
-    Aperçu = texte (LaTeX) — repli quand le rendu image échoue."""
-    ctx = XSCRIPTCONTEXT.getComponentContext()  # noqa: F821
-    smgr = ctx.ServiceManager
-    n = min(len(labels), 8)
-    dm = smgr.createInstanceWithContext("com.sun.star.awt.UnoControlDialogModel", ctx)
-    dm.Title = "MathCursor — choisir la lecture"
-    dm.Width = 220
-    dm.Height = 22 + 11 * n + 22
-
-    def _ctrl(service, name, **props):
-        m = dm.createInstance("com.sun.star.awt." + service)
-        for k, v in props.items():
-            setattr(m, k, v)
-        dm.insertByName(name, m)
-        return m
-
-    _ctrl("UnoControlFixedTextModel", "lbl", PositionX=6, PositionY=4, Width=208, Height=10,
-          Label="Plusieurs lectures — choisis :")
-    _ctrl("UnoControlListBoxModel", "lst", PositionX=6, PositionY=16, Width=208, Height=11 * n,
-          Dropdown=False, MultiSelection=False, StringItemList=tuple(labels))
-    by = dm.Height - 18
-    _ctrl("UnoControlButtonModel", "ok", PositionX=112, PositionY=by, Width=48, Height=14,
-          Label="OK", PushButtonType=1, DefaultButton=True)
-    _ctrl("UnoControlButtonModel", "cancel", PositionX=164, PositionY=by, Width=48, Height=14,
-          Label="Annuler", PushButtonType=2)
-
-    dlg = smgr.createInstanceWithContext("com.sun.star.awt.UnoControlDialog", ctx)
-    dlg.setModel(dm)
-    toolkit = smgr.createInstanceWithContext("com.sun.star.awt.Toolkit", ctx)
-    # parent = fenêtre du document : sans parent (None) le dialogue ne s'affichait pas.
-    win = XSCRIPTCONTEXT.getDocument().getCurrentController().getFrame().getContainerWindow()  # noqa: F821
-    dlg.createPeer(toolkit, win)
-    _place_at_caret(dlg, win)
-    lb = dlg.getControl("lst")
-    lb.selectItemPos(0, True)
-    ret = dlg.execute()
-    idx = None
-    if ret == 1:  # OK
-        pos = lb.getSelectedItemsPos()
-        idx = pos[0] if pos else 0
-    dlg.dispose()
-    return idx
+def _caret_screen_abs(win, target=None):
+    """(x, y) ÉCRAN absolus = origine écran de `win` + position RELATIVE
+    (_caret_screen_xy). `target` = XTextRange dont on veut le début (ex. 1ᵉʳ
+    caractère de la formule) ; sinon le caret. C'est ce qu'attend la coquille
+    externe (fenêtre OS positionnée en coords écran)."""
+    rx, ry = _caret_screen_xy(win, target)
+    ox, oy = _win_screen_origin(win)
+    return rx + ox, ry + oy
 
 
 def convert_selection(*args):
@@ -622,13 +513,15 @@ def _convert():
     if res.decision == "erreur" or not res.ranked:
         return
     if res.decision == "popup" and len(res.ranked) > 1:
+        # plusieurs lectures : popup NON-MODALE (coquille webview), pilotée au
+        # clavier comme l'auto-détection. On s'assure que le key handler est
+        # attaché (Ctrl+Espace peut être utilisé sans auto-détection active).
         starmaths = [to_starmath(c.node, _CULTURE) for c in res.ranked]
-        idx = _choose_rendered(starmaths, [c.latex for c in res.ranked])
-        if idx is None:
-            return  # annulé
-        chosen_sm = starmaths[idx]
-    else:
-        chosen_sm = to_starmath(res.ranked[0].node, _CULTURE)
+        labels = [c.latex for c in res.ranked]
+        _ensure_key_handler()
+        _open_autopopup(starmaths, labels, rng, ("convert", id(rng)))
+        return  # l'insertion se fait via ↓/↑/Entrée (ou clic)
+    chosen_sm = to_starmath(res.ranked[0].node, _CULTURE)
     _insert_formula(rng, chosen_sm)
 
 
@@ -640,19 +533,21 @@ def _convert():
 # ════════════════════════════════════════════════════════════════════════════
 import threading  # noqa: E402
 import unohelper  # noqa: E402
-from com.sun.star.awt import XKeyHandler, XCallback  # noqa: E402
+from com.sun.star.awt import XKeyHandler, XCallback, XTopWindowListener  # noqa: E402
 
 # Délai d'inactivité avant détection (debounce) : la détection ne tourne qu'à la
 # PAUSE de frappe, jamais à chaque touche (sinon spam/flicker).
 _DEBOUNCE_S = 0.25
 
 # état partagé (un seul doc/handler à la fois en v1).
+#   popup  : True quand la popup webview est affichée, None sinon (plus un dialogue UNO).
+#   client : PopupClient persistant (coquille webview), lazy, vit jusqu'à autodetect_stop.
 _autodet = {
     "handler": None, "controller": None,
-    "popup": None, "model": None, "sig": None, "win": None,
+    "popup": None, "sig": None, "win": None, "pos": None,
     "sm": [], "idx": 0, "n": 0, "range": None,
-    "suppress_sig": None, "busy": False, "renderdoc": None,
-    "timer": None, "asynccb": None,
+    "suppress_sig": None, "busy": False, "client": None,
+    "timer": None, "asynccb": None, "toolkit": None, "topwin": None,
 }
 
 try:
@@ -664,16 +559,67 @@ except Exception:
     _K_DOWN, _K_UP, _K_RETURN, _K_ESCAPE = 1024, 1025, 1280, 1281
 
 
-def _aspect(g):
-    """Ratio largeur/hauteur d'un XGraphic (taille vectorielle de préférence)."""
-    for attr in ("Size100thMM", "SizePixel"):
+class _ShellCommitCallback(unohelper.Base, XCallback):
+    """Clic souris sur un candidat (reçu sur le thread lecteur de la coquille) ->
+    re-posté ici sur le THREAD PRINCIPAL pour valider/insérer en sécurité UNO."""
+
+    def notify(self, idx):
         try:
-            s = getattr(g, attr)
-            if s.Width and s.Height:
-                return s.Width / float(s.Height)
+            _autodet["idx"] = int(idx)
+            _autopopup_commit()
         except Exception:
             pass
-    return 3.0
+
+
+class _ShellDismissCallback(unohelper.Base, XCallback):
+    def notify(self, data):
+        try:
+            sig = _autodet.get("sig")
+            _close_autopopup()
+            _autodet["suppress_sig"] = sig  # ne pas rouvrir cette zone jusqu'à modif
+        except Exception:
+            pass
+
+
+_shellcommitcb = _ShellCommitCallback()
+_shelldismisscb = _ShellDismissCallback()
+
+
+def _on_shell_commit(idx):
+    acb = _autodet.get("asynccb")
+    if acb is not None:
+        try:
+            acb.addCallback(_shellcommitcb, idx)
+        except Exception:
+            pass
+
+
+def _on_shell_dismiss():
+    acb = _autodet.get("asynccb")
+    if acb is not None:
+        try:
+            acb.addCallback(_shelldismisscb, None)
+        except Exception:
+            pass
+
+
+def _popup_client():
+    """PopupClient persistant (lazy). None si popup_client ou la coquille manque."""
+    cli = _autodet.get("client")
+    if cli is not None:
+        return cli
+    if popup_client is None:
+        _posdbg.append("popup_client non importé")
+        return None
+    exe, html = _shell_exe_html()
+    if exe is None:
+        _posdbg.append("coquille popup introuvable (shell/<tag>/ + assets/popup)")
+        return None
+    cli = popup_client.PopupClient(
+        exe, html, on_commit=_on_shell_commit, on_dismiss=_on_shell_dismiss,
+        on_error=lambda m: _posdbg.append("shell: " + str(m)))
+    _autodet["client"] = cli
+    return cli
 
 
 def _para_context():
@@ -801,148 +747,100 @@ def _autodetect_tick_inner():
     _open_autopopup(sms, labels, zrange, sig)
 
 
-def _open_autopopup(starmaths, labels, zrange, sig):
-    """Popup FLOTTANTE non-modale (createPeer+setVisible, sans execute). Ferme
-    d'abord toute popup existante (refresh propre). Formules rendues + radios ;
-    l'état vit dans _autodet, piloté au clavier."""
-    if _autodet["popup"] is not None:
-        _close_autopopup()
-    ctx = XSCRIPTCONTEXT.getComponentContext()  # noqa: F821
-    smgr = ctx.ServiceManager
-    win = XSCRIPTCONTEXT.getDocument().getCurrentController().getFrame().getContainerWindow()  # noqa: F821
-    # Position du caret capturée AVANT toute fenêtre (popup/_previews) : sinon le
-    # focus quitte le document et le caret n'est plus localisable.
-    caret_xy = _caret_screen_xy(win)
-    graphics = _previews(starmaths)
-    n = len(starmaths)
-    img_h = 26
-    row = img_h + 12
-    max_w = 210
-    dm = smgr.createInstanceWithContext("com.sun.star.awt.UnoControlDialogModel", ctx)
-    dm.Title = "MathCursor"
-    dm.Width = 250
-    dm.Height = 8 + row * n + 6
+def _candidates(labels):
+    """Candidats au format attendu par la coquille (rendu KaTeX du LaTeX)."""
+    return [{"latex": s} for s in labels]
 
-    def ctrl(service, name, **props):
-        m = dm.createInstance("com.sun.star.awt." + service)
-        for k, v in props.items():
-            setattr(m, k, v)
-        dm.insertByName(name, m)
-        return m
 
-    y = 6
-    for i in range(n):  # radios consécutifs = un seul groupe
-        rb = ctrl("UnoControlRadioButtonModel", "r%d" % i,
-                  PositionX=6, PositionY=y + row // 2 - 6, Width=12, Height=12, Label="")
-        if i == 0:
-            rb.State = 1
-        y += row
-    y = 6
-    for i in range(n):
-        if graphics[i] is not None:
-            w = max(12, min(max_w, int(round(img_h * _aspect(graphics[i])))))
-            img = ctrl("UnoControlImageControlModel", "img%d" % i,
-                       PositionX=24, PositionY=y + (row - img_h) // 2,
-                       Width=w, Height=img_h, ScaleImage=True, Border=0)
-            try:
-                img.Graphic = graphics[i]
-            except Exception:
-                pass
-            try:
-                img.ScaleMode = 1
-            except Exception:
-                pass
-        else:
-            ctrl("UnoControlFixedTextModel", "t%d" % i,
-                 PositionX=24, PositionY=y + row // 2 - 5, Width=max_w, Height=12, Label=labels[i])
-        y += row
-
-    dlg = smgr.createInstanceWithContext("com.sun.star.awt.UnoControlDialog", ctx)
-    dlg.setModel(dm)
-    toolkit = smgr.createInstanceWithContext("com.sun.star.awt.Toolkit", ctx)
-    dlg.createPeer(toolkit, win)  # win calculé en haut de la fonction
-    _apply_caret_pos(dlg, win, caret_xy)  # position capturée avant le vol de focus
-    dlg.setVisible(True)  # NON-modal : pas d'execute().
-    # setVisible active la fenêtre popup -> on REREND le focus à la zone d'édition
-    # pour que l'utilisateur continue de taper (les touches restent routées vers
-    # notre XKeyHandler, qui pilote la popup en ↓/↑/Entrée).
+def _line_height_px():
+    """Hauteur d'une ligne en pixels écran (DPI réel) au caret, pour décaler la
+    popup d'UNE ligne sous la frappe (sinon elle se place au-dessus de la ligne)."""
     try:
-        XSCRIPTCONTEXT.getDocument().getCurrentController().getFrame().getComponentWindow().setFocus()  # noqa: F821
+        from com.sun.star.awt import Point
+        ctrl = XSCRIPTCONTEXT.getDocument().getCurrentController()  # noqa: F821
+        comp = ctrl.getFrame().getComponentWindow()
+        vc = ctrl.getViewCursor()
+        MM100 = uno.getConstantByName("com.sun.star.util.MeasureUnit.MM_100TH")
+        try:
+            line_mm = float(vc.CharHeight) * 35.28 * 1.3  # pt -> 1/100mm + interligne
+        except Exception:
+            line_mm = 600.0
+        p1 = Point(); p1.X = 0; p1.Y = int(line_mm)
+        p0 = Point(); p0.X = 0; p0.Y = 0
+        return abs(comp.convertPointToPixel(p1, MM100).Y - comp.convertPointToPixel(p0, MM100).Y)
     except Exception:
-        pass
-    _autodet.update(popup=dlg, model=dm, sm=list(starmaths), idx=0, n=n, range=zrange, sig=sig, win=win)
+        return 24
+
+
+def _open_autopopup(starmaths, labels, zrange, sig):
+    """Affiche la popup webview au caret (coquille externe, non-activante). L'état
+    (starmaths/idx/range) vit dans _autodet ; la navigation se fait au clavier.
+    La position est calculée ICI (1ʳᵉ ouverture) et FIGÉE dans _autodet["pos"]
+    jusqu'à fermeture — les refresh ne la recalculent pas (la popup ne saute pas)."""
+    cli = _popup_client()
+    if cli is None:
+        return  # pas de fallback (décision ADR) : silencieux, juste tracé dans _posdbg
+    win = XSCRIPTCONTEXT.getDocument().getCurrentController().getFrame().getContainerWindow()  # noqa: F821
+    # Position = AU CARET (la version qui marchait ; l'ancrage début-de-formule a
+    # été abandonné). Figée ensuite jusqu'à fermeture.
+    x, y = _caret_screen_abs(win)
+    y += _line_height_px()  # une ligne plus bas : sous la ligne de frappe, pas au-dessus
+    # idx=-1 : rien de surligné à l'ouverture (simple suggestion). ↓ entre dans la liste.
+    if not cli.show(_candidates(labels), x, y, line_height=0, selected_index=-1):
+        _posdbg.append("coquille: show a échoué (ready timeout / process mort)")
+        return
+    _autodet.update(popup=True, pos=(x, y), sm=list(starmaths), idx=-1,
+                    n=len(starmaths), range=zrange, sig=sig, win=win)
 
 
 def _refresh_autopopup(sms, labels, zrange, sig):
-    """Met à jour le contenu de la popup EXISTANTE sans la recréer (anti-flicker).
-    Possible seulement si le nombre de candidats est inchangé et que la nature des
-    lignes (image/texte) coïncide ; sinon renvoie False (l'appelant rouvre)."""
-    dm = _autodet["model"]
-    n = _autodet["n"]
-    if dm is None or n == 0 or len(sms) != n:
+    """Met à jour la popup EXISTANTE (nouveaux candidats) SANS bouger : on réutilise
+    la position FIGÉE de l'ouverture (_autodet["pos"]), pas de recalcul. Renvoie
+    True si géré."""
+    cli = _autodet.get("client")
+    pos = _autodet.get("pos")
+    if cli is None or _autodet["popup"] is None or pos is None:
         return False
-    graphics = _previews(sms)
-    img_h = 26
-    max_w = 210
-    try:
-        for i in range(n):
-            try:
-                dm.getByName("r%d" % i).State = 1 if i == 0 else 0
-            except Exception:
-                pass
-            iname = "img%d" % i
-            tname = "t%d" % i
-            if dm.hasByName(iname):
-                if graphics[i] is None:
-                    return False  # image -> texte : structure différente, rouvrir
-                m = dm.getByName(iname)
-                m.Graphic = graphics[i]
-                m.Width = max(12, min(max_w, int(round(img_h * _aspect(graphics[i])))))
-            elif dm.hasByName(tname):
-                if graphics[i] is not None:
-                    return False  # texte -> image : rouvrir
-                dm.getByName(tname).Label = labels[i]
-            else:
-                return False
-    except Exception:
+    x, y = pos
+    if not cli.show(_candidates(labels), x, y, line_height=0, selected_index=-1):
         return False
-    _autodet.update(sm=list(sms), idx=0, range=zrange, sig=sig)
-    win = _autodet.get("win")
-    if win is not None and _autodet["popup"] is not None:
-        _place_at_caret(_autodet["popup"], win)
+    _autodet.update(sm=list(sms), idx=-1, n=len(sms), range=zrange, sig=sig)
     return True
 
 
 def _close_autopopup():
-    dlg = _autodet["popup"]
-    if dlg is not None:
-        # setVisible(False) AVANT dispose : sinon la fenêtre non-modale peut
-        # rester affichée à l'écran (« elle ne se ferme pas »).
+    """Masque la popup webview (le process coquille reste vivant pour la prochaine
+    fois — il n'est tué qu'à autodetect_stop). Libère la position figée."""
+    cli = _autodet.get("client")
+    if cli is not None:
         try:
-            dlg.setVisible(False)
+            cli.close()
         except Exception:
             pass
-        try:
-            dlg.dispose()
-        except Exception:
-            pass
-    _autodet.update(popup=None, model=None, sm=[], idx=0, n=0, range=None, sig=None, win=None)
+    _autodet.update(popup=None, pos=None, sm=[], idx=0, n=0, range=None, sig=None, win=None)
 
 
 def _autopopup_move(delta):
-    dm = _autodet["model"]
     n = _autodet["n"]
-    if dm is None or n == 0:
+    if n == 0:
         return
-    idx = (_autodet["idx"] + delta) % n
-    for i in range(n):
-        dm.getByName("r%d" % i).State = 1 if i == idx else 0
+    cur = _autodet["idx"]
+    # depuis « rien sélectionné » (-1) : ↓ entre sur le 1ᵉʳ, ↑ sur le dernier.
+    idx = (0 if delta > 0 else n - 1) if cur < 0 else (cur + delta) % n
     _autodet["idx"] = idx
+    cli = _autodet.get("client")
+    if cli is not None:
+        try:
+            cli.update(idx)
+        except Exception:
+            pass
 
 
 def _autopopup_commit():
     sm = _autodet["sm"]
     idx = _autodet["idx"]
+    if idx < 0:
+        idx = 0  # Entrée sans avoir navigué -> valide le 1ᵉʳ candidat par défaut
     zr = _autodet["range"]
     chosen = sm[idx] if 0 <= idx < len(sm) else None
     _close_autopopup()
@@ -1027,36 +925,99 @@ class _KeyHandler(unohelper.Base, XKeyHandler):
         pass
 
 
-def _start_autodetect(verbose):
-    """Enregistre le key handler sur le contrôleur courant. `verbose` = boîtes
-    d'info (chemin menu) ; silencieux pour l'auto-start (Job à l'ouverture)."""
-    if _DETECTOR is None:
-        if verbose:
-            _msg("NER indisponible : modèle ou deps natives non chargés.")
-        return
+class _DeactivateListener(unohelper.Base, XTopWindowListener):
+    """Ferme la popup quand une fenêtre top de l'office est DÉSACTIVÉE (l'utilisateur
+    bascule ailleurs via Alt+Tab) — sinon la popup topmost resterait devant l'autre
+    application. La coquille étant non-activante, l'ouvrir ne désactive pas Writer,
+    donc pas de fermeture parasite."""
+
+    def windowDeactivated(self, ev):
+        if _autodet["popup"] is not None:
+            try:
+                _close_autopopup()
+            except Exception:
+                pass
+
+    def windowActivated(self, ev):
+        pass
+
+    def windowOpened(self, ev):
+        pass
+
+    def windowClosing(self, ev):
+        pass
+
+    def windowClosed(self, ev):
+        pass
+
+    def windowMinimized(self, ev):
+        pass
+
+    def windowNormalized(self, ev):
+        pass
+
+    def disposing(self, ev):
+        pass
+
+
+def _ensure_key_handler():
+    """Attache le _KeyHandler sur le contrôleur courant (idempotent) et crée
+    l'AsyncCallback (thread principal). Partagé par l'auto-détection et par
+    Ctrl+Espace (popup non-modale pilotée au clavier même sans auto-détection)."""
     ctrl = XSCRIPTCONTEXT.getDocument().getCurrentController()  # noqa: F821
-    # déjà actif sur CE contrôleur -> rien à faire.
     if _autodet["handler"] is not None and _autodet["controller"] is ctrl:
-        if verbose:
-            _msg("Auto-détection déjà active.")
-        return
-    # actif sur un AUTRE doc -> retire l'ancien handler avant de réattacher.
+        return  # déjà actif sur CE contrôleur
     if _autodet["handler"] is not None and _autodet["controller"] is not None:
         try:
             _autodet["controller"].removeKeyHandler(_autodet["handler"])
         except Exception:
             pass
-    ctx = XSCRIPTCONTEXT.getComponentContext()  # noqa: F821
-    # AsyncCallback créé sur le THREAD PRINCIPAL (réutilisé ensuite par le timer
-    # de fond, qui n'appelle QUE addCallback — seul appel cross-thread).
-    _autodet["asynccb"] = ctx.ServiceManager.createInstanceWithContext(
-        "com.sun.star.awt.AsyncCallback", ctx)
+    if _autodet.get("asynccb") is None:
+        ctx = XSCRIPTCONTEXT.getComponentContext()  # noqa: F821
+        # AsyncCallback créé sur le THREAD PRINCIPAL (réutilisé par le timer de
+        # fond ET les callbacks souris de la coquille — seul appel cross-thread).
+        _autodet["asynccb"] = ctx.ServiceManager.createInstanceWithContext(
+            "com.sun.star.awt.AsyncCallback", ctx)
     h = _KeyHandler()
     ctrl.addKeyHandler(h)
     _autodet["handler"] = h
     _autodet["controller"] = ctrl
+    # Écouteur de désactivation (Alt+Tab) -> ferme la popup. Enregistré une fois
+    # sur le Toolkit (signale l'activation/désactivation des fenêtres top).
+    if _autodet.get("topwin") is None:
+        try:
+            ctx = XSCRIPTCONTEXT.getComponentContext()  # noqa: F821
+            tk = ctx.ServiceManager.createInstanceWithContext("com.sun.star.awt.Toolkit", ctx)
+            lis = _DeactivateListener()
+            tk.addTopWindowListener(lis)
+            _autodet["toolkit"] = tk
+            _autodet["topwin"] = lis
+        except Exception:
+            pass
+    # PRÉ-CHAUFFAGE : booter la coquille (init WebView2 ~0,5 s) EN FOND dès
+    # l'activation, pour que le 1ᵉʳ `show` ne bloque pas le thread UI. La
+    # construction est synchrone (sans spawn) ; ensure() (spawn + attente ready)
+    # tourne dans un thread daemon (PopupClient.ensure a son propre verrou).
+    cli = _popup_client()
+    if cli is not None:
+        threading.Thread(target=cli.ensure, daemon=True).start()
+
+
+def _start_autodetect(verbose):
+    """Active l'auto-détection (key handler) sur le contrôleur courant. `verbose`
+    = boîtes d'info (chemin menu) ; silencieux pour l'auto-start (Job)."""
+    if _DETECTOR is None:
+        if verbose:
+            _msg("NER indisponible : modèle ou deps natives non chargés.")
+        return
+    already = (_autodet["handler"] is not None and
+               _autodet["controller"] is XSCRIPTCONTEXT.getDocument().getCurrentController())  # noqa: F821
+    _ensure_key_handler()
     if verbose:
-        _msg("Auto-détection MathCursor ACTIVÉE.\nTape des maths : la popup apparaît\n(↓/↑ choisir, Entrée valider, Échap fermer).")
+        if already:
+            _msg("Auto-détection déjà active.")
+        else:
+            _msg("Auto-détection MathCursor ACTIVÉE.\nTape des maths : la popup apparaît\n(↓/↑ choisir, Entrée valider, Échap fermer).")
 
 
 def autodetect_start(*args):
@@ -1091,16 +1052,25 @@ def autodetect_stop(*args):
             except Exception:
                 pass
         _close_autopopup()
-        rd = _autodet.get("renderdoc")
-        if rd is not None:
+        tk = _autodet.get("toolkit")
+        lis = _autodet.get("topwin")
+        if tk is not None and lis is not None:
             try:
-                rd.close(False)
+                tk.removeTopWindowListener(lis)
+            except Exception:
+                pass
+        cli = _autodet.get("client")
+        if cli is not None:
+            try:
+                cli.quit()  # tue le process coquille (plus de doc de rendu à fermer)
             except Exception:
                 pass
         _autodet["handler"] = None
         _autodet["controller"] = None
         _autodet["timer"] = None
-        _autodet["renderdoc"] = None
+        _autodet["client"] = None
+        _autodet["toolkit"] = None
+        _autodet["topwin"] = None
         _autodet["busy"] = False
         _msg("Auto-détection désactivée.")
     except Exception:
