@@ -160,14 +160,20 @@ fn main() -> wry::Result<()> {
         active_mode::start_foreground_watch(proxy.clone());
     }
 
-    let window = WindowBuilder::new()
+    let builder = WindowBuilder::new()
         .with_decorations(false)
         .with_always_on_top(true)
         .with_focused(false)
         .with_visible(false)
-        .with_inner_size(LogicalSize::new(200.0, 80.0))
-        .build(&event_loop)
-        .unwrap();
+        .with_inner_size(LogicalSize::new(200.0, 80.0));
+    // Pas d'entrée dans la barre des tâches : c'est une popup, pas une fenêtre
+    // d'appli. (TOOLWINDOW seul ne suffit pas — tao met aussi APPWINDOW.)
+    #[cfg(target_os = "windows")]
+    let builder = {
+        use tao::platform::windows::WindowBuilderExtWindows;
+        builder.with_skip_taskbar(true)
+    };
+    let window = builder.build(&event_loop).unwrap();
 
     // NOACTIVATE (jamais voler le focus) + coins carrés : pour les DEUX modes
     // (VSCode actif ET LibreOffice passif). La popup vit À CÔTÉ de l'éditeur.
