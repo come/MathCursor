@@ -100,7 +100,10 @@ export function activate(context: vscode.ExtensionContext): void {
     catch { return; }
     if (myGen !== refreshGen) { return; }
 
-    const candidates = (result.ranked ?? []).slice(0, cfg.get<number>('maxCandidates', 3)).map(c => c.latex);
+    // On envoie TOUS les candidats (le moteur en sort ≤ 5) ; le HTML n'en montre
+    // que `maxVisible` puis une ligne « voir plus » (flèche bas pour déployer).
+    const maxVisible = cfg.get<number>('maxCandidates', 3);
+    const candidates = (result.ranked ?? []).map(c => c.latex);
     if (result.decision === 'erreur' || candidates.length === 0) {
       popup.hide(); current = undefined;
       if (force) { vscode.window.setStatusBarMessage('MathCursor : rien à convertir', 1500); }
@@ -119,7 +122,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const reposition = startKey !== lastAnchorKey || !popup.isShown;
     lastAnchorKey = startKey;
     const showLatex = cfg.get<boolean>('showLatexInPopup', true);
-    popup.show({ candidates, colDelta, fontSize, reposition, showLatex });
+    popup.show({ candidates, colDelta, fontSize, reposition, showLatex, collapseAt: maxVisible });
   }
 
   function scheduleRefresh(): void {

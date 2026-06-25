@@ -35,7 +35,7 @@ use tao::platform::windows::WindowExtWindows;
 #[derive(Debug)]
 enum UserEvent {
     Show { candidates: String, x: f64, y: f64, sel: i64, theme: String,
-        col_delta: i64, font_size: f64, reposition: bool, show_latex: bool },
+        col_delta: i64, font_size: f64, reposition: bool, show_latex: bool, collapse_at: i64 },
     Update { sel: i64 },
     Close,
     Quit,
@@ -135,8 +135,13 @@ fn main() -> wry::Result<()> {
                     font_size: v.get("fontSize").and_then(|n| n.as_f64()).unwrap_or(14.0),
                     reposition: v.get("reposition").and_then(|b| b.as_bool()).unwrap_or(true),
                     show_latex: v.get("showLatex").and_then(|b| b.as_bool()).unwrap_or(true),
+                    collapse_at: v.get("collapseAt").and_then(|n| n.as_i64()).unwrap_or(0),
                 },
                 "update" => UserEvent::Update { sel: v.get("selectedIndex").and_then(|n| n.as_i64()).unwrap_or(0) },
+                // nav/activate : l'hôte passif (LibreOffice) transmet l'intention
+                // clavier (le HTML possède la sélection + le repli "voir plus").
+                "nav" => UserEvent::Nav(v.get("delta").and_then(|n| n.as_i64()).unwrap_or(0)),
+                "activate" => UserEvent::KeyCommit,
                 "close" => UserEvent::Close,
                 "quit" => UserEvent::Quit,
                 _ => continue,
@@ -196,21 +201,15 @@ fn main() -> wry::Result<()> {
         )
         .build()?;
 
-    // État mode actif (géré sur le thread UI).
-    let mut count: i64 = 0;   // nb de candidats affichés
-    let mut sel: i64 = -1;    // -1 = aucun surligné (nav-mode opt-in)
-    let mut engaged = false;  // 1re flèche pressée ?
-
+    // La sélection + le repli « voir plus » vivent dans le HTML (source unique,
+    // partagée VSCode/LibreOffice). L'hôte ne transmet que l'intention (mcNav /
+    // mcActivate) ; la coquille ne garde pas d'état de navigation.
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
         match event {
-            Event::UserEvent(UserEvent::Show { candidates, x, y, sel: s, theme, col_delta, font_size, reposition, show_latex }) => {
-                count = serde_json::from_str::<serde_json::Value>(&candidates)
-                    .ok().and_then(|v| v.as_array().map(|a| a.len() as i64)).unwrap_or(0);
-                sel = s;
-                engaged = s >= 0;
+            Event::UserEvent(UserEvent::Show { candidates, x, y, sel: s, theme, col_delta, font_size, reposition, show_latex, collapse_at }) => {
                 let _ = webview.evaluate_script(&format!(
-                    "window.mcRender({},{},\"{}\",{})", candidates, sel, theme, show_latex));
+                    "window.mcRender({},{},\"{}\",{},{})", candidates, s, theme, show_latex, collapse_at));
                 if active {
                     // Mode actif : on lit le caret (MSAA) et on ancre au DÉBUT du
                     // texte reconnu = caretX − colDelta × largeur_char. Figé tant que
@@ -252,20 +251,14 @@ fn main() -> wry::Result<()> {
                 }
             }
             Event::UserEvent(UserEvent::Update { sel: s }) => {
-                sel = s;
-                let _ = webview.evaluate_script(&format!("window.mcSetIndex({})", sel));
+                let _ = webview.evaluate_script(&format!("window.mcSetIndex({})", s));
             }
             Event::UserEvent(UserEvent::Nav(delta)) => {
-                if count > 0 {
-                    if !engaged { engaged = true; sel = 0; }
-                    else { sel = (sel + delta).clamp(0, count - 1); }
-                    let _ = webview.evaluate_script(&format!("window.mcSetIndex({})", sel));
-                }
+                let _ = webview.evaluate_script(&format!("window.mcNav({})", delta));
             }
             Event::UserEvent(UserEvent::KeyCommit) => {
-                let idx = if engaged && sel >= 0 { sel } else { 0 };
-                hide_popup(&window);
-                emit(&format!("{{\"evt\":\"commit\",\"index\":{}}}", idx));
+                // Le HTML possède la sélection : déploie « voir plus » ou poste commit:i.
+                let _ = webview.evaluate_script("window.mcActivate()");
             }
             Event::UserEvent(UserEvent::KeyDismiss) => {
                 hide_popup(&window);
@@ -295,6 +288,7 @@ fn main() -> wry::Result<()> {
                         { let _ = active; window.set_inner_size(LogicalSize::new(w + 2.0, h + 2.0)); }
                     }
                 } else if let Some(rest) = body.strip_prefix("commit:") {
+                    hide_popup(&window);
                     emit(&format!("{{\"evt\":\"commit\",\"index\":{}}}", rest));
                 } else if body == "dismiss" {
                     emit("{\"evt\":\"dismiss\"}");

@@ -68,6 +68,8 @@ _DEV_EXT = r"D:\Software\MathCursor\libreoffice-ext"
 # False pour ne montrer que la formule. (LibreOffice n'a pas d'UI de réglages :
 # point de bascule unique ici. VSCode = réglage mathcursor.showLatexInPopup.)
 _SHOW_LATEX = False
+# Nb de candidats affichés avant la ligne « voir plus » (flèche bas = déployer).
+_MAX_VISIBLE = 3
 # Alias stable partagé VSTO/vscode/libreoffice : on remplace le CONTENU de
 # models/latest/ au retrain (le nom de dossier ne change plus). Cf. commit
 # 8deab5f. Fallback sur les anciens dossiers versionnés v7/v6.
@@ -791,7 +793,7 @@ def _open_autopopup(starmaths, labels, zrange, sig):
     y += _line_height_px()  # une ligne plus bas : sous la ligne de frappe, pas au-dessus
     # idx=-1 : rien de surligné à l'ouverture (simple suggestion). ↓ entre dans la liste.
     if not cli.show(_candidates(labels), x, y, line_height=0, selected_index=-1,
-                    show_latex=_SHOW_LATEX):
+                    show_latex=_SHOW_LATEX, collapse_at=_MAX_VISIBLE):
         _posdbg.append("coquille: show a échoué (ready timeout / process mort)")
         return
     _autodet.update(popup=True, pos=(x, y), sm=list(starmaths), idx=-1,
@@ -808,7 +810,7 @@ def _refresh_autopopup(sms, labels, zrange, sig):
         return False
     x, y = pos
     if not cli.show(_candidates(labels), x, y, line_height=0, selected_index=-1,
-                    show_latex=_SHOW_LATEX):
+                    show_latex=_SHOW_LATEX, collapse_at=_MAX_VISIBLE):
         return False
     _autodet.update(sm=list(sms), idx=-1, n=len(sms), range=zrange, sig=sig)
     return True
@@ -853,6 +855,26 @@ def _autopopup_commit():
     if zr is not None and chosen is not None:
         try:
             _insert_formula(zr, chosen)
+        except Exception:
+            pass
+
+
+def _nav(delta):
+    """Transmet ↑/↓ au HTML (qui possède la sélection + le repli « voir plus »)."""
+    cli = _autodet.get("client")
+    if cli is not None:
+        try:
+            cli.nav(delta)
+        except Exception:
+            pass
+
+
+def _activate():
+    """Entrée : le HTML valide la sélection (ou déploie « voir plus »)."""
+    cli = _autodet.get("client")
+    if cli is not None:
+        try:
+            cli.activate()
         except Exception:
             pass
 
@@ -903,13 +925,13 @@ class _KeyHandler(unohelper.Base, XKeyHandler):
             return False
         code = ev.KeyCode
         if code == _K_DOWN:
-            _autopopup_move(1)
+            _nav(1)
             return True
         if code == _K_UP:
-            _autopopup_move(-1)
+            _nav(-1)
             return True
         if code == _K_RETURN:
-            _autopopup_commit()
+            _activate()
             return True
         if code == _K_ESCAPE:
             sig = _autodet.get("sig")

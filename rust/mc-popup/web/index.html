@@ -6,17 +6,16 @@
 <script defer src="./katex/katex.min.js"></script>
 <style>
   /* HTML PARTAGÉ (VSCode + LibreOffice), servi par mc-popup via mc://.
-     Thème via [data-theme] sur <html> (dark/light). L'hôte force le thème
-     (VSCode: dark/light éditeur ; LibreOffice: light) ; à défaut ("auto"),
-     on suit prefers-color-scheme. */
+     Le HTML possède l'état (candidats, repli "voir plus", sélection) ; l'hôte
+     ne fait que transmettre l'intention (mcNav / mcActivate). Thème via
+     [data-theme] : l'hôte force (VSCode dark/light ; LibreOffice light) ; à
+     défaut ("auto") on suit prefers-color-scheme. */
   :root, html[data-theme="dark"] {
     --bg: #252526; --border: #454545; --fg: #d4d4d4; --dim: #7c7c7c; --sel: #094771;
   }
   html[data-theme="light"] {
     --bg: #fbfbfb; --border: #c8c8c8; --fg: #1e1e1e; --dim: #9a9a9a; --sel: #d6e8ff;
   }
-  /* Fond opaque thémé partout → aucune zone blanche ; la fenêtre est
-     dimensionnée exactement à #card (pas de transparence, fiable WebView2). */
   html, body { margin: 0; overflow: hidden; background: var(--bg); line-height: 0; }
   #card {
     display: inline-block;
@@ -26,46 +25,50 @@
     color: var(--fg);
     user-select: none;
     white-space: nowrap;
-    line-height: normal;   /* annule le line-height:0 du body pour le contenu */
+    line-height: normal;
   }
   .row { padding: 8px 14px; border-radius: 4px; cursor: pointer; text-align: left; }
   .row.sel { background: var(--sel); }
   .row .formula { text-align: left; }
   .row .formula .katex { color: var(--fg); }
-  /* displayMode=true → bloc à hauteur réelle (mesurable) ; marge 1em retirée,
-     calé à gauche. */
   .row .formula .katex-display { margin: 0; text-align: left; }
   .row .formula .katex-display > .katex { text-align: left; }
   .row .code {
-    margin-top: 3px;   /* petit espace entre la formule et le LaTeX */
+    margin-top: 3px;
     font-family: Consolas, "Cascadia Mono", monospace;
     font-size: 10.5px;
     color: var(--dim);
-    text-align: right;   /* LaTeX poussé à droite */
+    text-align: right;
   }
+  /* Ligne "voir plus" (façon Word) : flèche bas dessus → déploie. */
+  .more { padding: 6px 14px; border-radius: 4px; cursor: pointer; text-align: center;
+    color: var(--dim); font-family: "Segoe UI", system-ui, sans-serif; font-size: 11px; }
+  .more.sel { background: var(--sel); color: var(--fg); }
 </style>
 </head>
 <body>
 <div id="card"></div>
 <script>
-  var _cands = [];
-  var _sel = -1;
-  var _showLatex = true;   // ligne LaTeX sous la formule (optionnelle, fournie par l'hôte)
+  var _cands = [];        // tous les candidats classés
+  var _sel = -1;          // ligne sélectionnée (-1 = aucune) ; inclut la ligne "voir plus"
+  var _showLatex = true;  // ligne LaTeX sous la formule (optionnelle)
+  var _collapseAt = 0;    // 0 = pas de repli ; sinon n premiers + "voir plus"
+  var _expanded = false;  // "voir plus" déployé ?
 
   function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
-  // Thème explicite ("dark"/"light") fourni par l'hôte, sinon AUTO : on suit
-  // prefers-color-scheme (l'OS / le webview host) — cf. choix utilisateur.
   function resolveTheme(theme) {
     if (theme === "dark" || theme === "light") { return theme; }
     try { return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; }
     catch (e) { return "light"; }
   }
 
+  function hasMore() { return _collapseAt > 0 && !_expanded && _cands.length > _collapseAt; }
+  function visibleCount() { return hasMore() ? _collapseAt : _cands.length; }
+  function moreIndex() { return hasMore() ? visibleCount() : -1; }   // index de "voir plus"
+  function navCount() { return visibleCount() + (hasMore() ? 1 : 0); }
+
   function postSize() {
-    // UNIQUEMENT la carte (inline-block = ajustée au contenu). Surtout PAS
-    // scrollWidth/Height du documentElement : ils valent ≥ la taille de la
-    // fenêtre → boucle qui fige la fenêtre à sa taille courante.
     var card = document.getElementById("card");
     var dpr = window.devicePixelRatio || 1;
     var w = Math.ceil(card.offsetWidth * dpr);
@@ -74,7 +77,6 @@
       window.ipc.postMessage("size:" + JSON.stringify({ w: w, h: h }));
     }
   }
-  // Mesure à plusieurs instants (reflow des fontes KaTeX async).
   function postSizeSoon() {
     requestAnimationFrame(postSize);
     setTimeout(postSize, 60);
@@ -84,7 +86,8 @@
   function render() {
     var card = document.getElementById("card");
     card.innerHTML = "";
-    for (var i = 0; i < _cands.length; i++) {
+    var vc = visibleCount();
+    for (var i = 0; i < vc; i++) {
       var latex = _cands[i].latex || "";
       var row = document.createElement("div");
       row.className = "row" + (i === _sel ? " sel" : "");
@@ -92,10 +95,8 @@
 
       var f = document.createElement("div");
       f.className = "formula";
-      try {
-        // displayMode:true → formule en bloc, pleine taille, hauteur mesurable.
-        katex.render(latex, f, { throwOnError: false, displayMode: true });
-      } catch (e) { f.textContent = latex; }
+      try { katex.render(latex, f, { throwOnError: false, displayMode: true }); }
+      catch (e) { f.textContent = latex; }
       row.appendChild(f);
 
       if (_showLatex) {
@@ -111,24 +112,59 @@
       });
       card.appendChild(row);
     }
+    if (hasMore()) {
+      var more = document.createElement("div");
+      more.className = "more" + (_sel === moreIndex() ? " sel" : "");
+      more.textContent = "▾ voir plus (" + (_cands.length - vc) + ")";
+      more.addEventListener("mousedown", function (ev) { ev.preventDefault(); expand(); });
+      card.appendChild(more);
+    }
     postSizeSoon();
   }
 
-  window.mcRender = function (cands, sel, theme, showLatex) {
+  function expand() {
+    _expanded = true;
+    if (_sel > _cands.length - 1) { _sel = _cands.length - 1; }
+    render();
+  }
+
+  window.mcRender = function (cands, sel, theme, showLatex, collapseAt) {
     _cands = cands || [];
     _sel = (typeof sel === "number") ? sel : -1;
-    _showLatex = (showLatex !== false);   // défaut : affiché (rétrocompat)
+    _showLatex = (showLatex !== false);
+    _collapseAt = (typeof collapseAt === "number") ? collapseAt : 0;
+    _expanded = false;
     document.documentElement.dataset.theme = resolveTheme(theme);
     render();
   };
-  window.mcSetIndex = function (i) {
-    _sel = i;
-    var rows = document.querySelectorAll(".row");
-    for (var k = 0; k < rows.length; k++) { rows[k].classList.toggle("sel", k === _sel); }
+
+  // Navigation (transmise par l'hôte : VSCode hook clavier, LibreOffice UNO).
+  window.mcNav = function (delta) {
+    var nc = navCount();
+    if (nc === 0) { return; }
+    if (_sel < 0) { _sel = (delta > 0) ? 0 : (nc - 1); render(); return; }
+    // flèche bas SUR "voir plus" → déploie (puis sélectionne le 1ᵉʳ révélé).
+    if (delta > 0 && _sel === moreIndex()) {
+      var first = visibleCount();
+      expand();
+      _sel = Math.min(first, _cands.length - 1);
+      render();
+      return;
+    }
+    _sel = Math.max(0, Math.min(_sel + delta, nc - 1));
+    render();
   };
 
-  // Re-poste la taille à chaque changement réel de #card (reflow des fontes
-  // KaTeX inclus) → fenêtre toujours ajustée au contenu.
+  // Entrée/Tab (ou clic) : "voir plus" → déploie ; sinon valide la sélection.
+  window.mcActivate = function () {
+    if (hasMore() && _sel === moreIndex()) { expand(); _sel = visibleCount() > 0 ? _collapseAt : 0; render(); return; }
+    var i = (_sel < 0) ? 0 : _sel;
+    if (window.mcCommit) { window.mcCommit(i); }
+  };
+
+  // Rétrocompat (Update direct) — non utilisé avec mcNav, gardé par sûreté.
+  window.mcSetIndex = function (i) { _sel = i; render(); };
+
   if (window.ResizeObserver) {
     new ResizeObserver(postSize).observe(document.getElementById("card"));
   }

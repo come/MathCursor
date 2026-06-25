@@ -100,7 +100,7 @@ class PopupClient:
             return False
 
     def show(self, candidates, x, y, line_height=0, selected_index=0, theme="light",
-             show_latex=True):
+             show_latex=True, collapse_at=0):
         """candidates = liste de dicts {"latex": "..."}. (x, y) = coords ÉCRAN
         absolues du caret ; la popup s'affiche `line_height` px plus bas.
         theme = "light"/"dark" (LibreOffice/Writer = clair) ; la coquille suit
@@ -112,10 +112,19 @@ class PopupClient:
                            "x": int(x), "y": int(y),
                            "lineHeight": int(line_height),
                            "selectedIndex": int(selected_index),
-                           "theme": theme, "showLatex": bool(show_latex)})
+                           "theme": theme, "showLatex": bool(show_latex),
+                           "collapseAt": int(collapse_at)})
 
     def update(self, selected_index):
         return self._send({"cmd": "update", "selectedIndex": int(selected_index)})
+
+    # Le HTML possède la sélection + le repli « voir plus » : on transmet juste
+    # l'intention clavier (la coquille relaie à window.mcNav / window.mcActivate).
+    def nav(self, delta):
+        return self._send({"cmd": "nav", "delta": int(delta)})
+
+    def activate(self):
+        return self._send({"cmd": "activate"})
 
     def close(self):
         return self._send({"cmd": "close"})

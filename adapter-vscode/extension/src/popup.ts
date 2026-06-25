@@ -24,6 +24,7 @@ export interface ShowArgs {
   fontSize: number;    // editor.fontSize (logique)
   reposition: boolean; // recalculer l'ancrage (nouvelle zone) ou figer
   showLatex: boolean;  // afficher la ligne LaTeX sous la formule
+  collapseAt: number;  // nb de candidats avant la ligne « voir plus » (0 = tout)
 }
 
 export class PopupController {
@@ -61,6 +62,7 @@ export class PopupController {
       fontSize: a.fontSize,
       reposition: a.reposition,
       showLatex: a.showLatex,      // ligne LaTeX optionnelle
+      collapseAt: a.collapseAt,    // repli « voir plus »
     };
     try { p.stdin!.write(JSON.stringify(msg) + '\n'); this.shown = true; }
     catch { /* ignore */ }
