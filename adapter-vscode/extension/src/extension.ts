@@ -118,7 +118,8 @@ export function activate(context: vscode.ExtensionContext): void {
     const startKey = `${found.range.start.line}:${found.range.start.character}`;
     const reposition = startKey !== lastAnchorKey || !popup.isShown;
     lastAnchorKey = startKey;
-    popup.show({ candidates, colDelta, fontSize, reposition });
+    const showLatex = cfg.get<boolean>('showLatexInPopup', true);
+    popup.show({ candidates, colDelta, fontSize, reposition, showLatex });
   }
 
   function scheduleRefresh(): void {

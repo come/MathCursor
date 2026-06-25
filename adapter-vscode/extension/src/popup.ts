@@ -23,6 +23,7 @@ export interface ShowArgs {
   colDelta: number;    // nb de caractères du début de zone au caret
   fontSize: number;    // editor.fontSize (logique)
   reposition: boolean; // recalculer l'ancrage (nouvelle zone) ou figer
+  showLatex: boolean;  // afficher la ligne LaTeX sous la formule
 }
 
 export class PopupController {
@@ -59,6 +60,7 @@ export class PopupController {
       colDelta: a.colDelta,        // ancrage au début du texte reconnu
       fontSize: a.fontSize,
       reposition: a.reposition,
+      showLatex: a.showLatex,      // ligne LaTeX optionnelle
     };
     try { p.stdin!.write(JSON.stringify(msg) + '\n'); this.shown = true; }
     catch { /* ignore */ }

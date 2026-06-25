@@ -64,6 +64,10 @@ _CULTURE = culture.FR
 # vendor ou modèle absents -> _DETECTOR = None, l'extension charge quand même et
 # Ctrl+Espace marche (dégradation gracieuse, parité AutoDetectController Word).
 _DEV_EXT = r"D:\Software\MathCursor\libreoffice-ext"
+# Ligne LaTeX (petit, à droite) sous la formule rendue dans la popup. Mettre à
+# False pour ne montrer que la formule. (LibreOffice n'a pas d'UI de réglages :
+# point de bascule unique ici. VSCode = réglage mathcursor.showLatexInPopup.)
+_SHOW_LATEX = True
 # Alias stable partagé VSTO/vscode/libreoffice : on remplace le CONTENU de
 # models/latest/ au retrain (le nom de dossier ne change plus). Cf. commit
 # 8deab5f. Fallback sur les anciens dossiers versionnés v7/v6.
@@ -786,7 +790,8 @@ def _open_autopopup(starmaths, labels, zrange, sig):
     x, y = _caret_screen_abs(win)
     y += _line_height_px()  # une ligne plus bas : sous la ligne de frappe, pas au-dessus
     # idx=-1 : rien de surligné à l'ouverture (simple suggestion). ↓ entre dans la liste.
-    if not cli.show(_candidates(labels), x, y, line_height=0, selected_index=-1):
+    if not cli.show(_candidates(labels), x, y, line_height=0, selected_index=-1,
+                    show_latex=_SHOW_LATEX):
         _posdbg.append("coquille: show a échoué (ready timeout / process mort)")
         return
     _autodet.update(popup=True, pos=(x, y), sm=list(starmaths), idx=-1,
@@ -802,7 +807,8 @@ def _refresh_autopopup(sms, labels, zrange, sig):
     if cli is None or _autodet["popup"] is None or pos is None:
         return False
     x, y = pos
-    if not cli.show(_candidates(labels), x, y, line_height=0, selected_index=-1):
+    if not cli.show(_candidates(labels), x, y, line_height=0, selected_index=-1,
+                    show_latex=_SHOW_LATEX):
         return False
     _autodet.update(sm=list(sms), idx=-1, n=len(sms), range=zrange, sig=sig)
     return True

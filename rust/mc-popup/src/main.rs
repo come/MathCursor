@@ -35,7 +35,7 @@ use tao::platform::windows::WindowExtWindows;
 #[derive(Debug)]
 enum UserEvent {
     Show { candidates: String, x: f64, y: f64, sel: i64, theme: String,
-        col_delta: i64, font_size: f64, reposition: bool },
+        col_delta: i64, font_size: f64, reposition: bool, show_latex: bool },
     Update { sel: i64 },
     Close,
     Quit,
@@ -134,6 +134,7 @@ fn main() -> wry::Result<()> {
                     col_delta: v.get("colDelta").and_then(|n| n.as_i64()).unwrap_or(0),
                     font_size: v.get("fontSize").and_then(|n| n.as_f64()).unwrap_or(14.0),
                     reposition: v.get("reposition").and_then(|b| b.as_bool()).unwrap_or(true),
+                    show_latex: v.get("showLatex").and_then(|b| b.as_bool()).unwrap_or(true),
                 },
                 "update" => UserEvent::Update { sel: v.get("selectedIndex").and_then(|n| n.as_i64()).unwrap_or(0) },
                 "close" => UserEvent::Close,
@@ -203,13 +204,13 @@ fn main() -> wry::Result<()> {
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
         match event {
-            Event::UserEvent(UserEvent::Show { candidates, x, y, sel: s, theme, col_delta, font_size, reposition }) => {
+            Event::UserEvent(UserEvent::Show { candidates, x, y, sel: s, theme, col_delta, font_size, reposition, show_latex }) => {
                 count = serde_json::from_str::<serde_json::Value>(&candidates)
                     .ok().and_then(|v| v.as_array().map(|a| a.len() as i64)).unwrap_or(0);
                 sel = s;
                 engaged = s >= 0;
                 let _ = webview.evaluate_script(&format!(
-                    "window.mcRender({},{},\"{}\")", candidates, sel, theme));
+                    "window.mcRender({},{},\"{}\",{})", candidates, sel, theme, show_latex));
                 if active {
                     // Mode actif : on lit le caret (MSAA) et on ancre au DÉBUT du
                     // texte reconnu = caretX − colDelta × largeur_char. Figé tant que

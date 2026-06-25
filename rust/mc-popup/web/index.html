@@ -50,6 +50,7 @@
 <script>
   var _cands = [];
   var _sel = -1;
+  var _showLatex = true;   // ligne LaTeX sous la formule (optionnelle, fournie par l'hôte)
 
   function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
@@ -97,10 +98,12 @@
       } catch (e) { f.textContent = latex; }
       row.appendChild(f);
 
-      var c = document.createElement("div");
-      c.className = "code";
-      c.innerHTML = esc(latex);
-      row.appendChild(c);
+      if (_showLatex) {
+        var c = document.createElement("div");
+        c.className = "code";
+        c.innerHTML = esc(latex);
+        row.appendChild(c);
+      }
 
       row.addEventListener("mousedown", function (ev) {
         ev.preventDefault();
@@ -111,9 +114,10 @@
     postSizeSoon();
   }
 
-  window.mcRender = function (cands, sel, theme) {
+  window.mcRender = function (cands, sel, theme, showLatex) {
     _cands = cands || [];
     _sel = (typeof sel === "number") ? sel : -1;
+    _showLatex = (showLatex !== false);   // défaut : affiché (rétrocompat)
     document.documentElement.dataset.theme = resolveTheme(theme);
     render();
   };

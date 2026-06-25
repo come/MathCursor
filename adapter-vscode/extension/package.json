@@ -76,6 +76,11 @@
           "default": true,
           "description": "Ajouter automatiquement \\usepackage{amsmath}/{amssymb} dans le préambule LaTeX quand une formule insérée en a besoin (\\mathbb, matrices, cases…)."
         },
+        "mathcursor.showLatexInPopup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Afficher la source LaTeX (en petit, à droite) sous chaque formule rendue dans la popup."
+        },
         "mathcursor.inlineDisplaystyle": {
           "type": "string",
           "enum": ["auto", "always", "never"],

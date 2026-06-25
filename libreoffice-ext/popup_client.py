@@ -99,18 +99,20 @@ class PopupClient:
             self._proc = None
             return False
 
-    def show(self, candidates, x, y, line_height=0, selected_index=0, theme="light"):
+    def show(self, candidates, x, y, line_height=0, selected_index=0, theme="light",
+             show_latex=True):
         """candidates = liste de dicts {"latex": "..."}. (x, y) = coords ÉCRAN
         absolues du caret ; la popup s'affiche `line_height` px plus bas.
         theme = "light"/"dark" (LibreOffice/Writer = clair) ; la coquille suit
-        prefers-color-scheme si on n'envoie rien."""
+        prefers-color-scheme si on n'envoie rien. show_latex = ligne LaTeX sous
+        la formule (optionnelle)."""
         if not self.ensure():
             return False
         return self._send({"cmd": "show", "candidates": candidates,
                            "x": int(x), "y": int(y),
                            "lineHeight": int(line_height),
                            "selectedIndex": int(selected_index),
-                           "theme": theme})
+                           "theme": theme, "showLatex": bool(show_latex)})
 
     def update(self, selected_index):
         return self._send({"cmd": "update", "selectedIndex": int(selected_index)})
