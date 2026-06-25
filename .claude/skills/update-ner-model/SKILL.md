@@ -125,6 +125,30 @@ Write-Host "Rollback : models/latest/ restauré depuis l'archive $stamp" -Foregr
 
 ---
 
+## Étape 6 — Publier le modèle sur R2 pour la CI VSIX (SI validé)
+
+⚠️ **Uniquement si l'étape 4 est PASS** (ne jamais publier un modèle en régression).
+
+La CI VSIX VSCode (workflow `vscode-vsix`) ne lit **pas** le disque : elle tire le
+modèle du bucket **public** `mathcursor-models`. Tant qu'on ne le ré-uploade pas,
+la CI continue d'empaqueter **l'ancien** modèle. Après un retrain validé, publier :
+
+```bash
+tools/cloudflare/deploy.sh model
+```
+
+(Pousse `models/latest/model_quantized.onnx` + `tokenizer.json` vers
+`mathcursor-models/latest/`. Nécessite `~/.mathcursor/cloudflare.env`. Cf. ADR
+`2026-06-25-Feat-vscode-marketplace-publishing-model` + skill `/deploy-prod`
+étape 4b.)
+
+Demander via AskUserQuestion avant de pousser (action sortante, bucket public) :
+*« Publier le nouveau modèle sur R2 pour la CI VSIX maintenant ? »* — si non, le
+rappeler dans le rapport (à faire plus tard). N'affecte **ni** l'installer Word
+**ni** le commit (le modèle reste gitignoré localement).
+
+---
+
 ## Rapport final
 
 Format court :
@@ -134,7 +158,9 @@ Format court :
 ✓ Archivé    : models/archive/<stamp>/  (ancien modèle préservé)
 ✓ Installé   : models/latest/  (<N> Mo)
 ✓ Corpus NER : F1 échantillon X.XXX (≥0.90) · précision X.XXX (≥0.95) · 80p X.XXX (≥0.90) · gold X.XXX (≥0.93) → PASS
-→ Pour livrer : /build-iss puis /deploy-prod (le modèle est gitignoré, rien à committer).
+✓ R2 (CI VSIX) : modèle publié sur mathcursor-models / à publier (`deploy.sh model`)
+→ Pour livrer Word : /build-iss puis /deploy-prod (le modèle est gitignoré, rien à committer).
+→ Pour livrer VSCode : publier le modèle sur R2 (étape 6) → la CI vscode-vsix le prendra.
 ```
 
 Si rollback : ✗ + F1 obtenus vs seuils + "modèle précédent restauré, rien n'a changé en prod".
