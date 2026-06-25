@@ -12,6 +12,7 @@ pub mod parser;
 pub mod render;
 pub mod score;
 pub mod segment;
+pub mod starmath;
 pub mod vocab;
 
 pub use culture::Culture;
@@ -44,6 +45,7 @@ pub struct Registry {
     pub role: HashMap<String, String>,
     pub sep: HashMap<char, i32>,
     pub units_compound: HashMap<String, String>,
+    pub sameas: HashMap<String, String>, // alias → clé de base (×→*, ≤→<=…), pour StarMath
     pub consts: Consts,
     pub fr: Culture,
     pub us: Culture,
@@ -131,7 +133,8 @@ fn build_registry() -> Registry {
             vocab.insert(key.clone(), vocab::build_entry(j, &loose_map));
         }
     }
-    // pass 2 : sameAs = clone + overrides
+    // pass 2 : sameAs = clone + overrides (+ table alias→base pour StarMath)
+    let mut sameas: HashMap<String, String> = HashMap::new();
     for (key, j) in syms {
         if let Some(base) = j.get("sameAs").and_then(|v| v.as_str()) {
             let mut e = vocab[base].clone();
@@ -139,6 +142,7 @@ fn build_registry() -> Registry {
                 e.word_space = ws;
             }
             vocab.insert(key.clone(), e);
+            sameas.insert(key.clone(), base.to_string());
         }
     }
 
@@ -237,6 +241,7 @@ fn build_registry() -> Registry {
         role,
         sep,
         units_compound,
+        sameas,
         consts,
         fr,
         us,

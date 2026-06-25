@@ -30,8 +30,9 @@ entries = [
     (os.path.join(HERE, "oxt", "Jobs.xcu"), "Jobs.xcu"),
     (os.path.join(HERE, "oxt", "jobs.py"), "jobs.py"),
     (os.path.join(HERE, "mathcursor.py"), "Scripts/python/mathcursor.py"),
-    # popup_client.py à la racine de l'ext (importé par mathcursor.py via _root sur sys.path).
+    # Clients stdio à la racine de l'ext (importés par mathcursor.py via _root).
     (os.path.join(HERE, "popup_client.py"), "popup_client.py"),
+    (os.path.join(HERE, "rust_clients.py"), "rust_clients.py"),
 ]
 
 
@@ -51,12 +52,35 @@ def add_tree(src_dir, arc_prefix):
             entries.append((ap, arc_prefix + "/" + rel))
 
 
-add_tree(os.path.join(ROOT, "engine-python", "mc_engine"), "mc_engine")
-add_tree(os.path.join(ROOT, "data", "engine"), "data/engine")
-# Détecteur NER (pur Python). Le modèle ONNX + les deps natives (vendor) ne sont
-# PAS bundlés dans ce build léger : en dev ils sont lus depuis le repo (cf.
-# bootstrap _DEV_MODEL / _spike_vendor). Packaging release cross-OS = étape P4.
-add_tree(os.path.join(HERE, "mc_ner"), "mc_ner")
+# Cœur RUST (analyze=moteur, mc-ner=détection) : build + stage dans bin/<tag>/.
+# Remplace le moteur Python (mc_engine) + data/engine (le Rust embarque la data)
+# + le NER Python (mc_ner). Le modèle NER (~46 Mo) n'est PAS bundlé (dev = repo) ;
+# le bundle release du modèle = étape packaging ultérieure.
+def _stage_core_bins():
+    win = sys.platform.startswith("win")
+    ext = ".exe" if win else ""
+    if win:
+        tag = "win_amd64"
+    elif sys.platform == "darwin":
+        import platform
+        tag = "mac_arm64" if platform.machine().lower() in ("arm64", "aarch64") else "mac_x86_64"
+    else:
+        tag = "linux_x86_64"
+    rustdir = os.path.join(ROOT, "rust")
+    for crate, binname in (("mc-engine", "analyze"), ("mc-ner", "mc-ner")):
+        if subprocess.run(["cargo", "build", "--release", "-p", crate, "--bin", binname],
+                          cwd=rustdir).returncode != 0:
+            raise SystemExit("cargo build %s a échoué" % binname)
+    dest_dir = os.path.join(HERE, "bin", tag)
+    os.makedirs(dest_dir, exist_ok=True)
+    for binname in ("analyze", "mc-ner"):
+        shutil.copy2(os.path.join(rustdir, "target", "release", binname + ext),
+                     os.path.join(dest_dir, binname + ext))
+    add_tree(os.path.join(HERE, "bin"), "bin")
+    print("   cœur Rust -> bin/%s/ (analyze%s, mc-ner%s)" % (tag, ext, ext))
+
+
+_stage_core_bins()
 
 # Popup webview : HTML + KaTeX PARTAGÉS (rust/mc-popup/web, source unique avec
 # VSCode) → stagés dans assets/popup/ (dev + bundle), puis bundlés.

@@ -9,6 +9,7 @@
 //! Un caractère inattendu (entrée libre) fait paniquer le lexer comme le C# lève
 //! une exception : on le rattrape (catch_unwind) → "erreur", le process survit.
 
+use mc_engine::starmath::render_starmath;
 use mc_engine::{analyze, reg};
 use serde_json::json;
 use std::io::{self, BufRead, Write};
@@ -44,7 +45,11 @@ fn main() {
                 let ranked: Vec<_> = r
                     .ranked
                     .iter()
-                    .map(|c| json!({ "latex": c.latex, "cost": c.cost }))
+                    .map(|c| json!({
+                        "latex": c.latex,
+                        "starmath": render_starmath(&c.node, cu),
+                        "cost": c.cost,
+                    }))
                     .collect();
                 json!({ "decision": r.decision, "ranked": ranked, "hasNote": r.has_note })
             }

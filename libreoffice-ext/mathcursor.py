@@ -41,39 +41,26 @@ try:
 except Exception:
     _root = None
 
-if _root and os.path.isdir(os.path.join(_root, "mc_engine")):
-    if _root not in sys.path:
-        sys.path.insert(0, _root)
-    from mc_engine import data as _data       # noqa: E402
-    _data.set_data_dir(os.path.join(_root, "data", "engine"))
-else:
-    _eng = os.environ.get("MATHCURSOR_ENGINE", r"D:\Software\MathCursor\engine-python")
-    if _eng and _eng not in sys.path:
-        sys.path.insert(0, _eng)
-
-from mc_engine.engine import analyze        # noqa: E402
-from mc_engine import culture                # noqa: E402
-from mc_engine.starmath import to_starmath   # noqa: E402
-
-_STARMATH_CLSID = "078B7ABA-54FC-457F-8551-6147E776A997"
-_CULTURE = culture.FR
-
-
-# ── NER (auto-détection à la frappe, optionnel) ──────────────────────────────
-# Imports natifs (onnxruntime/numpy) PARESSEUX via mc_ner.load_detector : si
-# vendor ou modèle absents -> _DETECTOR = None, l'extension charge quand même et
-# Ctrl+Espace marche (dégradation gracieuse, parité AutoDetectController Word).
+# Cœur RUST unifié : moteur (analyze) + détection (mc-ner) spawnés comme binaires
+# — LES MÊMES que VSCode. Plus de moteur ni de NER Python. Cf. ADR
+# 2026-06-25-Feat-libreoffice-rust-core.
 _DEV_EXT = r"D:\Software\MathCursor\libreoffice-ext"
-# Ligne LaTeX (petit, à droite) sous la formule rendue dans la popup. Mettre à
-# False pour ne montrer que la formule. (LibreOffice n'a pas d'UI de réglages :
-# point de bascule unique ici. VSCode = réglage mathcursor.showLatexInPopup.)
+_DEV_RUST = r"D:\Software\MathCursor\rust\target\release"
+_DEV_MODEL = r"D:\Software\MathCursor\models\latest"
+# Ligne LaTeX optionnelle sous la formule (False = formule seule). VSCode =
+# réglage mathcursor.showLatexInPopup.
 _SHOW_LATEX = False
 # Nb de candidats affichés avant la ligne « voir plus » (flèche bas = déployer).
 _MAX_VISIBLE = 3
-# Alias stable partagé VSTO/vscode/libreoffice : on remplace le CONTENU de
-# models/latest/ au retrain (le nom de dossier ne change plus). Cf. commit
-# 8deab5f. Fallback sur les anciens dossiers versionnés v7/v6.
-_DEV_MODEL = r"D:\Software\MathCursor\models\latest"
+
+_STARMATH_CLSID = "078B7ABA-54FC-457F-8551-6147E776A997"
+_CULTURE = "fr"   # "fr" / "us"
+
+# rust_clients (+ popup_client) sont bundlés à la racine de l'extension.
+for _p in (_root, _DEV_EXT):
+    if _p and _p not in sys.path:
+        sys.path.insert(0, _p)
+from rust_clients import EngineClient, NerClient   # noqa: E402
 
 
 def _platform_tag():
@@ -93,38 +80,28 @@ def _first_dir(*cands):
     return None
 
 
-_DETECTOR = None
-try:
-    _tag = _platform_tag()
-    # 1) dossier contenant mc_ner (bundlé à la racine de l'ext, ou repo en dev)
-    _ext = None
-    for _c in (_root, os.environ.get("MATHCURSOR_EXT"), _DEV_EXT):
-        if _c and os.path.isdir(os.path.join(_c, "mc_ner")):
-            _ext = _c
-            break
-    if _ext and _ext not in sys.path:
-        sys.path.insert(0, _ext)
-    # 2) deps natives (onnxruntime/numpy) : bundlé vendor/<tag> -> env -> dev
-    _vendor = _first_dir(
-        os.path.join(_root, "vendor", _tag) if _root else None,
-        os.environ.get("MATHCURSOR_VENDOR"),
-        os.path.join(_DEV_EXT, "_spike_vendor"),
-    )
-    if _vendor and _vendor not in sys.path:
-        sys.path.insert(0, _vendor)
-    # 3) modèle ONNX : alias 'latest' (bundlé -> env -> dev) puis fallback versionné
-    _model = _first_dir(
-        os.path.join(_root, "models", "latest") if _root else None,
-        os.environ.get("MATHCURSOR_MODEL"),
-        _DEV_MODEL,
-        os.path.join(_root, "models", "distilmult-v7") if _root else None,
-        r"D:\Software\MathCursor\adapter-vsto\installer\payload\models\distilmult-v7",
-    )
-    if _model:
-        import mc_ner  # noqa: E402
-        _DETECTOR = mc_ner.load_detector(_model)
-except Exception:
-    _DETECTOR = None
+def _bin(name):
+    """Binaire cœur Rust : installé (bin/<tag>/) sinon dev (rust/target/release)."""
+    exe = name + (".exe" if sys.platform.startswith("win") else "")
+    tag = _platform_tag()
+    for base in ((os.path.join(_root, "bin", tag) if _root else None), _DEV_RUST):
+        if base:
+            p = os.path.join(base, exe)
+            if os.path.isfile(p):
+                return p
+    return os.path.join(_DEV_RUST, exe)
+
+
+# Moteur (analyze) : indispensable (src -> candidats {latex, starmath, cost}).
+_ENGINE = EngineClient(_bin("analyze"))
+
+# Détection NER (mc-ner + modèle) : optionnelle — Ctrl+Espace marche sans.
+_model = _first_dir(
+    os.path.join(_root, "models", "latest") if _root else None,
+    os.environ.get("MATHCURSOR_MODEL"),
+    _DEV_MODEL,
+)
+_NER = NerClient(_bin("mc-ner"), _model)
 
 
 # ── coquille popup webview (process séparé, KaTeX) ───────────────────────────
@@ -514,20 +491,21 @@ def _convert():
     src = rng.getString().strip()
     if not src:
         return
-    res = analyze(src, _CULTURE)
-    # rien reconnu (prose, erreur) : on ne touche PAS au document.
-    if res.decision == "erreur" or not res.ranked:
+    res = _ENGINE.analyze(src, _CULTURE)
+    # rien reconnu (prose, erreur, moteur indispo) : on ne touche PAS au document.
+    if not res or res["decision"] == "erreur" or not res["ranked"]:
         return
-    if res.decision == "popup" and len(res.ranked) > 1:
+    ranked = res["ranked"]
+    if res["decision"] == "popup" and len(ranked) > 1:
         # plusieurs lectures : popup NON-MODALE (coquille webview), pilotée au
         # clavier comme l'auto-détection. On s'assure que le key handler est
         # attaché (Ctrl+Espace peut être utilisé sans auto-détection active).
-        starmaths = [to_starmath(c.node, _CULTURE) for c in res.ranked]
-        labels = [c.latex for c in res.ranked]
+        starmaths = [c["starmath"] for c in ranked]
+        labels = [c["latex"] for c in ranked]
         _ensure_key_handler()
         _open_autopopup(starmaths, labels, rng, ("convert", id(rng)))
         return  # l'insertion se fait via ↓/↑/Entrée (ou clic)
-    chosen_sm = to_starmath(res.ranked[0].node, _CULTURE)
+    chosen_sm = ranked[0]["starmath"]
     _insert_formula(rng, chosen_sm)
 
 
@@ -682,42 +660,28 @@ def _detect_candidate():
     if para_text[caret - 1] == "\t" or (caret >= 2 and para_text[caret - 1] == " " and para_text[caret - 2] == " "):
         return None
 
-    from mc_ner import refiner
-    left, window = refiner.compute_window(para_text, [], caret)
-    if not window.strip():
-        return None
-    zones = _DETECTOR.detect(window)
-    if not zones:
-        return None
-    for z in zones:  # coords fenêtre -> ¶
-        z.start += left
-        z.end += left
-        z.text = para_text[z.start:z.end]
-    zone, _d = refiner.pick_nearest(zones, caret)
+    # Détection + raffinage (zone finale) entièrement côté Rust (mc-ner :
+    # detect + pick_nearest + merge + extend, comme le ner-helper de Word).
+    zone = _NER.detect(para_text, caret)
     if zone is None:
         return None
-    zone = refiner.try_extend_forward_whitespace(para_text, zone, caret)
-    if caret < zone.start or caret > zone.end:
+    s, e = zone
+    if caret < s or caret > e:
         return None
-    merged = refiner.merge_whitespace_adjacent(zones, para_text, zone)
-    attempts = [merged, zone] if (merged.start != zone.start or merged.end != zone.end) else [zone]
-    for att in attempts:
-        z2 = refiner.extend_backward_keyword(para_text, att)
-        s, e = z2.start, z2.end
-        while s < e and para_text[s].isspace():
-            s += 1
-        while e > s and para_text[e - 1].isspace():
-            e -= 1
-        if e <= s:
-            continue
-        res = analyze(para_text[s:e], _CULTURE)
-        if res.decision == "erreur" or not res.ranked:
-            continue
-        sms = [to_starmath(c.node, _CULTURE) for c in res.ranked]
-        labels = [c.latex for c in res.ranked]
-        sig = (s, e, tuple(labels))
-        return sig, sms, labels, _zone_range(para_start, s, e)
-    return None
+    while s < e and para_text[s].isspace():
+        s += 1
+    while e > s and para_text[e - 1].isspace():
+        e -= 1
+    if e <= s:
+        return None
+    res = _ENGINE.analyze(para_text[s:e], _CULTURE)
+    if not res or res["decision"] == "erreur" or not res["ranked"]:
+        return None
+    ranked = res["ranked"]
+    sms = [c["starmath"] for c in ranked]
+    labels = [c["latex"] for c in ranked]
+    sig = (s, e, tuple(labels))
+    return sig, sms, labels, _zone_range(para_start, s, e)
 
 
 def _autodetect_tick():
@@ -725,7 +689,7 @@ def _autodetect_tick():
     déplacement du view-cursor) pompent la boucle d'événements ; sans cette garde,
     un AsyncCallback en file se ré-exécute pendant qu'on est déjà dans le tick →
     travail imbriqué → gel (AppHang)."""
-    if _DETECTOR is None or _autodet.get("busy"):
+    if not _NER.available or _autodet.get("busy"):
         return
     _autodet["busy"] = True
     try:
@@ -1034,9 +998,9 @@ def _ensure_key_handler():
 def _start_autodetect(verbose):
     """Active l'auto-détection (key handler) sur le contrôleur courant. `verbose`
     = boîtes d'info (chemin menu) ; silencieux pour l'auto-start (Job)."""
-    if _DETECTOR is None:
+    if not _NER.available:
         if verbose:
-            _msg("NER indisponible : modèle ou deps natives non chargés.")
+            _msg("NER indisponible : mc-ner.exe ou modèle introuvable.")
         return
     already = (_autodet["handler"] is not None and
                _autodet["controller"] is XSCRIPTCONTEXT.getDocument().getCurrentController())  # noqa: F821

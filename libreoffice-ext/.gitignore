@@ -13,3 +13,6 @@ shell/
 
 # Assets popup (HTML + KaTeX) : source = rust/mc-popup/web ; stagés par build_oxt.py.
 assets/
+
+# Binaires cœur Rust stagés par build_oxt.py (analyze, mc-ner).
+bin/

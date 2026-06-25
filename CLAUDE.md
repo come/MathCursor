@@ -87,7 +87,10 @@ D:\Software\MathCursor\
 ├── adapter-vsto/                # add-in VSTO Word Desktop — src + tests + installer
 ├── analyzers/                   # analyzers Roslyn (MC0001/0006/0009) + tests
 ├── web-demo/                    # démo Blazor WASM (réutilise le moteur compilé)
-├── engine-python/               # port Python de parité (conformance, hors produit)
+├── rust/                        # cœur RUST des hosts non-Word : mc-engine (moteur,
+│                                #   gate fixtures.json 456/456) + mc-ner + mc-popup
+├── adapter-vscode/              # extension VSCode (spawne les binaires Rust)
+├── libreoffice-ext/             # extension LibreOffice (spawne les mêmes binaires Rust)
 └── scripts/                     # outillage (run-tests.ps1 = gate de test local)
 ```
 
@@ -115,7 +118,9 @@ Le moteur de reconnaissance/conversion est porté en C# pur :
 **`engine/MathCursor.Engine`** (« forest engine » — `Lexer`, `Parser`/`Forest`,
 `Score`, `LatexRenderer`, `Vocabulary`) + **`serialization/MathCursor.Serialization`**
 (`LatexToOmml`). Verrouillé par le corpus `engine/tests/.../fixtures.json` (rejoué
-par plusieurs pipelines) + un port Python de parité (`engine-python/`).
+par plusieurs pipelines) + le **port Rust** `rust/mc-engine` (gate `fixtures.json`
+456/456), qui exécute le moteur pour VSCode et LibreOffice. (Le port Python
+`engine-python/` a été retiré une fois le Rust vert — récupérable dans git.)
 
 ## Roadmap phase 1
 

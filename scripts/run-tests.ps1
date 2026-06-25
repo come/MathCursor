@@ -8,7 +8,7 @@
     sinon, ne tournent jamais ensemble —
       1. Tests C# xUnit (Engine, Serialization, Analyzers, Adapter)
       2. Parité SpanComputer C#<->JS  (node spancomputer.test.js)
-      3. Conformance moteur C#<->Python (engine-python/conformance.py)
+      3. Conformance moteur Rust (rust/mc-engine --bin conformance)
 
     Sort en code 1 si un test PRÉSENT échoue (gate rouge). Un outil absent
     (node/python non installés) est un AVERTISSEMENT jaune, pas un échec —
@@ -55,21 +55,20 @@ else {
     Pop-Location
 }
 
-# 3) Conformance moteur C#<->Python (NON bloquant) --------------------------
-# Le port Python est un check de parite secondaire, PAS le produit livre.
-# Une derive est signalee fort mais ne fait PAS echouer le gate. Pour le
-# rendre bloquant (si tu maintiens le port a jour) : remplace `$drift` par
-# `$failures` ci-dessous.
-Write-Host "`n=== Conformance Python (non bloquant) ===" -ForegroundColor Cyan
-$py = Get-Command python -ErrorAction SilentlyContinue
-if ($null -eq $py) { $py = Get-Command py -ErrorAction SilentlyContinue }
-$pyTest = Join-Path $root 'engine-python/conformance.py'
-if ($null -eq $py) { $warnings += 'python absent -> conformance C#<->Python NON verifiee' }
-elseif (-not (Test-Path $pyTest)) { $warnings += "conformance.py introuvable" }
+# 3) Conformance moteur RUST (BLOQUANT) -------------------------------------
+# mc-engine (port shippe pour VSCode + LibreOffice) doit etre 456/456 vs
+# fixtures.json, comme le C#. Un echec casse le gate.
+# Conformance moteur RUST : mc-engine doit etre 456/456 vs fixtures.json (meme
+# gate que le C#). C'est le port shippe (VSCode + LibreOffice) -> BLOQUANT.
+Write-Host "`n=== Conformance Rust (mc-engine) ===" -ForegroundColor Cyan
+$cargo = Get-Command cargo -ErrorAction SilentlyContinue
+$rustDir = Join-Path $root 'rust'
+if ($null -eq $cargo) { $warnings += 'cargo absent -> conformance Rust NON verifiee' }
+elseif (-not (Test-Path (Join-Path $rustDir 'mc-engine'))) { $warnings += 'crate mc-engine introuvable' }
 else {
-    Push-Location (Split-Path $pyTest)
-    & $py.Source (Split-Path -Leaf $pyTest)
-    if ($LASTEXITCODE -ne 0) { $script:drift += 'Conformance Python (port secondaire en retard)' }
+    Push-Location $rustDir
+    & $cargo.Source run -q -p mc-engine --bin conformance
+    if ($LASTEXITCODE -ne 0) { $failures += 'Conformance Rust (mc-engine)' }
     Pop-Location
 }
 
