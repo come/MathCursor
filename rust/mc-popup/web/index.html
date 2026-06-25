@@ -5,7 +5,10 @@
 <link rel="stylesheet" href="./katex/katex.min.css" />
 <script defer src="./katex/katex.min.js"></script>
 <style>
-  /* Thème via [data-theme] sur <html> (dark/light), couleurs façon VSCode. */
+  /* HTML PARTAGÉ (VSCode + LibreOffice), servi par mc-popup via mc://.
+     Thème via [data-theme] sur <html> (dark/light). L'hôte force le thème
+     (VSCode: dark/light éditeur ; LibreOffice: light) ; à défaut ("auto"),
+     on suit prefers-color-scheme. */
   :root, html[data-theme="dark"] {
     --bg: #252526; --border: #454545; --fg: #d4d4d4; --dim: #7c7c7c; --sel: #094771;
   }
@@ -49,6 +52,14 @@
   var _sel = -1;
 
   function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+  // Thème explicite ("dark"/"light") fourni par l'hôte, sinon AUTO : on suit
+  // prefers-color-scheme (l'OS / le webview host) — cf. choix utilisateur.
+  function resolveTheme(theme) {
+    if (theme === "dark" || theme === "light") { return theme; }
+    try { return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; }
+    catch (e) { return "light"; }
+  }
 
   function postSize() {
     // UNIQUEMENT la carte (inline-block = ajustée au contenu). Surtout PAS
@@ -103,7 +114,7 @@
   window.mcRender = function (cands, sel, theme) {
     _cands = cands || [];
     _sel = (typeof sel === "number") ? sel : -1;
-    if (theme) { document.documentElement.dataset.theme = (theme === "light") ? "light" : "dark"; }
+    document.documentElement.dataset.theme = resolveTheme(theme);
     render();
   };
   window.mcSetIndex = function (i) {

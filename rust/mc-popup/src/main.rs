@@ -21,7 +21,9 @@ use std::io::{BufRead, Write};
 use std::path::PathBuf;
 use std::thread;
 
-use tao::dpi::{LogicalSize, PhysicalPosition};
+use tao::dpi::LogicalSize;
+#[cfg(not(target_os = "windows"))]
+use tao::dpi::PhysicalPosition;
 use tao::event::Event;
 use tao::event_loop::{ControlFlow, EventLoopBuilder};
 use tao::window::WindowBuilder;
@@ -56,14 +58,14 @@ fn json_escape(s: &str) -> String {
 
 // Cache la popup. En mode actif (Windows) la fenêtre est gérée par SetWindowPos
 // (tao ne la « connaît » pas visible) → on cache via Win32 ShowWindow.
-fn hide_popup(active: bool, window: &tao::window::Window) {
+fn hide_popup(window: &tao::window::Window) {
+    // Windows : SW_HIDE (cohérent avec l'affichage SetWindowPos, pour les 2 modes).
     #[cfg(target_os = "windows")]
-    if active {
+    {
         active_mode::set_visible(false);
         active_mode::hide(window.hwnd() as isize);
-        return;
     }
-    let _ = active; // (silence unused hors Windows)
+    #[cfg(not(target_os = "windows"))]
     window.set_visible(false);
 }
 
@@ -128,7 +130,7 @@ fn main() -> wry::Result<()> {
                     y: v.get("y").and_then(|n| n.as_f64()).unwrap_or(0.0)
                         + v.get("lineHeight").and_then(|n| n.as_f64()).unwrap_or(0.0),
                     sel: v.get("selectedIndex").and_then(|n| n.as_i64()).unwrap_or(0),
-                    theme: v.get("theme").and_then(|t| t.as_str()).unwrap_or("dark").to_string(),
+                    theme: v.get("theme").and_then(|t| t.as_str()).unwrap_or("auto").to_string(),
                     col_delta: v.get("colDelta").and_then(|n| n.as_i64()).unwrap_or(0),
                     font_size: v.get("fontSize").and_then(|n| n.as_f64()).unwrap_or(14.0),
                     reposition: v.get("reposition").and_then(|b| b.as_bool()).unwrap_or(true),
@@ -161,12 +163,13 @@ fn main() -> wry::Result<()> {
         .build(&event_loop)
         .unwrap();
 
-    // Ne jamais voler le focus (la popup vit À CÔTÉ de l'éditeur, hors Alt+Tab).
+    // NOACTIVATE (jamais voler le focus) + coins carrés : pour les DEUX modes
+    // (VSCode actif ET LibreOffice passif). La popup vit À CÔTÉ de l'éditeur.
     #[cfg(target_os = "windows")]
-    if active {
+    {
         let h = window.hwnd() as isize;
         active_mode::make_noactivate(h);
-        active_mode::square_corners(h);   // coins carrés (pas d'arrondi Win11)
+        active_mode::square_corners(h);
     }
 
     let root = serve_root(&html_arg);
@@ -231,8 +234,20 @@ fn main() -> wry::Result<()> {
                         }
                     }
                 } else {
-                    window.set_outer_position(PhysicalPosition::new(x, y));
-                    window.set_visible(true);
+                    // Mode passif (LibreOffice) : coords écran fournies par l'hôte.
+                    // Sur Windows on emprunte le MÊME chemin SetWindowPos que l'actif
+                    // (tao set_inner_size reste sans effet → fenêtre non ajustée).
+                    #[cfg(target_os = "windows")]
+                    {
+                        active_mode::set_target(x as i32, y as i32);
+                        active_mode::set_visible(true);
+                        // placé + dimensionné + affiché au message "size:".
+                    }
+                    #[cfg(not(target_os = "windows"))]
+                    {
+                        window.set_outer_position(PhysicalPosition::new(x, y));
+                        window.set_visible(true);
+                    }
                 }
             }
             Event::UserEvent(UserEvent::Update { sel: s }) => {
@@ -248,15 +263,15 @@ fn main() -> wry::Result<()> {
             }
             Event::UserEvent(UserEvent::KeyCommit) => {
                 let idx = if engaged && sel >= 0 { sel } else { 0 };
-                hide_popup(active, &window);
+                hide_popup(&window);
                 emit(&format!("{{\"evt\":\"commit\",\"index\":{}}}", idx));
             }
             Event::UserEvent(UserEvent::KeyDismiss) => {
-                hide_popup(active, &window);
+                hide_popup(&window);
                 emit("{\"evt\":\"dismiss\"}");
             }
             Event::UserEvent(UserEvent::Close) => {
-                hide_popup(active, &window);
+                hide_popup(&window);
             }
             Event::UserEvent(UserEvent::Quit) => {
                 #[cfg(target_os = "windows")]
@@ -270,14 +285,13 @@ fn main() -> wry::Result<()> {
                     if let Ok(v) = serde_json::from_str::<serde_json::Value>(rest) {
                         let w = v.get("w").and_then(|n| n.as_f64()).unwrap_or(200.0);
                         let h = v.get("h").and_then(|n| n.as_f64()).unwrap_or(80.0);
-                        if active {
-                            // Win32 direct (pixels physiques) : place + dimensionne +
-                            // affiche. Déterministe (set_inner_size restait sans effet).
-                            #[cfg(target_os = "windows")]
-                            { active_mode::place(window.hwnd() as isize, w as i32 + 2, h as i32 + 2); }
-                        } else {
-                            window.set_inner_size(LogicalSize::new(w + 2.0, h + 2.0));
-                        }
+                        // Win32 SetWindowPos (place + dimensionne + affiche, pixels
+                        // physiques) pour les DEUX modes — déterministe, contrairement
+                        // à tao set_inner_size resté sans effet.
+                        #[cfg(target_os = "windows")]
+                        { let _ = active; active_mode::place(window.hwnd() as isize, w as i32 + 2, h as i32 + 2); }
+                        #[cfg(not(target_os = "windows"))]
+                        { let _ = active; window.set_inner_size(LogicalSize::new(w + 2.0, h + 2.0)); }
                     }
                 } else if let Some(rest) = body.strip_prefix("commit:") {
                     emit(&format!("{{\"evt\":\"commit\",\"index\":{}}}", rest));

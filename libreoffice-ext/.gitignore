@@ -10,3 +10,6 @@ vendor/
 # Coquille popup : source = rust/mc-popup ; les binaires shell/<tag>/ sont
 # buildés/stagés par build_oxt.py (plus de source dupliquée ici).
 shell/
+
+# Assets popup (HTML + KaTeX) : source = rust/mc-popup/web ; stagés par build_oxt.py.
+assets/

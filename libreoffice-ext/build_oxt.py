@@ -58,7 +58,18 @@ add_tree(os.path.join(ROOT, "data", "engine"), "data/engine")
 # bootstrap _DEV_MODEL / _spike_vendor). Packaging release cross-OS = étape P4.
 add_tree(os.path.join(HERE, "mc_ner"), "mc_ner")
 
-# Popup webview : assets KaTeX (offline) + binaire coquille par OS.
+# Popup webview : HTML + KaTeX PARTAGÉS (rust/mc-popup/web, source unique avec
+# VSCode) → stagés dans assets/popup/ (dev + bundle), puis bundlés.
+def _stage_popup_web():
+    web = os.path.join(ROOT, "rust", "mc-popup", "web")
+    dest = os.path.join(HERE, "assets", "popup")
+    if os.path.isdir(dest):
+        shutil.rmtree(dest)
+    shutil.copytree(web, dest)
+    print("   assets popup (HTML+KaTeX) <- rust/mc-popup/web")
+
+
+_stage_popup_web()
 add_tree(os.path.join(HERE, "assets"), "assets")
 
 

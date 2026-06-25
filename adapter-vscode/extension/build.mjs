@@ -35,8 +35,7 @@ console.log('[build] moteur Rust copié → out/engine/analyze.exe');
 // 2b. Coquille popup Rust (mc-popup, mode actif Windows : MSAA caret + hook
 //     clavier) + assets KaTeX → out/popup. Remplace l'ancien helper WPF.
 const popupExe = path.join(rustDir, 'target', 'release', 'mc-popup.exe');
-const katexSrc = path.join(__dirname, 'popup', 'katex');       // KaTeX vendorisé (extension)
-const htmlSrc = path.join(__dirname, 'popup', 'index.html');   // HTML thémé VSCode
+const webSrc = path.join(rustDir, 'mc-popup', 'web');          // HTML + KaTeX PARTAGÉS (source unique)
 const outPopup = path.join(__dirname, 'out', 'popup');
 const outPopupAssets = path.join(outPopup, 'assets', 'popup');
 // La coquille peut tourner (fenêtre de dev) et verrouiller out/popup → on la tue.
@@ -52,9 +51,9 @@ if (!process.argv.includes('--skip-popup')) {
 rmSync(outPopup, { recursive: true, force: true });
 mkdirSync(outPopupAssets, { recursive: true });
 cpSync(popupExe, path.join(outPopup, 'mc-popup.exe'));
-cpSync(htmlSrc, path.join(outPopupAssets, 'index.html'));            // HTML VSCode thémé
-cpSync(katexSrc, path.join(outPopupAssets, 'katex'), { recursive: true }); // fonts/css/js KaTeX
-console.log('[build] coquille Rust + HTML thémé + KaTeX copiés → out/popup');
+cpSync(path.join(webSrc, 'index.html'), path.join(outPopupAssets, 'index.html'));         // HTML partagé
+cpSync(path.join(webSrc, 'katex'), path.join(outPopupAssets, 'katex'), { recursive: true }); // KaTeX partagé
+console.log('[build] coquille Rust + HTML/KaTeX partagés (mc-popup/web) → out/popup');
 
 // 2c. Service NER persistant en RUST (mc-ner, onnxruntime STATIQUE → exe
 //     autonome, aucune DLL). Remplace le helper .NET ner-helper : VSCode = 0
