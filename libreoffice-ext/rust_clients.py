@@ -103,6 +103,21 @@ class EngineClient:
         except Exception:
             return None
 
+    def compose(self, lines, culture):
+        """Chaîne multiligne -> bloc aligné. `lines` = liste de (steno, index du
+        candidat choisi). Renvoie {"latex":.., "starmath":..} ou None. Le JSON
+        échappe tabs/newlines -> pas de collision avec le protocole \\t."""
+        if self._io is None:
+            return None
+        payload = json.dumps([{"steno": s, "index": int(i)} for (s, i) in lines])
+        line = self._io.request("COMPOSE\t" + (culture or "fr") + "\t" + payload)
+        if not line:
+            return None
+        try:
+            return json.loads(line)
+        except Exception:
+            return None
+
     def quit(self):
         if self._io is not None:
             self._io.quit()

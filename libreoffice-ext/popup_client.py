@@ -100,12 +100,13 @@ class PopupClient:
             return False
 
     def show(self, candidates, x, y, line_height=0, selected_index=0, theme="light",
-             show_latex=True, collapse_at=0):
+             show_latex=True, collapse_at=0, more_label="voir plus"):
         """candidates = liste de dicts {"latex": "..."}. (x, y) = coords ÉCRAN
         absolues du caret ; la popup s'affiche `line_height` px plus bas.
         theme = "light"/"dark" (LibreOffice/Writer = clair) ; la coquille suit
         prefers-color-scheme si on n'envoie rien. show_latex = ligne LaTeX sous
-        la formule (optionnelle)."""
+        la formule (optionnelle). more_label = phrase de la ligne « voir plus »
+        (la coquille met EN par défaut ; LibreOffice = UX FR)."""
         if not self.ensure():
             return False
         return self._send({"cmd": "show", "candidates": candidates,
@@ -113,7 +114,8 @@ class PopupClient:
                            "lineHeight": int(line_height),
                            "selectedIndex": int(selected_index),
                            "theme": theme, "showLatex": bool(show_latex),
-                           "collapseAt": int(collapse_at)})
+                           "collapseAt": int(collapse_at),
+                           "moreLabel": str(more_label)})
 
     def update(self, selected_index):
         return self._send({"cmd": "update", "selectedIndex": int(selected_index)})
@@ -123,8 +125,11 @@ class PopupClient:
     def nav(self, delta):
         return self._send({"cmd": "nav", "delta": int(delta)})
 
-    def activate(self):
-        return self._send({"cmd": "activate"})
+    def activate(self, implicit=False):
+        # implicit=True : valide le 1er candidat même sans navigation (touche
+        # commit-1er désignée par l'hôte, ex. Tab). Sinon : valide seulement la
+        # ligne surlignée (le HTML ne fait rien si rien n'est sélectionné).
+        return self._send({"cmd": "activate", "implicit": bool(implicit)})
 
     def close(self):
         return self._send({"cmd": "close"})

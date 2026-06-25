@@ -54,6 +54,7 @@
   var _showLatex = true;  // ligne LaTeX sous la formule (optionnelle)
   var _collapseAt = 0;    // 0 = pas de repli ; sinon n premiers + "voir plus"
   var _expanded = false;  // "voir plus" déployé ?
+  var _moreLabel = "show more"; // phrase de la ligne « voir plus », fournie (localisée) par l'hôte ; défaut EN
 
   function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
@@ -115,7 +116,7 @@
     if (hasMore()) {
       var more = document.createElement("div");
       more.className = "more" + (_sel === moreIndex() ? " sel" : "");
-      more.textContent = "▾ voir plus (" + (_cands.length - vc) + ")";
+      more.textContent = "▾ " + _moreLabel + " (" + (_cands.length - vc) + ")";
       more.addEventListener("mousedown", function (ev) { ev.preventDefault(); expand(); });
       card.appendChild(more);
     }
@@ -128,11 +129,12 @@
     render();
   }
 
-  window.mcRender = function (cands, sel, theme, showLatex, collapseAt) {
+  window.mcRender = function (cands, sel, theme, showLatex, collapseAt, moreLabel) {
     _cands = cands || [];
     _sel = (typeof sel === "number") ? sel : -1;
     _showLatex = (showLatex !== false);
     _collapseAt = (typeof collapseAt === "number") ? collapseAt : 0;
+    _moreLabel = (typeof moreLabel === "string" && moreLabel) ? moreLabel : "show more";
     _expanded = false;
     document.documentElement.dataset.theme = resolveTheme(theme);
     render();
@@ -155,11 +157,14 @@
     render();
   };
 
-  // Entrée/Tab (ou clic) : "voir plus" → déploie ; sinon valide la sélection.
-  window.mcActivate = function () {
+  // Validation (clic, ou touche transmise par l'hôte) : "voir plus" → déploie ;
+  // ligne surlignée → valide ; AUCUNE sélection → ne valide QUE si `implicit`
+  // (touche commit-1er désignée par l'hôte, façon Tab dans Word). Sinon : rien —
+  // l'hôte laisse alors la touche (Entrée) redescendre à l'éditeur.
+  window.mcActivate = function (implicit) {
     if (hasMore() && _sel === moreIndex()) { expand(); _sel = visibleCount() > 0 ? _collapseAt : 0; render(); return; }
-    var i = (_sel < 0) ? 0 : _sel;
-    if (window.mcCommit) { window.mcCommit(i); }
+    if (_sel >= 0) { if (window.mcCommit) { window.mcCommit(_sel); } return; }
+    if (implicit && window.mcCommit) { window.mcCommit(0); }
   };
 
   // Rétrocompat (Update direct) — non utilisé avec mcNav, gardé par sûreté.

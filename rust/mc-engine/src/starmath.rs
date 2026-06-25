@@ -199,6 +199,22 @@ fn nary_sm(n: &Node, cu: &Culture) -> String {
     }
 }
 
+/// Opérande d'une multiplication/application : parenthèses VISIBLES si c'est un
+/// composite GROUPÉ (parenthésé à l'origine). Sinon StarMath ne mettrait que des
+/// `{}` invisibles → parenthèses perdues (« f(x+1) » → « f x+1 »). Aligne le
+/// StarMath sur le LaTeX (cf. render.rs `child()` : `c.grouped` → `( … )`).
+fn mul_operand_sm(n: &Node, cu: &Culture) -> String {
+    let composite = !matches!(
+        n.ntype,
+        NType::Atom | NType::Paren | NType::Tuple | NType::Matrix | NType::Set | NType::Interval
+    );
+    if composite && n.grouped {
+        format!("{{left ( {} right )}}", sm(n, cu))
+    } else {
+        g(n, cu)
+    }
+}
+
 fn infix_sm(n: &Node, cu: &Culture) -> String {
     let sym = canon(n.sym.as_deref().unwrap_or(""));
     let p = n.parts.as_ref().unwrap();
@@ -215,10 +231,12 @@ fn infix_sm(n: &Node, cu: &Culture) -> String {
         return format!("{}_{}", g(&p[0], cu), g(&p[1], cu));
     }
     if sym == "*" || sym == "·apply" {
+        let a0 = mul_operand_sm(&p[0], cu);
+        let a1 = mul_operand_sm(&p[1], cu);
         return if n.implicit || sym == "·apply" {
-            format!("{} {}", g(&p[0], cu), g(&p[1], cu))
+            format!("{} {}", a0, a1)
         } else {
-            format!("{} times {}", g(&p[0], cu), g(&p[1], cu))
+            format!("{} times {}", a0, a1)
         };
     }
     if sym == "·unit" {
@@ -286,4 +304,26 @@ fn sm(n: &Node, cu: &Culture) -> String {
 /// AST → StarMath (entrée publique).
 pub fn render_starmath(node: &Node, cu: &Culture) -> String {
     sm(node, cu)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{analyze, reg};
+
+    fn sm_of(src: &str) -> String {
+        let cu = &reg().fr;
+        let r = analyze(src, Some(cu));
+        super::render_starmath(&r.ranked[0].node, cu)
+    }
+
+    #[test]
+    fn apply_keeps_visible_parens_around_composite_arg() {
+        // f(x+1) ne doit PAS perdre les parenthèses (bug « f x+1 »).
+        assert_eq!(sm_of("f(x+1)"), "f {left ( x + 1 right )}");
+        assert_eq!(sm_of("g(2x)"), "g {left ( 2 x right )}");
+        assert_eq!(sm_of("2(x+1)"), "2 {left ( x + 1 right )}");
+        // pas de sur-parenthésage des cas simples.
+        assert_eq!(sm_of("f(x)"), "f {left ( x right )}");
+        assert_eq!(sm_of("2x"), "2 x");
+    }
 }

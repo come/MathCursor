@@ -68,6 +68,9 @@ export class PopupController {
       reposition: a.reposition,
       showLatex: a.showLatex,      // ligne LaTeX optionnelle
       collapseAt: a.collapseAt,    // repli « voir plus »
+      moreLabel: vscode.l10n.t('show more'), // phrase localisée de la ligne « voir plus » (EN/FR selon locale)
+      commitFirstKey: 'Tab',       // Tab valide le 1er candidat sans nav (façon Word) ;
+                                   // Entrée sans nav redescend à l'éditeur (saut de ligne).
     };
     try { p.stdin!.write(JSON.stringify(msg) + '\n'); this.shown = true; }
     catch { /* ignore */ }

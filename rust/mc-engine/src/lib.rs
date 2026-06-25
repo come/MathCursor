@@ -4,6 +4,7 @@
 //! Registre global (VOCAB, splittable, role, cultures) bâti une fois, à la
 //! première analyse, depuis les data JSON embarquées (data/engine/*.json).
 
+pub mod chain;
 pub mod culture;
 pub mod engine;
 pub mod lexer;

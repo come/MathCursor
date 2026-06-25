@@ -159,6 +159,7 @@ def _insert_formula(text_range, starmath):
         obj.Height = size.Height
     except Exception:
         pass
+    return obj
 
 
 def _msg(text):
@@ -529,7 +530,8 @@ _DEBOUNCE_S = 0.25
 _autodet = {
     "handler": None, "controller": None,
     "popup": None, "sig": None, "win": None, "pos": None,
-    "sm": [], "idx": 0, "n": 0, "range": None,
+    "sm": [], "idx": 0, "n": 0, "range": None, "navigated": False,
+    "meta": {}, "chain": None,  # meta = info ligne courante ; chain = bloc en cours (transitoire)
     "suppress_sig": None, "busy": False, "client": None,
     "timer": None, "asynccb": None, "toolkit": None, "topwin": None,
 }
@@ -539,8 +541,9 @@ try:
     _K_UP = uno.getConstantByName("com.sun.star.awt.Key.UP")
     _K_RETURN = uno.getConstantByName("com.sun.star.awt.Key.RETURN")
     _K_ESCAPE = uno.getConstantByName("com.sun.star.awt.Key.ESCAPE")
+    _K_TAB = uno.getConstantByName("com.sun.star.awt.Key.TAB")
 except Exception:
-    _K_DOWN, _K_UP, _K_RETURN, _K_ESCAPE = 1024, 1025, 1280, 1281
+    _K_DOWN, _K_UP, _K_RETURN, _K_ESCAPE, _K_TAB = 1024, 1025, 1280, 1281, 1282
 
 
 class _ShellCommitCallback(unohelper.Base, XCallback):
@@ -646,6 +649,54 @@ def _zone_range(para_start, zstart, zend):
     return cur
 
 
+# Marqueurs de chaîne (port de rust/mc-engine chain.rs / RelationMarkers.cs) :
+# (forme tapée, latex d'affichage, connecteur?, marqueur-MOT?). Ordre = longueur
+# décroissante (plus-long-match). Sert à détecter une LIGNE de chaîne et à n'envoyer
+# que le RESTE au moteur (relation en tête = « erreur » côté moteur).
+_CHAIN_MARKERS = [
+    ("approx", "\\approx ", False, True),
+    ("environ", "\\approx ", False, True),
+    ("env", "\\approx ", False, True),
+    ("<=>", "\\Leftrightarrow ", True, False),
+    ("=>", "\\Rightarrow ", True, False),
+    ("<=", "\\leq ", False, False),
+    (">=", "\\geq ", False, False),
+    ("!=", "\\neq ", False, False),
+    ("⟺", "\\Leftrightarrow ", True, False),  # ⟺
+    ("⇔", "\\Leftrightarrow ", True, False),  # ⇔
+    ("⟹", "\\Rightarrow ", True, False),      # ⟹
+    ("⇒", "\\Rightarrow ", True, False),      # ⇒
+    ("≤", "\\leq ", False, False),            # ≤
+    ("≥", "\\geq ", False, False),            # ≥
+    ("≠", "\\neq ", False, False),            # ≠
+    ("≈", "\\approx ", False, False),         # ≈
+    ("=", "=", False, False),
+    ("<", "<", False, False),
+    (">", ">", False, False),
+]
+
+
+def _detect_relation_line(line):
+    """(typed, marker_latex, is_connector, rest) si la ligne commence par un
+    marqueur de chaîne, sinon None. Port fidèle de chain.rs::detect_relation_line."""
+    s = line.lstrip()
+    if not s:
+        return None
+    for typed, latex, is_conn, is_word in _CHAIN_MARKERS:
+        head = s[:len(typed)]
+        if is_word:
+            if head.lower() != typed.lower():
+                continue
+            nxt = s[len(typed):len(typed) + 1]
+            if nxt and nxt.isalpha():
+                continue  # « approximation » ne matche pas « approx »
+        elif head != typed:
+            continue
+        rest = s[len(typed):].lstrip(" ").rstrip("\r\n")
+        return (typed, latex, is_conn, rest)
+    return None
+
+
 def _detect_candidate():
     """¶ courant -> NER -> zone au caret -> candidats. Renvoie
     (sig, starmaths, labels, zone_range) ou None. `sig` = signature (span +
@@ -659,6 +710,26 @@ def _detect_candidate():
     # signal de sortie : tab ou double-espace juste avant le caret = « pas maintenant ».
     if para_text[caret - 1] == "\t" or (caret >= 2 and para_text[caret - 1] == " " and para_text[caret - 2] == " "):
         return None
+
+    # LIGNE DE CHAÎNE (hors moteur) : le ¶ commence par un marqueur (=, <=>, ≤…).
+    # Le moteur renvoie « erreur » sur une relation en tête → on n'analyse que le
+    # RESTE et on préfixe le marqueur rendu dans la popup (ADR chaining-port).
+    rel = _detect_relation_line(para_text)
+    if rel is not None:
+        _typed, mlatex, _is_conn, rest = rel
+        if not rest:
+            return None  # marqueur seul (« = » en cours de frappe) : attendre la suite
+        res = _ENGINE.analyze(rest, _CULTURE)
+        if not res or res["decision"] == "erreur" or not res["ranked"]:
+            return None
+        ranked = res["ranked"]
+        sms = [c["starmath"] for c in ranked]
+        labels = [mlatex + c["latex"] for c in ranked]  # AFFICHAGE : marqueur préfixé
+        lead = len(para_text) - len(para_text.lstrip())
+        end = len(para_text.rstrip())
+        steno = para_text[lead:end]
+        sig = (lead, end, tuple(labels), "rel")
+        return sig, sms, labels, _zone_range(para_start, lead, end), {"rel": rel, "steno": steno}
 
     # Détection + raffinage (zone finale) entièrement côté Rust (mc-ner :
     # detect + pick_nearest + merge + extend, comme le ner-helper de Word).
@@ -681,7 +752,7 @@ def _detect_candidate():
     sms = [c["starmath"] for c in ranked]
     labels = [c["latex"] for c in ranked]
     sig = (s, e, tuple(labels))
-    return sig, sms, labels, _zone_range(para_start, s, e)
+    return sig, sms, labels, _zone_range(para_start, s, e), {"rel": None, "steno": para_text[s:e]}
 
 
 def _autodetect_tick():
@@ -705,16 +776,16 @@ def _autodetect_tick_inner():
         if _autodet["popup"] is not None:
             _close_autopopup()
         return
-    sig, sms, labels, zrange = cand
+    sig, sms, labels, zrange, meta = cand
     if sig == _autodet.get("suppress_sig"):
         return  # fermée par Échap sur CETTE zone -> ne pas rouvrir tant qu'elle ne change pas
     _autodet["suppress_sig"] = None
     if _autodet["popup"] is not None:
         if _autodet.get("sig") == sig:
             return  # inchangé -> garde la popup (et l'index ↓ courant)
-        if _refresh_autopopup(sms, labels, zrange, sig):
+        if _refresh_autopopup(sms, labels, zrange, sig, meta):
             return  # contenu mis à jour EN PLACE (pas de fermer/rouvrir)
-    _open_autopopup(sms, labels, zrange, sig)
+    _open_autopopup(sms, labels, zrange, sig, meta)
 
 
 def _candidates(labels):
@@ -742,7 +813,7 @@ def _line_height_px():
         return 24
 
 
-def _open_autopopup(starmaths, labels, zrange, sig):
+def _open_autopopup(starmaths, labels, zrange, sig, meta=None):
     """Affiche la popup webview au caret (coquille externe, non-activante). L'état
     (starmaths/idx/range) vit dans _autodet ; la navigation se fait au clavier.
     La position est calculée ICI (1ʳᵉ ouverture) et FIGÉE dans _autodet["pos"]
@@ -761,10 +832,11 @@ def _open_autopopup(starmaths, labels, zrange, sig):
         _posdbg.append("coquille: show a échoué (ready timeout / process mort)")
         return
     _autodet.update(popup=True, pos=(x, y), sm=list(starmaths), idx=-1,
-                    n=len(starmaths), range=zrange, sig=sig, win=win)
+                    n=len(starmaths), range=zrange, sig=sig, win=win, navigated=False,
+                    meta=meta or {})
 
 
-def _refresh_autopopup(sms, labels, zrange, sig):
+def _refresh_autopopup(sms, labels, zrange, sig, meta=None):
     """Met à jour la popup EXISTANTE (nouveaux candidats) SANS bouger : on réutilise
     la position FIGÉE de l'ouverture (_autodet["pos"]), pas de recalcul. Renvoie
     True si géré."""
@@ -776,7 +848,8 @@ def _refresh_autopopup(sms, labels, zrange, sig):
     if not cli.show(_candidates(labels), x, y, line_height=0, selected_index=-1,
                     show_latex=_SHOW_LATEX, collapse_at=_MAX_VISIBLE):
         return False
-    _autodet.update(sm=list(sms), idx=-1, n=len(sms), range=zrange, sig=sig)
+    _autodet.update(sm=list(sms), idx=-1, n=len(sms), range=zrange, sig=sig, navigated=False,
+                    meta=meta or {})
     return True
 
 
@@ -789,7 +862,8 @@ def _close_autopopup():
             cli.close()
         except Exception:
             pass
-    _autodet.update(popup=None, pos=None, sm=[], idx=0, n=0, range=None, sig=None, win=None)
+    # `chain` (bloc transitoire) PRÉSERVÉ : l'adjacence est revérifiée au commit.
+    _autodet.update(popup=None, pos=None, sm=[], idx=0, n=0, range=None, sig=None, win=None, meta={})
 
 
 def _autopopup_move(delta):
@@ -808,23 +882,95 @@ def _autopopup_move(delta):
             pass
 
 
+def _block_is_just_above(obj, zr):
+    """L'objet `obj` (bloc en cours) est-il dans le ¶ juste AU-DESSUS de `zr` ?
+    Garde-fou d'adjacence : on ne fusionne que des lignes contiguës."""
+    if obj is None or zr is None:
+        return False
+    try:
+        text = zr.getText()
+        zc = text.createTextCursorByRange(zr.getStart())
+        zc.gotoStartOfParagraph(False)
+        above = text.createTextCursorByRange(zc.getStart())
+        if not above.goLeft(1, False):
+            return False  # zr est au 1ᵉʳ ¶, rien au-dessus
+        above.gotoStartOfParagraph(False)
+        oc = text.createTextCursorByRange(obj.getAnchor().getStart())
+        oc.gotoStartOfParagraph(False)
+        return text.compareRegionStarts(oc.getStart(), above.getStart()) == 0
+    except Exception:
+        return False
+
+
+def _merge_block_with_line(obj, zr, starmath):
+    """Remplace [bloc `obj` … fin de la ligne-relation `zr`] par UN objet aligné
+    (supprime l'objet, le saut de ¶ et la sténo, puis insère). Renvoie le nouvel
+    objet. Tout dans un contexte d'undo unique (Ctrl+Z = un pas)."""
+    text = zr.getText()
+    cur = text.createTextCursorByRange(obj.getAnchor().getStart())
+    cur.gotoRange(zr.getEnd(), True)  # sélectionne objet + saut(s) de ¶ + sténo
+    return _insert_formula(cur, starmath)  # setString("") supprime la sélection puis insère
+
+
 def _autopopup_commit():
     sm = _autodet["sm"]
     idx = _autodet["idx"]
     if idx < 0:
         idx = 0  # Entrée sans avoir navigué -> valide le 1ᵉʳ candidat par défaut
     zr = _autodet["range"]
+    meta = _autodet.get("meta") or {}
+    rel = meta.get("rel")
+    steno = meta.get("steno", "")
     chosen = sm[idx] if 0 <= idx < len(sm) else None
-    _close_autopopup()
-    if zr is not None and chosen is not None:
-        try:
-            _insert_formula(zr, chosen)
-        except Exception:
-            pass
+    chain = _autodet.get("chain")
+    _close_autopopup()  # préserve "chain"
+    if zr is None:
+        return
+    doc = XSCRIPTCONTEXT.getDocument()  # noqa: F821
+    undo = None
+    try:
+        undo = doc.getUndoManager()
+        undo.enterUndoContext("MathCursor : chaîne")
+    except Exception:
+        undo = None
+    try:
+        if rel is not None:
+            # LIGNE DE CHAÎNE : étendre le bloc adjacent au-dessus, sinon repli autonome.
+            if chain is not None and _block_is_just_above(chain.get("obj"), zr):
+                lines = list(chain["lines"]) + [(steno, idx)]
+                comp = _ENGINE.compose(lines, _CULTURE)
+                if comp and comp.get("starmath"):
+                    obj = _merge_block_with_line(chain["obj"], zr, comp["starmath"])
+                    if obj is not None:
+                        _autodet["chain"] = {"obj": obj, "lines": lines}
+                        return
+            # repli autonome : bloc d'UNE ligne (marqueur rendu + reste).
+            comp = _ENGINE.compose([(steno, idx)], _CULTURE)
+            sm_one = comp.get("starmath") if comp else None
+            obj = _insert_formula(zr, sm_one or (chosen or ""))
+            _autodet["chain"] = {"obj": obj, "lines": [(steno, idx)]}
+        else:
+            # ÉQUATION NORMALE : insérer + amorcer une nouvelle chaîne.
+            if chosen is None:
+                _autodet["chain"] = None
+                return
+            obj = _insert_formula(zr, chosen)
+            _autodet["chain"] = {"obj": obj, "lines": [(steno, idx)]}
+    except Exception:
+        _autodet["chain"] = None
+    finally:
+        if undo is not None:
+            try:
+                undo.leaveUndoContext()
+            except Exception:
+                pass
 
 
 def _nav(delta):
-    """Transmet ↑/↓ au HTML (qui possède la sélection + le repli « voir plus »)."""
+    """Transmet ↑/↓ au HTML (qui possède la sélection + le repli « voir plus »).
+    Dès la 1ʳᵉ flèche, une ligne est surlignée → on mémorise « a navigué » pour
+    décider du sort d'Entrée (avalée vs redescendue à l'éditeur)."""
+    _autodet["navigated"] = True
     cli = _autodet.get("client")
     if cli is not None:
         try:
@@ -833,12 +979,14 @@ def _nav(delta):
             pass
 
 
-def _activate():
-    """Entrée : le HTML valide la sélection (ou déploie « voir plus »)."""
+def _activate(implicit=False):
+    """Validation : le HTML valide la ligne surlignée (ou déploie « voir plus »).
+    implicit=True (touche commit-1er, ex. Tab) → valide le 1er candidat même sans
+    navigation."""
     cli = _autodet.get("client")
     if cli is not None:
         try:
-            cli.activate()
+            cli.activate(implicit)
         except Exception:
             pass
 
@@ -895,7 +1043,17 @@ class _KeyHandler(unohelper.Base, XKeyHandler):
             _nav(-1)
             return True
         if code == _K_RETURN:
-            _activate()
+            if _autodet.get("navigated"):
+                _activate(False)   # ligne surlignée → valide (consomme Entrée)
+                return True
+            # aucune sélection → on NE consomme PAS : Writer insère le saut de ligne
+            # normal ; on ferme la popup. (cf. ADR 2026-06-25-Feat-popup-enter-passthrough)
+            _close_autopopup()
+            return False
+        if code == _K_TAB:
+            # Touche commit-1er (façon Tab dans Word) : valide le 1er candidat même
+            # sans navigation. Consommée uniquement popup ouverte (pas d'indentation).
+            _activate(True)
             return True
         if code == _K_ESCAPE:
             sig = _autodet.get("sig")

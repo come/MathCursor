@@ -12,9 +12,17 @@
 //
 // argv : chemin du index.html (1er arg non-drapeau) ; `--active` pour le mode actif.
 //
-// stdin  : {"cmd":"show","candidates":[{"latex":".."}],"x":,"y":,"lineHeight":,"selectedIndex":}
-//          {"cmd":"update","selectedIndex":N} | {"cmd":"close"} | {"cmd":"quit"}
+// stdin  : {"cmd":"show","candidates":[{"latex":".."}],"x":,"y":,"lineHeight":,"selectedIndex":,
+//            "commitFirstKey":"Tab"}   (commitFirstKey = touche qui valide le 1er
+//            candidat sans navigation, mode actif uniquement ; "" / absent = aucune)
+//          {"cmd":"update","selectedIndex":N} | {"cmd":"nav","delta":±1}
+//          {"cmd":"activate","implicit":bool} (implicit = valide même sans sélection)
+//          {"cmd":"close"} | {"cmd":"quit"}
 // stdout : {"evt":"ready"} | {"evt":"commit","index":i} | {"evt":"dismiss"} | {"evt":"error","msg":..}
+//
+// ERGO ENTRÉE (cf. ADR 2026-06-25-Feat-popup-enter-passthrough) : si l'utilisateur
+// n'a PAS navigué, Entrée n'est pas avalée → redescend à l'éditeur (saut de ligne)
+// et la popup se ferme. Décision synchrone via le miroir `HAS_SEL` (mode actif).
 
 use std::borrow::Cow;
 use std::io::{BufRead, Write};
@@ -35,14 +43,15 @@ use tao::platform::windows::WindowExtWindows;
 #[derive(Debug)]
 enum UserEvent {
     Show { candidates: String, x: f64, y: f64, sel: i64, theme: String,
-        col_delta: i64, font_size: f64, reposition: bool, show_latex: bool, collapse_at: i64 },
+        col_delta: i64, font_size: f64, reposition: bool, show_latex: bool, collapse_at: i64,
+        more_label: String, commit_first_key: String },
     Update { sel: i64 },
     Close,
     Quit,
     Ipc(String),
     // Mode actif (hook clavier) :
     Nav(i64),   // -1 / +1
-    KeyCommit,
+    KeyCommit { implicit: bool },   // implicit = valide le 1er candidat même sans sélection
     KeyDismiss,
 }
 
@@ -136,12 +145,16 @@ fn main() -> wry::Result<()> {
                     reposition: v.get("reposition").and_then(|b| b.as_bool()).unwrap_or(true),
                     show_latex: v.get("showLatex").and_then(|b| b.as_bool()).unwrap_or(true),
                     collapse_at: v.get("collapseAt").and_then(|n| n.as_i64()).unwrap_or(0),
+                    // Phrase de la ligne « voir plus » localisée par l'hôte (VSCode = EN/FR
+                    // selon la locale, LibreOffice = "voir plus") ; défaut EN si absente.
+                    more_label: v.get("moreLabel").and_then(|s| s.as_str()).unwrap_or("show more").to_string(),
+                    commit_first_key: v.get("commitFirstKey").and_then(|s| s.as_str()).unwrap_or("").to_string(),
                 },
                 "update" => UserEvent::Update { sel: v.get("selectedIndex").and_then(|n| n.as_i64()).unwrap_or(0) },
                 // nav/activate : l'hôte passif (LibreOffice) transmet l'intention
                 // clavier (le HTML possède la sélection + le repli "voir plus").
                 "nav" => UserEvent::Nav(v.get("delta").and_then(|n| n.as_i64()).unwrap_or(0)),
-                "activate" => UserEvent::KeyCommit,
+                "activate" => UserEvent::KeyCommit { implicit: v.get("implicit").and_then(|b| b.as_bool()).unwrap_or(false) },
                 "close" => UserEvent::Close,
                 "quit" => UserEvent::Quit,
                 _ => continue,
@@ -213,9 +226,18 @@ fn main() -> wry::Result<()> {
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
         match event {
-            Event::UserEvent(UserEvent::Show { candidates, x, y, sel: s, theme, col_delta, font_size, reposition, show_latex, collapse_at }) => {
+            Event::UserEvent(UserEvent::Show { candidates, x, y, sel: s, theme, col_delta, font_size, reposition, show_latex, collapse_at, more_label, commit_first_key }) => {
                 let _ = webview.evaluate_script(&format!(
-                    "window.mcRender({},{},\"{}\",{},{})", candidates, s, theme, show_latex, collapse_at));
+                    "window.mcRender({},{},\"{}\",{},{},{})", candidates, s, theme, show_latex, collapse_at, json_escape(&more_label)));
+                // Reset du miroir de sélection + (ré)enregistre la touche commit-1er
+                // (mode actif). `s >= 0` = popup ouverte avec une ligne déjà surlignée.
+                #[cfg(target_os = "windows")]
+                {
+                    active_mode::set_commit_first_key(&commit_first_key);
+                    active_mode::set_has_sel(s >= 0);
+                }
+                #[cfg(not(target_os = "windows"))]
+                let _ = &commit_first_key;   // mode actif Windows-only
                 if active {
                     // Mode actif : on lit le caret (MSAA) et on ancre au DÉBUT du
                     // texte reconnu = caretX − colDelta × largeur_char. Figé tant que
@@ -262,9 +284,10 @@ fn main() -> wry::Result<()> {
             Event::UserEvent(UserEvent::Nav(delta)) => {
                 let _ = webview.evaluate_script(&format!("window.mcNav({})", delta));
             }
-            Event::UserEvent(UserEvent::KeyCommit) => {
-                // Le HTML possède la sélection : déploie « voir plus » ou poste commit:i.
-                let _ = webview.evaluate_script("window.mcActivate()");
+            Event::UserEvent(UserEvent::KeyCommit { implicit }) => {
+                // Le HTML possède la sélection : déploie « voir plus », valide la
+                // ligne surlignée, ou (si implicit) valide le 1er candidat.
+                let _ = webview.evaluate_script(&format!("window.mcActivate({})", implicit));
             }
             Event::UserEvent(UserEvent::KeyDismiss) => {
                 hide_popup(&window);
@@ -338,8 +361,25 @@ mod active_mode {
     static OWNER: Mutex<isize> = Mutex::new(0);   // HWND de VSCode
     static TARGET_POS: Mutex<(i32, i32)> = Mutex::new((0, 0)); // écran, sous le caret
     static HOOK: Mutex<isize> = Mutex::new(0);    // HHOOK clavier (pour désinstaller)
+    // Touche qui valide le 1er candidat sans navigation (VK ; 0 = aucune).
+    static COMMIT_FIRST_VK: Mutex<u32> = Mutex::new(0);
+    // Miroir « a navigué » (⇔ une ligne est surlignée). Décide, synchroniquement
+    // dans le hook, si Entrée est avalée (sélection) ou laissée passer à l'éditeur.
+    static HAS_SEL: AtomicBool = AtomicBool::new(false);
 
     pub fn has_target() -> bool { *TARGET_POS.lock().unwrap() != (0, 0) }
+
+    /// Enregistre la touche commit-1er désignée par l'hôte (cf. `commitFirstKey`).
+    pub fn set_commit_first_key(s: &str) {
+        let vk = match s {
+            "Tab" => VK_TAB.0 as u32,
+            "Enter" | "Return" => VK_RETURN.0 as u32,
+            _ => 0,
+        };
+        *COMMIT_FIRST_VK.lock().unwrap() = vk;
+    }
+
+    pub fn set_has_sel(v: bool) { HAS_SEL.store(v, Ordering::SeqCst); }
 
     pub fn uninstall_hook() {
         let h = { *HOOK.lock().unwrap() };
@@ -446,10 +486,29 @@ mod active_mode {
                 let alt = (kb.flags.0 & LLKHF_ALTDOWN.0) != 0;
                 let ctrl = (GetKeyState(VK_CONTROL.0 as i32) as u16 & 0x8000) != 0;
                 if !alt && !ctrl {
-                    if vk == VK_UP.0 as u32 { post(UserEvent::Nav(-1)); return LRESULT(1); }
-                    if vk == VK_DOWN.0 as u32 { post(UserEvent::Nav(1)); return LRESULT(1); }
-                    if vk == VK_RETURN.0 as u32 || vk == VK_TAB.0 as u32 { post(UserEvent::KeyCommit); return LRESULT(1); }
+                    // ↑/↓ : naviguer → dès la 1ʳᵉ flèche il y a une sélection.
+                    if vk == VK_UP.0 as u32 { HAS_SEL.store(true, Ordering::SeqCst); post(UserEvent::Nav(-1)); return LRESULT(1); }
+                    if vk == VK_DOWN.0 as u32 { HAS_SEL.store(true, Ordering::SeqCst); post(UserEvent::Nav(1)); return LRESULT(1); }
                     if vk == VK_ESCAPE.0 as u32 { post(UserEvent::KeyDismiss); return LRESULT(1); }
+                    // .lock() (jamais unwrap dans le hook FFI, cf. `post`).
+                    let commit_first = COMMIT_FIRST_VK.lock().map(|g| *g).unwrap_or(0);
+                    // Touche commit-1er désignée par l'hôte : valide même sans sélection.
+                    if commit_first != 0 && vk == commit_first {
+                        post(UserEvent::KeyCommit { implicit: true });
+                        return LRESULT(1);
+                    }
+                    if vk == VK_RETURN.0 as u32 {
+                        if HAS_SEL.load(Ordering::SeqCst) {
+                            // Une ligne est surlignée → valide (avale Entrée).
+                            post(UserEvent::KeyCommit { implicit: false });
+                            return LRESULT(1);
+                        }
+                        // Aucune sélection → NE PAS avaler : Entrée redescend à
+                        // l'éditeur (saut de ligne) ; on ferme la popup et on resync
+                        // l'hôte (comme la perte de focus). CallNextHookEx ensuite.
+                        super::emit("{\"evt\":\"closed\"}");
+                        post(UserEvent::Close);
+                    }
                 }
             }
         }
