@@ -90,3 +90,7 @@ docs/dev/decisions/GladiatorSurvivor/
 
 # exception : Models/ de TutorialBuilder = du code, pas des modeles NER
 !tools/TutorialBuilder/Models/
+
+# Secrets de signature de code (ne jamais committer).
+scripts/trusted-signing.json
+*.pfx
