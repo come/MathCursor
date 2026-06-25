@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
-import { analyze, disposeEngine } from './engine';
+import { analyze, compose, disposeEngine, ChainLine } from './engine';
 import { PopupController, isHelperAvailable } from './popup';
 import { resolveSource, lineMasked, containsMath, Source } from './detect';
 import { NerController } from './ner';
 import { ensurePackages } from './packages';
+import { detectRelationLine, RelMatch } from './chain';
 
 // Host VSCode (= L6). Modèle « façon Word » :
 //  - popup native PERSISTANTE au caret (helper WPF), qui VIT tant qu'on est dans
@@ -15,10 +16,16 @@ import { ensurePackages } from './packages';
 const LANGS = ['latex', 'tex', 'markdown'];
 const REFRESH_DEBOUNCE_MS = 120;
 
-interface Current { range: vscode.Range; candidates: string[]; src: string; }
+interface Current { range: vscode.Range; candidates: string[]; src: string; rel?: RelMatch; }
+
+// Bloc de chaîne en cours (transitoire, comme LibreOffice) : le dernier bloc
+// inséré + ses lignes sources. Pas de métadonnée dans le doc ; Ctrl+Z = retour
+// arrière. Invalidé au changement d'éditeur ou si l'adjacence ne tient plus.
+interface ChainState { uri: string; blockRange: vscode.Range; lines: ChainLine[]; }
 
 export function activate(context: vscode.ExtensionContext): void {
   let current: Current | undefined;
+  let chain: ChainState | undefined;
   let dismissedSrc: string | undefined;
   let lastAnchorKey: string | undefined;   // identité de zone (ligne:colDébut) → fige l'ancrage
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -39,19 +46,52 @@ export function activate(context: vscode.ExtensionContext): void {
     { dispose: () => disposeEngine() }
   );
 
+  // Range du texte fraîchement inséré (multi-ligne géré), pour suivre le bloc.
+  function insertedRange(start: vscode.Position, text: string): vscode.Range {
+    const lines = text.split('\n');
+    const end = lines.length === 1
+      ? new vscode.Position(start.line, start.character + text.length)
+      : new vscode.Position(start.line + lines.length - 1, lines[lines.length - 1].length);
+    return new vscode.Range(start, end);
+  }
+
   async function commit(index: number): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (!editor || !current || !Number.isInteger(index)
       || index < 0 || index >= current.candidates.length) { return; }
     const cur = current;
     current = undefined;
+    const doc = editor.document;
     // Revalide que la zone n'a pas bougé depuis l'affichage (frappe/undo/édition
     // ailleurs via le hook clavier async) → sinon on remplacerait la mauvaise plage.
-    if (editor.document.getText(cur.range).trim() !== cur.src) { return; }
+    if (doc.getText(cur.range).trim() !== cur.src) { return; }
     const cfg = vscode.workspace.getConfiguration('mathcursor');
-    const inserted = wrapFor(cur.candidates[index], editor.document, cur.range,
+    const culture = cfg.get<string>('culture', 'fr');
+
+    // LIGNE DE CHAÎNE adjacente sous un bloc en cours → FUSION (compose → remplace
+    // bloc + ligne par un seul bloc aligné). Sinon : insertion simple + (re)amorce.
+    if (cur.rel && chain && chain.uri === doc.uri.toString()
+      && cur.range.start.line === chain.blockRange.end.line + 1) {
+      const lines: ChainLine[] = [...chain.lines, { steno: cur.src, index }];
+      const comp = await compose(lines, culture);
+      if (comp) {
+        const block = wrapBlock(comp.latex, doc);
+        const replaceRange = new vscode.Range(chain.blockRange.start, cur.range.end);
+        await editor.edit(b => b.replace(replaceRange, block));
+        chain = { uri: doc.uri.toString(), blockRange: insertedRange(replaceRange.start, block), lines };
+        // `\begin{aligned}` exige amsmath (fichiers .tex).
+        if (cfg.get<boolean>('autoPackages', true)) { await ensurePackages(editor); }
+        return;
+      }
+    }
+
+    // Insertion simple (équation normale OU ligne-relation sans bloc adjacent).
+    const inserted = wrapFor(cur.candidates[index], doc, cur.range,
       cfg.get<string>('delimiters', 'auto'), cfg.get<string>('inlineDisplaystyle', 'auto'));
     await editor.edit(b => b.replace(cur.range, inserted));
+    // Amorce/réamorce la chaîne transitoire (le bloc = ce qu'on vient d'insérer).
+    chain = { uri: doc.uri.toString(), blockRange: insertedRange(cur.range.start, inserted),
+      lines: [{ steno: cur.src, index }] };
     // Préambule : ajoute amsmath/amssymb si nécessaire (\mathbb, matrices…).
     if (cfg.get<boolean>('autoPackages', true)) { await ensurePackages(editor); }
   }
@@ -86,31 +126,48 @@ export function activate(context: vscode.ExtensionContext): void {
     // abandonne (sinon candidats/ancrage/current d'une zone écrasés par une autre).
     const myGen = ++refreshGen;
 
-    const found = await resolveSrc(ner, editor, force, level);
-    if (myGen !== refreshGen) { return; }
+    // LIGNE DE CHAÎNE (=, <=>, ≤… en tête) : hors moteur → on n'analyse que le
+    // RESTE et on préfixe le marqueur rendu dans la popup (le bloc aligné est
+    // composé au commit). Sinon : détection NER/SpanComputer habituelle.
+    const caretLine = editor.selection.active.line;
+    const lineText = editor.document.lineAt(caretLine).text;
+    const rel = detectRelationLine(lineText);
+    let found: Source | undefined;
+    let analyzeSrc: string;
+    if (rel) {
+      if (!rel.rest) { popup.hide(); current = undefined; return; } // marqueur seul : attendre
+      const startChar = lineText.length - lineText.replace(/^\s+/, '').length;
+      const endChar = lineText.replace(/\s+$/, '').length;
+      found = { src: lineText.slice(startChar, endChar),
+        range: new vscode.Range(caretLine, startChar, caretLine, endChar) };
+      analyzeSrc = rel.rest;
+    } else {
+      found = await resolveSrc(ner, editor, force, level);
+      if (myGen !== refreshGen) { return; }
+      analyzeSrc = found ? `${found.src} ` : ''; // espace final = signal postfixe (R* → R^{\ast})
+    }
     if (!found) { popup.hide(); current = undefined; return; }
 
     if (found.src !== dismissedSrc) { dismissedSrc = undefined; }
     if (!force && dismissedSrc === found.src) { return; } // dismissé → reste fermé
 
     let result;
-    // Espace final = signal moteur « signe postfixe » (R* → R^{\ast}, lim x 0+ →
-    // 0⁺), comme la détection live de Word. La zone remplacée, elle, reste trimmée.
-    try { result = await analyze(found.src + ' ', cfg.get<string>('culture', 'fr')); }
+    try { result = await analyze(analyzeSrc, cfg.get<string>('culture', 'fr')); }
     catch { return; }
     if (myGen !== refreshGen) { return; }
 
     // On envoie TOUS les candidats (le moteur en sort ≤ 5) ; le HTML n'en montre
     // que `maxVisible` puis une ligne « voir plus » (flèche bas pour déployer).
+    // Pour une ligne-relation, on préfixe le marqueur rendu (affichage popup).
     const maxVisible = cfg.get<number>('maxCandidates', 3);
-    const candidates = (result.ranked ?? []).map(c => c.latex);
+    const candidates = (result.ranked ?? []).map(c => rel ? rel.markerLatex + c.latex : c.latex);
     if (result.decision === 'erreur' || candidates.length === 0) {
       popup.hide(); current = undefined;
-      if (force) { vscode.window.setStatusBarMessage('MathCursor : rien à convertir', 1500); }
+      if (force) { vscode.window.setStatusBarMessage(vscode.l10n.t('MathCursor: nothing to convert'), 1500); }
       return;
     }
 
-    current = { range: found.range, candidates, src: found.src };
+    current = { range: found.range, candidates, src: found.src, rel };
 
     // Ancrage au DÉBUT du texte reconnu : la coquille lit le caret (MSAA) et
     // recule de colDelta caractères. Figé tant que la zone ne change pas.
@@ -151,7 +208,7 @@ export function activate(context: vscode.ExtensionContext): void {
       scheduleRefresh();
     }),
     vscode.window.onDidChangeTextEditorSelection(() => scheduleRefresh()),
-    vscode.window.onDidChangeActiveTextEditor(() => { popup.hide(); current = undefined; })
+    vscode.window.onDidChangeActiveTextEditor(() => { popup.hide(); current = undefined; chain = undefined; })
   );
 }
 
@@ -328,6 +385,14 @@ function wrapFor(
   }
   if (!display) { return `$${body}$`; }
   return document.languageId === 'markdown' ? `$$${latex}$$` : `\\[${latex}\\]`;
+}
+
+// Bloc de chaîne aligné en display math, SUR PLUSIEURS LIGNES (le composer
+// produit déjà le LaTeX multi-ligne) → source lisible. Délimiteurs sur leurs
+// propres lignes (`$$…$$` Markdown / `\[…\]` LaTeX).
+function wrapBlock(latex: string, document: vscode.TextDocument): string {
+  const [open, close] = document.languageId === 'markdown' ? ['$$', '$$'] : ['\\[', '\\]'];
+  return `${open}\n${latex}\n${close}`;
 }
 
 export function deactivate(): void { /* no-op */ }

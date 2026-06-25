@@ -13,11 +13,15 @@ import * as fs from 'fs';
 
 export interface Candidate { latex: string; cost: number; }
 export interface AnalyzeResult { decision: string; hasNote: boolean; ranked: Candidate[]; }
+export interface ComposeResult { latex: string; starmath: string; }
+export interface ChainLine { steno: string; index: number; }
 
 const REQUEST_TIMEOUT_MS = 2000;
 const ERREUR: AnalyzeResult = { decision: 'erreur', hasNote: false, ranked: [] };
 
-type Pending = { resolve: (r: AnalyzeResult) => void; timer: ReturnType<typeof setTimeout>; };
+// Réponses analyze ET compose passent par la même file FIFO (1 ligne JSON par
+// requête, dans l'ordre) → resolve générique.
+type Pending = { resolve: (r: any) => void; timer: ReturnType<typeof setTimeout>; };
 
 let proc: ChildProcess | undefined;
 let buf = '';
@@ -109,6 +113,26 @@ export async function analyze(src: string, culture: string): Promise<AnalyzeResu
     };
     queue.push(entry);
     try { p.stdin!.write(`${culture}\t${safe}\n`); }
+    catch { settle(entry, ERREUR); }
+  });
+}
+
+// Chaîne multiligne → bloc aligné (verbe COMPOSE). `lines` = (sténo, index du
+// candidat choisi) par ligne. Renvoie {latex, starmath} ou undefined si indispo.
+export async function compose(lines: ChainLine[], culture: string): Promise<ComposeResult | undefined> {
+  const p = ensureProc();
+  if (!p || dead) { return undefined; }
+  const payload = JSON.stringify(lines); // échappe tabs/newlines → pas de collision \t
+  return new Promise<ComposeResult | undefined>(resolve => {
+    const entry: Pending = {
+      resolve: (r: any) => resolve(r && typeof r.latex === 'string' ? r as ComposeResult : undefined),
+      timer: setTimeout(() => {
+        if (!queue.includes(entry)) { return; }
+        if (ready) { restart(); } else { settle(entry, ERREUR); }
+      }, REQUEST_TIMEOUT_MS),
+    };
+    queue.push(entry);
+    try { p.stdin!.write(`COMPOSE\t${culture}\t${payload}\n`); }
     catch { settle(entry, ERREUR); }
   });
 }
