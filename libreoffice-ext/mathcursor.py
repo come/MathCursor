@@ -67,7 +67,7 @@ _DEV_EXT = r"D:\Software\MathCursor\libreoffice-ext"
 # Ligne LaTeX (petit, à droite) sous la formule rendue dans la popup. Mettre à
 # False pour ne montrer que la formule. (LibreOffice n'a pas d'UI de réglages :
 # point de bascule unique ici. VSCode = réglage mathcursor.showLatexInPopup.)
-_SHOW_LATEX = True
+_SHOW_LATEX = False
 # Alias stable partagé VSTO/vscode/libreoffice : on remplace le CONTENU de
 # models/latest/ au retrain (le nom de dossier ne change plus). Cf. commit
 # 8deab5f. Fallback sur les anciens dossiers versionnés v7/v6.
