@@ -6,8 +6,10 @@ import * as fs from 'fs';
 // (remplace le sidecar WASM .NET : −23 Mo, plus de runtime dotnet.js). Même
 // Analyze que Word et la démo web → zéro divergence (gate fixtures.json 456/456).
 // Robuste : timeout par requête + re-spawn auto si le process meurt.
-// Windows-x64 pour l'instant (builds mac/linux = Phase 4) ; ailleurs → erreur.
-// Cf. ADR 2026-06-24-Feat-rust-engine-port (Phase 2).
+// Portable (Rust pur) : tourne sur tout OS où le binaire `analyze` est bundlé ;
+// si absent (cible pas encore buildée) → `dead` → erreur propre, pas de crash.
+// Cf. ADR 2026-06-24-Feat-rust-engine-port (Phase 2) +
+//    2026-06-25-Feat-vscode-marketplace-publishing-model (cross-OS, palier 2).
 
 export interface Candidate { latex: string; cost: number; }
 export interface AnalyzeResult { decision: string; hasNote: boolean; ranked: Candidate[]; }
@@ -24,8 +26,10 @@ let dead = false;          // exe absent / crash avant READY → indispo
 let restarting = false;    // kill volontaire (timeout) ≠ crash
 let queue: Pending[] = []; // FIFO (le service répond dans l'ordre)
 
+const EXE = process.platform === 'win32' ? '.exe' : '';
+
 function exePath(): string {
-  return path.join(__dirname, 'engine', 'analyze.exe');
+  return path.join(__dirname, 'engine', `analyze${EXE}`);
 }
 
 function settle(entry: Pending, value: AnalyzeResult): void {
@@ -52,9 +56,9 @@ function restart(): void {
 }
 
 function ensureProc(): ChildProcess | undefined {
-  if (process.platform !== 'win32' || dead) { return undefined; }
+  if (dead) { return undefined; }
   if (proc && !proc.killed) { return proc; }
-  if (!fs.existsSync(exePath())) { dead = true; return undefined; }
+  if (!fs.existsSync(exePath())) { dead = true; return undefined; } // binaire absent (cible non buildée)
 
   const p = spawn(exePath(), [], { windowsHide: true });
   p.stdout!.setEncoding('utf8');
@@ -93,7 +97,7 @@ function onData(d: string): void {
 
 export async function analyze(src: string, culture: string): Promise<AnalyzeResult> {
   const p = ensureProc();
-  if (!p || dead) { return ERREUR; } // hors Windows / exe absent → pas de moteur
+  if (!p || dead) { return ERREUR; } // exe absent (cible non buildée) → pas de moteur
   const safe = src.replace(/[\t\r\n]/g, ' '); // protocole TAB-délimité
   return new Promise<AnalyzeResult>(resolve => {
     const entry: Pending = {

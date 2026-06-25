@@ -1,0 +1,113 @@
+# Packaging des VSIX *platform-specific* de l'extension VSCode (palier 2 cross-OS).
+# UNE extension, N VSIX `--target` (cf. ADR 2026-06-25-Feat-vscode-marketplace-
+# publishing-model). Chaque runner build SON binaire Rust (mc-engine/mc-ner/
+# mc-popup) via build.mjs, récupère le modèle NER depuis R2, puis empaquette.
+#
+# Coût (dépôt PRIVÉ) : macOS = ×10 minutes. Matrice DYNAMIQUE comme rust-ci :
+#  - push  → Linux + Windows (×1 + ×2) ;
+#  - workflow_dispatch → + macOS (darwin-arm64) à la demande.
+#
+# Cibles (palier 2, arch native par runner) : win32-x64, linux-x64, darwin-arm64.
+# darwin-x64 / win32-arm64 / linux-arm64 = différés (cross-compile / runners dédiés).
+#
+# Modèle NER : tiré de l'URL publique r2.dev du bucket `mathcursor-models`
+# (modèle non sensible) — `model_quantized.onnx` + `tokenizer.json`, les 2 seuls
+# fichiers bundlés. URL en défaut ci-dessous, surchargeable par le secret repo
+# `NER_MODEL_BASE_URL` si on rote le bucket/l'URL.
+# popup = Windows-only au palier 2 (mode actif caret) ; sur mac/linux le binaire
+# mc-popup est tout de même buildé/empaqueté mais l'extension ne s'en sert pas.
+name: vscode-vsix
+
+on:
+  push:
+    paths:
+      - 'adapter-vscode/extension/**'
+      - 'rust/**'
+      - 'data/engine/**'
+      - '.github/workflows/vscode-vsix.yml'
+  workflow_dispatch:
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.set.outputs.include }}
+    steps:
+      - id: set
+        run: |
+          LIN='{"os":"ubuntu-latest","target":"linux-x64"}'
+          WIN='{"os":"windows-latest","target":"win32-x64"}'
+          MAC='{"os":"macos-latest","target":"darwin-arm64"}'
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "include=[$LIN,$WIN,$MAC]" >> "$GITHUB_OUTPUT"
+          else
+            echo "include=[$LIN,$WIN]" >> "$GITHUB_OUTPUT"
+          fi
+
+  package:
+    needs: prepare
+    name: package (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.prepare.outputs.include) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: adapter-vscode/extension/package-lock.json
+
+      # Cache cargo (le build release LTO de mc-ner/onnxruntime est lourd).
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      # wry/tao sous Linux : backend WebKitGTK + GTK (fournis par l'OS sur
+      # mac = WKWebView et Windows = WebView2).
+      - name: Dépendances webview (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev \
+            libxdo-dev librsvg2-dev libayatana-appindicator3-dev
+
+      # Le modèle NER (~46 Mo) n'est pas dans git (.gitignore models/) → on le
+      # tire de R2 (public). build.mjs ne copie QUE ces deux fichiers.
+      - name: Récupère le modèle NER (R2 public)
+        shell: bash
+        env:
+          NER_MODEL_BASE_URL: ${{ secrets.NER_MODEL_BASE_URL || 'https://pub-c001d6d19d994f11be5da961ed6651ab.r2.dev/latest' }}
+        run: |
+          mkdir -p models/latest
+          curl -fsSL "$NER_MODEL_BASE_URL/model_quantized.onnx" -o models/latest/model_quantized.onnx
+          curl -fsSL "$NER_MODEL_BASE_URL/tokenizer.json"      -o models/latest/tokenizer.json
+
+      - name: Install deps (npm ci)
+        working-directory: adapter-vscode/extension
+        run: npm ci
+
+      - name: Type-check (tsc --noEmit)
+        working-directory: adapter-vscode/extension
+        run: npx tsc --noEmit -p tsconfig.json
+
+      # build.mjs : cargo build --release (binaire de CET OS) + copie binaires +
+      # copie modèle + bundle esbuild. Sur win le suffixe est .exe, sinon aucun.
+      - name: Build (cargo + binaires + esbuild)
+        working-directory: adapter-vscode/extension
+        run: node build.mjs
+
+      - name: Package VSIX (--target ${{ matrix.target }})
+        working-directory: adapter-vscode/extension
+        run: npx --yes @vscode/vsce package --target ${{ matrix.target }} -o "mathcursor-${{ matrix.target }}.vsix"
+
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix-${{ matrix.target }}
+          path: adapter-vscode/extension/mathcursor-${{ matrix.target }}.vsix
+          if-no-files-found: error

@@ -5,6 +5,7 @@
 .vscodeignore
 tsconfig.json
 build.mjs
+sign.ps1
 src/**
 popup/**
 node_modules/**

@@ -7,6 +7,11 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const watch = process.argv.includes('--watch');
 
+// Suffixe exécutable selon l'OS du runner : Windows = `.exe`, mac/linux = aucun.
+// Chaque OS build et copie UNIQUEMENT son binaire → le VSIX `--target` est
+// naturellement mono-OS (cf. ADR 2026-06-25-Feat-vscode-marketplace-publishing-model).
+const EXE = process.platform === 'win32' ? '.exe' : '';
+
 // LICENSE dans le dossier extension (exigé par vsce pour le packaging VSIX) —
 // copié depuis la racine pour ne pas dupliquer en git (cf. .gitignore).
 cpSync(path.join(__dirname, '..', '..', 'LICENSE'), path.join(__dirname, 'LICENSE'));
@@ -17,7 +22,7 @@ const outEngine = path.join(__dirname, 'out', 'engine');
 // 1. Moteur forest porté en RUST (mc-engine → analyze.exe, service stdio
 //    persistant). Remplace le sidecar WASM .NET (−23 Mo, plus de runtime
 //    dotnet.js). Gate de parité fixtures.json 456/456. Cf. ADR Phase 2.
-const analyzeExe = path.join(rustDir, 'target', 'release', 'analyze.exe');
+const analyzeExe = path.join(rustDir, 'target', 'release', `analyze${EXE}`);
 if (process.platform === 'win32') {
   spawnSync('taskkill', ['/F', '/IM', 'analyze.exe'], { stdio: 'ignore', shell: true });
 }
@@ -29,12 +34,12 @@ if (!process.argv.includes('--skip-engine')) {
 }
 rmSync(outEngine, { recursive: true, force: true });
 mkdirSync(outEngine, { recursive: true });
-cpSync(analyzeExe, path.join(outEngine, 'analyze.exe'));
-console.log('[build] moteur Rust copié → out/engine/analyze.exe');
+cpSync(analyzeExe, path.join(outEngine, `analyze${EXE}`));
+console.log(`[build] moteur Rust copié → out/engine/analyze${EXE}`);
 
 // 2b. Coquille popup Rust (mc-popup, mode actif Windows : MSAA caret + hook
 //     clavier) + assets KaTeX → out/popup. Remplace l'ancien helper WPF.
-const popupExe = path.join(rustDir, 'target', 'release', 'mc-popup.exe');
+const popupExe = path.join(rustDir, 'target', 'release', `mc-popup${EXE}`);
 const webSrc = path.join(rustDir, 'mc-popup', 'web');          // HTML + KaTeX PARTAGÉS (source unique)
 const outPopup = path.join(__dirname, 'out', 'popup');
 const outPopupAssets = path.join(outPopup, 'assets', 'popup');
@@ -50,7 +55,7 @@ if (!process.argv.includes('--skip-popup')) {
 }
 rmSync(outPopup, { recursive: true, force: true });
 mkdirSync(outPopupAssets, { recursive: true });
-cpSync(popupExe, path.join(outPopup, 'mc-popup.exe'));
+cpSync(popupExe, path.join(outPopup, `mc-popup${EXE}`));
 cpSync(path.join(webSrc, 'index.html'), path.join(outPopupAssets, 'index.html'));         // HTML partagé
 cpSync(path.join(webSrc, 'katex'), path.join(outPopupAssets, 'katex'), { recursive: true }); // KaTeX partagé
 console.log('[build] coquille Rust + HTML/KaTeX partagés (mc-popup/web) → out/popup');
@@ -58,7 +63,7 @@ console.log('[build] coquille Rust + HTML/KaTeX partagés (mc-popup/web) → out
 // 2c. Service NER persistant en RUST (mc-ner, onnxruntime STATIQUE → exe
 //     autonome, aucune DLL). Remplace le helper .NET ner-helper : VSCode = 0
 //     .NET. Tokenizer NATIF du modèle (tokenizer.json). Cf. ADR Phase 3.
-const mcNerExe = path.join(rustDir, 'target', 'release', 'mc-ner.exe');
+const mcNerExe = path.join(rustDir, 'target', 'release', `mc-ner${EXE}`);
 const outNer = path.join(__dirname, 'out', 'ner');
 if (process.platform === 'win32') {
   spawnSync('taskkill', ['/F', '/IM', 'mc-ner.exe'], { stdio: 'ignore', shell: true });
@@ -71,8 +76,8 @@ if (!process.argv.includes('--skip-ner')) {
 }
 rmSync(outNer, { recursive: true, force: true });
 mkdirSync(outNer, { recursive: true });
-cpSync(mcNerExe, path.join(outNer, 'mc-ner.exe'));
-console.log('[build] service NER Rust copié → out/ner/mc-ner.exe');
+cpSync(mcNerExe, path.join(outNer, `mc-ner${EXE}`));
+console.log(`[build] service NER Rust copié → out/ner/mc-ner${EXE}`);
 
 // Modèle (model_quantized.onnx + tokenizer.json) → bundle.
 const modelSrc = path.join(__dirname, '..', '..', 'models', 'latest');

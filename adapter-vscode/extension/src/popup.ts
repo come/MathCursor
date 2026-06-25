@@ -7,6 +7,11 @@ import * as path from 'path';
 // VSCode n'expose ni l'un ni l'autre. L'extension n'envoie que les candidats et
 // reçoit commit/dismiss. Protocole : 1 JSON par ligne (stdin/stdout).
 // Cf. ADR 2026-06-24-Feat-rust-unified-toolkit (Phase 1).
+//
+// Volontairement Windows-only au palier 2 cross-OS : le mode actif lit le caret
+// (MSAA) que VSCode n'expose pas, et le mode passif exigerait des coords écran
+// que l'API VSCode ne donne pas. mac/linux (mode actif AX API / AT-SPI) = palier 3.
+// Cf. ADR 2026-06-25-Feat-vscode-marketplace-publishing-model.
 
 export function isHelperAvailable(): boolean {
   return process.platform === 'win32';

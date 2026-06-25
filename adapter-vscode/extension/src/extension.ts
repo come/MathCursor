@@ -133,7 +133,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.languages.registerCompletionItemProvider(
       LANGS.map(language => ({ language })),
-      new MathCursorCompletionProvider()
+      new MathCursorCompletionProvider(ner)
     ),
     vscode.commands.registerCommand('mathcursor.convert', () =>
       vscode.commands.executeCommand('editor.action.triggerSuggest')
@@ -209,8 +209,12 @@ function expandLeft(document: vscode.TextDocument, range: vscode.Range, level: n
   return new vscode.Range(range.start.line, col, range.end.line, range.end.character);
 }
 
-// Complétion native = REPLI hors Windows (sur Windows c'est la popup WPF).
+// Complétion native = REPLI hors Windows (sur Windows c'est la popup Rust).
+// Détection : NER primaire (désormais dispo cross-OS, palier 2) → SpanComputer
+// en repli, comme le chemin popup. Cf. ADR 2026-06-25-…-marketplace-publishing-model.
 class MathCursorCompletionProvider implements vscode.CompletionItemProvider {
+  constructor(private readonly ner: NerController) {}
+
   async provideCompletionItems(
     document: vscode.TextDocument,
     position: vscode.Position,
@@ -223,8 +227,8 @@ class MathCursorCompletionProvider implements vscode.CompletionItemProvider {
     const manual = ctx.triggerKind === vscode.CompletionTriggerKind.Invoke;
     if (!manual && !cfg.get<boolean>('autoDetect', true)) { return undefined; }
 
-    const found = resolveSource(document, position, manual);
-    if (!found) { return undefined; }
+    const found = await this.resolve(document, position, manual);
+    if (!found || token.isCancellationRequested) { return undefined; }
 
     let result;
     try { result = await analyze(found.src + ' ', cfg.get<string>('culture', 'fr')); }
@@ -256,6 +260,28 @@ class MathCursorCompletionProvider implements vscode.CompletionItemProvider {
       items.push(item);
     }
     return items;
+  }
+
+  // Même logique que `resolveSrc` (chemin popup) adaptée à (document, position) :
+  // NER primaire si dispo → SpanComputer en repli (formule isolée / NER muet).
+  private async resolve(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    manual: boolean
+  ): Promise<Source | undefined> {
+    let range: vscode.Range | undefined;
+    if (this.ner.isAvailable) {
+      const z = await this.ner.detect(lineMasked(document, position.line), position.character);
+      range = (z && z.end > z.start)
+        ? new vscode.Range(position.line, z.start, position.line, z.end)
+        : resolveSource(document, position, manual)?.range; // NER muet → repli
+    } else {
+      range = resolveSource(document, position, manual)?.range; // repli SpanComputer
+    }
+    if (!range) { return undefined; }
+    const src = document.getText(range).trim();
+    if (!src || containsMath(src)) { return undefined; } // ne pas reconvertir du LaTeX
+    return { src, range };
   }
 }
 

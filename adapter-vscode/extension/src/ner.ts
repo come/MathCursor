@@ -7,14 +7,18 @@ import * as fs from 'fs';
 // + tokenizer natif du modèle). Charge le modèle une fois puis répond en ~ms.
 // Robuste : chaque requête a un timeout ; si le service se bloque, on le tue et
 // on le re-spawn au prochain appel (auto-réparation) → jamais de blocage durable.
-// Windows + modèle présent ; sinon isAvailable=false → repli SpanComputer.
-// Cf. ADR 2026-06-24-Feat-rust-ner-port (Phase 3).
+// Portable (Rust + `ort`) : dispo si binaire `mc-ner` + modèle bundlés ; sinon
+// isAvailable=false → repli SpanComputer (cible pas encore buildée).
+// Cf. ADR 2026-06-24-Feat-rust-ner-port (Phase 3) +
+//    2026-06-25-Feat-vscode-marketplace-publishing-model (cross-OS, palier 2).
 
 type Resolver = (z: { start: number; end: number } | undefined) => void;
 interface Pending { resolve: Resolver; timer: ReturnType<typeof setTimeout>; }
 
 // > au chargement à froid du modèle (~1,1 s) pour ne pas tuer la 1re requête.
 const REQUEST_TIMEOUT_MS = 3000;
+
+const EXE = process.platform === 'win32' ? '.exe' : '';
 
 export class NerController {
   private proc: ChildProcess | undefined;
@@ -27,7 +31,7 @@ export class NerController {
   constructor(private readonly ctx: vscode.ExtensionContext) {}
 
   get isAvailable(): boolean {
-    return process.platform === 'win32' && !this.dead && this.modelExists();
+    return !this.dead && this.exeExists() && this.modelExists();
   }
 
   warmup(): void { this.ensureProc(); }
@@ -92,16 +96,24 @@ export class NerController {
     return fs.existsSync(this.modelDir() + path.sep + 'model_quantized.onnx');
   }
 
+  private exeExists(): boolean {
+    return fs.existsSync(this.exePath());
+  }
+
+  private exePath(): string {
+    return path.join(this.ctx.extensionPath, 'out', 'ner', `mc-ner${EXE}`);
+  }
+
   private modelDir(): string {
     return path.join(this.ctx.extensionPath, 'out', 'models', 'latest');
   }
 
   private ensureProc(): ChildProcess | undefined {
-    if (process.platform !== 'win32' || this.dead) { return undefined; }
+    if (this.dead) { return undefined; }
     if (this.proc && !this.proc.killed) { return this.proc; }
-    if (!this.modelExists()) { this.dead = true; return undefined; }
+    if (!this.modelExists() || !this.exeExists()) { this.dead = true; return undefined; } // cible non buildée
 
-    const exe = path.join(this.ctx.extensionPath, 'out', 'ner', 'mc-ner.exe');
+    const exe = this.exePath();
     const p = spawn(exe, [this.modelDir()], { windowsHide: true });
     p.stdout!.setEncoding('utf8');
     p.stdout!.on('data', d => this.onData(d));
