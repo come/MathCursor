@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MathCursor · Écrivez vos maths sans friction</title>
-  <meta name="description" content="MathCursor transforme une notation clavier rapide en équations propres, à la demande : vous écrivez à la vitesse de frappe. Pour les profs de maths, les lycéens, et notamment les élèves sous PAP. Disponible dans Word ; démo en ligne." />
+  <title>MathCursor · Tapez comme vous pensez, on met vos maths en forme</title>
+  <meta name="description" content="MathCursor capte votre intention mathématique au fil de la frappe : vous tapez relâché, la popup vous guide, vous validez et la formule se fige, propre. Rien à apprendre. Pour les profs de maths, les lycéens, et notamment les élèves sous PAP. Disponible dans Word ; démo en ligne." />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -37,21 +37,22 @@
       <div class="hero-body">
         <div class="hero-content">
           <h1>
-            <span data-i18n="hero_h1_pre">Écrivez vos maths</span><br /><span class="highlighter" data-i18n="hero_h1_hl">sans friction</span>
+            <span data-i18n="hero_h1_pre">Tapez comme vous pensez.</span><br /><span class="highlighter" data-i18n="hero_h1_hl">On capte l'intention.</span>
           </h1>
           <div class="hero-tag" data-i18n="tag">Projet MathCursor · Bêta publique</div>
           <p class="lead" data-i18n="hero_lead">
-            MathCursor transforme une notation clavier rapide en équations propres, à la demande : fini la bagarre avec l'éditeur d'équations, vous écrivez à la vitesse de frappe et gardez le fil du cours. Disponible aujourd'hui dans Word ; la démo tourne directement dans le navigateur.
+            La plupart des outils transforment un texte déjà propre, une photo ou des menus de symboles. MathCursor capte ce que vous <strong>voulez</strong> écrire, au fil de la frappe : vous tapez relâché, la popup vous guide en direct, vous validez et la formule se fige, propre. Le tout directement dans votre éditeur habituel — rien à réapprendre. La démo tourne dans le navigateur.
           </p>
           <div class="cta-row">
             <a href="demo/" class="button button--primary" data-i18n="cta_demo">Tester en ligne</a>
             <a href="releases.html" class="button button--secondary" data-i18n="cta_dl">Installer pour Word</a>
           </div>
           <div class="hero-badges">
-            <span class="badge" data-i18n="badge_friction">Sans friction</span>
+            <span class="badge" data-i18n="badge_friction">Sans syntaxe à apprendre</span>
             <span class="badge" data-i18n="badge_local">100 % local</span>
             <span class="badge" data-i18n="badge_account">Sans compte</span>
           </div>
+          <p class="hero-platforms" data-i18n="hero_platforms">Dans votre éditeur : <strong>Word</strong> · LibreOffice <span class="alpha">(alpha)</span> · VS&nbsp;Code – LaTeX <span class="alpha">(alpha)</span></p>
         </div>
         <figure class="hero-figure">
           <video class="hero-figure-video" autoplay muted loop playsinline preload="auto" aria-label="Aperçu : MathCursor convertit une notation clavier en équation, au fil de la frappe">
@@ -68,11 +69,11 @@
         <ol class="steps">
           <li>
             <h3 data-i18n="how_1_h">Vous tapez.</h3>
-            <p data-i18n="how_1_p">Dans votre phrase : <code>x2 + 1/2</code>, <code>lim x 0 sin x / x</code>, <code>somme k 1 n k2</code>.</p>
+            <p data-i18n="how_1_p">Relâché, dans votre phrase, sans chercher les parenthèses ni les bons symboles : <code>x2 + 1/2</code>, <code>lim x 0 sin x / x</code>, <code>somme k 1 n k2</code>.</p>
           </li>
           <li>
-            <h3 data-i18n="how_2_h">MathCursor propose.</h3>
-            <p data-i18n="how_2_p">Quand une zone math est reconnue, une popup apparaît avec l'équation formatée en aperçu. Vous validez d'une touche, ou vous ignorez et continuez à écrire.</p>
+            <h3 data-i18n="how_2_h">La popup vous guide.</h3>
+            <p data-i18n="how_2_p">Dès qu'une zone math est reconnue, une popup montre la formule en train de se dessiner — avec des carrés là où il manque quelque chose. Vous voyez en direct que vous êtes sur le bon chemin. Vous validez d'une touche, ou vous ignorez et continuez à écrire.</p>
           </li>
           <li>
             <h3 data-i18n="how_3_h">Si la détection a raté.</h3>
@@ -90,14 +91,33 @@
       </div>
     </section>
 
-    <!-- Ce que MathCursor fait, et ce qu'il ne fait pas encore -->
+    <!-- Le geste -->
+    <section id="le-geste" class="section">
+      <div class="container">
+        <h2 data-i18n="gest_h">Un geste, et c'est figé</h2>
+        <ol class="steps">
+          <li>
+            <p data-i18n="gest_1">Vous tapez votre notation au fil du cours, sans casser le rythme.</p>
+          </li>
+          <li>
+            <p data-i18n="gest_2">Vous validez dans la popup : la formule se fige, propre et nette. La petite satisfaction qui donne envie de continuer.</p>
+          </li>
+          <li>
+            <p data-i18n="gest_3">Pas la bonne ? <code>Ctrl + Z</code>, vous retapez. Aucune punition — juste le flow.</p>
+          </li>
+        </ol>
+        <p class="how-note" data-i18n="gest_note"><em>Flèches pour choisir, Entrée pour valider : le geste s'ancre en quelques minutes, après vous n'y pensez plus.</em></p>
+      </div>
+    </section>
+
+    <!-- Couverture math actuelle -->
     <section id="scope" class="section">
       <div class="container">
-        <h2 data-i18n="scope_h">Ce que MathCursor fait, et ce qu'il ne fait pas encore</h2>
-        <p class="scope-lead" data-i18n="scope_lead">C'est une bêta. Autant le dire clairement.</p>
+        <h2 data-i18n="scope_h">Tout ce que MathCursor met déjà en forme</h2>
+        <p class="scope-lead" data-i18n="scope_lead">Une large couverture, du lycée au supérieur — et elle s'étend à chaque version.</p>
         <div class="scope-grid">
           <div class="scope-col scope-col--ok">
-            <h3 data-i18n="scope_ok_h">Ce qui marche aujourd'hui</h3>
+            <h3 data-i18n="scope_ok_h">Pris en charge aujourd'hui</h3>
             <ul>
               <li data-i18n="scope_ok_1"><strong>Équations Word natives (OMath).</strong> Le format de sortie est celui de l'éditeur d'équations Word standard. Pas de plugin pour relire, pas d'image, pas de format exotique. Les documents restent éditables normalement, même sans MathCursor installé.</li>
               <li data-i18n="scope_ok_2">Fractions, exposants, indices, racines.</li>
@@ -109,7 +129,7 @@
             </ul>
           </div>
           <div class="scope-col scope-col--todo">
-            <h3 data-i18n="scope_todo_h">Ce qui ne marche pas encore</h3>
+            <h3 data-i18n="scope_todo_h">Bientôt, sur la feuille de route</h3>
             <ul>
               <li data-i18n="scope_todo_1">Chimie (équations de réaction, états d'oxydation) : moteur séparé en cours.</li>
               <li data-i18n="scope_todo_2">Schémas, figures, graphes.</li>
@@ -127,10 +147,11 @@
     <section id="pour-qui" class="section">
       <div class="container">
         <h2 data-i18n="for_h">Pour qui</h2>
+        <p class="scope-lead" data-i18n="for_intro">Le même outil pour tout le monde — et c'est justement ce qui compte : un élève sous PAP n'a pas un outil « à part », il a le même que ses camarades.</p>
         <div class="cards">
           <article class="card card--red">
             <h3 data-i18n="for_1_h">Profs de maths</h3>
-            <p data-i18n="for_1_p">Un complément gratuit à recommander aux élèves qui prennent leurs cours de maths au clavier. Ils suivent le rythme et rendent un document propre. Vous n'avez rien à installer ni à gérer de votre côté.</p>
+            <p data-i18n="for_1_p">L'outil est pour vous, d'abord : tapez vos interros, exercices, corrigés et supports au clavier — fractions, sommes, systèmes et matrices prennent forme tout seuls. Vous écrivez vos maths bien plus vite, et repartez avec un document Word propre, réutilisable d'une année sur l'autre.</p>
           </article>
           <article class="card">
             <h3 data-i18n="for_2_h">Lycéens et étudiants au clavier</h3>
@@ -138,7 +159,7 @@
           </article>
           <article class="card">
             <h3 data-i18n="for_3_h">Parents</h3>
-            <p data-i18n="for_3_p">Pour un enfant sous PAP, MathCursor réduit la friction d'écriture mathématique sans installer un univers logiciel à part.</p>
+            <p data-i18n="for_3_p">Pour un enfant sous PAP, MathCursor réduit la friction d'écriture mathématique sans installer tout un univers logiciel séparé.</p>
           </article>
         </div>
       </div>
@@ -148,7 +169,7 @@
     <section id="installation" class="section">
       <div class="container">
         <h2 data-i18n="inst_h">Installation</h2>
-        <p data-i18n="inst_p">MathCursor est en bêta. L'installation prend moins d'une minute, une seule fois par machine, ou <a href="demo/">testez d'abord en ligne</a>, sans rien installer.</p>
+        <p data-i18n="inst_p">Voici l'installation pour <strong>Word</strong>, prête aujourd'hui : moins d'une minute, une seule fois par machine — ou <a href="demo/">testez d'abord en ligne</a>, sans rien installer.</p>
 
         <ol class="install-steps">
           <li>
@@ -166,6 +187,7 @@
         </ol>
 
         <p class="install-config" data-i18n="inst_config"><strong>Configuration :</strong> Windows 10 ou 11, Word 2016+ ou Microsoft 365. Langues d'interface : français, anglais, allemand, espagnol.</p>
+        <p class="install-note" data-i18n="inst_platforms"><strong>Autres éditeurs :</strong> les versions <strong>LibreOffice</strong> et <strong>VS&nbsp;Code – LaTeX</strong> sont en <strong>alpha</strong> — ça marche déjà, mais ça bouge encore. Envie de les tester ? <a href="/contact.html">Écrivez-moi</a> et je vous envoie la marche à suivre.</p>
         <p class="install-note" data-i18n="inst_note">Besoin d'aide, un bug, envie de discuter ? <a href="/contact.html">Contact</a>.</p>
       </div>
     </section>
@@ -202,6 +224,10 @@
             <p data-i18n="faq_4_a">Word 2016, 2019, 2021 et Microsoft 365 Desktop sur Windows 10 et 11. Les portages Mac, Word Web et iPad sont prévus pour la phase 2, après validation de la bêta Windows.</p>
           </details>
           <details>
+            <summary data-i18n="faq_3_q">Et en dehors de Word ?</summary>
+            <p data-i18n="faq_3_a">Word est la version la plus aboutie aujourd'hui. <strong>LibreOffice</strong> et <strong>VS&nbsp;Code – LaTeX</strong> existent déjà en <strong>alpha</strong> et avancent vite : le même moteur, la même popup, dans votre éditeur habituel. Écrivez-moi via le <a href="/contact.html">formulaire de contact</a> si vous voulez les essayer.</p>
+          </details>
+          <details>
             <summary data-i18n="faq_5_q">Le certificat auto-signé, c'est safe ?</summary>
             <p data-i18n="faq_5_a">Oui. Le certificat est importé dans le compte utilisateur uniquement (pas au niveau système), sans droits administrateur. Il peut être supprimé à tout moment via <code>certmgr.msc</code>. Le <a href="install-cert.ps1">script d'import</a> est consultable avant exécution.</p>
           </details>
@@ -233,20 +259,21 @@
         nav_downloads: "Downloads",
 
         tag: "Project MathCursor · Public beta",
-        hero_h1_pre: "Write your math",
-        hero_h1_hl:  "without friction",
-        hero_lead: "MathCursor turns a fast keyboard notation into clean equations, on demand: no more fighting the equation editor, you write at typing speed and keep up with the lesson. Available today in Word; the demo runs right in your browser.",
+        hero_h1_pre: "Type the way you think.",
+        hero_h1_hl:  "We catch the intent.",
+        hero_lead: "Most tools turn already-clean text, a photo or symbol menus into math. MathCursor catches what you <strong>mean</strong> to write, as you type: you type loosely, the popup guides you live, you validate and the formula locks in, clean. All of it right inside your usual editor — nothing to relearn. The demo runs in your browser.",
         cta_demo: "Try it online",
         cta_dl: "Install for Word",
-        badge_friction: "Frictionless",
+        badge_friction: "No syntax to learn",
+        hero_platforms: "In your editor: <strong>Word</strong> · LibreOffice <span class=\"alpha\">(alpha)</span> · VS&nbsp;Code – LaTeX <span class=\"alpha\">(alpha)</span>",
         badge_local: "100% local",
         badge_account: "No account",
 
         how_h: "How it works",
         how_1_h: "You type.",
-        how_1_p: "Inside your sentence: <code>x2 + 1/2</code>, <code>lim x 0 sin x / x</code>, <code>somme k 1 n k2</code>.",
-        how_2_h: "MathCursor proposes.",
-        how_2_p: "When a math zone is recognised, a popup appears with the formatted equation as a preview. Validate with one keystroke, or ignore it and keep writing.",
+        how_1_p: "Loosely, inside your sentence, without hunting for brackets or the right symbols: <code>x2 + 1/2</code>, <code>lim x 0 sin x / x</code>, <code>somme k 1 n k2</code>.",
+        how_2_h: "The popup guides you.",
+        how_2_p: "As soon as a math zone is recognised, a popup shows the formula taking shape — with little squares where something is missing. You see in real time that you're on the right track. Validate with one keystroke, or ignore it and keep writing.",
         how_3_h: "If detection missed it.",
         how_3_p: "<code>Ctrl + Space</code> forces conversion on the zone around the caret.",
         how_4_h: "Re-edit.",
@@ -254,16 +281,23 @@
         how_note: "<em>MathCursor proposes, you validate. No transformation without your consent.</em>",
         how_cta: "Try it in your browser",
 
+        gest_h: "One keystroke, and it's locked in",
+        gest_1: "You type your notation as the lesson goes, without breaking your rhythm.",
+        gest_2: "You validate in the popup: the formula locks in, clean and crisp. The little hit of satisfaction that makes you want to keep going.",
+        gest_3: "Not the right one? <code>Ctrl + Z</code>, you retype. No penalty — just flow.",
+        gest_note: "<em>Arrows to choose, Enter to validate: the gesture sinks in within minutes, then you stop thinking about it.</em>",
+
         for_h: "Who it's for",
+        for_intro: "The same tool for everyone — and that's exactly the point: a student with a formal accommodation doesn't get a tool \"apart\", they get the same one as their classmates.",
         for_1_h: "Math teachers",
-        for_1_p: "A free add-in to recommend to students who take their math notes on a keyboard. They keep up with the lesson and hand in a clean document. Nothing for you to install or manage on your side.",
+        for_1_p: "The tool is for you, first: type your tests, exercises, answer keys and handouts on the keyboard — fractions, sums, systems and matrices take shape on their own. You write your math far faster, and walk away with a clean Word document, reusable year after year.",
         for_2_h: "High-schoolers and students on a keyboard",
         for_2_p: "If you take your math notes on a keyboard, by choice or because you have a formal accommodation, the equation editor slows you down and pulls you out of the lesson. MathCursor lets you keep pace and formats afterwards.",
         for_3_h: "Parents",
         for_3_p: "For a child with a formal accommodation, MathCursor reduces the friction of math writing without installing a separate software universe.",
 
         inst_h: "Installation",
-        inst_p: "MathCursor is in beta. Installation takes less than a minute, once per machine, or <a href=\"demo/\">try it online first</a>, with nothing to install.",
+        inst_p: "Here's the install for <strong>Word</strong>, ready today: less than a minute, once per machine — or <a href=\"demo/\">try it online first</a>, with nothing to install.",
         inst_1_h: "1. Download the installer",
         inst_1_p: "Grab <a href=\"/download/latest.exe\"><code>MathCursor-Setup.exe</code></a> (latest) or pick a version on the <a href=\"releases.html\">Downloads</a> page.",
         inst_2_h: "2. Run the installer",
@@ -271,6 +305,7 @@
         inst_3_h: "3. Use it",
         inst_3_p: "Open Word: a <strong>MathCursor</strong> tab appears in the ribbon. Type <code>x2+1/2</code> in a document, then trigger the conversion (ribbon button or keyboard shortcut).",
         inst_config: "<strong>Configuration:</strong> Windows 10 or 11, Word 2016+ or Microsoft 365. Interface languages: French, English, German, Spanish.",
+        inst_platforms: "<strong>Other editors:</strong> the <strong>LibreOffice</strong> and <strong>VS&nbsp;Code – LaTeX</strong> versions are in <strong>alpha</strong> — they already work, but they're still moving. Want to try them? <a href=\"/contact.html\">Write to me</a> and I'll send you the steps.",
         inst_note: "Need help, found a bug, want to chat? <a href=\"/contact.html\">Contact</a>.",
 
         faq_h: "Frequently asked questions",
@@ -282,14 +317,16 @@
         faq_2_a: "Yes. An Internet connection is only used to flag a new version: when Word starts, MathCursor checks online for an update and, if any, shows an “Update available” badge in the ribbon (downloading stays manual). Without a network, the installed version keeps working as usual.",
         faq_4_q: "Which Word versions are supported?",
         faq_4_a: "Word 2016, 2019, 2021 and Microsoft 365 Desktop on Windows 10 and 11. Mac, Word Web and iPad ports are planned for phase 2, after validating the Windows beta.",
+        faq_3_q: "What about outside Word?",
+        faq_3_a: "Word is the most polished version today. <strong>LibreOffice</strong> and <strong>VS&nbsp;Code – LaTeX</strong> already exist in <strong>alpha</strong> and are moving fast: the same engine, the same popup, inside your usual editor. Write to me via the <a href=\"/contact.html\">contact form</a> if you'd like to try them.",
         faq_5_q: "Is the self-signed certificate safe?",
         faq_5_a: "Yes. The certificate is imported into the user account only (not system-wide), with no admin rights. It can be removed at any time via <code>certmgr.msc</code>. The <a href=\"install-cert.ps1\">import script</a> can be inspected before running it.",
         faq_6_q: "How do I report a bug or suggest an improvement?",
         faq_6_a: "Via the <a href=\"/contact.html\">contact form</a>, or via the <strong>\"Report an issue\"</strong> button in the Word ribbon once MathCursor is installed. Teacher and student feedback drives the roadmap.",
 
-        scope_h: "What MathCursor does, and what it doesn't do yet",
-        scope_lead: "It's a beta. Might as well say it clearly.",
-        scope_ok_h: "What works today",
+        scope_h: "Everything MathCursor already formats",
+        scope_lead: "Broad coverage, from high school to higher ed — and it grows with every release.",
+        scope_ok_h: "Supported today",
         scope_ok_1: "<strong>Native Word equations (OMath).</strong> The output format is the one of Word's standard equation editor. No plugin to read it back, no image, no exotic format. Documents stay editable normally, even without MathCursor installed.",
         scope_ok_2: "Fractions, superscripts, subscripts, roots.",
         scope_ok_3: "Sums, integrals, limits, products.",
@@ -297,7 +334,7 @@
         scope_ok_5: "Matrices and simple systems of equations.",
         scope_ok_6: "Common symbols (∀, ∃, ∈, ≤, ≥, →, ⇒…).",
         scope_ok_7: "Re-editing an already-converted equation without retyping everything.",
-        scope_todo_h: "What doesn't work yet",
+        scope_todo_h: "Coming, on the roadmap",
         scope_todo_1: "Chemistry (reaction equations, oxidation states): separate engine in progress.",
         scope_todo_2: "Diagrams, figures, graphs.",
         scope_todo_3: "Long-range partial derivatives.",

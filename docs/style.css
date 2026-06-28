@@ -369,6 +369,16 @@ section + section { margin-top: 96px; }
   font-weight: 600;
 }
 
+.hero-platforms {
+  margin-top: 16px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+}
+
+.hero-platforms strong { color: var(--ink); font-weight: 600; }
+.hero-platforms .alpha { font-size: 0.72rem; opacity: 0.65; }
+
 /* Hero media — carousel vidéo auto-rotate (3 démos) */
 .hero-media {
   margin: 36px 0 0;
