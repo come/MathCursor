@@ -4,6 +4,7 @@
 //!
 //!   stdin  : <culture>\t<src>          |  QUIT
 //!            COMPOSE\t<culture>\t<json>  (chaîne multiligne ; json = [{"steno":..,"index":N}])
+//!            COMPOSE_SYSTEM\t<culture>\t<rest>  (système { ; rest = contenu après le `{`, lignes par `;`)
 //!   stdout : READY  puis 1 ligne JSON par requête :
 //!            {"decision":"auto|popup|erreur","ranked":[{"latex":..,"cost":..}],"hasNote":bool}
 //!            (COMPOSE → {"latex":..,"starmath":..})
@@ -64,6 +65,21 @@ fn main() {
                 .map(|(s, i)| chain::ChainLine { steno: s, index: *i })
                 .collect();
             let json_line = match catch_unwind(AssertUnwindSafe(|| chain::compose_chain(&lines, cu))) {
+                Ok(r) => json!({ "latex": r.latex, "starmath": r.starmath }),
+                Err(_) => json!({ "latex": "", "starmath": "" }),
+            };
+            let _ = writeln!(out, "{json_line}");
+            let _ = out.flush();
+            continue;
+        }
+        // Verbe COMPOSE_SYSTEM : système d'équations { … (rest = contenu après le `{`,
+        // découpé par `;`) → bloc accolade gauche aligné (latex + starmath).
+        if let Some(rest) = trimmed.strip_prefix("COMPOSE_SYSTEM\t") {
+            let mut sit = rest.splitn(2, '\t');
+            let culture = sit.next().unwrap_or("fr");
+            let body = sit.next().unwrap_or("");
+            let cu = if culture == "us" { &reg().us } else { &reg().fr };
+            let json_line = match catch_unwind(AssertUnwindSafe(|| chain::compose_system(body, cu))) {
                 Ok(r) => json!({ "latex": r.latex, "starmath": r.starmath }),
                 Err(_) => json!({ "latex": "", "starmath": "" }),
             };

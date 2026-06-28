@@ -118,6 +118,19 @@ class EngineClient:
         except Exception:
             return None
 
+    def compose_system(self, rest, culture):
+        """Système d'équations { … : `rest` = contenu après le `{` (lignes par `;`).
+        Renvoie {"latex":.., "starmath":..} (bloc accolade gauche) ou None."""
+        if self._io is None:
+            return None
+        line = self._io.request("COMPOSE_SYSTEM\t" + (culture or "fr") + "\t" + _clean(rest))
+        if not line:
+            return None
+        try:
+            return json.loads(line)
+        except Exception:
+            return None
+
     def quit(self):
         if self._io is not None:
             self._io.quit()

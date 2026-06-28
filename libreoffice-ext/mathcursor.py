@@ -542,8 +542,10 @@ try:
     _K_RETURN = uno.getConstantByName("com.sun.star.awt.Key.RETURN")
     _K_ESCAPE = uno.getConstantByName("com.sun.star.awt.Key.ESCAPE")
     _K_TAB = uno.getConstantByName("com.sun.star.awt.Key.TAB")
+    _KMOD_SHIFT = uno.getConstantByName("com.sun.star.awt.KeyModifier.SHIFT")
 except Exception:
     _K_DOWN, _K_UP, _K_RETURN, _K_ESCAPE, _K_TAB = 1024, 1025, 1280, 1281, 1282
+    _KMOD_SHIFT = 1
 
 
 class _ShellCommitCallback(unohelper.Base, XCallback):
@@ -676,6 +678,23 @@ _CHAIN_MARKERS = [
 ]
 
 
+def _find_open_brace(text):
+    """Position d'une accolade `{` NON fermée (la plus externe), ou -1. Reconnaît
+    un ouvreur de système n'importe où (`f(x) = {…`). Port de chain.rs."""
+    depth = 0
+    pos = -1
+    for i, c in enumerate(text):
+        if c == "{":
+            if depth == 0:
+                pos = i
+            depth += 1
+        elif c == "}" and depth > 0:
+            depth -= 1
+            if depth == 0:
+                pos = -1
+    return pos if depth > 0 else -1
+
+
 def _detect_relation_line(line):
     """(typed, marker_latex, is_connector, rest) si la ligne commence par un
     marqueur de chaîne, sinon None. Port fidèle de chain.rs::detect_relation_line."""
@@ -710,6 +729,21 @@ def _detect_candidate():
     # signal de sortie : tab ou double-espace juste avant le caret = « pas maintenant ».
     if para_text[caret - 1] == "\t" or (caret >= 2 and para_text[caret - 1] == " " and para_text[caret - 2] == " "):
         return None
+
+    # SYSTÈME D'ÉQUATIONS (hors moteur) : une accolade `{` NON fermée n'importe où
+    # (ouvreur) — pas seulement en tête (`f(x) = {…`, `A {…`). Le préfixe avant `{`
+    # est analysé par le moteur ; le reste est découpé par `;`. Maj+Entrée = saut de
+    # ligne STANDARD (dans le ¶) → converti en `;` (ADR 2026-06-26-Feat-systems-matrix-model).
+    if _find_open_brace(para_text) >= 0:
+        lead = len(para_text) - len(para_text.lstrip())
+        end = len(para_text.rstrip())
+        payload = para_text[lead:end].replace("\n", ";")  # sauts de ligne → lignes du système
+        comp = _ENGINE.compose_system(payload, _CULTURE)
+        if not comp or not comp.get("starmath"):
+            return None
+        sig = (lead, end, ("system", payload))
+        return (sig, [comp["starmath"]], [comp["latex"]],
+                _zone_range(para_start, lead, end), {"system": True})
 
     # LIGNE DE CHAÎNE (hors moteur) : le ¶ commence par un marqueur (=, <=>, ≤…).
     # Le moteur renvoie « erreur » sur une relation en tête → on n'analyse que le
@@ -934,7 +968,13 @@ def _autopopup_commit():
     except Exception:
         undo = None
     try:
-        if rel is not None:
+        if meta.get("system"):
+            # SYSTÈME : un transform autonome (le starmath composé est déjà sm[0]).
+            # N'amorce PAS de chaîne (un système ne s'étend pas après commit).
+            if chosen is not None:
+                _insert_formula(zr, chosen)
+            _autodet["chain"] = None
+        elif rel is not None:
             # LIGNE DE CHAÎNE : étendre le bloc adjacent au-dessus, sinon repli autonome.
             if chain is not None and _block_is_just_above(chain.get("obj"), zr):
                 lines = list(chain["lines"]) + [(steno, idx)]
@@ -1036,6 +1076,11 @@ class _KeyHandler(unohelper.Base, XKeyHandler):
         if _autodet["popup"] is None:
             return False
         code = ev.KeyCode
+        if code == _K_RETURN and (ev.Modifiers & _KMOD_SHIFT):
+            # Maj+Entrée = saut de ligne STANDARD (dans le ¶) : on NE consomme PAS
+            # et on garde la popup ouverte → le tick recompose (le saut de ligne
+            # devient une nouvelle ligne du système, cf. _detect_candidate).
+            return False
         if code == _K_DOWN:
             _nav(1)
             return True

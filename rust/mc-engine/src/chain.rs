@@ -266,6 +266,96 @@ pub fn compose_chain(lines: &[ChainLine], cu: &Culture) -> ComposeResult {
     }
 }
 
+/// Position (octet) d'une accolade `{` NON fermée dans `text` (la plus externe),
+/// ou None. Sert à reconnaître un ouvreur de système n'importe où (`f(x) = {…`).
+pub fn find_unclosed_brace(text: &str) -> Option<usize> {
+    let mut depth = 0i32;
+    let mut pos = None;
+    for (i, &b) in text.as_bytes().iter().enumerate() {
+        if b == b'{' {
+            if depth == 0 {
+                pos = Some(i);
+            }
+            depth += 1;
+        } else if b == b'}' && depth > 0 {
+            depth -= 1;
+            if depth == 0 {
+                pos = None;
+            }
+        }
+    }
+    if depth > 0 {
+        pos
+    } else {
+        None
+    }
+}
+
+/// Détache une relation FINALE du préfixe (« f(x) = » → lhs « f(x) », « = »).
+fn split_trailing_relation(prefix: &str) -> Option<(&str, &'static str, &'static str)> {
+    let t = prefix.trim_end();
+    for &(typed, latex, starmath, _is_conn) in MARKERS {
+        if let Some(lhs) = t.strip_suffix(typed) {
+            // marqueur-MOT : frontière de mot avant (sinon « xapprox » matcherait).
+            if typed.bytes().last().is_some_and(|b| b.is_ascii_alphabetic())
+                && lhs.chars().last().is_some_and(|c| c.is_alphabetic())
+            {
+                continue;
+            }
+            return Some((lhs.trim_end(), latex, starmath));
+        }
+    }
+    None
+}
+
+/// Rendu du préfixe avant l'accolade (analysé « comme d'hab » par le moteur ;
+/// relation finale rattachée). (latex, starmath), tous deux suffixés d'un espace.
+fn render_prefix(prefix: &str, cu: &Culture) -> (String, String) {
+    if prefix.is_empty() {
+        return (String::new(), String::new());
+    }
+    match split_trailing_relation(prefix) {
+        Some((lhs, rel_l, rel_s)) => {
+            let (lx, sx) = pick(lhs, 0, cu);
+            (format!("{lx}{rel_l} "), format!("{sx} {rel_s} "))
+        }
+        None => {
+            let (lx, sx) = pick(prefix, 0, cu);
+            (format!("{lx} "), format!("{sx} "))
+        }
+    }
+}
+
+/// Système d'équations : `line` contient une accolade `{` non fermée (ouvreur,
+/// n'importe où — pas seulement en tête). Le PRÉFIXE (avant `{`) est analysé par
+/// le moteur ; le RESTE (après `{`) est découpé par `;` en lignes (l'adapter
+/// convertit les sauts de ligne Maj+Entrée en `;`), aligné au signe, et enveloppé
+/// d'une accolade gauche seule. Hors moteur (ADR 2026-06-26-Feat-systems-matrix-model).
+pub fn compose_system(line: &str, cu: &Culture) -> ComposeResult {
+    let pos = match find_unclosed_brace(line) {
+        Some(p) => p,
+        None => return ComposeResult { latex: String::new(), starmath: String::new() },
+    };
+    let prefix = line[..pos].trim();
+    let rows: Vec<ChainLine> = line[pos + 1..]
+        .split(';')
+        .map(|r| r.trim())
+        .filter(|r| !r.is_empty())
+        .map(|r| ChainLine { steno: r, index: 0 })
+        .collect();
+    if rows.is_empty() {
+        return ComposeResult { latex: String::new(), starmath: String::new() };
+    }
+    let inner = compose_chain(&rows, cu);
+    let (pre_l, pre_s) = render_prefix(prefix, cu);
+    ComposeResult {
+        // \right. = délimiteur droit invisible ; le préfixe (ex. « f(x) = ») précède.
+        latex: format!("{pre_l}\\left\\{{ {} \\right.", inner.latex),
+        // right none = pas de délimiteur droit (StarMath).
+        starmath: format!("{pre_s}left lbrace {} right none", inner.starmath),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -357,6 +447,47 @@ mod tests {
         assert!(r.starmath.contains(" ## ")); // séparateur de ligne matrix
         assert!(r.starmath.contains("alignr") && r.starmath.contains("alignl"));
         assert!(r.starmath.contains("{} =")); // relation = opérateur StarMath + opérande fantôme
+    }
+
+    #[test]
+    fn compose_system_wraps_left_brace() {
+        // { 2x+y=5 ; x-y=1  →  accolade gauche + lignes alignées au signe.
+        let r = compose_system("{ 2x+y=5 ; x-y=1", fr());
+        assert!(r.latex.starts_with("\\left\\{ \\begin{aligned}"));
+        assert!(r.latex.ends_with("\\end{aligned} \\right."));
+        assert!(r.latex.contains("&=")); // alignement au signe
+        assert!(r.starmath.starts_with("left lbrace matrix{"));
+        assert!(r.starmath.ends_with("} right none"));
+        assert!(r.starmath.contains(" ## ")); // 2 lignes
+    }
+
+    #[test]
+    fn compose_system_drops_empty_rows() {
+        // ; en trop / espaces → lignes vides ignorées.
+        let r = compose_system("{ x=1 ; ; ", fr());
+        assert!(r.latex.starts_with("\\left\\{"));
+        assert!(!r.starmath.contains(" ## ")); // une seule ligne
+    }
+
+    #[test]
+    fn compose_system_generic_brace_with_prefix() {
+        // f(x) = { 2x ; x  →  préfixe « f(x) = » rendu avant l'accolade.
+        let r = compose_system("f(x) = { 2x ; x", fr());
+        assert!(r.latex.contains("\\left\\{")); // accolade
+        assert!(r.latex.starts_with("f(x)= ")); // préfixe + relation finale rattachée
+        assert!(r.starmath.contains("left lbrace"));
+        assert!(r.starmath.starts_with("f ")); // f(x) rendu en StarMath avant l'accolade
+        // A { …  → préfixe « A » sans relation.
+        let r2 = compose_system("A { 1 ; 2", fr());
+        assert!(r2.latex.starts_with("A \\left\\{"));
+    }
+
+    #[test]
+    fn find_unclosed_brace_cases() {
+        assert_eq!(find_unclosed_brace("f(x) = { 2x ; x"), Some(7));
+        assert_eq!(find_unclosed_brace("{ a ; b"), Some(0));
+        assert_eq!(find_unclosed_brace("{a,b}"), None); // accolade fermée = ensemble
+        assert_eq!(find_unclosed_brace("2x+1"), None);
     }
 
     #[test]
