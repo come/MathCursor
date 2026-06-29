@@ -59,6 +59,46 @@ namespace MathCursor.Host.Blocks
             return Build(lineText, "{", "\\{", isConnector: false, markerStart: i);
         }
 
+        /// <summary>Index d'une accolade <c>{</c> NON fermée (la plus externe) dans
+        /// <paramref name="text"/>, ou -1. Reconnaît un ouvreur de SYSTÈME n'importe
+        /// où (« f(x) = {… », pas seulement en tête). Port de chain.rs::find_unclosed_brace
+        /// (modèle matrice, ADR 2026-06-29).</summary>
+        public static int FindUnclosedBrace(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return -1;
+            int depth = 0, pos = -1;
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+                if (c == '{') { if (depth == 0) pos = i; depth++; }
+                else if (c == '}' && depth > 0) { depth--; if (depth == 0) pos = -1; }
+            }
+            return depth > 0 ? pos : -1;
+        }
+
+        /// <summary>Détache une relation FINALE du préfixe (« f(x) = » → lhs « f(x) »,
+        /// markerLatex « = »). Null si le préfixe ne finit pas par une relation.
+        /// Port de chain.rs::split_trailing_relation.</summary>
+        public static (string Lhs, string MarkerLatex)? SplitTrailingRelation(string prefix)
+        {
+            if (string.IsNullOrEmpty(prefix)) return null;
+            string t = prefix.TrimEnd();
+            foreach (var entry in RelationMarkers.Table)
+            {
+                string typed = entry.Typed;
+                if (t.Length < typed.Length) continue;
+                if (string.Compare(t, t.Length - typed.Length, typed, 0, typed.Length,
+                        System.StringComparison.OrdinalIgnoreCase) != 0) continue;
+                string lhs = t.Substring(0, t.Length - typed.Length);
+                // marqueur-MOT (approx/environ/env) : frontière de mot avant (sinon
+                // « xapprox » matcherait).
+                if (char.IsLetter(typed[typed.Length - 1]) && lhs.Length > 0
+                    && char.IsLetter(lhs[lhs.Length - 1])) continue;
+                return (lhs.TrimEnd(), entry.Latex);
+            }
+            return null;
+        }
+
         private static RelationLineMatch Build(string lineText, string typed, string latex,
             bool isConnector, int markerStart)
         {

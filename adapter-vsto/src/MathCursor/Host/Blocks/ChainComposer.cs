@@ -90,8 +90,15 @@ namespace MathCursor.Host.Blocks
             return new XElement(M + "oMath", eqArr);
         }
 
-        /// <summary>Bloc SYSTÈME : accolade + eqArr 2 colonnes.</summary>
+        /// <summary>Bloc SYSTÈME sans préfixe (rétro-compat).</summary>
         public static XElement ComposeSystem(IReadOnlyList<string> latexLines)
+            => ComposeSystem("", latexLines);
+
+        /// <summary>Bloc SYSTÈME (modèle matrice) : préfixe optionnel (ex. « f(x) = »,
+        /// déjà rendu en LaTeX par l'adapter) greffé AVANT l'accolade + eqArr 2 colonnes
+        /// (accolade ouvrante <c>&lt;m:d&gt;</c>, fermante invisible). Les = alignés.
+        /// Cf. ADR 2026-06-29-Feat-word-systems-matrix-model-backport.</summary>
+        public static XElement ComposeSystem(string prefixLatex, IReadOnlyList<string> latexLines)
         {
             var eqArr = new XElement(M + "eqArr");
             foreach (var latex in latexLines)
@@ -108,7 +115,24 @@ namespace MathCursor.Host.Blocks
                     new XElement(M + "begChr", new XAttribute(M + "val", "{")),
                     new XElement(M + "endChr", new XAttribute(M + "val", ""))),
                 new XElement(M + "e", eqArr));
-            return new XElement(M + "oMath", d);
+            var oMath = new XElement(M + "oMath");
+            Graft(oMath, prefixLatex);   // préfixe avant l'accolade (vide → no-op)
+            oMath.Add(d);
+            return oMath;
+        }
+
+        /// <summary>LaTeX du bloc système (pour l'aperçu popup WpfMath) :
+        /// <c>&lt;préfixe&gt;\left\{ \begin{aligned} lhs &amp;=rhs \\ … \right.</c>.</summary>
+        public static string ComposeSystemLatex(string prefixLatex, IReadOnlyList<string> latexLines)
+        {
+            var rows = new List<string>(latexLines.Count);
+            foreach (var latex in latexLines)
+            {
+                var (l, r) = LatexTopLevelSplit.Split(latex ?? "");
+                rows.Add(r != null ? l + " &" + r : l + " &");
+            }
+            return (prefixLatex ?? "") + "\\left\\{ \\begin{aligned} "
+                + string.Join(" \\\\ ", rows) + " \\end{aligned} \\right.";
         }
 
         // ── Internals ────────────────────────────────────────────────────

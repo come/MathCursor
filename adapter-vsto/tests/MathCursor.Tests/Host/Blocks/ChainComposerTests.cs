@@ -129,6 +129,64 @@ namespace MathCursor.Tests.Host.Blocks
             Assert.Equal("x-y&=1", AllText(rows[1]));
         }
 
+        [Fact]
+        public void System_with_prefix_grafts_it_before_the_brace()
+        {
+            // f(x) = { 2x ; x  → préfixe « f(x)= » rendu AVANT l'accolade <m:d>.
+            var oMath = ChainComposer.ComposeSystem("f(x)=", new[] { "2x", "x" });
+            Assert.Single(oMath.Elements(M + "d"));      // une seule accolade
+            // le préfixe précède l'accolade dans le flux de l'oMath.
+            Assert.StartsWith("f(x)=", AllText(oMath));
+            var rows = oMath.Element(M + "d").Element(M + "e").Element(M + "eqArr").Elements(M + "e").ToList();
+            Assert.Equal(2, rows.Count);
+            Assert.Equal("2x&", AllText(rows[0]));        // ligne sans relation → lhs seul
+        }
+
+        [Fact]
+        public void System_latex_wraps_left_brace_with_prefix()
+        {
+            var latex = ChainComposer.ComposeSystemLatex("f(x)=", new[] { "2x", "x" });
+            Assert.StartsWith("f(x)=\\left\\{ \\begin{aligned}", latex);
+            Assert.EndsWith("\\end{aligned} \\right.", latex);
+
+            var noPrefix = ChainComposer.ComposeSystemLatex("", new[] { "2x+y=5", "x-y=1" });
+            Assert.StartsWith("\\left\\{ \\begin{aligned}", noPrefix);
+            Assert.Contains("2x+y &=5", noPrefix);
+            Assert.Contains(" \\\\ ", noPrefix);          // séparateur de lignes
+        }
+
+        // ── Détecteur : accolade ouvreuse générique + préfixe ─────────────
+
+        [Theory]
+        [InlineData("f(x) = { 2x ; x", 7)]
+        [InlineData("{ a ; b", 0)]
+        [InlineData("A {1;2", 2)]
+        public void Find_unclosed_brace_returns_position(string text, int pos)
+            => Assert.Equal(pos, RelationLineDetector.FindUnclosedBrace(text));
+
+        [Theory]
+        [InlineData("{a,b}")]      // accolade fermée = ensemble
+        [InlineData("2x+1")]       // pas d'accolade
+        [InlineData("")]
+        public void Find_unclosed_brace_none(string text)
+            => Assert.Equal(-1, RelationLineDetector.FindUnclosedBrace(text));
+
+        [Fact]
+        public void Split_trailing_relation_detaches_final_sign()
+        {
+            var m = RelationLineDetector.SplitTrailingRelation("f(x) =");
+            Assert.NotNull(m);
+            Assert.Equal("f(x)", m.Value.Lhs);
+            Assert.Equal("=", m.Value.MarkerLatex);
+
+            var le = RelationLineDetector.SplitTrailingRelation("x <=");
+            Assert.Equal("x", le.Value.Lhs);
+            Assert.Equal("\\leq ", le.Value.MarkerLatex);
+
+            Assert.Null(RelationLineDetector.SplitTrailingRelation("A"));        // pas de relation
+            Assert.Null(RelationLineDetector.SplitTrailingRelation("xapprox")); // frontière de mot
+        }
+
         // ── Détecteur : ouvreur de système ───────────────────────────────
 
         [Theory]
