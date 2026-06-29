@@ -534,6 +534,10 @@ _autodet = {
     "meta": {}, "chain": None,  # meta = info ligne courante ; chain = bloc en cours (transitoire)
     "suppress_sig": None, "busy": False, "client": None,
     "timer": None, "asynccb": None, "toolkit": None, "topwin": None,
+    # détection hors thread UI (cf. ADR 2026-06-29-Fix-libreoffice-detection-off-ui-thread) :
+    #   det_input  = snapshot (texte ¶, caret, range début ¶) passé au worker de fond
+    #   det_result = (sig, sms, labels, (zstart, zend), meta) renvoyé par le worker
+    "det_input": None, "det_result": None,
 }
 
 try:
@@ -716,14 +720,13 @@ def _detect_relation_line(line):
     return None
 
 
-def _detect_candidate():
-    """¶ courant -> NER -> zone au caret -> candidats. Renvoie
-    (sig, starmaths, labels, zone_range) ou None. `sig` = signature (span +
-    labels) pour décider si la popup doit être rafraîchie."""
-    info = _para_context()
-    if info is None:
-        return None
-    para_text, caret, para_start = info
+def _detect_offsets(para_text, caret):
+    """Détection PURE (NER + moteur en stdio, AUCUN accès UNO) : texte ¶ + caret ->
+    (sig, starmaths, labels, (zstart, zend), meta) ou None. Tourne sur le THREAD DE
+    FOND — le stdio ne doit jamais bloquer le thread UI (gel). Le range UNO est créé
+    plus tard, sur le thread principal, à partir des offsets renvoyés. `sig` =
+    signature (span + labels) pour décider si la popup doit être rafraîchie.
+    Cf. ADR 2026-06-29-Fix-libreoffice-detection-off-ui-thread."""
     if not para_text or caret <= 0:
         return None
     # signal de sortie : tab ou double-espace juste avant le caret = « pas maintenant ».
@@ -743,7 +746,7 @@ def _detect_candidate():
             return None
         sig = (lead, end, ("system", payload))
         return (sig, [comp["starmath"]], [comp["latex"]],
-                _zone_range(para_start, lead, end), {"system": True})
+                (lead, end), {"system": True})
 
     # LIGNE DE CHAÎNE (hors moteur) : le ¶ commence par un marqueur (=, <=>, ≤…).
     # Le moteur renvoie « erreur » sur une relation en tête → on n'analyse que le
@@ -763,7 +766,7 @@ def _detect_candidate():
         end = len(para_text.rstrip())
         steno = para_text[lead:end]
         sig = (lead, end, tuple(labels), "rel")
-        return sig, sms, labels, _zone_range(para_start, lead, end), {"rel": rel, "steno": steno}
+        return sig, sms, labels, (lead, end), {"rel": rel, "steno": steno}
 
     # Détection + raffinage (zone finale) entièrement côté Rust (mc-ner :
     # detect + pick_nearest + merge + extend, comme le ner-helper de Word).
@@ -786,34 +789,87 @@ def _detect_candidate():
     sms = [c["starmath"] for c in ranked]
     labels = [c["latex"] for c in ranked]
     sig = (s, e, tuple(labels))
-    return sig, sms, labels, _zone_range(para_start, s, e), {"rel": None, "steno": para_text[s:e]}
+    return sig, sms, labels, (s, e), {"rel": None, "steno": para_text[s:e]}
 
 
 def _autodetect_tick():
-    """Garde de RÉ-ENTRANCE : certaines opérations (ouverture de doc de rendu,
-    déplacement du view-cursor) pompent la boucle d'événements ; sans cette garde,
-    un AsyncCallback en file se ré-exécute pendant qu'on est déjà dans le tick →
-    travail imbriqué → gel (AppHang)."""
+    """ÉTAPE 1 (THREAD PRINCIPAL) : snapshot UNO (texte ¶ + caret), puis lance la
+    détection stdio EN FOND. La détection (NER/moteur via subprocess) ne doit JAMAIS
+    tourner sur le thread UI : un readline bloquant y gèle Writer (AppHang). Seules
+    les lectures UNO restent ici (rapides). Cf. ADR
+    2026-06-29-Fix-libreoffice-detection-off-ui-thread.
+
+    Garde de RÉ-ENTRANCE `busy` : un seul cycle snapshot→worker→apply à la fois
+    (coalesce les rafales de frappe). `busy` est relâché par l'étape 3 (ou par le
+    worker s'il ne peut pas re-poster)."""
     if not _NER.available or _autodet.get("busy"):
         return
+    info = _para_context()
+    if info is None:
+        # pas de contexte sûr (sélection, OLE en amont) -> fermer une popup éventuelle.
+        _autodet["suppress_sig"] = None
+        if _autodet["popup"] is not None:
+            _close_autopopup()
+        return
+    para_text, caret, _para_start = info
     _autodet["busy"] = True
+    _autodet["det_input"] = info
+    threading.Thread(target=_detect_worker, args=(para_text, caret), daemon=True).start()
+
+
+def _detect_worker(para_text, caret):
+    """ÉTAPE 2 (THREAD DE FOND) : détection NER + moteur en stdio (timeouts côté
+    rust_clients). AUCUN accès UNO ici. Re-poste l'étape 3 sur le thread principal,
+    quoi qu'il arrive (sinon `busy` resterait bloqué et la détection s'arrêterait)."""
+    result = None
     try:
-        _autodetect_tick_inner()
-    finally:
-        _autodet["busy"] = False
+        result = _detect_offsets(para_text, caret)
+    except Exception:
+        result = None
+    _autodet["det_result"] = result
+    acb = _autodet.get("asynccb")
+    if acb is not None:
+        try:
+            acb.addCallback(_applycb, None)
+            return
+        except Exception:
+            pass
+    _autodet["busy"] = False  # impossible de re-poster -> libère la garde
 
 
-def _autodetect_tick_inner():
-    cand = _detect_candidate()
+class _ApplyCallback(unohelper.Base, XCallback):
+    """ÉTAPE 3 (THREAD PRINCIPAL) : applique le résultat de la détection (ouvre/
+    rafraîchit/ferme la popup). Crée ICI le range UNO à partir des offsets (interdit
+    hors thread principal). Libère toujours la garde `busy`."""
+
+    def notify(self, data):
+        try:
+            _apply_detection()
+        except Exception:
+            pass
+        finally:
+            _autodet["busy"] = False
+
+
+_applycb = _ApplyCallback()
+
+
+def _apply_detection():
+    cand = _autodet.get("det_result")
     if cand is None:
         _autodet["suppress_sig"] = None  # le texte a changé -> on lèvera la suppression
         if _autodet["popup"] is not None:
             _close_autopopup()
         return
-    sig, sms, labels, zrange, meta = cand
+    sig, sms, labels, (zstart, zend), meta = cand
     if sig == _autodet.get("suppress_sig"):
         return  # fermée par Échap sur CETTE zone -> ne pas rouvrir tant qu'elle ne change pas
     _autodet["suppress_sig"] = None
+    info = _autodet.get("det_input")
+    if info is None:
+        return
+    _para_text, _caret, para_start = info
+    zrange = _zone_range(para_start, zstart, zend)  # range UNO créé sur le thread principal
     if _autodet["popup"] is not None:
         if _autodet.get("sig") == sig:
             return  # inchangé -> garde la popup (et l'index ↓ courant)
@@ -1267,6 +1323,8 @@ def autodetect_stop(*args):
         _autodet["toolkit"] = None
         _autodet["topwin"] = None
         _autodet["busy"] = False
+        _autodet["det_input"] = None
+        _autodet["det_result"] = None
         _msg("Auto-détection désactivée.")
     except Exception:
         pass

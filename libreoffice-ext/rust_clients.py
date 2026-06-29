@@ -8,6 +8,7 @@ dans l'ordre). Process persistant, re-spawn paresseux s'il meurt.
 """
 import json
 import os
+import queue
 import subprocess
 import sys
 import threading
@@ -16,16 +17,49 @@ _CREATE_NO_WINDOW = 0x08000000  # Windows : pas de console qui flashe
 
 
 class _StdioProc:
-    """Process persistant stdio (handshake READY au démarrage)."""
+    """Process persistant stdio (handshake READY au démarrage).
 
-    def __init__(self, argv, ready_tokens=("READY",)):
+    Les lectures sont BORNÉES par timeout (thread lecteur + queue) : un readline
+    nu bloque indéfiniment si l'enfant se coince, ce qui gèle l'appelant. CE CLIENT
+    PEUT ÊTRE APPELÉ DEPUIS UN THREAD UI (LibreOffice) — un blocage non borné y est
+    un gel applicatif. Sur timeout, on TUE l'enfant (respawn paresseux ensuite) :
+    plutôt que de garder un process qui répondra en retard et désynchronisera la
+    requête suivante. Cf. ADR 2026-06-29-Fix-libreoffice-detection-off-ui-thread.
+    """
+
+    def __init__(self, argv, ready_tokens=("READY",), spawn_timeout=20.0,
+                 req_timeout=3.0):
         self._argv = argv
         self._ready_tokens = ready_tokens
+        self._spawn_timeout = spawn_timeout  # généreux : chargement modèle ONNX
+        self._req_timeout = req_timeout
         self._proc = None
+        self._q = None
         self._lock = threading.Lock()
 
     def _alive(self):
         return self._proc is not None and self._proc.poll() is None
+
+    def _reader(self, proc, q):
+        """Thread daemon : pompe stdout ligne à ligne vers la queue. Sentinelle
+        None à l'EOF (process mort)."""
+        try:
+            for line in proc.stdout:
+                q.put(line)
+        except Exception:
+            pass
+        finally:
+            q.put(None)
+
+    def _kill(self):
+        p = self._proc
+        self._proc = None
+        self._q = None
+        if p is not None:
+            try:
+                p.kill()
+            except Exception:
+                pass
 
     def _spawn(self):
         kw = {}
@@ -34,13 +68,21 @@ class _StdioProc:
         self._proc = subprocess.Popen(
             self._argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             text=True, encoding="utf-8", bufsize=1, **kw)
-        line = self._proc.stdout.readline().strip()
-        if line not in self._ready_tokens:
-            self._proc = None
+        self._q = queue.Queue()
+        threading.Thread(target=self._reader, args=(self._proc, self._q),
+                         daemon=True).start()
+        try:
+            line = self._q.get(timeout=self._spawn_timeout)
+        except queue.Empty:
+            self._kill()
+            raise RuntimeError("service: timeout d'attente READY")
+        if line is None or line.strip() not in self._ready_tokens:
+            self._kill()
             raise RuntimeError("service non prêt: %r" % line)
 
     def request(self, payload):
-        """Envoie payload (sans \\n), renvoie la ligne de réponse (str) ou None."""
+        """Envoie payload (sans \\n), renvoie la ligne de réponse (str) ou None.
+        None si le service est indisponible, mort, ou ne répond pas à temps."""
         with self._lock:
             if not self._alive():
                 try:
@@ -50,18 +92,23 @@ class _StdioProc:
             try:
                 self._proc.stdin.write(payload + "\n")
                 self._proc.stdin.flush()
-                line = self._proc.stdout.readline()
             except Exception:
-                self._proc = None
+                self._kill()
                 return None
-            if not line:
-                self._proc = None
+            try:
+                line = self._q.get(timeout=self._req_timeout)
+            except queue.Empty:
+                self._kill()  # enfant coincé -> on le recycle (pas de désync)
+                return None
+            if not line:  # None (EOF) ou ligne vide -> mort
+                self._kill()
                 return None
             return line.strip()
 
     def quit(self):
         p = self._proc
         self._proc = None
+        self._q = None
         if p is not None:
             try:
                 p.stdin.write("QUIT\n")
