@@ -1,0 +1,20 @@
+{
+  "extension.description": "Écris les maths comme elles te viennent : notation au clavier → LaTeX propre inline, avec aperçu de la formule au caret.",
+  "command.popup.title": "MathCursor : popup au caret",
+  "command.convert.title": "MathCursor : complétion LaTeX (Ctrl+Espace)",
+  "config.culture.description": "Convention math : fr (virgule décimale, matrices ()) ou us (point décimal, matrices []).",
+  "config.delimiters.description": "Délimiteurs ajoutés autour du LaTeX inséré.",
+  "config.delimiters.auto": "Contextuel : formule seule sur sa ligne → display centré ($$…$$ en Markdown, \\[…\\] en LaTeX) ; sinon inline $…$",
+  "config.delimiters.inline": "Toujours inline : $ … $",
+  "config.delimiters.display": "Toujours display centré : $$ … $$ (Markdown) ou \\[ … \\] (LaTeX)",
+  "config.delimiters.paren": "Inline avec \\( … \\)",
+  "config.delimiters.none": "LaTeX brut, sans délimiteurs",
+  "config.maxCandidates.description": "Nombre maximum de candidats proposés (comme la popup Word).",
+  "config.autoDetect.description": "Proposer automatiquement la conversion LaTeX au fil de la frappe (zone math détectée au caret).",
+  "config.autoPackages.description": "Ajouter automatiquement \\usepackage{amsmath}/{amssymb} dans le préambule LaTeX quand une formule insérée en a besoin (\\mathbb, matrices, cases…).",
+  "config.showLatexInPopup.description": "Afficher la source LaTeX (en petit, à droite) sous chaque formule rendue dans la popup.",
+  "config.inlineDisplaystyle.description": "Quand mettre le math inline en pleine taille (\\displaystyle).",
+  "config.inlineDisplaystyle.auto": "Pleine taille (\\displaystyle) en inline UNIQUEMENT si utile (fractions, sommes, intégrales, lim, binom) ; sinon textstyle propre",
+  "config.inlineDisplaystyle.always": "Toujours \\displaystyle en inline (tout en grand)",
+  "config.inlineDisplaystyle.never": "Jamais : textstyle compact LaTeX standard"
+}

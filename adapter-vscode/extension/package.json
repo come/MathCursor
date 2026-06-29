@@ -1,7 +1,8 @@
 {
   "name": "mathcursor",
   "displayName": "MathCursor",
-  "description": "Écris les maths comme elles te viennent : notation au clavier → LaTeX propre inline, avec aperçu de la formule au caret.",
+  "description": "%extension.description%",
+  "l10n": "./l10n",
   "version": "0.1.0",
   "publisher": "mathcursor",
   "license": "SEE LICENSE IN LICENSE",
@@ -18,11 +19,11 @@
     "commands": [
       {
         "command": "mathcursor.popup",
-        "title": "MathCursor : popup au caret"
+        "title": "%command.popup.title%"
       },
       {
         "command": "mathcursor.convert",
-        "title": "MathCursor : complétion LaTeX (Ctrl+Espace)"
+        "title": "%command.convert.title%"
       }
     ],
     "keybindings": [
@@ -44,53 +45,53 @@
           "type": "string",
           "enum": ["fr", "us"],
           "default": "fr",
-          "description": "Convention math : fr (virgule décimale, matrices ()) ou us (point décimal, matrices [])."
+          "description": "%config.culture.description%"
         },
         "mathcursor.delimiters": {
           "type": "string",
           "enum": ["auto", "inline", "display", "paren", "none"],
           "enumDescriptions": [
-            "Contextuel : formule seule sur sa ligne → display centré ($$…$$ en Markdown, \\[…\\] en LaTeX) ; sinon inline $…$",
-            "Toujours inline : $ … $",
-            "Toujours display centré : $$ … $$ (Markdown) ou \\[ … \\] (LaTeX)",
-            "Inline avec \\( … \\)",
-            "LaTeX brut, sans délimiteurs"
+            "%config.delimiters.auto%",
+            "%config.delimiters.inline%",
+            "%config.delimiters.display%",
+            "%config.delimiters.paren%",
+            "%config.delimiters.none%"
           ],
           "default": "auto",
-          "description": "Délimiteurs ajoutés autour du LaTeX inséré."
+          "description": "%config.delimiters.description%"
         },
         "mathcursor.maxCandidates": {
           "type": "number",
           "default": 3,
           "minimum": 1,
           "maximum": 20,
-          "description": "Nombre maximum de candidats proposés (comme la popup Word)."
+          "description": "%config.maxCandidates.description%"
         },
         "mathcursor.autoDetect": {
           "type": "boolean",
           "default": true,
-          "description": "Proposer automatiquement la conversion LaTeX au fil de la frappe (zone math détectée au caret)."
+          "description": "%config.autoDetect.description%"
         },
         "mathcursor.autoPackages": {
           "type": "boolean",
           "default": true,
-          "description": "Ajouter automatiquement \\usepackage{amsmath}/{amssymb} dans le préambule LaTeX quand une formule insérée en a besoin (\\mathbb, matrices, cases…)."
+          "description": "%config.autoPackages.description%"
         },
         "mathcursor.showLatexInPopup": {
           "type": "boolean",
           "default": true,
-          "description": "Afficher la source LaTeX (en petit, à droite) sous chaque formule rendue dans la popup."
+          "description": "%config.showLatexInPopup.description%"
         },
         "mathcursor.inlineDisplaystyle": {
           "type": "string",
           "enum": ["auto", "always", "never"],
           "enumDescriptions": [
-            "Pleine taille (\\displaystyle) en inline UNIQUEMENT si utile (fractions, sommes, intégrales, lim, binom) ; sinon textstyle propre",
-            "Toujours \\displaystyle en inline (tout en grand)",
-            "Jamais : textstyle compact LaTeX standard"
+            "%config.inlineDisplaystyle.auto%",
+            "%config.inlineDisplaystyle.always%",
+            "%config.inlineDisplaystyle.never%"
           ],
           "default": "auto",
-          "description": "Quand mettre le math inline en pleine taille (\\displaystyle)."
+          "description": "%config.inlineDisplaystyle.description%"
         }
       }
     }
