@@ -68,7 +68,10 @@ Couche cible : **site statique** uniquement. Aucun impact binaire/moteur/contrat
   pas-à-pas + nettoyage des clés i18n mortes), `docs/index.html` (section install slimmée +
   liens).
 - **Liens** : `releases.html#vscode` / `#libreoffice` restent valides (id sur les cartes).
-  Les « Guide d'installation » pointent vers `install.html#<éditeur>`.
+  Les « Guide d'installation » pointent vers `install.html#<éditeur>`. Le lien **« Installation »
+  du header pointe désormais vers `install.html`** sur **toutes** les pages (index, releases,
+  contact, privacy, demo) — avant il visait `index.html#installation`, devenu un simple résumé
+  (incohérent). Les `dl_note` de `releases.html` (FR + EN) aussi.
 - **i18n** : nouvelles clés `dl_card_*` (hub), `ig_*` (guides), `inst_dl`/`inst_guide` (home),
   FR + EN. Clés EN devenues mortes retirées de `releases.html`.
 - **Tests** : pas de tests auto. Validé : syntaxe JS des 3 scripts inline OK, complétude
