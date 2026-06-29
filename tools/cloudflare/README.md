@@ -49,6 +49,34 @@ Après l'upload :
 2. Ajoute l'entrée `<article class="card">` dans `docs/releases.html`
 3. `tools/cloudflare/deploy.sh site`
 
+## Publier un VSIX VS Code multiplateforme
+
+L'extension VS Code = **UNE extension, N VSIX `--target`** (cf. ADR
+2026-06-25-Feat-vscode-marketplace-publishing-model). Les binaires Rust sont
+spécifiques à l'OS → chaque cible se construit sur son runner. Distribution
+**depuis le site** (R2 + `/download/*`), comme le `.exe` Word, **non signée**
+(palier alpha). Flux de bout en bout :
+
+1. **Bump** la version dans `adapter-vscode/extension/package.json`.
+2. **Construire** les 3 VSIX : lancer le workflow `vscode-vsix` en
+   **`workflow_dispatch`** (sinon un push ne build que Windows + Linux ; le
+   dispatch ajoute macOS `darwin-arm64`).
+3. **Télécharger** les 3 artifacts (`vsix-win32-x64`, `vsix-linux-x64`,
+   `vsix-darwin-arm64`) dans un dossier local.
+4. **Uploader** dans R2 :
+   ```bash
+   tools/cloudflare/deploy.sh vsix <version> ~/Downloads/vsix
+   ```
+   (renomme chaque `.vsix` en `mathcursor-<target>-<version>.vsix` dans le bucket
+   `mathcursor-releases` ; une cible absente est ignorée.)
+5. **Bump** la map `LATEST_VSCODE_VSIX` dans `docs/functions/_latest.js` (les noms
+   versionnés des 3 cibles).
+6. **Vérifier** les 3 boutons (`latest-<target>.vsix`) dans `docs/releases.html`.
+7. **Re-déployer** le site : `tools/cloudflare/deploy.sh site`.
+
+Vérif post-deploy : `curl -sI https://mathcursor.pages.dev/download/latest-linux-x64.vsix`
+→ 200 ; `latest.vsix` reste la cible `win32-x64` (rétro-compat).
+
 ## Architecture hébergée
 
 | Ressource | Rôle |

@@ -64,26 +64,28 @@
         </div>
 
         <h2 id="vscode" data-i18n="dl_vscode_h">VS&nbsp;Code – LaTeX <span class="alpha">(alpha)</span></h2>
-        <p data-i18n="dl_vscode_intro">Extension pour écrire vos maths en LaTeX au fil de la frappe, avec la popup au caret. Windows 64 bits pour l'instant.</p>
-        <div class="cta-row" style="margin: 16px 0 24px;">
-          <a href="/download/latest.vsix" class="button button--primary" download data-i18n="dl_vscode_cta">Télécharger l'extension (.vsix)</a>
+        <p data-i18n="dl_vscode_intro">Extension pour écrire vos maths en LaTeX au fil de la frappe, avec la popup au caret. Disponible pour Windows, Linux et macOS (Apple&nbsp;Silicon).</p>
+        <div class="cta-row" style="margin: 16px 0 24px; flex-wrap: wrap; gap: 10px;">
+          <a href="/download/latest-win32-x64.vsix" class="button button--primary" download data-i18n="dl_vscode_cta_win">Windows 64 bits (.vsix)</a>
+          <a href="/download/latest-linux-x64.vsix" class="button button--secondary" download data-i18n="dl_vscode_cta_linux">Linux 64 bits (.vsix)</a>
+          <a href="/download/latest-darwin-arm64.vsix" class="button button--secondary" download data-i18n="dl_vscode_cta_mac">macOS Apple Silicon (.vsix)</a>
         </div>
         <ol class="install-steps">
           <li>
             <h3 data-i18n="dl_vscode_1_h">1. Télécharger le .vsix</h3>
-            <p data-i18n="dl_vscode_1_p">Récupérez <code>mathcursor-win32-x64-0.1.0.vsix</code> via le bouton ci-dessus.</p>
+            <p data-i18n="dl_vscode_1_p">Récupérez le <code>.vsix</code> de votre plateforme via les boutons ci-dessus.</p>
           </li>
           <li>
             <h3 data-i18n="dl_vscode_2_h">2. Installer dans VS Code</h3>
-            <p data-i18n="dl_vscode_2_p">Palette de commandes (<code>Ctrl+Maj+P</code>) ▸ <strong>« Extensions : Install from VSIX… »</strong>, puis choisissez le fichier. En ligne de commande : <code>code --install-extension mathcursor-win32-x64-0.1.0.vsix</code>.</p>
+            <p data-i18n="dl_vscode_2_p">Palette de commandes (<code>Ctrl+Maj+P</code>) ▸ <strong>« Extensions : Install from VSIX… »</strong>, puis choisissez le fichier. En ligne de commande : <code>code --install-extension &lt;fichier&gt;.vsix</code>.</p>
           </li>
           <li>
             <h3 data-i18n="dl_vscode_3_h">3. Utiliser</h3>
             <p data-i18n="dl_vscode_3_p">Ouvrez un fichier <code>.tex</code>, <code>.latex</code> ou <code>.md</code>. Tapez une sténo (ex. <code>1/x+1</code>), <code>Ctrl+Espace</code> propose le LaTeX au caret, vous validez.</p>
           </li>
         </ol>
-        <p class="install-config" data-i18n="dl_vscode_config"><strong>Configuration :</strong> VS Code 1.90+, Windows 64 bits (la popup au caret est Windows pour l'instant). Cohabite avec LaTeX Workshop, sans couplage.</p>
-        <p class="install-note" data-i18n="dl_vscode_note"><strong>Alpha :</strong> les binaires ne sont pas encore signés, Windows peut donc demander une confirmation au premier lancement. Pas encore sur la Marketplace ; versions macOS et Linux à venir.</p>
+        <p class="install-config" data-i18n="dl_vscode_config"><strong>Configuration :</strong> VS Code 1.90+. La popup au caret est disponible sous Windows ; sous Linux et macOS, la conversion se fait via <code>Ctrl+Espace</code> sans la popup au caret pour l'instant. Cohabite avec LaTeX Workshop, sans couplage.</p>
+        <p class="install-note" data-i18n="dl_vscode_note"><strong>Alpha :</strong> les binaires ne sont pas encore signés, votre système peut donc demander une confirmation au premier lancement. Pas encore sur la Marketplace ; Mac Intel, Linux ARM et Windows ARM à venir.</p>
 
         <h2 id="libreoffice" data-i18n="dl_lo_h">LibreOffice Writer <span class="alpha">(alpha)</span></h2>
         <p data-i18n="dl_lo_intro">Extension pour convertir votre sténo en formule LibreOffice Math native, dans Writer. Windows 64 bits pour l'instant.</p>
@@ -432,16 +434,18 @@
         dl_word_h: "Word (stable)",
 
         dl_vscode_h: "VS&nbsp;Code – LaTeX <span class=\"alpha\">(alpha)</span>",
-        dl_vscode_intro: "Extension to write your math in LaTeX as you type, with the popup at the caret. Windows 64-bit for now.",
-        dl_vscode_cta: "Download the extension (.vsix)",
+        dl_vscode_intro: "Extension to write your math in LaTeX as you type, with the popup at the caret. Available for Windows, Linux and macOS (Apple&nbsp;Silicon).",
+        dl_vscode_cta_win: "Windows 64-bit (.vsix)",
+        dl_vscode_cta_linux: "Linux 64-bit (.vsix)",
+        dl_vscode_cta_mac: "macOS Apple Silicon (.vsix)",
         dl_vscode_1_h: "1. Download the .vsix",
-        dl_vscode_1_p: "Grab <code>mathcursor-win32-x64-0.1.0.vsix</code> via the button above.",
+        dl_vscode_1_p: "Grab the <code>.vsix</code> for your platform via the buttons above.",
         dl_vscode_2_h: "2. Install in VS Code",
-        dl_vscode_2_p: "Command palette (<code>Ctrl+Shift+P</code>) ▸ <strong>\"Extensions: Install from VSIX…\"</strong>, then pick the file. From the command line: <code>code --install-extension mathcursor-win32-x64-0.1.0.vsix</code>.",
+        dl_vscode_2_p: "Command palette (<code>Ctrl+Shift+P</code>) ▸ <strong>\"Extensions: Install from VSIX…\"</strong>, then pick the file. From the command line: <code>code --install-extension &lt;file&gt;.vsix</code>.",
         dl_vscode_3_h: "3. Use it",
         dl_vscode_3_p: "Open a <code>.tex</code>, <code>.latex</code> or <code>.md</code> file. Type shorthand (e.g. <code>1/x+1</code>), <code>Ctrl+Space</code> proposes the LaTeX at the caret, you validate.",
-        dl_vscode_config: "<strong>Requirements:</strong> VS Code 1.90+, Windows 64-bit (the caret popup is Windows-only for now). Coexists with LaTeX Workshop, no coupling.",
-        dl_vscode_note: "<strong>Alpha:</strong> the binaries aren't signed yet, so Windows may ask for confirmation on first launch. Not on the Marketplace yet; macOS and Linux builds to come.",
+        dl_vscode_config: "<strong>Requirements:</strong> VS Code 1.90+. The caret popup is available on Windows; on Linux and macOS, conversion runs via <code>Ctrl+Space</code> without the caret popup for now. Coexists with LaTeX Workshop, no coupling.",
+        dl_vscode_note: "<strong>Alpha:</strong> the binaries aren't signed yet, so your system may ask for confirmation on first launch. Not on the Marketplace yet; Intel Mac, ARM Linux and ARM Windows to come.",
 
         dl_lo_h: "LibreOffice Writer <span class=\"alpha\">(alpha)</span>",
         dl_lo_intro: "Extension to convert your shorthand into a native LibreOffice Math formula, inside Writer. Windows 64-bit for now.",

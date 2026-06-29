@@ -49,6 +49,12 @@ build.
    (LibreOffice) MathCursor.oxt déjà produit à l'étape 3
 ```
 
+En pratique au palier alpha (**non signé**), les VSIX multiplateforme sont
+construits par la CI `vscode-vsix` (un runner par OS) puis distribués depuis le
+site : `tools/cloudflare/deploy.sh vsix <version> <dossier-artifacts>` (cf.
+`tools/cloudflare/README.md` §Publier un VSIX). La signature ci-dessous s'insère
+avant l'empaquetage le jour où l'on passe en diffusion large.
+
 Azure Trusted Signing : prérequis `dotnet tool install --global sign` + `az login`,
 et un fichier `scripts/trusted-signing.json` (endpoint + compte + profil de cert)
 — **non committé** (propre à ton tenant). Modèle :

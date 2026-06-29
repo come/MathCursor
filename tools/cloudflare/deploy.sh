@@ -2,7 +2,10 @@
 # MathCursor — script de déploiement Cloudflare Pages.
 #
 # Usage :
-#   tools/cloudflare/deploy.sh [site|installer VERSION|model]
+#   tools/cloudflare/deploy.sh [site|installer VERSION|vsix VERSION [DIR]|model]
+#
+#   vsix  = upload des VSIX VS Code multiplateforme (alphas) construits par la CI
+#           vers le bucket mathcursor-releases (cf. README §Publier un VSIX).
 #
 #   model = (ré)upload du modèle NER (models/latest/) vers le bucket public
 #           mathcursor-models, consommé par la CI VSIX VSCode (workflow
@@ -68,6 +71,47 @@ case "$cmd" in
     echo "  - Re-déployer le site : $0 site"
     ;;
 
+  vsix)
+    # Upload des VSIX VS Code *platform-specific* (alphas) vers R2. Les .vsix sont
+    # construits par la CI (workflow vscode-vsix, un runner par OS) → télécharge les
+    # artifacts puis lance cette commande sur le dossier qui les contient. Cf. ADR
+    # 2026-06-29-Feat-vscode-vsix-multiplatform-site-distribution.
+    version="${2:-}"
+    dir="${3:-$HOME/Downloads}"
+    if [ -z "$version" ]; then
+      echo "Usage : $0 vsix <version> [dossier-artifacts]   (ex. 0.1.0 ~/Downloads/vsix)" >&2
+      exit 1
+    fi
+    found=0
+    for t in win32-x64 linux-x64 darwin-arm64; do
+      # Artifact CI = mathcursor-<target>.vsix (éventuellement dans un sous-dossier
+      # vsix-<target>/). On prend le premier match. Cible absente = ignorée (ex. mac
+      # non buildé si la CI a tourné sur push, sans workflow_dispatch).
+      src="$(find "$dir" -type f -name "mathcursor-$t*.vsix" 2>/dev/null | head -n1)"
+      if [ -z "$src" ]; then
+        echo "  (cible $t : aucun .vsix dans $dir, ignorée)"
+        continue
+      fi
+      dst="mathcursor-$t-$version.vsix"
+      echo "Upload $src → R2://mathcursor-releases/$dst"
+      npx --yes wrangler@latest r2 object put \
+        "mathcursor-releases/$dst" \
+        --file="$src" \
+        --content-type="application/octet-stream" \
+        --remote
+      found=$((found + 1))
+    done
+    if [ "$found" -eq 0 ]; then
+      echo "ERREUR : aucun .vsix trouvé dans $dir (attendu mathcursor-<target>.vsix)." >&2
+      exit 1
+    fi
+    echo ""
+    echo "N'oublie pas :"
+    echo "  - Mettre à jour la map LATEST_VSCODE_VSIX dans docs/functions/_latest.js (version $version)"
+    echo "  - Vérifier les 3 boutons dans docs/releases.html"
+    echo "  - Re-déployer le site : $0 site"
+    ;;
+
   model)
     # Modèle NER pour la CI VSIX VSCode (bucket PUBLIC mathcursor-models). À
     # lancer après un réentraînement (cf. /update-ner-model) pour que le workflow
@@ -98,7 +142,7 @@ case "$cmd" in
     ;;
 
   *)
-    echo "Usage : $0 [site | installer <version> | model]" >&2
+    echo "Usage : $0 [site | installer <version> | vsix <version> [dossier] | model]" >&2
     exit 1
     ;;
 esac

@@ -14,14 +14,19 @@
  * Range requests (resume) supportés : R2 gère les ranges nativement.
  */
 
-import { LATEST_VERSION, LATEST_VSCODE_VSIX, LATEST_OXT } from "../_latest.js";
+import { LATEST_VERSION, LATEST_VSCODE_VSIX, DEFAULT_VSIX_TARGET, LATEST_OXT } from "../_latest.js";
 
 // Alias "latest.*" → fichier versionné courant dans R2. Word (.exe) + alphas (.vsix/.oxt).
+// VSIX multiplateforme : un alias par cible `latest-<target>.vsix` (win32-x64 / linux-x64
+// / darwin-arm64) + `latest.vsix` = cible par défaut (rétro-compat liens existants).
 const ALIASES = {
   "latest.exe": `MathCursor-Setup-${LATEST_VERSION}.exe`,
-  "latest.vsix": LATEST_VSCODE_VSIX,
+  "latest.vsix": LATEST_VSCODE_VSIX[DEFAULT_VSIX_TARGET],
   "latest.oxt": LATEST_OXT,
 };
+for (const [target, file] of Object.entries(LATEST_VSCODE_VSIX)) {
+  ALIASES[`latest-${target}.vsix`] = file;
+}
 
 // Hygiène chemin : noms plats uniquement, extensions servies autorisées.
 const ALLOWED = /^[A-Za-z0-9._-]+\.(exe|vsix|oxt)$/;
