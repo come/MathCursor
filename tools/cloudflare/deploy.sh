@@ -141,8 +141,34 @@ case "$cmd" in
     echo "Modèle NER uploadé. Le prochain run du workflow vscode-vsix le prendra."
     ;;
 
+  oxt)
+    # Extension LibreOffice (.oxt). NOM DE FICHIER VOLONTAIREMENT NON VERSIONNÉ :
+    # les URI de script bundlées dans l'oxt (Addons.xcu, jobs.py) sont figées sur
+    # « MathCursor.oxt », et LibreOffice clé son package par le nom de fichier
+    # installé. Un nom versionné (ex. MathCursor-0.1.0.oxt) casse le lookup →
+    # KeyError 'MathCursor.oxt' dans pythonscript à chaque clic de menu. La version
+    # vit dans libreoffice-ext/oxt/description.xml, jamais ici. NE PAS ajouter de
+    # <version> au nom de l'objet R2. Cf. ADR 2026-06-29-Fix-oxt-stable-filename-distribution.
+    oxt="$ROOT/libreoffice-ext/MathCursor.oxt"
+    if [ ! -f "$oxt" ]; then
+      echo "ERREUR : $oxt introuvable. Build-le d'abord : python libreoffice-ext/build_oxt.py" >&2
+      exit 1
+    fi
+    echo "Upload $oxt → R2://mathcursor-releases/MathCursor.oxt (nom stable, non versionné)"
+    npx --yes wrangler@latest r2 object put \
+      "mathcursor-releases/MathCursor.oxt" \
+      --file="$oxt" \
+      --content-type="application/octet-stream" \
+      --remote
+    echo ""
+    echo "N'oublie pas :"
+    echo "  - LATEST_OXT dans docs/functions/_latest.js reste \"MathCursor.oxt\" (ne JAMAIS versionner)"
+    echo "  - Bump éventuel : libreoffice-ext/oxt/description.xml (<version>), pas le nom de fichier"
+    echo "  - Re-déployer le site si _latest.js a changé : $0 site"
+    ;;
+
   *)
-    echo "Usage : $0 [site | installer <version> | vsix <version> [dossier] | model]" >&2
+    echo "Usage : $0 [site | installer <version> | vsix <version> [dossier] | oxt | model]" >&2
     exit 1
     ;;
 esac

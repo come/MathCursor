@@ -28,4 +28,12 @@ export const LATEST_VSCODE_VSIX = {
 /** Cible servie par l'alias générique `latest.vsix` (rétro-compat liens existants). */
 export const DEFAULT_VSIX_TARGET = "win32-x64";
 
-export const LATEST_OXT = "MathCursor-0.1.0.oxt";
+/**
+ * Extension LibreOffice (.oxt). NOM DE FICHIER STABLE, NON versionné : les URI de
+ * script bundlées dans l'oxt (Addons.xcu, jobs.py) sont figées sur « MathCursor.oxt »,
+ * et LibreOffice clé son package par le nom de fichier installé — un nom versionné
+ * (ex. MathCursor-0.1.0.oxt) casse le lookup (KeyError pythonscript).
+ * La version vit dans description.xml, jamais dans le nom de fichier.
+ * Cf. ADR 2026-06-29-Fix-oxt-stable-filename-distribution.
+ */
+export const LATEST_OXT = "MathCursor.oxt";

@@ -77,6 +77,37 @@ spécifiques à l'OS → chaque cible se construit sur son runner. Distribution
 Vérif post-deploy : `curl -sI https://mathcursor.pages.dev/download/latest-linux-x64.vsix`
 → 200 ; `latest.vsix` reste la cible `win32-x64` (rétro-compat).
 
+## Publier l'extension LibreOffice (.oxt)
+
+⚠️ **Le nom de fichier `.oxt` est volontairement NON versionné : toujours
+`MathCursor.oxt`.** Les URI de script bundlées dans l'extension (`Addons.xcu`,
+`jobs.py`) sont figées sur ce nom, et LibreOffice clé son package par le **nom de
+fichier installé** (`pythonscript.py`). Un nom versionné (`MathCursor-0.1.0.oxt`)
+casse le lookup → `KeyError: 'MathCursor.oxt'` à chaque clic de menu / auto-détection,
+pour tous les téléchargements du site. La **version** vit dans
+`libreoffice-ext/oxt/description.xml` (`<version>`), jamais dans le nom de fichier.
+Cf. ADR 2026-06-29-Fix-oxt-stable-filename-distribution.
+
+Flux :
+
+1. **Construire** l'oxt : `python libreoffice-ext/build_oxt.py` → `libreoffice-ext/MathCursor.oxt`.
+   (Le build produit toujours le bon nom ; ne le renomme jamais.)
+2. **Uploader** sous le nom stable :
+   ```bash
+   tools/cloudflare/deploy.sh oxt
+   ```
+   (Écrase l'objet `mathcursor-releases/MathCursor.oxt` — pas de version dans la clé,
+   donc pas de cleanup à faire ; la nouvelle release remplace simplement l'ancienne.)
+3. `LATEST_OXT` dans `docs/functions/_latest.js` reste `"MathCursor.oxt"` — **ne jamais
+   le versionner**. Re-déployer le site uniquement si `_latest.js` a changé par ailleurs.
+
+Vérif post-deploy (le `Content-Disposition` n'apparaît qu'en GET, pas en HEAD) :
+```bash
+curl -s -r 0-0 -D - -o /dev/null https://mathcursor.com/download/latest.oxt \
+  | grep -iE "HTTP/|content-disposition"
+# attendu : 206 + Content-Disposition: attachment; filename="MathCursor.oxt"
+```
+
 ## Architecture hébergée
 
 | Ressource | Rôle |
