@@ -14,20 +14,26 @@
  * Range requests (resume) supportés : R2 gère les ranges nativement.
  */
 
-import { LATEST_VERSION } from "../_latest.js";
+import { LATEST_VERSION, LATEST_VSCODE_VSIX, LATEST_OXT } from "../_latest.js";
 
-const LATEST_FILENAME = `MathCursor-Setup-${LATEST_VERSION}.exe`;
+// Alias "latest.*" → fichier versionné courant dans R2. Word (.exe) + alphas (.vsix/.oxt).
+const ALIASES = {
+  "latest.exe": `MathCursor-Setup-${LATEST_VERSION}.exe`,
+  "latest.vsix": LATEST_VSCODE_VSIX,
+  "latest.oxt": LATEST_OXT,
+};
+
+// Hygiène chemin : noms plats uniquement, extensions servies autorisées.
+const ALLOWED = /^[A-Za-z0-9._-]+\.(exe|vsix|oxt)$/;
+
+const resolveName = (urlFilename) => ALIASES[urlFilename] || urlFilename;
 
 export async function onRequestGet(context) {
   const { env, request, params } = context;
   const urlFilename = Array.isArray(params.filename) ? params.filename.join("/") : params.filename;
 
-  // Résolution alias : "latest.exe" → fichier versionné courant.
-  const resolved = urlFilename === "latest.exe" ? LATEST_FILENAME : urlFilename;
-
-  // Hygiène chemin : uniquement des noms plats, pas de subfolders ou ".." (R2 n'est
-  // pas un FS hierarchique strict, mais autant refuser les patterns suspects).
-  if (!/^[A-Za-z0-9._-]+\.exe$/.test(resolved)) {
+  const resolved = resolveName(urlFilename);
+  if (!ALLOWED.test(resolved)) {
     return new Response("Not found", { status: 404 });
   }
 
@@ -103,8 +109,8 @@ function parseRange(rangeHeader) {
 export async function onRequestHead(context) {
   const { env, params } = context;
   const urlFilename = Array.isArray(params.filename) ? params.filename.join("/") : params.filename;
-  const resolved = urlFilename === "latest.exe" ? LATEST_FILENAME : urlFilename;
-  if (!/^[A-Za-z0-9._-]+\.exe$/.test(resolved)) return new Response(null, { status: 404 });
+  const resolved = resolveName(urlFilename);
+  if (!ALLOWED.test(resolved)) return new Response(null, { status: 404 });
   const obj = await env.RELEASES.head(resolved);
   if (!obj) return new Response(null, { status: 404 });
   const headers = new Headers();
