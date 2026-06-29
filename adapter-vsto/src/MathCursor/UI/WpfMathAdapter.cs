@@ -61,16 +61,13 @@ namespace MathCursor.UI
                 var body = m.Groups["body"].Value.Trim();
                 // Strip les `&` (column separators) → espace simple
                 body = Regex.Replace(body, @"\s*&\s*", " ");
-                var lines = Regex.Split(body, @"\s*\\\\\s*");
+                var lines = Regex.Split(body, @"\s*\\\\\s*")
+                    .Select(l => l.Trim()).Where(l => l.Length > 0).ToArray();
                 if (lines.Length == 0) return m.Value;
-                // Empilement via \stackrel (au-dessus / en-dessous) — pour 2 lignes
-                if (lines.Length == 2)
-                    return "\\{\\stackrel{" + lines[0].Trim() + "}{" + lines[1].Trim() + "}";
-                // 1 ligne (single-line cases) ou 3+ : stackrel imbriqués
-                string acc = lines[lines.Length - 1].Trim();
-                for (int i = lines.Length - 2; i >= 0; i--)
-                    acc = "\\stackrel{" + lines[i].Trim() + "}{" + acc + "}";
-                return "\\{" + acc;
+                // Empilement via \matrix (rendu NATIF WpfMath, lignes MÊME taille) +
+                // accolade gauche `\{`. Remplace l'ancien \stackrel : tailles inégales
+                // ET cassait sur les lignes contenant « = » (systèmes d'équations).
+                return "\\{\\matrix{" + string.Join(" \\\\ ", lines) + "}";
             });
 
             // 4b) \begin{pmatrix}/bmatrix/vmatrix : WpfMath utilise une syntaxe

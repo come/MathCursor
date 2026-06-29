@@ -51,8 +51,13 @@ namespace MathCursor.Host
         // la popup affichait le marqueur en préfixe, le commit route vers
         // ChainController. _pendingRestCandidates[i] = LaTeX SANS préfixe.
         private RelationLineMatch _pendingChainMatch;
-        private bool _pendingSystemOpener;
         private List<string> _pendingRestCandidates;
+        // SYSTÈME (modèle matrice, ADR 2026-06-29) : accolade `{` non fermée
+        // n'importe où → bloc composé EN UN COUP (préfixe + lignes), pas
+        // d'incrémental. Données portées du show au commit.
+        private bool _pendingSystem;
+        private string _pendingSystemPrefix;            // LaTeX du préfixe (avant `{`)
+        private IReadOnlyList<string> _pendingSystemRows; // LaTeX par ligne (après `{`)
 
         public ConversionController(
             Word.Application app,
@@ -181,26 +186,37 @@ namespace MathCursor.Host
             // que le RESTE ; la popup affiche le marqueur rendu en préfixe
             // (« si l'utilisateur l'a écrit il veut le voir »). Le detector
             // ne trim pas la fin → l'espace-signal (R*␣) survit dans Rest.
-            _pendingSystemOpener = false;
+            _pendingSystem = false;
             _pendingChainMatch = null;
             string engineInput = zone.TextForEngine;
             string displayPrefix = "";
-            var sys = RelationLineDetector.TryDetectSystemOpener(engineInput);
-            if (sys != null)
+
+            // SYSTÈME (modèle matrice, ADR 2026-06-29) : accolade `{` non fermée
+            // N'IMPORTE OÙ (« f(x) = {… »). On cherche le `{` sur le ¶ ENTIER, pas
+            // la sous-zone NER — qui « narrowe » sur la dernière équation propre
+            // pour les systèmes à 3+ lignes (bug 2026-06-29) → la zone système =
+            // tout le ¶ (trimmé). Branche self-contained (popup = 1 candidat).
+            string para = zone.ParagraphText ?? engineInput;
+            if (para.IndexOf('{') >= 0)
             {
-                _pendingSystemOpener = true;
-                engineInput = sys.Rest;
-                displayPrefix = "\\{";
-            }
-            else
-            {
-                var cm = RelationLineDetector.TryDetect(engineInput);
-                if (cm != null)
+                int s2 = 0, e2 = para.Length;
+                while (s2 < e2 && char.IsWhiteSpace(para[s2])) s2++;
+                while (e2 > s2 && char.IsWhiteSpace(para[e2 - 1])) e2--;
+                if (e2 > s2)
                 {
-                    _pendingChainMatch = cm;
-                    engineInput = cm.Rest;
-                    displayPrefix = cm.MarkerLatex;
+                    var sysZone = new ZoneSpan(zone.ParagraphAbsStart, s2, e2, para, zone.OMaths);
+                    int bp = RelationLineDetector.FindUnclosedBrace(sysZone.TextForEngine);
+                    if (bp >= 0) return ShowSystem(sysZone, sysZone.TextForEngine, bp, silent);
                 }
+            }
+
+            // CHAÎNE (= / ⟺ …) — incrémental, INCHANGÉ.
+            var cm = RelationLineDetector.TryDetect(engineInput);
+            if (cm != null)
+            {
+                _pendingChainMatch = cm;
+                engineInput = cm.Rest;
+                displayPrefix = cm.MarkerLatex;
             }
             if (string.IsNullOrWhiteSpace(engineInput))
             {
@@ -254,6 +270,69 @@ namespace MathCursor.Host
             return true;
         }
 
+        /// <summary>SYSTÈME (modèle matrice) : accolade `{` à <paramref name="bracePos"/>
+        /// dans <paramref name="engineInput"/>. Le préfixe (avant `{`) est analysé
+        /// « comme d'hab » par le moteur (relation finale rattachée) ; les lignes
+        /// (après `{`, split `;`/Maj+Entrée `\v`) sont analysées chacune et le bloc
+        /// est COMPOSÉ d'un coup. La popup affiche UN candidat (le bloc).
+        /// Cf. ADR 2026-06-29-Feat-word-systems-matrix-model-backport.</summary>
+        private bool ShowSystem(ZoneSpan zone, string engineInput, int bracePos, bool silent)
+        {
+            string prefix = engineInput.Substring(0, bracePos).Trim();
+            var rowsSteno = engineInput.Substring(bracePos + 1)
+                .Split(new[] { ';', '\v', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
+            if (rowsSteno.Count == 0)
+            {
+                // Juste « { » (rien après) : on attend la suite.
+                if (silent && IsPopupVisible) HidePopup();
+                return false;
+            }
+
+            var culture = Settings.SettingsStore.Current.ToEngineCulture();
+            string Top(string steno)
+            {
+                if (string.IsNullOrWhiteSpace(steno)) return "";
+                try
+                {
+                    var r = MathCursor.Engine.ForestEngine.Analyze(steno, culture);
+                    if (r.Decision != "erreur" && r.Ranked.Count > 0) return r.Ranked[0].Latex;
+                }
+                catch (Exception ex) { _log("system_analyze_error: " + ex.Message); }
+                return steno;   // repli : sténo brute (l'utilisateur l'a écrit)
+            }
+            string RenderPrefix(string p)
+            {
+                if (string.IsNullOrEmpty(p)) return "";
+                // Marqueur en TÊTE (connecteur/relation : « <=> f(x) = … ») rendu tel quel.
+                string lead = "";
+                var lm = RelationLineDetector.TryDetect(p);
+                if (lm != null) { lead = lm.MarkerLatex; p = lm.Rest; }
+                if (string.IsNullOrEmpty(p)) return lead.Trim();
+                // Relation FINALE (« … = ») rattachée ; sinon le préfixe analysé tel quel.
+                var tr = RelationLineDetector.SplitTrailingRelation(p);
+                return lead + (tr != null ? Top(tr.Value.Lhs) + tr.Value.MarkerLatex : Top(p));
+            }
+
+            string prefixLatex = RenderPrefix(prefix);
+            var rowLatexes = rowsSteno.Select(Top).ToList();
+
+            _pendingSystem = true;
+            _pendingSystemPrefix = prefixLatex;
+            _pendingSystemRows = rowLatexes;
+            _pendingChainMatch = null;
+            _pendingRestCandidates = null;
+
+            string sysLatex = Blocks.ChainComposer.ComposeSystemLatex(prefixLatex, rowLatexes);
+            _log($"convert: système, {rowLatexes.Count} ligne(s), préfixe=\"{prefixLatex}\"");
+            EnsurePopup();
+            var (x, yBelow, yAbove) = ComputeAnchor(zone);
+            _zone = zone;
+            // UN candidat (le bloc composé), pas d'aperçu de merge (one-shot).
+            _popup.ShowCandidates(new List<string> { sysLatex }, x, yBelow, yAbove, zone.Text, null, null);
+            return true;
+        }
+
         /// <summary>Contexte de merge pour l'aperçu popup : ("chain"|"system",
         /// LaTeX des lignes du bloc du dessus) si la ligne committée sera
         /// fusionnée, (null, null) sinon. Règle système 2026-06-10 : « { »
@@ -265,14 +344,12 @@ namespace MathCursor.Host
             {
                 var doc = _app.ActiveDocument;
                 if (doc == null || zone == null) return (null, null);
-                if (!_pendingSystemOpener && _pendingChainMatch == null) return (null, null);
+                // Les SYSTÈMES sont composés en un coup (ShowSystem) → pas d'aperçu
+                // de merge : seules les CHAÎNES (incrémentales) en ont un.
+                if (_pendingChainMatch == null) return (null, null);
                 var probe = _chain.ProbeMergeAbove(doc, zone);
                 if (probe == null) return (null, null);
                 var (t, lines) = probe.Value;
-                if (_pendingSystemOpener)
-                    return t == Blocks.BlockTypes.System
-                        ? (Blocks.BlockTypes.System, (IReadOnlyList<string>)lines)
-                        : (null, null);
                 return (t == "" || t == Blocks.BlockTypes.Chain)
                     ? (Blocks.BlockTypes.Chain, (IReadOnlyList<string>)lines)
                     : (null, null);
@@ -363,11 +440,19 @@ namespace MathCursor.Host
                 }
 
                 _log($"commit: [{absStart},{absEnd}) latex=\"{latex}\" source=\"{Preview(zone.Text)}\""
-                    + (_pendingSystemOpener ? " [système]" : _pendingChainMatch != null ? $" [chaîne {_pendingChainMatch.MarkerTyped}]" : ""));
+                    + (_pendingSystem ? " [système]" : _pendingChainMatch != null ? $" [chaîne {_pendingChainMatch.MarkerTyped}]" : ""));
                 using (new UndoRecordScope(_app, "MathCursor : conversion"))
                 {
-                    if (_pendingSystemOpener)
-                        _chain.CommitSystemLine(doc, zone, latex);
+                    if (_pendingSystem)
+                    {
+                        // SYSTÈME (modèle matrice) : bloc composé EN UN COUP (préfixe
+                        // + toutes les lignes), inséré sur la zone entière. Pas
+                        // d'incrémental, pas de probe-au-dessus, pas de flow M4.
+                        var oMath = Blocks.ChainComposer.ComposeSystem(_pendingSystemPrefix, _pendingSystemRows);
+                        string sysSteno = (zone.Text ?? "").Trim();
+                        string sysLatex = string.Join("\n", _pendingSystemRows);
+                        _chain.CommitSystem(doc, zone, oMath, sysLatex, sysSteno);
+                    }
                     else if (_pendingChainMatch != null)
                         _chain.CommitChainLine(doc, zone, _pendingChainMatch, latex);
                     else
@@ -379,15 +464,13 @@ namespace MathCursor.Host
                         if (needle.Length > 0) _undoGrab = (absStart, needle);
                     }
 
-                    // M4 — flow multiligne (validé user 2026-06-10) : la ligne
-                    // committée portait un séparateur → on ouvre la ligne
-                    // suivante avec le même séparateur pré-placé (« { » pour
-                    // les systèmes, le marqueur tapé pour les chaînes).
-                    // Dans le MÊME record undo : 1 Ctrl+Z annule tout.
-                    // Sortie de flow : Entrée sur la ligne marqueur-seul
-                    // l'efface (cf. TryExitFlowOnEnter).
-                    string nextPrefix = _pendingSystemOpener ? "{ "
-                        : _pendingChainMatch != null ? _pendingChainMatch.MarkerTyped + " "
+                    // M4 — flow multiligne (validé user 2026-06-10) : la ligne CHAÎNE
+                    // committée portait un séparateur → on ouvre la ligne suivante
+                    // avec le marqueur pré-placé, dans le MÊME record undo.
+                    // (Les SYSTÈMES sont composés en un coup → pas de flow M4 ;
+                    // les lignes y sont ajoutées par Maj+Entrée dans la zone.)
+                    string nextPrefix = _pendingChainMatch != null
+                        ? _pendingChainMatch.MarkerTyped + " "
                         : null;
                     if (nextPrefix != null)
                     {
@@ -649,7 +732,9 @@ namespace MathCursor.Host
             _popup?.HidePopup();
             _zone = null;
             _pendingChainMatch = null;
-            _pendingSystemOpener = false;
+            _pendingSystem = false;
+            _pendingSystemPrefix = null;
+            _pendingSystemRows = null;
             _pendingRestCandidates = null;
         }
 

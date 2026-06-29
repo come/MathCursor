@@ -143,15 +143,17 @@ namespace MathCursor.Tests.Host.Blocks
         }
 
         [Fact]
-        public void System_latex_wraps_left_brace_with_prefix()
+        public void System_latex_preview_uses_cases_for_wpfmath()
         {
+            // Aperçu popup : `\begin{cases}` (géré par WpfMathAdapter), PAS `aligned`
+            // (non supporté par WpfMath 2.1).
             var latex = ChainComposer.ComposeSystemLatex("f(x)=", new[] { "2x", "x" });
-            Assert.StartsWith("f(x)=\\left\\{ \\begin{aligned}", latex);
-            Assert.EndsWith("\\end{aligned} \\right.", latex);
+            Assert.StartsWith("f(x)=\\begin{cases}", latex);
+            Assert.EndsWith("\\end{cases}", latex);
 
             var noPrefix = ChainComposer.ComposeSystemLatex("", new[] { "2x+y=5", "x-y=1" });
-            Assert.StartsWith("\\left\\{ \\begin{aligned}", noPrefix);
-            Assert.Contains("2x+y &=5", noPrefix);
+            Assert.StartsWith("\\begin{cases}", noPrefix);
+            Assert.Contains("2x+y=5", noPrefix);
             Assert.Contains(" \\\\ ", noPrefix);          // séparateur de lignes
         }
 

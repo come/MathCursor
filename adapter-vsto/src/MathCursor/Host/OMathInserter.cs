@@ -191,15 +191,20 @@ namespace MathCursor.Host
             // 5. Typage Display/Inline + alignement.
             if (blockType != null)
             {
-                // BLOCS eqArr : Display forcé (les marques & n'agissent qu'en
-                // display), PAS de Justification (acquis V5 : le défaut rend
-                // l'alignement voulu, le setter jette sur les eqArr frais).
+                // BLOCS (chaîne ET système) : Display + alignement GAUCHE, uniforme.
                 try
                 {
                     if (om.Type != Word.WdOMathType.wdOMathDisplay)
                         om.Type = Word.WdOMathType.wdOMathDisplay;
                 }
                 catch (Exception exT) { _log("insert_block_display_error: " + exT.Message); }
+
+                // Gauche pour TOUS les blocs (pas de cas par type). Le setter jette
+                // sur un eqArr frais top-level (chaîne) → on l'avale, le défaut Word
+                // y est DÉJÀ à gauche (acquis V5) ; il marche sur un <m:d> top-level
+                // (système), que Word centrerait sinon.
+                try { om.Justification = Word.WdOMathJc.wdOMathJcLeft; }
+                catch (Exception exJc) { _log("insert_block_jc_error: " + exJc.Message); }
             }
             else
             {

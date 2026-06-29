@@ -80,29 +80,16 @@ namespace MathCursor.Host.Blocks
         /// « il faut un { sur la ligne courante ET un { sur la ligne du
         /// dessus pour merger » — plus d'absorption des lignes nues.
         /// </summary>
-        public bool CommitSystemLine(Word.Document doc, ZoneSpan zone, string restLatex)
+        /// <summary>SYSTÈME (modèle matrice, ADR 2026-06-29) : insère le bloc DÉJÀ
+        /// COMPOSÉ (préfixe + toutes les lignes) sur la zone entière, EN UN COUP —
+        /// plus d'incrémental (create-or-extend), plus de probe-au-dessus. Calqué
+        /// sur l'ancien chemin CRÉATION (mêmes bornes zone + InsertBlock walker).</summary>
+        public bool CommitSystem(Word.Document doc, ZoneSpan zone,
+            System.Xml.Linq.XElement oMath, string latexJoined, string steno)
         {
             if (!zone.TryToInternal(doc, out int zStart, out int zEnd)) return false;
-
-            var above = FindOurEquationAbove(doc, zStart);
-            if (!IsAloneOnItsLine(doc, zStart)) above = null;   // ligne mixte → création autonome
-            if (above != null && above.Value.Source.Type == BlockTypes.System)
-            {
-                var (om, source) = above.Value;
-                string steno = (source.Steno ?? "") + "\n" + zone.Text.Trim();
-                string latexJoined = (source.Latex ?? "") + "\n" + (restLatex ?? "");
-                var oMathExt = ChainComposer.ComposeSystem(latexJoined.Split('\n'));
-
-                int repStart = ReplaceStart(doc, om);
-                _log($"system: EXTENSION, total={steno.Split('\n').Length}");
-                int removed = RemoveOldBlock(doc, repStart, zStart);
-                _inserter.InsertBlock(repStart, zEnd - removed, oMathExt, latexJoined, steno, BlockTypes.System);
-                return true;
-            }
-
-            var oMath = ChainComposer.ComposeSystem(new[] { restLatex ?? "" });
-            _log("system: CRÉATION (1 ligne)");
-            var (s, e, h) = _inserter.InsertBlock(zStart, zEnd, oMath, restLatex ?? "", zone.Text.Trim(), BlockTypes.System);
+            _log($"system: composition matrice (un coup) [{zStart},{zEnd})");
+            var (s, e, h) = _inserter.InsertBlock(zStart, zEnd, oMath, latexJoined ?? "", steno ?? "", BlockTypes.System);
             return h != null || s != e;
         }
 

@@ -121,19 +121,14 @@ namespace MathCursor.Host.Blocks
             return oMath;
         }
 
-        /// <summary>LaTeX du bloc système (pour l'aperçu popup WpfMath) :
-        /// <c>&lt;préfixe&gt;\left\{ \begin{aligned} lhs &amp;=rhs \\ … \right.</c>.</summary>
+        /// <summary>LaTeX du bloc système pour l'APERÇU popup uniquement :
+        /// <c>&lt;préfixe&gt;\begin{cases} ligne \\ … \end{cases}</c>. WpfMath 2.1 ne
+        /// gère pas <c>\begin{aligned}</c>/<c>&amp;</c> ; il gère <c>cases</c> (WpfMathAdapter
+        /// l'empile avec une accolade). L'INSERTION (ComposeSystem → OMML) garde,
+        /// elle, l'accolade + l'alignement des =. Cf. ADR 2026-06-29.</summary>
         public static string ComposeSystemLatex(string prefixLatex, IReadOnlyList<string> latexLines)
-        {
-            var rows = new List<string>(latexLines.Count);
-            foreach (var latex in latexLines)
-            {
-                var (l, r) = LatexTopLevelSplit.Split(latex ?? "");
-                rows.Add(r != null ? l + " &" + r : l + " &");
-            }
-            return (prefixLatex ?? "") + "\\left\\{ \\begin{aligned} "
-                + string.Join(" \\\\ ", rows) + " \\end{aligned} \\right.";
-        }
+            => (prefixLatex ?? "") + "\\begin{cases} "
+                + string.Join(" \\\\ ", latexLines) + " \\end{cases}";
 
         // ── Internals ────────────────────────────────────────────────────
 
