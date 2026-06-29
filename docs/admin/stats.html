@@ -50,6 +50,20 @@
       border: 1px solid var(--paper-rim); border-radius: 3px;
       background: var(--paper-white); font-family: var(--font-body);
     }
+    .lead label.toggle {
+      margin-left: 8px; font-size: 12px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .total-sub { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+    ul.bot-types {
+      list-style: none; margin: 8px 0 0; padding: 0;
+      font-size: 12px; color: var(--text-muted);
+    }
+    ul.bot-types li {
+      display: flex; justify-content: space-between; gap: 12px;
+      padding: 2px 0; border-bottom: 1px dotted var(--paper-rim);
+    }
+    ul.bot-types li span.n { font-variant-numeric: tabular-nums; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
     .card {
@@ -93,6 +107,9 @@
     <p class="lead">
       <span class="private">⚠ Privé · ne pas partager</span> ·
       30 derniers jours · <span id="generated">chargement…</span>
+      <label class="toggle" title="Exclut crawlers, scanners et clients HTTP (curl, GPTBot, scraper Linux/Chrome116…)">
+        <input type="checkbox" id="nobots" checked /> Masquer les bots
+      </label>
       <button id="refresh" title="Force le rechargement (bypass cache 60s)">↻ refresh</button>
     </p>
 
@@ -102,6 +119,8 @@
       <div class="card">
         <h3>Total</h3>
         <div class="total-big" id="total-num">…</div>
+        <div class="total-sub" id="total-sub"></div>
+        <ul class="bot-types" id="bot-types"></ul>
       </div>
       <div class="card">
         <h3>Par version</h3>
@@ -167,7 +186,12 @@
     let chartVersions, chartCountries, chartDays, chartUsage;
 
     async function loadStats(refresh = false) {
-      const url = refresh ? '/admin/api/stats?refresh=1' : '/admin/api/stats';
+      const nobots = document.getElementById('nobots').checked;
+      const params = new URLSearchParams();
+      if (!nobots) params.set('nobots', '0');
+      if (refresh) params.set('refresh', '1');
+      const qs = params.toString();
+      const url = '/admin/api/stats' + (qs ? '?' + qs : '');
       const errorBox = document.getElementById('error-box');
       errorBox.innerHTML = '';
       document.getElementById('total-num').textContent = '…';
@@ -190,6 +214,28 @@
       // Total
       const t = (data.total && data.total[0] && Number(data.total[0].total)) || 0;
       document.getElementById('total-num').textContent = t.toLocaleString('fr-FR');
+
+      // Sous-titre : contextualise le chiffre selon le mode bot.
+      const bots = Number(data.bots_excluded) || 0;
+      const sub = document.getElementById('total-sub');
+      if (data.nobots) {
+        const raw = t + bots;
+        sub.textContent = bots > 0
+          ? `${bots.toLocaleString('fr-FR')} bots masqués sur ${raw.toLocaleString('fr-FR')}`
+          : 'aucun bot détecté';
+      } else {
+        sub.textContent = bots > 0
+          ? `dont ${bots.toLocaleString('fr-FR')} bots (non masqués)`
+          : 'aucun bot détecté';
+      }
+
+      // Détail par type de bot (toujours affiché s'il y a des bots).
+      const types = document.getElementById('bot-types');
+      types.innerHTML = (data.bot_types || [])
+        .filter(r => Number(r.hits) > 0)
+        .map(r => '<li><span>' + escape(r.type || '?') + '</span>'
+                + '<span class="n">' + Number(r.hits).toLocaleString('fr-FR') + '</span></li>')
+        .join('');
 
       // Versions (donut)
       renderEmpty('versions', data.versions);
@@ -365,6 +411,8 @@
     }
 
     document.getElementById('refresh').addEventListener('click', () => { loadStats(true); loadUsage(true); });
+    // Le toggle bots ne concerne que les téléchargements (pas l'usage produit).
+    document.getElementById('nobots').addEventListener('change', () => loadStats());
     loadStats();
     loadUsage();
   </script>
