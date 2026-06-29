@@ -66,8 +66,11 @@ lit la zone (qui contient alors un saut de ligne) et **convertit les sauts de li
 en `;`** (séparateur de lignes du moteur) avant `compose_system` → le saut de ligne
 devient une nouvelle ligne du système, **sans remplacer le comportement standard**.
 LibreOffice : Maj+Entrée = saut DANS le ¶ (le `_KeyHandler` laisse passer, popup
-maintenue) → `para_text` contient `\n` → converti en `;`. VSCode (à faire) : Maj+Entrée
-= vraie nouvelle ligne du doc → détection multi-ligne (plus complexe, traité après).
+maintenue) → `para_text` contient `\n` → converti en `;`. VSCode : Maj+Entrée = vraie
+nouvelle ligne du doc → **détection multi-ligne** (`detectSystem` remonte depuis la
+ligne du caret jusqu'à une accolade `{` non fermée, borné à 8 lignes, stop sur ligne
+vide) ; le hook clavier `mc-popup` est rendu **conscient de SHIFT** (Maj+Entrée laissé
+passer, ni commit ni fermeture) ; le bloc remplace la plage multi-ligne en `\[…\]`.
 
 ## Tradeoff & alternatives écartées
 
@@ -77,16 +80,24 @@ maintenue) → `para_text` contient `\n` → converti en `;`. VSCode (à faire) 
   ignore le multiligne ; `{` non fermé = erreur). Reste hors moteur.
 - **Nouvelle structure de rendu (NType::System)** : inutile — le wrapping accolade
   est une concaténation de chaîne au-dessus de `compose_chain`.
-- **Maj+Entrée global** : casserait le saut de ligne normal → scopé « popup ouverte ».
+- **`{` en tête seulement** : trop strict — `f(x) = {` (fonction par morceaux) doit
+  ouvrir un système ⇒ accolade non fermée n'importe où + préfixe.
+- **Maj+Entrée → `;` intercepté** : l'utilisateur veut le **saut de ligne standard** ;
+  l'adapter convertit le saut en `;` à la lecture plutôt que de remplacer la touche.
 
 ## Conséquences
 
-- **Rust** : `chain.rs` (`compose_system` + tests), `bin/analyze.rs` (verbe `COMPOSE_SYSTEM`).
-- **LibreOffice** : `rust_clients.py` (`compose_system`), `mathcursor.py` (détection `{`,
-  commit système, `_KeyHandler` Shift+RETURN).
-- **VSCode** : `engine.ts` (`composeSystem`), `extension.ts` (détection + commit bloc),
-  `popup.ts` (context key) + `mc-popup` hook (SHIFT), `package.json` (keybinding + commande).
+- **Rust** : `chain.rs` (`compose_system` générique + `find_unclosed_brace` +
+  `split_trailing_relation`/`render_prefix` + tests), `bin/analyze.rs` (verbe `COMPOSE_SYSTEM`).
+- **LibreOffice** : `rust_clients.py` (`compose_system`), `mathcursor.py` (`_find_open_brace`,
+  détection `{` générique, commit système, `_KeyHandler` Maj+Entrée laissé passer).
+- **VSCode** : `chain.ts` (`findUnclosedBrace`), `engine.ts` (`composeSystem`),
+  `extension.ts` (`detectSystem` multi-ligne + commit bloc), `mc-popup` `main.rs`
+  (hook conscient de SHIFT). (Pas de keybinding/context key : Maj+Entrée standard.)
 - **API** : verbe stdio `COMPOSE_SYSTEM` (rétro-compatible). Renderers moteur inchangés.
+  Gate `fixtures.json` 456/456 intacte.
+- **Livré et validé** sur **LibreOffice ET VSCode**. Reste différé : la passe « resserrer
+  le `=` » (espacement de colonne du `matrix` StarMath, commun chaînes+systèmes).
 - **Backport Word** : chantier séparé ultérieur si le modèle est concluant à l'usage.
 
 ## Validation post-fix

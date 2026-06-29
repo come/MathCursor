@@ -36,6 +36,24 @@ const MARKERS: [string, string, boolean, boolean][] = [
 
 const isAlpha = (c: string): boolean => /[^\W\d_]/u.test(c);
 
+/** Index d'une accolade `{` NON fermée (la plus externe) dans `text`, ou -1.
+ *  Reconnaît un ouvreur de système n'importe où (`f(x) = {…`). Port de chain.rs. */
+export function findUnclosedBrace(text: string): number {
+  let depth = 0;
+  let pos = -1;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '{') {
+      if (depth === 0) { pos = i; }
+      depth++;
+    } else if (c === '}' && depth > 0) {
+      depth--;
+      if (depth === 0) { pos = -1; }
+    }
+  }
+  return depth > 0 ? pos : -1;
+}
+
 /** `undefined` si la ligne ne commence pas par un marqueur de chaîne. */
 export function detectRelationLine(line: string): RelMatch | undefined {
   const s = line.replace(/^\s+/, '');

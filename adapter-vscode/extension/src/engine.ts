@@ -120,9 +120,18 @@ export async function analyze(src: string, culture: string): Promise<AnalyzeResu
 // Chaîne multiligne → bloc aligné (verbe COMPOSE). `lines` = (sténo, index du
 // candidat choisi) par ligne. Renvoie {latex, starmath} ou undefined si indispo.
 export async function compose(lines: ChainLine[], culture: string): Promise<ComposeResult | undefined> {
+  return composeVerb(`COMPOSE\t${culture}\t${JSON.stringify(lines)}`);
+}
+
+// Système d'équations { → bloc accolade gauche (verbe COMPOSE_SYSTEM). `line` =
+// la zone contenant le `{` ouvreur (lignes séparées par `;`).
+export async function composeSystem(line: string, culture: string): Promise<ComposeResult | undefined> {
+  return composeVerb(`COMPOSE_SYSTEM\t${culture}\t${line.replace(/[\t\r\n]/g, ' ')}`);
+}
+
+function composeVerb(payload: string): Promise<ComposeResult | undefined> {
   const p = ensureProc();
-  if (!p || dead) { return undefined; }
-  const payload = JSON.stringify(lines); // échappe tabs/newlines → pas de collision \t
+  if (!p || dead) { return Promise.resolve(undefined); }
   return new Promise<ComposeResult | undefined>(resolve => {
     const entry: Pending = {
       resolve: (r: any) => resolve(r && typeof r.latex === 'string' ? r as ComposeResult : undefined),
@@ -132,7 +141,7 @@ export async function compose(lines: ChainLine[], culture: string): Promise<Comp
       }, REQUEST_TIMEOUT_MS),
     };
     queue.push(entry);
-    try { p.stdin!.write(`COMPOSE\t${culture}\t${payload}\n`); }
+    try { p.stdin!.write(`${payload}\n`); }
     catch { settle(entry, ERREUR); }
   });
 }

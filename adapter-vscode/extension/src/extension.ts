@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
-import { analyze, compose, disposeEngine, ChainLine } from './engine';
+import { analyze, compose, composeSystem, disposeEngine, ChainLine } from './engine';
 import { PopupController, isHelperAvailable } from './popup';
 import { resolveSource, lineMasked, containsMath, Source } from './detect';
 import { NerController } from './ner';
 import { ensurePackages } from './packages';
-import { detectRelationLine, RelMatch } from './chain';
+import { detectRelationLine, findUnclosedBrace, RelMatch } from './chain';
 
 // Host VSCode (= L6). Modèle « façon Word » :
 //  - popup native PERSISTANTE au caret (helper WPF), qui VIT tant qu'on est dans
@@ -16,7 +16,31 @@ import { detectRelationLine, RelMatch } from './chain';
 const LANGS = ['latex', 'tex', 'markdown'];
 const REFRESH_DEBOUNCE_MS = 120;
 
-interface Current { range: vscode.Range; candidates: string[]; src: string; rel?: RelMatch; }
+interface Current { range: vscode.Range; candidates: string[]; src: string; rel?: RelMatch; block?: boolean; }
+
+// Système « { … » (mono- ou multi-ligne via Maj+Entrée) : remonte depuis la ligne
+// du caret jusqu'à une accolade `{` non fermée (ouvreur), borné, stoppé aux lignes
+// vides. Renvoie la zone à composer/remplacer ou undefined. `find_unclosed_brace`
+// gère le préfixe (`f(x) = {…`). Cf. ADR 2026-06-26-Feat-systems-matrix-model.
+function detectSystem(doc: vscode.TextDocument, line: number):
+  { payload: string; range: vscode.Range; steno: string } | undefined {
+  const MAX_UP = 8;
+  let buf = doc.lineAt(line).text;
+  let top = line;
+  for (let k = 0; k <= MAX_UP; k++) {
+    if (findUnclosedBrace(buf) >= 0) {
+      const range = new vscode.Range(top, 0, line, doc.lineAt(line).text.length);
+      const steno = doc.getText(range);
+      return { payload: steno.replace(/\r?\n/g, ';'), range, steno }; // sauts de ligne → lignes
+    }
+    if (top === 0) { break; }
+    const above = doc.lineAt(top - 1).text;
+    if (above.trim() === '') { break; } // ligne vide casse le système
+    buf = `${above}\n${buf}`;
+    top--;
+  }
+  return undefined;
+}
 
 // Bloc de chaîne en cours (transitoire, comme LibreOffice) : le dernier bloc
 // inséré + ses lignes sources. Pas de métadonnée dans le doc ; Ctrl+Z = retour
@@ -67,6 +91,16 @@ export function activate(context: vscode.ExtensionContext): void {
     if (doc.getText(cur.range).trim() !== cur.src) { return; }
     const cfg = vscode.workspace.getConfiguration('mathcursor');
     const culture = cfg.get<string>('culture', 'fr');
+
+    // SYSTÈME « { » : bloc déjà composé → insère en `\[…\]` display multi-ligne ;
+    // pas d'état de chaîne (un système ne s'étend pas après commit).
+    if (cur.block) {
+      const block = wrapBlock(cur.candidates[index], doc);
+      await editor.edit(b => b.replace(cur.range, block));
+      chain = undefined;
+      if (cfg.get<boolean>('autoPackages', true)) { await ensurePackages(editor); }
+      return;
+    }
 
     // LIGNE DE CHAÎNE adjacente sous un bloc en cours → FUSION (compose → remplace
     // bloc + ligne par un seul bloc aligné). Sinon : insertion simple + (re)amorce.
@@ -131,43 +165,61 @@ export function activate(context: vscode.ExtensionContext): void {
     // composé au commit). Sinon : détection NER/SpanComputer habituelle.
     const caretLine = editor.selection.active.line;
     const lineText = editor.document.lineAt(caretLine).text;
-    const rel = detectRelationLine(lineText);
     let found: Source | undefined;
-    let analyzeSrc: string;
-    if (rel) {
-      if (!rel.rest) { popup.hide(); current = undefined; return; } // marqueur seul : attendre
-      const startChar = lineText.length - lineText.replace(/^\s+/, '').length;
-      const endChar = lineText.replace(/\s+$/, '').length;
-      found = { src: lineText.slice(startChar, endChar),
-        range: new vscode.Range(caretLine, startChar, caretLine, endChar) };
-      analyzeSrc = rel.rest;
-    } else {
-      found = await resolveSrc(ner, editor, force, level);
+    let candidates: string[];
+    let rel: RelMatch | undefined;
+    let block = false;
+
+    // SYSTÈME « { » (mono- ou multi-ligne via Maj+Entrée) — PRIORITÉ : on remonte
+    // depuis la ligne du caret jusqu'à une accolade `{` non fermée. UN candidat (le
+    // bloc composé), inséré au commit en `\[…\]` display multi-ligne.
+    const sys = detectSystem(editor.document, caretLine);
+    if (sys) {
+      if (sys.steno !== dismissedSrc) { dismissedSrc = undefined; }
+      if (!force && dismissedSrc === sys.steno) { return; }
+      const comp = await composeSystem(sys.payload, cfg.get<string>('culture', 'fr'));
       if (myGen !== refreshGen) { return; }
-      analyzeSrc = found ? `${found.src} ` : ''; // espace final = signal postfixe (R* → R^{\ast})
+      if (!comp || !comp.latex) { popup.hide(); current = undefined; return; }
+      found = { src: sys.steno, range: sys.range };
+      candidates = [comp.latex];
+      block = true;
+    } else {
+      // LIGNE DE CHAÎNE (=, <=>, ≤…) ou détection NER/SpanComputer habituelle.
+      rel = detectRelationLine(lineText);
+      let analyzeSrc: string;
+      if (rel) {
+        if (!rel.rest) { popup.hide(); current = undefined; return; } // marqueur seul : attendre
+        const startChar = lineText.length - lineText.replace(/^\s+/, '').length;
+        const endChar = lineText.replace(/\s+$/, '').length;
+        found = { src: lineText.slice(startChar, endChar),
+          range: new vscode.Range(caretLine, startChar, caretLine, endChar) };
+        analyzeSrc = rel.rest;
+      } else {
+        found = await resolveSrc(ner, editor, force, level);
+        if (myGen !== refreshGen) { return; }
+        analyzeSrc = found ? `${found.src} ` : ''; // espace final = signal postfixe (R* → R^{\ast})
+      }
+      if (!found) { popup.hide(); current = undefined; return; }
+
+      if (found.src !== dismissedSrc) { dismissedSrc = undefined; }
+      if (!force && dismissedSrc === found.src) { return; } // dismissé → reste fermé
+
+      let result;
+      try { result = await analyze(analyzeSrc, cfg.get<string>('culture', 'fr')); }
+      catch { return; }
+      if (myGen !== refreshGen) { return; }
+
+      // Pour une ligne-relation, on préfixe le marqueur rendu (affichage popup).
+      candidates = (result.ranked ?? []).map(c => rel ? rel.markerLatex + c.latex : c.latex);
+      if (result.decision === 'erreur' || candidates.length === 0) {
+        popup.hide(); current = undefined;
+        if (force) { vscode.window.setStatusBarMessage(vscode.l10n.t('MathCursor: nothing to convert'), 1500); }
+        return;
+      }
     }
-    if (!found) { popup.hide(); current = undefined; return; }
 
-    if (found.src !== dismissedSrc) { dismissedSrc = undefined; }
-    if (!force && dismissedSrc === found.src) { return; } // dismissé → reste fermé
-
-    let result;
-    try { result = await analyze(analyzeSrc, cfg.get<string>('culture', 'fr')); }
-    catch { return; }
-    if (myGen !== refreshGen) { return; }
-
-    // On envoie TOUS les candidats (le moteur en sort ≤ 5) ; le HTML n'en montre
-    // que `maxVisible` puis une ligne « voir plus » (flèche bas pour déployer).
-    // Pour une ligne-relation, on préfixe le marqueur rendu (affichage popup).
     const maxVisible = cfg.get<number>('maxCandidates', 3);
-    const candidates = (result.ranked ?? []).map(c => rel ? rel.markerLatex + c.latex : c.latex);
-    if (result.decision === 'erreur' || candidates.length === 0) {
-      popup.hide(); current = undefined;
-      if (force) { vscode.window.setStatusBarMessage(vscode.l10n.t('MathCursor: nothing to convert'), 1500); }
-      return;
-    }
-
-    current = { range: found.range, candidates, src: found.src, rel };
+    current = { range: found.range, candidates, src: found.src, rel, block };
 
     // Ancrage au DÉBUT du texte reconnu : la coquille lit le caret (MSAA) et
     // recule de colDelta caractères. Figé tant que la zone ne change pas.

@@ -344,7 +344,7 @@ mod active_mode {
     };
     use windows::Win32::UI::Accessibility::{AccessibleObjectFromWindow, IAccessible};
     use windows::Win32::UI::Input::KeyboardAndMouse::{
-        GetKeyState, VK_CONTROL, VK_DOWN, VK_ESCAPE, VK_RETURN, VK_TAB, VK_UP,
+        GetKeyState, VK_CONTROL, VK_DOWN, VK_ESCAPE, VK_RETURN, VK_SHIFT, VK_TAB, VK_UP,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
         CallNextHookEx, GetForegroundWindow, GetWindowLongPtrW, SetWindowLongPtrW,
@@ -498,16 +498,22 @@ mod active_mode {
                         return LRESULT(1);
                     }
                     if vk == VK_RETURN.0 as u32 {
-                        if HAS_SEL.load(Ordering::SeqCst) {
+                        let shift = (GetKeyState(VK_SHIFT.0 as i32) as u16 & 0x8000) != 0;
+                        if shift {
+                            // Maj+Entrée = saut de ligne STANDARD (ajoute une ligne au
+                            // système) : laisser passer SANS commit ni fermeture ; la
+                            // popup recompose au tick suivant. CallNextHookEx ensuite.
+                        } else if HAS_SEL.load(Ordering::SeqCst) {
                             // Une ligne est surlignée → valide (avale Entrée).
                             post(UserEvent::KeyCommit { implicit: false });
                             return LRESULT(1);
+                        } else {
+                            // Aucune sélection → NE PAS avaler : Entrée redescend à
+                            // l'éditeur (saut de ligne) ; on ferme la popup et on resync
+                            // l'hôte (comme la perte de focus). CallNextHookEx ensuite.
+                            super::emit("{\"evt\":\"closed\"}");
+                            post(UserEvent::Close);
                         }
-                        // Aucune sélection → NE PAS avaler : Entrée redescend à
-                        // l'éditeur (saut de ligne) ; on ferme la popup et on resync
-                        // l'hôte (comme la perte de focus). CallNextHookEx ensuite.
-                        super::emit("{\"evt\":\"closed\"}");
-                        post(UserEvent::Close);
                     }
                 }
             }
