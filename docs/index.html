@@ -171,23 +171,13 @@
         <h2 data-i18n="inst_h">Installation</h2>
         <p data-i18n="inst_p">Voici l'installation pour <strong>Word</strong>, prête aujourd'hui : moins d'une minute, une seule fois par machine. Ou <a href="demo/">testez d'abord en ligne</a>, sans rien installer.</p>
 
-        <ol class="install-steps">
-          <li>
-            <h3 data-i18n="inst_1_h">1. Télécharger l'installateur</h3>
-            <p data-i18n="inst_1_p">Récupérez <a href="/download/latest.exe"><code>MathCursor-Setup.exe</code></a> (dernière version) ou choisissez-en une sur la page <a href="releases.html">Téléchargements</a>.</p>
-          </li>
-          <li>
-            <h3 data-i18n="inst_2_h">2. Lancer l'installateur</h3>
-            <p data-i18n="inst_2_p">Double-cliquez sur le fichier. L'installateur importe lui-même le <a href="mathcursor.cer">certificat</a> nécessaire puis installe le complément dans votre compte utilisateur, sans droits administrateur ni étape PowerShell.</p>
-          </li>
-          <li>
-            <h3 data-i18n="inst_3_h">3. Utiliser</h3>
-            <p data-i18n="inst_3_p">Ouvrez Word : un onglet <strong>MathCursor</strong> apparaît dans le ruban. Tapez <code>x2+1/2</code> dans un document, puis déclenchez la conversion (bouton de l'onglet ou raccourci clavier).</p>
-          </li>
-        </ol>
+        <div class="cta-row" style="margin: 16px 0 28px; flex-wrap: wrap; gap: 10px;">
+          <a href="/download/latest.exe" class="button button--primary" download data-i18n="inst_dl">Télécharger pour Word</a>
+          <a href="install.html#word" class="button button--secondary" data-i18n="inst_guide">Guide d'installation</a>
+        </div>
 
         <p class="install-config" data-i18n="inst_config"><strong>Configuration :</strong> Windows 10 ou 11, Word 2016+ ou Microsoft 365. Langues d'interface : français, anglais, allemand, espagnol.</p>
-        <p class="install-note" data-i18n="inst_platforms"><strong>Autres éditeurs :</strong> les versions <strong>LibreOffice</strong> et <strong>VS&nbsp;Code – LaTeX</strong> sont en <strong>alpha</strong> : ça marche déjà, mais ça bouge encore. Téléchargement et installation sur la page <a href="releases.html#vscode">Téléchargements</a>. Un souci ? <a href="/contact.html">Écrivez-moi</a>.</p>
+        <p class="install-note" data-i18n="inst_platforms"><strong>Autres éditeurs :</strong> les versions <strong>LibreOffice</strong> et <strong>VS&nbsp;Code – LaTeX</strong> sont en <strong>alpha</strong> : ça marche déjà, mais ça bouge encore. Tous les guides et téléchargements sont sur la page <a href="install.html">Installation</a>. Un souci ? <a href="/contact.html">Écrivez-moi</a>.</p>
         <p class="install-note" data-i18n="inst_note">Besoin d'aide, un bug, envie de discuter ? <a href="/contact.html">Contact</a>.</p>
       </div>
     </section>
@@ -298,6 +288,8 @@
 
         inst_h: "Installation",
         inst_p: "Here's the install for <strong>Word</strong>, ready today: less than a minute, once per machine. Or <a href=\"demo/\">try it online first</a>, with nothing to install.",
+        inst_dl: "Download for Word",
+        inst_guide: "Install guide",
         inst_1_h: "1. Download the installer",
         inst_1_p: "Grab <a href=\"/download/latest.exe\"><code>MathCursor-Setup.exe</code></a> (latest) or pick a version on the <a href=\"releases.html\">Downloads</a> page.",
         inst_2_h: "2. Run the installer",
@@ -305,7 +297,7 @@
         inst_3_h: "3. Use it",
         inst_3_p: "Open Word: a <strong>MathCursor</strong> tab appears in the ribbon. Type <code>x2+1/2</code> in a document, then trigger the conversion (ribbon button or keyboard shortcut).",
         inst_config: "<strong>Configuration:</strong> Windows 10 or 11, Word 2016+ or Microsoft 365. Interface languages: French, English, German, Spanish.",
-        inst_platforms: "<strong>Other editors:</strong> the <strong>LibreOffice</strong> and <strong>VS&nbsp;Code – LaTeX</strong> versions are in <strong>alpha</strong>: they already work, but they're still moving. Download and install them on the <a href=\"releases.html#vscode\">Downloads</a> page. Something off? <a href=\"/contact.html\">Write to me</a>.",
+        inst_platforms: "<strong>Other editors:</strong> the <strong>LibreOffice</strong> and <strong>VS&nbsp;Code – LaTeX</strong> versions are in <strong>alpha</strong>: they already work, but they're still moving. All guides and downloads are on the <a href=\"install.html\">Install</a> page. Something off? <a href=\"/contact.html\">Write to me</a>.",
         inst_note: "Need help, found a bug, want to chat? <a href=\"/contact.html\">Contact</a>.",
 
         faq_h: "Frequently asked questions",

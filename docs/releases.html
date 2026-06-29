@@ -49,69 +49,32 @@
         <h1 data-i18n="dl_h1">Téléchargements</h1>
         <p class="lead" data-i18n="dl_lead">Tout pour installer MathCursor : <strong>Word</strong> en version stable, plus les extensions <strong>VS&nbsp;Code</strong> et <strong>LibreOffice</strong> en alpha. Le lien <code>latest.exe</code> pointe toujours sur la dernière version stable de Word.</p>
 
-        <div class="beta-banner" style="background: #fff7e6; border-left: 4px solid #ff9500; padding: 14px 18px; margin: 20px 0 24px; border-radius: 4px;" data-i18n="dl_beta_banner">
-          <strong>Beta en cours :</strong> tu trouves un bug ou un cas qui ne marche pas ? Clique sur <strong>« Signaler une erreur »</strong> dans la popup MathCursor — un clic suffit, ton retour part automatiquement et nous aide à corriger vite.
+        <div class="cards" style="margin: 28px 0 48px;">
+          <div class="card" id="word">
+            <h3 data-i18n="dl_card_word_h">Word <span style="color:#888;font-weight:normal;font-size:14px;">(stable)</span></h3>
+            <p data-i18n="dl_card_word_p">L'add-in pour Word Desktop, prêt au quotidien.</p>
+            <div class="cta-row" style="flex-wrap: wrap; gap: 10px;">
+              <a href="/download/latest.exe" class="button button--primary" download data-i18n="dl_card_word_dl">Télécharger la dernière version</a>
+              <a href="install.html#word" class="button button--secondary" data-i18n="dl_card_guide_word">Guide d'installation</a>
+            </div>
+          </div>
+          <div class="card" id="vscode">
+            <h3 data-i18n="dl_card_vscode_h">VS&nbsp;Code <span class="alpha">(alpha)</span></h3>
+            <p data-i18n="dl_card_vscode_p">Écrire ses maths en LaTeX au fil de la frappe. Windows, Linux, macOS.</p>
+            <div class="cta-row" style="flex-wrap: wrap; gap: 10px;">
+              <a href="install.html#vscode" class="button button--primary" data-i18n="dl_card_vscode_dl">Télécharger la dernière version</a>
+              <a href="install.html#vscode" class="button button--secondary" data-i18n="dl_card_guide_vscode">Guide d'installation</a>
+            </div>
+          </div>
+          <div class="card" id="libreoffice">
+            <h3 data-i18n="dl_card_lo_h">LibreOffice <span class="alpha">(alpha)</span></h3>
+            <p data-i18n="dl_card_lo_p">Convertir sa sténo en formule LibreOffice Math native, dans Writer.</p>
+            <div class="cta-row" style="flex-wrap: wrap; gap: 10px;">
+              <a href="/download/latest.oxt" class="button button--primary" download data-i18n="dl_card_lo_dl">Télécharger la dernière version</a>
+              <a href="install.html#libreoffice" class="button button--secondary" data-i18n="dl_card_guide_lo">Guide d'installation</a>
+            </div>
+          </div>
         </div>
-
-        <h2 id="word" data-i18n="dl_word_h">Word (stable)</h2>
-        <div class="cta-row" style="margin: 16px 0 40px;">
-          <a href="/download/latest.exe" class="button button--primary" download data-i18n="dl_cta_latest">
-            Télécharger la dernière version (0.11.2)
-          </a>
-          <a href="index.html#installation" class="button button--secondary" data-i18n="dl_cta_guide">
-            Guide d'installation
-          </a>
-        </div>
-
-        <h2 id="vscode" data-i18n="dl_vscode_h">VS&nbsp;Code – LaTeX <span class="alpha">(alpha)</span></h2>
-        <p data-i18n="dl_vscode_intro">Extension pour écrire vos maths en LaTeX au fil de la frappe, avec la popup au caret. Disponible pour Windows, Linux et macOS (Apple&nbsp;Silicon).</p>
-        <div class="cta-row" style="margin: 16px 0 24px; flex-wrap: wrap; gap: 10px;">
-          <a href="/download/latest-win32-x64.vsix" class="button button--primary" download data-i18n="dl_vscode_cta_win">Windows 64 bits (.vsix)</a>
-          <a href="/download/latest-linux-x64.vsix" class="button button--secondary" download data-i18n="dl_vscode_cta_linux">Linux 64 bits (.vsix)</a>
-          <a href="/download/latest-darwin-arm64.vsix" class="button button--secondary" download data-i18n="dl_vscode_cta_mac">macOS Apple Silicon (.vsix)</a>
-        </div>
-        <ol class="install-steps">
-          <li>
-            <h3 data-i18n="dl_vscode_1_h">1. Télécharger le .vsix</h3>
-            <p data-i18n="dl_vscode_1_p">Récupérez le <code>.vsix</code> de votre plateforme via les boutons ci-dessus.</p>
-          </li>
-          <li>
-            <h3 data-i18n="dl_vscode_2_h">2. Installer dans VS Code</h3>
-            <p data-i18n="dl_vscode_2_p">Palette de commandes (<code>Ctrl+Maj+P</code>) ▸ <strong>« Extensions : Install from VSIX… »</strong>, puis choisissez le fichier. En ligne de commande : <code>code --install-extension &lt;fichier&gt;.vsix</code>.</p>
-          </li>
-          <li>
-            <h3 data-i18n="dl_vscode_3_h">3. Utiliser</h3>
-            <p data-i18n="dl_vscode_3_p">Ouvrez un fichier <code>.tex</code>, <code>.latex</code> ou <code>.md</code>. Tapez une sténo (ex. <code>1/x+1</code>), <code>Ctrl+Espace</code> propose le LaTeX au caret, vous validez.</p>
-          </li>
-        </ol>
-        <p class="install-config" data-i18n="dl_vscode_config"><strong>Configuration :</strong> VS Code 1.90+. La popup au caret est disponible sous Windows ; sous Linux et macOS, la conversion se fait via <code>Ctrl+Espace</code> sans la popup au caret pour l'instant. Cohabite avec LaTeX Workshop, sans couplage.</p>
-        <p class="install-note" data-i18n="dl_vscode_note"><strong>Alpha :</strong> les binaires ne sont pas encore signés, votre système peut donc demander une confirmation au premier lancement. Pas encore sur la Marketplace ; Mac Intel, Linux ARM et Windows ARM à venir.</p>
-
-        <h2 id="libreoffice" data-i18n="dl_lo_h">LibreOffice Writer <span class="alpha">(alpha)</span></h2>
-        <p data-i18n="dl_lo_intro">Extension pour convertir votre sténo en formule LibreOffice Math native, dans Writer. Windows 64 bits pour l'instant.</p>
-        <div class="cta-row" style="margin: 16px 0 24px;">
-          <a href="/download/latest.oxt" class="button button--primary" download data-i18n="dl_lo_cta">Télécharger l'extension (.oxt)</a>
-        </div>
-        <ol class="install-steps">
-          <li>
-            <h3 data-i18n="dl_lo_1_h">1. Télécharger le .oxt</h3>
-            <p data-i18n="dl_lo_1_p">Récupérez <code>MathCursor-0.1.0.oxt</code> via le bouton ci-dessus.</p>
-          </li>
-          <li>
-            <h3 data-i18n="dl_lo_2_h">2. Installer</h3>
-            <p data-i18n="dl_lo_2_p">Double-cliquez le fichier (ou <em>Outils ▸ Gestionnaire des extensions ▸ Ajouter…</em>), puis <strong>redémarrez LibreOffice</strong>.</p>
-          </li>
-          <li>
-            <h3 data-i18n="dl_lo_3_h">3. Lier le raccourci</h3>
-            <p data-i18n="dl_lo_3_p"><em>Outils ▸ Personnaliser ▸ Clavier</em> : choisissez <code>Ctrl+Espace</code>, catégorie <em>Macros LibreOffice ▸ mathcursor</em>, fonction <code>convert_selection</code>, puis <em>Modifier</em>.</p>
-          </li>
-          <li>
-            <h3 data-i18n="dl_lo_4_h">4. Utiliser</h3>
-            <p data-i18n="dl_lo_4_p">Dans Writer, tapez une sténo (<code>1/2</code>, <code>x^2+1/2</code>, <code>lim x 0 g(x)</code>), <strong>sélectionnez-la</strong>, <code>Ctrl+Espace</code> et la formule est insérée.</p>
-          </li>
-        </ol>
-        <p class="install-config" data-i18n="dl_lo_config"><strong>Configuration :</strong> LibreOffice 7.0+ (Writer), Windows 64 bits. Le moteur et la popup sont embarqués dans le <code>.oxt</code>, rien d'autre à installer.</p>
-        <p class="install-note" data-i18n="dl_lo_note"><strong>Alpha :</strong> l'auto-détection (popup au fil de la frappe) demande le modèle de reconnaissance, pas encore embarqué : pour l'instant c'est le mode manuel (sélection + <code>Ctrl+Espace</code>). Syntaxe StarMath best-effort ; versions macOS et Linux à reconstruire sur l'OS cible.</p>
 
         <h2 data-i18n="dl_history_h">Historique des versions</h2>
 
@@ -428,38 +391,19 @@
 
         dl_h1: "Downloads",
         dl_lead: "Everything to install MathCursor: <strong>Word</strong> stable, plus the <strong>VS&nbsp;Code</strong> and <strong>LibreOffice</strong> extensions in alpha. The <code>latest.exe</code> link always points to the current stable Word release.",
-        dl_beta_banner: "<strong>Beta in progress:</strong> hit a bug or a case that doesn't work? Click <strong>\"Report an issue\"</strong> in the MathCursor popup — one click is enough, your feedback is sent automatically and helps us fix things fast.",
-        dl_cta_latest: "Download the latest version (0.11.2)",
 
-        dl_word_h: "Word (stable)",
-
-        dl_vscode_h: "VS&nbsp;Code – LaTeX <span class=\"alpha\">(alpha)</span>",
-        dl_vscode_intro: "Extension to write your math in LaTeX as you type, with the popup at the caret. Available for Windows, Linux and macOS (Apple&nbsp;Silicon).",
-        dl_vscode_cta_win: "Windows 64-bit (.vsix)",
-        dl_vscode_cta_linux: "Linux 64-bit (.vsix)",
-        dl_vscode_cta_mac: "macOS Apple Silicon (.vsix)",
-        dl_vscode_1_h: "1. Download the .vsix",
-        dl_vscode_1_p: "Grab the <code>.vsix</code> for your platform via the buttons above.",
-        dl_vscode_2_h: "2. Install in VS Code",
-        dl_vscode_2_p: "Command palette (<code>Ctrl+Shift+P</code>) ▸ <strong>\"Extensions: Install from VSIX…\"</strong>, then pick the file. From the command line: <code>code --install-extension &lt;file&gt;.vsix</code>.",
-        dl_vscode_3_h: "3. Use it",
-        dl_vscode_3_p: "Open a <code>.tex</code>, <code>.latex</code> or <code>.md</code> file. Type shorthand (e.g. <code>1/x+1</code>), <code>Ctrl+Space</code> proposes the LaTeX at the caret, you validate.",
-        dl_vscode_config: "<strong>Requirements:</strong> VS Code 1.90+. The caret popup is available on Windows; on Linux and macOS, conversion runs via <code>Ctrl+Space</code> without the caret popup for now. Coexists with LaTeX Workshop, no coupling.",
-        dl_vscode_note: "<strong>Alpha:</strong> the binaries aren't signed yet, so your system may ask for confirmation on first launch. Not on the Marketplace yet; Intel Mac, ARM Linux and ARM Windows to come.",
-
-        dl_lo_h: "LibreOffice Writer <span class=\"alpha\">(alpha)</span>",
-        dl_lo_intro: "Extension to convert your shorthand into a native LibreOffice Math formula, inside Writer. Windows 64-bit for now.",
-        dl_lo_cta: "Download the extension (.oxt)",
-        dl_lo_1_h: "1. Download the .oxt",
-        dl_lo_1_p: "Grab <code>MathCursor-0.1.0.oxt</code> via the button above.",
-        dl_lo_2_h: "2. Install",
-        dl_lo_2_p: "Double-click the file (or <em>Tools ▸ Extension Manager ▸ Add…</em>), then <strong>restart LibreOffice</strong>.",
-        dl_lo_3_h: "3. Bind the shortcut",
-        dl_lo_3_p: "<em>Tools ▸ Customize ▸ Keyboard</em>: pick <code>Ctrl+Space</code>, category <em>LibreOffice Macros ▸ mathcursor</em>, function <code>convert_selection</code>, then <em>Modify</em>.",
-        dl_lo_4_h: "4. Use it",
-        dl_lo_4_p: "In Writer, type shorthand (<code>1/2</code>, <code>x^2+1/2</code>, <code>lim x 0 g(x)</code>), <strong>select it</strong>, press <code>Ctrl+Space</code> and the formula is inserted.",
-        dl_lo_config: "<strong>Requirements:</strong> LibreOffice 7.0+ (Writer), Windows 64-bit. The engine and popup are bundled inside the <code>.oxt</code>, nothing else to install.",
-        dl_lo_note: "<strong>Alpha:</strong> auto-detection (popup as you type) needs the recognition model, not bundled yet: for now it's manual mode (select + <code>Ctrl+Space</code>). StarMath syntax is best-effort; macOS and Linux must be rebuilt on the target OS.",
+        dl_card_word_h: "Word <span style=\"color:#888;font-weight:normal;font-size:14px;\">(stable)</span>",
+        dl_card_word_p: "The add-in for Word Desktop, ready for daily use.",
+        dl_card_word_dl: "Download the latest version",
+        dl_card_guide_word: "Install guide",
+        dl_card_vscode_h: "VS&nbsp;Code <span class=\"alpha\">(alpha)</span>",
+        dl_card_vscode_p: "Write your math in LaTeX as you type. Windows, Linux, macOS.",
+        dl_card_vscode_dl: "Download the latest version",
+        dl_card_guide_vscode: "Install guide",
+        dl_card_lo_h: "LibreOffice <span class=\"alpha\">(alpha)</span>",
+        dl_card_lo_p: "Convert your shorthand into a native LibreOffice Math formula, in Writer.",
+        dl_card_lo_dl: "Download the latest version",
+        dl_card_guide_lo: "Install guide",
 
         dl_0112_date: "— June 19, 2026",
         dl_0112_intro: "Fixes: keyboard matrices and installer (language + tutorial).",

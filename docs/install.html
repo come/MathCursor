@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MathCursor · Guides d'installation</title>
+  <meta name="description" content="Guides d'installation de MathCursor : Word (stable), VS Code et LibreOffice (alpha). Téléchargement et pas-à-pas pour chaque éditeur." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .guide-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 24px 0 8px;
+      border-bottom: 2px solid #ececec;
+    }
+    .guide-tab {
+      appearance: none;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      color: #666;
+      padding: 10px 16px;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+    }
+    .guide-tab:hover { color: #222; }
+    .guide-tab.active { color: var(--ink, #111); border-bottom-color: var(--accent, #ff9500); }
+    .guide-tab .alpha { font-size: 11px; opacity: 0.6; font-weight: 500; }
+    .guide-panel { display: none; }
+    .guide-panel.active { display: block; }
+    .guide-dl {
+      background: #fafafa;
+      border: 1px solid #ececec;
+      border-radius: 6px;
+      padding: 16px 18px;
+      margin: 20px 0 28px;
+    }
+    .guide-dl h3 { margin: 0 0 12px; font-size: 16px; }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="brand"><img src="/assets/logo.png" alt="MathCursor" style="height:54px;width:auto" /></a>
+      <nav class="nav">
+        <a href="demo/" data-i18n="nav_demo">Démo</a>
+        <a href="releases.html" data-i18n="nav_downloads">Téléchargements</a>
+        <a href="install.html" class="active" data-i18n="nav_install">Installation</a>
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button type="button" data-lang="fr" class="active">FR</button>
+          <button type="button" data-lang="en">EN</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="container">
+        <h1 data-i18n="ig_h1">Guides d'installation</h1>
+        <p class="lead" data-i18n="ig_lead">Choisissez votre éditeur : <strong>Word</strong> en version stable, <strong>VS&nbsp;Code</strong> et <strong>LibreOffice</strong> en alpha. Chaque guide commence par le téléchargement, puis le pas-à-pas.</p>
+
+        <div class="guide-tabs" role="tablist">
+          <button type="button" class="guide-tab" data-tab="word" data-i18n="ig_tab_word">Word</button>
+          <button type="button" class="guide-tab" data-tab="vscode">VS&nbsp;Code <span class="alpha">(alpha)</span></button>
+          <button type="button" class="guide-tab" data-tab="libreoffice">LibreOffice <span class="alpha">(alpha)</span></button>
+        </div>
+
+        <!-- ───────────── Word ───────────── -->
+        <div class="guide-panel" id="word" role="tabpanel">
+          <div class="guide-dl">
+            <h3 data-i18n="ig_word_dl_h">Télécharger pour Word</h3>
+            <div class="cta-row" style="flex-wrap: wrap; gap: 10px;">
+              <a href="/download/latest.exe" class="button button--primary" download data-i18n="ig_word_dl_cta">Télécharger la dernière version (.exe)</a>
+              <a href="releases.html" class="button button--secondary" data-i18n="ig_word_dl_versions">Toutes les versions</a>
+            </div>
+          </div>
+          <ol class="install-steps">
+            <li>
+              <h3 data-i18n="ig_word_1_h">1. Télécharger l'installateur</h3>
+              <p data-i18n="ig_word_1_p">Récupérez <code>MathCursor-Setup.exe</code> via le bouton ci-dessus.</p>
+            </li>
+            <li>
+              <h3 data-i18n="ig_word_2_h">2. Lancer l'installateur</h3>
+              <p data-i18n="ig_word_2_p">Double-cliquez sur le fichier. L'installateur importe lui-même le <a href="mathcursor.cer">certificat</a> nécessaire, puis installe le complément dans votre compte utilisateur, sans droits administrateur ni étape PowerShell.</p>
+            </li>
+            <li>
+              <h3 data-i18n="ig_word_3_h">3. Utiliser</h3>
+              <p data-i18n="ig_word_3_p">Ouvrez Word : un onglet <strong>MathCursor</strong> apparaît dans le ruban. Tapez <code>x2+1/2</code> dans un document, puis déclenchez la conversion (bouton de l'onglet ou <code>Ctrl+Espace</code>).</p>
+            </li>
+          </ol>
+          <p class="install-config" data-i18n="ig_word_config"><strong>Configuration :</strong> Windows 10 ou 11, Word 2016+ ou Microsoft 365. Langues d'interface : français, anglais, allemand, espagnol.</p>
+        </div>
+
+        <!-- ───────────── VS Code ───────────── -->
+        <div class="guide-panel" id="vscode" role="tabpanel">
+          <div class="guide-dl">
+            <h3 data-i18n="ig_vscode_dl_h">Télécharger pour VS Code (choisissez votre plateforme)</h3>
+            <div class="cta-row" style="flex-wrap: wrap; gap: 10px;">
+              <a href="/download/latest-win32-x64.vsix" class="button button--primary" download data-i18n="ig_vscode_dl_win">Windows 64 bits (.vsix)</a>
+              <a href="/download/latest-linux-x64.vsix" class="button button--secondary" download data-i18n="ig_vscode_dl_linux">Linux 64 bits (.vsix)</a>
+              <a href="/download/latest-darwin-arm64.vsix" class="button button--secondary" download data-i18n="ig_vscode_dl_mac">macOS Apple Silicon (.vsix)</a>
+            </div>
+          </div>
+          <ol class="install-steps">
+            <li>
+              <h3 data-i18n="ig_vscode_1_h">1. Télécharger le .vsix</h3>
+              <p data-i18n="ig_vscode_1_p">Récupérez le <code>.vsix</code> de votre plateforme via les boutons ci-dessus.</p>
+            </li>
+            <li>
+              <h3 data-i18n="ig_vscode_2_h">2. Installer dans VS Code</h3>
+              <p data-i18n="ig_vscode_2_p">Palette de commandes (<code>Ctrl+Maj+P</code>) ▸ <strong>« Extensions : Install from VSIX… »</strong>, puis choisissez le fichier. En ligne de commande : <code>code --install-extension &lt;fichier&gt;.vsix</code>.</p>
+            </li>
+            <li>
+              <h3 data-i18n="ig_vscode_3_h">3. Utiliser</h3>
+              <p data-i18n="ig_vscode_3_p">Ouvrez un fichier <code>.tex</code>, <code>.latex</code> ou <code>.md</code>. Tapez une sténo (ex. <code>1/x+1</code>), <code>Ctrl+Espace</code> propose le LaTeX au caret, vous validez.</p>
+            </li>
+          </ol>
+          <p class="install-config" data-i18n="ig_vscode_config"><strong>Configuration :</strong> VS Code 1.90+. La popup au caret est disponible sous Windows ; sous Linux et macOS, la conversion se fait via <code>Ctrl+Espace</code> sans la popup au caret pour l'instant. Cohabite avec LaTeX Workshop, sans couplage.</p>
+          <p class="install-note" data-i18n="ig_vscode_note"><strong>Alpha :</strong> les binaires ne sont pas encore signés, votre système peut donc demander une confirmation au premier lancement. Pas encore sur la Marketplace ; Mac Intel, Linux ARM et Windows ARM à venir.</p>
+        </div>
+
+        <!-- ───────────── LibreOffice ───────────── -->
+        <div class="guide-panel" id="libreoffice" role="tabpanel">
+          <div class="guide-dl">
+            <h3 data-i18n="ig_lo_dl_h">Télécharger pour LibreOffice</h3>
+            <div class="cta-row" style="flex-wrap: wrap; gap: 10px;">
+              <a href="/download/latest.oxt" class="button button--primary" download data-i18n="ig_lo_dl_cta">Télécharger l'extension (.oxt)</a>
+            </div>
+          </div>
+          <ol class="install-steps">
+            <li>
+              <h3 data-i18n="ig_lo_1_h">1. Télécharger le .oxt</h3>
+              <p data-i18n="ig_lo_1_p">Récupérez <code>MathCursor.oxt</code> via le bouton ci-dessus.</p>
+            </li>
+            <li>
+              <h3 data-i18n="ig_lo_2_h">2. Installer</h3>
+              <p data-i18n="ig_lo_2_p">Double-cliquez le fichier (ou <em>Outils ▸ Gestionnaire des extensions ▸ Ajouter…</em>), puis <strong>redémarrez LibreOffice</strong>.</p>
+            </li>
+            <li>
+              <h3 data-i18n="ig_lo_3_h">3. Lier le raccourci</h3>
+              <p data-i18n="ig_lo_3_p"><em>Outils ▸ Personnaliser ▸ Clavier</em> : choisissez <code>Ctrl+Espace</code>, catégorie <em>Macros LibreOffice ▸ mathcursor</em>, fonction <code>convert_selection</code>, puis <em>Modifier</em>.</p>
+            </li>
+            <li>
+              <h3 data-i18n="ig_lo_4_h">4. Utiliser</h3>
+              <p data-i18n="ig_lo_4_p">Dans Writer, tapez une sténo (<code>1/2</code>, <code>x^2+1/2</code>, <code>lim x 0 g(x)</code>), <strong>sélectionnez-la</strong>, <code>Ctrl+Espace</code> et la formule est insérée.</p>
+            </li>
+          </ol>
+          <p class="install-config" data-i18n="ig_lo_config"><strong>Configuration :</strong> LibreOffice 7.0+ (Writer), Windows 64 bits. Le moteur et la popup sont embarqués dans le <code>.oxt</code>, rien d'autre à installer.</p>
+          <p class="install-note" data-i18n="ig_lo_note"><strong>Alpha :</strong> l'auto-détection (popup au fil de la frappe) demande le modèle de reconnaissance, pas encore embarqué : pour l'instant c'est le mode manuel (sélection + <code>Ctrl+Espace</code>). Syntaxe StarMath best-effort ; versions macOS et Linux à reconstruire sur l'OS cible.</p>
+        </div>
+
+        <p class="install-note" style="margin-top: 40px;" data-i18n="ig_foot_note">Besoin d'aide, un bug, envie de discuter ? <a href="/contact.html">Contact</a>. Installation 100&nbsp;% locale : aucun compte, aucun cloud, aucun document envoyé.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p data-i18n="ig_foot">© 2026 MathCursor · <a href="/contact.html">Contact</a></p>
+    </div>
+  </footer>
+
+  <script>
+    // ── Onglets par produit (deep-link via #word / #vscode / #libreoffice) ──
+    const TABS = ['word', 'vscode', 'libreoffice'];
+    const tabs = document.querySelectorAll('.guide-tab');
+    const panels = document.querySelectorAll('.guide-panel');
+    function showTab(id) {
+      if (!TABS.includes(id)) id = 'word';
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === id));
+      panels.forEach(p => p.classList.toggle('active', p.id === id));
+      try { history.replaceState(null, '', '#' + id); } catch (e) {}
+    }
+    tabs.forEach(t => t.addEventListener('click', () => showTab(t.dataset.tab)));
+    showTab((location.hash || '#word').slice(1));
+    window.addEventListener('hashchange', () => showTab((location.hash || '#word').slice(1)));
+
+    // ── Bascule FR/EN (snapshot FR depuis le markup, EN dans I18N.en) ──
+    const I18N = {
+      en: {
+        nav_demo: "Demo",
+        nav_downloads: "Downloads",
+        nav_install: "Install",
+
+        ig_h1: "Installation guides",
+        ig_lead: "Pick your editor: <strong>Word</strong> stable, <strong>VS&nbsp;Code</strong> and <strong>LibreOffice</strong> in alpha. Each guide starts with the download, then the step-by-step.",
+        ig_tab_word: "Word",
+
+        ig_word_dl_h: "Download for Word",
+        ig_word_dl_cta: "Download the latest version (.exe)",
+        ig_word_dl_versions: "All versions",
+        ig_word_1_h: "1. Download the installer",
+        ig_word_1_p: "Grab <code>MathCursor-Setup.exe</code> via the button above.",
+        ig_word_2_h: "2. Run the installer",
+        ig_word_2_p: "Double-click the file. The installer imports the required <a href=\"mathcursor.cer\">certificate</a> itself, then installs the add-in in your user account, no admin rights and no PowerShell step.",
+        ig_word_3_h: "3. Use it",
+        ig_word_3_p: "Open Word: a <strong>MathCursor</strong> tab appears in the ribbon. Type <code>x2+1/2</code> in a document, then trigger the conversion (tab button or <code>Ctrl+Space</code>).",
+        ig_word_config: "<strong>Requirements:</strong> Windows 10 or 11, Word 2016+ or Microsoft 365. Interface languages: French, English, German, Spanish.",
+
+        ig_vscode_dl_h: "Download for VS Code (pick your platform)",
+        ig_vscode_dl_win: "Windows 64-bit (.vsix)",
+        ig_vscode_dl_linux: "Linux 64-bit (.vsix)",
+        ig_vscode_dl_mac: "macOS Apple Silicon (.vsix)",
+        ig_vscode_1_h: "1. Download the .vsix",
+        ig_vscode_1_p: "Grab the <code>.vsix</code> for your platform via the buttons above.",
+        ig_vscode_2_h: "2. Install in VS Code",
+        ig_vscode_2_p: "Command palette (<code>Ctrl+Shift+P</code>) ▸ <strong>\"Extensions: Install from VSIX…\"</strong>, then pick the file. From the command line: <code>code --install-extension &lt;file&gt;.vsix</code>.",
+        ig_vscode_3_h: "3. Use it",
+        ig_vscode_3_p: "Open a <code>.tex</code>, <code>.latex</code> or <code>.md</code> file. Type shorthand (e.g. <code>1/x+1</code>), <code>Ctrl+Space</code> proposes the LaTeX at the caret, you validate.",
+        ig_vscode_config: "<strong>Requirements:</strong> VS Code 1.90+. The caret popup is available on Windows; on Linux and macOS, conversion runs via <code>Ctrl+Space</code> without the caret popup for now. Coexists with LaTeX Workshop, no coupling.",
+        ig_vscode_note: "<strong>Alpha:</strong> the binaries aren't signed yet, so your system may ask for confirmation on first launch. Not on the Marketplace yet; Intel Mac, ARM Linux and ARM Windows to come.",
+
+        ig_lo_dl_h: "Download for LibreOffice",
+        ig_lo_dl_cta: "Download the extension (.oxt)",
+        ig_lo_1_h: "1. Download the .oxt",
+        ig_lo_1_p: "Grab <code>MathCursor.oxt</code> via the button above.",
+        ig_lo_2_h: "2. Install",
+        ig_lo_2_p: "Double-click the file (or <em>Tools ▸ Extension Manager ▸ Add…</em>), then <strong>restart LibreOffice</strong>.",
+        ig_lo_3_h: "3. Bind the shortcut",
+        ig_lo_3_p: "<em>Tools ▸ Customize ▸ Keyboard</em>: pick <code>Ctrl+Space</code>, category <em>LibreOffice Macros ▸ mathcursor</em>, function <code>convert_selection</code>, then <em>Modify</em>.",
+        ig_lo_4_h: "4. Use it",
+        ig_lo_4_p: "In Writer, type shorthand (<code>1/2</code>, <code>x^2+1/2</code>, <code>lim x 0 g(x)</code>), <strong>select it</strong>, press <code>Ctrl+Space</code> and the formula is inserted.",
+        ig_lo_config: "<strong>Requirements:</strong> LibreOffice 7.0+ (Writer), Windows 64-bit. The engine and popup are bundled inside the <code>.oxt</code>, nothing else to install.",
+        ig_lo_note: "<strong>Alpha:</strong> auto-detection (popup as you type) needs the recognition model, not bundled yet: for now it's manual mode (select + <code>Ctrl+Space</code>). StarMath syntax is best-effort; macOS and Linux must be rebuilt on the target OS.",
+
+        ig_foot_note: "Need help, found a bug, want to chat? <a href=\"/contact.html\">Contact</a>. Fully local install: no account, no cloud, no document sent anywhere.",
+        ig_foot: "© 2026 MathCursor · <a href=\"/contact.html\">Contact</a>"
+      }
+    };
+
+    function setLang(lang) {
+      const dict = I18N[lang];
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        if (!dict) return;
+        if (dict[key]) el.innerHTML = dict[key];
+      });
+      document.querySelectorAll('.lang-toggle button').forEach(b => {
+        b.classList.toggle('active', b.dataset.lang === lang);
+      });
+      try { localStorage.setItem('mc_lang', lang); } catch (e) {}
+    }
+
+    const FR_SNAPSHOT = {};
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      FR_SNAPSHOT[el.dataset.i18n] = el.innerHTML;
+    });
+    I18N.fr = FR_SNAPSHOT;
+
+    document.querySelectorAll('.lang-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => setLang(btn.dataset.lang));
+    });
+
+    let saved = null;
+    try { saved = localStorage.getItem('mc_lang'); } catch (e) {}
+    if (!saved) {
+      saved = (navigator.language || 'fr').toLowerCase().startsWith('en') ? 'en' : 'fr';
+    }
+    if (saved === 'en') setLang('en');
+  </script>
+</body>
+</html>
+</content>
