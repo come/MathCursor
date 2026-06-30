@@ -24,6 +24,14 @@ ADR + plan (`/mathcursor-plan`) au moment de l'implémentation.
   fonctions + invariance structure/contenu). Le fix adapter ci-dessus masque le
   symptôme clignotement sans dépendre d'un réentraînement.
 
+- [x] **[moteur — chantier 3] Nombre signé comme cellule non-initiale de matrice**
+  — ✅ fait 2026-06-30 (ADR `2026-06-30-Fix-matrix-signed-cell-unary-graft`) : greffe
+  unaire au montage de cellule (`Parser.cs::CellForest` + miroir `parser.rs`),
+  déclenchée par séparateur explicite `;`/`,` OU frontière de frappe (`b == _end`).
+  `(1 -2; 3 4)` → matrice, `(a -2 ;` → matrice partielle à carrés, `(a -2` → popup
+  avec matrice ; `(a +b)/2` reste `\frac{a+b}{2}`. 9 fixtures, gate **465/465** C# et
+  Rust. Limite : `(1 - 2; 3 4)` (espaces des 2 côtés) hors périmètre.
+
 - [x] **`**` pour la puissance** — accepter `**` comme opérateur d'exposant
   (ex. `x**2` → `x^2`), en plus de `^`. Convention répandue (Python, etc.),
   naturelle au clavier sans `AltGr`. ✅ Fait 2026-06-18 (`sameAs` dans

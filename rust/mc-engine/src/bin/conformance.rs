@@ -1,6 +1,6 @@
 //! Runner de conformité Phase 2 : rejoue engine/tests/.../fixtures.json contre le
 //! moteur Rust et compare décision + candidats (LaTeX) + note au contrat.
-//! Vise 456/456 (anti-dérive C#/Python/Rust). Cf. ADR rust-unified-toolkit.
+//! Vise 465/465 (anti-dérive C#/Python/Rust). Cf. ADR rust-unified-toolkit.
 
 use mc_engine::{analyze, reg};
 use serde_json::Value;

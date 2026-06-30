@@ -437,13 +437,21 @@ internal sealed class Forest
         var cells = new List<(int A, int B)>();
         var seps = new List<int>();
         int depth = 0, start = a; bool prevSep = true;
+        // Greffe unaire des cellules activée si : séparateur EXPLICITE ; ou ,
+        // (vraie matrice 2D), OU la matrice atteint la frontière de frappe
+        // (b == _end = paren EN COURS de saisie « (a -2 », « (a -2 c » → on propose
+        // la lecture matrice + on évite l'« aucune lecture » sur l'état transitoire).
+        // Un paren COMPLET suivi d'autre chose (« (a +b)/2 ») n'est PAS à la frontière
+        // → pas de greffe → reste une expression groupée (sinon régression auto→popup).
+        // ADR 2026-06-30-Fix-matrix-signed-cell-unary-graft.
+        bool hasExplicitSep = false;
         for (int k = a; k < b; k++)
         {
             var t = _toks[k];
             if (depth == 0 && t.Kind != "sep" && t.SpaceBefore && !prevSep && k > start) { cells.Add((start, k)); seps.Add(1); start = k; }
             if (t.Kind == "lparen") { depth++; prevSep = false; continue; }
             if (t.Kind == "rparen") { depth--; prevSep = false; continue; }
-            if (depth == 0 && t.Kind == "sep") { cells.Add((start, k)); seps.Add(t.Rank); start = k + 1; prevSep = true; continue; }
+            if (depth == 0 && t.Kind == "sep") { cells.Add((start, k)); seps.Add(t.Rank); start = k + 1; prevSep = true; hasExplicitSep = true; continue; }
             prevSep = false;
         }
         cells.Add((start, b));
@@ -485,7 +493,7 @@ internal sealed class Forest
                 foreach (var c in row) padded.Add(c);
                 while (padded.Count < w) padded.Add(null);
                 var cellForests = new List<List<Node>?>();
-                foreach (var c in padded) cellForests.Add(c.HasValue ? ParseSpan(c.Value.A, c.Value.B) : new List<Node> { Hole() });
+                foreach (var c in padded) cellForests.Add(c.HasValue ? CellForest(c.Value.A, c.Value.B, hasExplicitSep || b == _end) : new List<Node> { Hole() });
                 forests.Add(cellForests);
             }
             // flat (row-major, largeur w)
@@ -509,5 +517,26 @@ internal sealed class Forest
             }
         }
         return outl;
+    }
+
+    // Forêt d'une cellule de matrice = sa lecture normale + (si la tête est un
+    // infixe unaire-capable, « - »/« + ») la lecture greffée prefix(unaire, reste).
+    // Sans ça, une cellule « -1 » (le « - » lexé BINAIRE car précédé d'un opérande
+    // dans le flux plat, cf. Lexer binaryPos) a une forêt VIDE → cellule morte →
+    // matrice morte → « erreur ». La greffe fait coexister `x-1` (lecture non-
+    // matricielle) et la matrice [x,-1] ; le Score arbitre. Réutilise le primitif
+    // unaire de Splits (mêmes conditions). ADR 2026-06-30-Fix-matrix-signed-cell-unary-graft.
+    private List<Node> CellForest(int s, int e, bool allowGraft)
+    {
+        var f = new List<Node>(ParseSpan(s, e));
+        if (allowGraft && e > s + 1)
+        {
+            var ht = _toks[s];
+            if (!ht.SignSup && ht.Kind == "infix" && ht.Sym != null
+                && Vocabulary.Vocab.TryGetValue(ht.Sym, out var hv) && hv.Unary != null)
+                foreach (var x in ParseSpan(s + 1, e))
+                    f.Add(new Node { Type = "prefix", Sym = hv.Unary, Spaced = ht.Spaced, Parts = new() { x } });
+        }
+        return f;
     }
 }

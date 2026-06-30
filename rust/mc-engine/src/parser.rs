@@ -659,6 +659,9 @@ impl<'a> Forest<'a> {
         let mut depth = 0i32;
         let mut start = a;
         let mut prev_sep = true;
+        // Séparateur EXPLICITE ; ou , = vraie matrice 2D (un des deux déclencheurs
+        // de la greffe unaire, l'autre étant la frontière de frappe). Miroir Parser.cs.
+        let mut has_explicit_sep = false;
         for k in a..b {
             let t = &toks[k];
             if depth == 0 && t.kind != "sep" && t.space_before && !prev_sep && k > start {
@@ -681,6 +684,7 @@ impl<'a> Forest<'a> {
                 seps.push(t.rank);
                 start = k + 1;
                 prev_sep = true;
+                has_explicit_sep = true;
                 continue;
             }
             prev_sep = false;
@@ -723,6 +727,9 @@ impl<'a> Forest<'a> {
             grids.push((cells.iter().map(|c| vec![*c]).collect(), true));
         }
 
+        // Greffe unaire activée si séparateur explicite ; , OU matrice à la frontière
+        // de frappe (paren en cours de saisie). Cf. Parser.cs. ADR 2026-06-30.
+        let allow_graft = has_explicit_sep || b == self.end;
         let mut outl: Vec<Node> = Vec::new();
         for (g_rows, g_alt) in grids {
             let w = g_rows.iter().map(|r| r.len()).max().unwrap_or(0);
@@ -736,7 +743,7 @@ impl<'a> Forest<'a> {
                 let cell_forests: Vec<Vec<Node>> = padded
                     .iter()
                     .map(|c| match c {
-                        Some((s, e)) => self.parse_span(*s, *e),
+                        Some((s, e)) => self.cell_forest(*s, *e, allow_graft),
                         None => vec![hole()],
                     })
                     .collect();
@@ -774,6 +781,40 @@ impl<'a> Forest<'a> {
             }
         }
         outl
+    }
+
+    // Forêt d'une cellule de matrice = sa lecture normale + (si la tête est un
+    // infixe unaire-capable, « - »/« + ») la lecture greffée prefix(unaire, reste).
+    // Sans ça, une cellule « -1 » (le « - » lexé BINAIRE car précédé d'un opérande
+    // dans le flux plat) a une forêt VIDE → cellule morte → matrice morte. La greffe
+    // fait coexister `x-1` (lecture non-matricielle) et la matrice [x,-1] ; le Score
+    // arbitre. Miroir de Parser.cs::CellForest. ADR 2026-06-30-Fix-matrix-signed-cell-unary-graft.
+    fn cell_forest(&mut self, s: usize, e: usize, allow_graft: bool) -> Vec<Node> {
+        let mut f = self.parse_span(s, e);
+        if allow_graft && e > s + 1 {
+            let toks = self.toks;
+            let ht = &toks[s];
+            if !ht.sign_sup && ht.kind == "infix" {
+                let unary = ht
+                    .sym
+                    .as_deref()
+                    .and_then(|sym| reg().vocab.get(sym))
+                    .and_then(|v| v.unary.clone());
+                if let Some(un) = unary {
+                    let spaced = ht.spaced;
+                    for x in self.parse_span(s + 1, e) {
+                        f.push(Node {
+                            ntype: NType::Prefix,
+                            sym: Some(un.clone()),
+                            spaced,
+                            parts: Some(vec![x]),
+                            ..Default::default()
+                        });
+                    }
+                }
+            }
+        }
+        f
     }
 }
 
