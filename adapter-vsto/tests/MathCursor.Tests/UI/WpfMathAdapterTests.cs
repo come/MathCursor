@@ -106,13 +106,16 @@ namespace MathCursor.Tests.UI
         public void Overline_replaced_with_bar(string input, string expected)
             => Assert.Equal(expected, WpfMathAdapter.Adapt(input));
 
-        // ---- \begin{cases} → \stackrel ----
+        // ---- \begin{cases} → \{\matrix{} (empilement natif WpfMath) ----
+        // Depuis 2026-05-21 (P9f+), l'empilement passe par \matrix (lignes même
+        // taille, rendu natif) au lieu de \stackrel (tailles inégales). Cf.
+        // WpfMathAdapter.cs §4.
 
         [Fact]
-        public void Cases_two_lines_become_stackrel()
+        public void Cases_two_lines_become_matrix()
         {
             var got = WpfMathAdapter.Adapt("\\begin{cases} a \\\\ b \\end{cases}");
-            Assert.Contains("\\stackrel", got);
+            Assert.Contains("\\matrix", got);
             Assert.Contains("a", got);
             Assert.Contains("b", got);
             // Une accolade gauche est posée pour signaler la structure cases.
@@ -137,13 +140,13 @@ namespace MathCursor.Tests.UI
             Assert.Contains("\\{", got);
         }
 
-        [Fact(DisplayName = "Cases multi-ligne avec `&` : strip + stackrel")]
+        [Fact(DisplayName = "Cases multi-ligne avec `&` : strip + \\matrix")]
         public void Cases_multiline_with_ampersand_stacks_correctly()
         {
-            // 2 lignes avec `&` d'alignement → stacker sans les `&`.
+            // 2 lignes avec `&` d'alignement → empiler (via \matrix) sans les `&`.
             var got = WpfMathAdapter.Adapt("\\begin{cases} y & = x+2 \\\\ z & = x+2 \\end{cases}");
             Assert.DoesNotContain("&", got);
-            Assert.Contains("\\stackrel", got);
+            Assert.Contains("\\matrix", got);
             Assert.Contains("y", got);
             Assert.Contains("z", got);
         }
