@@ -57,6 +57,21 @@ namespace MathCursor.Tests.Detection
             Assert.Empty(_fix.Detector.Detect(""));
         }
 
+        // Régression bug 0.11.3 : sur le modèle réduit, les IDs spéciaux hardcodés
+        // (CLS=101/SEP=102) envoyaient de faux [CLS]/[SEP] → les entrées COURTES
+        // nues (« x2 », « U_n », « 2x+1 ») n'étaient plus détectées en auto. Le fix
+        // (IDs lus du vocab) les restaure. Filet anti-rechute si on re-hardcode.
+        [SkippableTheory]
+        [InlineData("x2")]
+        [InlineData("U_n")]
+        [InlineData("2x+1")]
+        [InlineData("x^2")]
+        public void Short_bare_cases_are_detected(string input)
+        {
+            Skip.IfNot(_fix.Available, _fix.SkipReason);
+            Assert.NotEmpty(_fix.Detector.Detect(input));
+        }
+
         // ---- F1 span-level sur regression_v1_gold (filet anti-rechute) ----
 
         [SkippableFact]

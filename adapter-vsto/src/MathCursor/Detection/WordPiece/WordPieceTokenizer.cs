@@ -23,11 +23,18 @@ namespace MathCursor.Detection.WordPiece
     /// </summary>
     public sealed class WordPieceTokenizer
     {
-        public const int PadId = 0;
-        public const int UnkId = 100;
-        public const int ClsId = 101;
-        public const int SepId = 102;
-        public const int MaskId = 103;
+        // IDs des tokens spéciaux LUS DU VOCAB (et non hardcodés). Un vocab
+        // réduit/custom ne les met pas forcément aux positions BERT standard :
+        // bug 0.11.3 — sur le modèle NER allégé, [CLS]/[SEP] sont aux IDs 2/3
+        // (pas 101/102). Les hardcoder envoyait de FAUX [CLS]/[SEP] au modèle
+        // (des sous-mots aléatoires) → contexte corrompu → prédiction « O »,
+        // surtout sur les entrées COURTES (« x2 », « U_n », « 2x+1 ») dominées
+        // par ces bornes. Fallback = positions BERT standard si absent du vocab.
+        public readonly int PadId;
+        public readonly int UnkId;
+        public readonly int ClsId;
+        public readonly int SepId;
+        public readonly int MaskId;
 
         private const string SubwordPrefix = "##";
         private const int MaxCharsPerWord = 100; // sécurité
@@ -37,7 +44,15 @@ namespace MathCursor.Detection.WordPiece
         public WordPieceTokenizer(Dictionary<string, int> vocab)
         {
             _vocab = vocab ?? throw new ArgumentNullException(nameof(vocab));
+            PadId  = ResolveSpecial("[PAD]", 0);
+            UnkId  = ResolveSpecial("[UNK]", 100);
+            ClsId  = ResolveSpecial("[CLS]", 101);
+            SepId  = ResolveSpecial("[SEP]", 102);
+            MaskId = ResolveSpecial("[MASK]", 103);
         }
+
+        private int ResolveSpecial(string tok, int fallback)
+            => _vocab.TryGetValue(tok, out var id) ? id : fallback;
 
         /// <summary>Charge le vocab.txt (un token par ligne) → Dict.</summary>
         public static WordPieceTokenizer LoadFromVocab(string vocabPath)

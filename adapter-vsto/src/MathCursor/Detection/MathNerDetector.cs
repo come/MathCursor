@@ -143,13 +143,13 @@ namespace MathCursor.Detection
             for (int i = 0; i < n; i++)
             {
                 int id = tokens[i].Id;
-                // Skip special tokens DistilBERT : [PAD]=0, [UNK]=100, [CLS]=101,
-                // [SEP]=102, [MASK]=103. [UNK] est laissé passer car peut faire
-                // partie d'un span MATH (ex : caractère exotique).
-                if (id == WordPieceTokenizer.PadId
-                    || id == WordPieceTokenizer.ClsId
-                    || id == WordPieceTokenizer.SepId
-                    || id == WordPieceTokenizer.MaskId)
+                // Skip special tokens — IDs LUS DU VOCAB via le tokenizer (un vocab
+                // réduit ne les met pas aux positions BERT standard, cf. bug 0.11.3).
+                // [UNK] est laissé passer car peut faire partie d'un span MATH.
+                if (id == _tokenizer.PadId
+                    || id == _tokenizer.ClsId
+                    || id == _tokenizer.SepId
+                    || id == _tokenizer.MaskId)
                     continue;
 
                 int label = labels[i];
