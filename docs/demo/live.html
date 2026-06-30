@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MathCursor · Démo mode réel</title>
+  <meta name="description" content="Écris au fil de l'eau : MathCursor détecte la formule autour de ton curseur, propose, et insère le rendu — comme dans Word, dans ton navigateur." />
+  <base href="./" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" />
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="stylesheet" href="demo.css" />
+  <link rel="stylesheet" href="live.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="../index.html" class="brand">MathCursor</a>
+      <nav class="nav">
+        <a href="./" data-i18n="nav_demo">Démo</a>
+        <a href="live.html" class="active" data-i18n="nav_live">Mode réel</a>
+        <a href="../releases.html" data-i18n="nav_downloads">Téléchargements</a>
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button type="button" data-lang="fr" class="active">FR</button>
+          <button type="button" data-lang="en">EN</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="container">
+        <h1 data-i18n="live_h1">Démo « mode réel »</h1>
+        <p class="lead" data-i18n="live_lead">
+          Écris une phrase avec des maths dedans. MathCursor détecte la formule
+          autour de ton curseur, propose les conversions au caret, et insère le
+          rendu quand tu valides — exactement comme dans Word, mais dans ton
+          navigateur. Rien n'est envoyé nulle part.
+        </p>
+
+        <div class="demo">
+          <div class="examples">
+            <span class="ex-label" data-i18n="live_ex_try">Essaie&nbsp;:</span>
+            <button data-ex-fr="On a donc f(x)=1/x+1">On a donc f(x)=1/x+1</button>
+            <button data-ex-fr="Soit theta = pi/4">Soit theta = pi/4</button>
+            <button data-ex-fr="On calcule lim x 0 g(x)">On calcule lim x 0 g(x)</button>
+            <button data-ex-fr="(a b; c d)">(a b; c d)</button>
+            <button data-ex-fr="Posons sum k 1 n k2">Posons sum k 1 n k2</button>
+          </div>
+
+          <div class="math-culture" role="group" aria-label="Math culture" style="margin-top:10px;">
+            <span class="mc-label" data-i18n="live_culture">Maths&nbsp;:</span>
+            <button type="button" data-mc="fr" class="active">FR</button>
+            <button type="button" data-mc="us">US</button>
+          </div>
+
+          <div class="editor-wrap">
+            <div id="editor" contenteditable="true" class="is-empty"
+                 data-i18n-ph="live_placeholder"
+                 data-placeholder="Écris ici, ex : On a donc f(x)=1/x+1  (puis Tab pour valider, Entrée pour la ligne suivante)"
+                 autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+          </div>
+        </div>
+
+        <p class="live-hint" data-i18n="live_hint">
+          ⓘ <kbd>Tab</kbd> valide · <kbd>↑</kbd> <kbd>↓</kbd> changent de proposition ·
+          <kbd>Entrée</kbd> passe à la ligne · <kbd>Échap</kbd> ferme. Seule la zone
+          autour du curseur est détectée — le reste reste du texte.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p data-i18n="live_foot">© 2026 MathCursor · <a href="/contact.html">Contact</a></p>
+    </div>
+  </footer>
+
+  <div id="caret-popup"></div>
+
+  <div id="loading" class="loading">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" data-i18n="live_loading">Chargement du moteur…</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+  <script src="_framework/blazor.webassembly.js" autostart="false"></script>
+  <script src="spancomputer.js"></script>
+  <script src="live.js"></script>
+
+  <!-- i18n FR/EN — même pattern que index.html / demo. -->
+  <script>
+    const I18N = {
+      en: {
+        nav_demo: "Demo",
+        nav_live: "Real mode",
+        nav_downloads: "Downloads",
+
+        live_h1: "“Real mode” demo",
+        live_lead: "Write a sentence with maths in it. MathCursor detects the formula around your cursor, proposes conversions right at the caret, and inserts the rendering when you confirm — exactly like in Word, but in your browser. Nothing is sent anywhere.",
+        live_culture: "Maths:",
+        live_ex_try: "Try:",
+        live_placeholder: "Type here, e.g. f(x)=1/x+1  (Tab to confirm, Enter for the next line)",
+        live_hint: "ⓘ <kbd>Tab</kbd> confirms · <kbd>↑</kbd> <kbd>↓</kbd> switch proposal · <kbd>Enter</kbd> new line · <kbd>Esc</kbd> closes. Only the zone around the cursor is detected — the rest stays text.",
+        live_loading: "Loading engine…",
+        live_foot: "© 2026 MathCursor · <a href=\"/contact.html\">Contact</a>",
+
+        // Strings runtime utilisées par live.js
+        runtime_auto: "would insert automatically",
+        runtime_popup_one: "choice",
+        runtime_popup_many: "choices",
+        runtime_preselected: "auto-selected",
+        runtime_alt: "alternative",
+        runtime_note: "Dense expression — add spaces or parentheses to disambiguate.",
+        runtime_load_failed: "Engine failed to load. Reload the page?"
+      },
+      fr: {
+        runtime_auto: "inséré automatiquement",
+        runtime_popup_one: "choix",
+        runtime_popup_many: "choix",
+        runtime_preselected: "sélectionné d'office",
+        runtime_alt: "alternative",
+        runtime_note: "Expression dense — ajoute des espaces ou des parenthèses pour préciser.",
+        runtime_load_failed: "Échec du chargement du moteur. Recharge la page ?"
+      }
+    };
+
+    function applyExamples(lang) {
+      document.querySelectorAll('.examples button').forEach(b => {
+        const fr = b.dataset.exFr || b.textContent;
+        const ex = (lang === 'en' && b.dataset.exEn) ? b.dataset.exEn : fr;
+        b.dataset.ex = ex;
+        b.textContent = b.dataset.label || ex;
+      });
+    }
+
+    function setLang(lang) {
+      const dict = I18N[lang];
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        if (dict && dict[key]) el.innerHTML = dict[key];
+      });
+      document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+        const key = el.dataset.i18nPh;
+        if (dict && dict[key]) el.setAttribute('data-placeholder', dict[key]);
+      });
+      document.querySelectorAll('.lang-toggle button').forEach(b => {
+        b.classList.toggle('active', b.dataset.lang === lang);
+      });
+      applyExamples(lang);
+      window.I18N_RUNTIME = dict;
+      try { localStorage.setItem('mc_lang', lang); } catch (e) {}
+    }
+
+    const FR_SNAPSHOT = {};
+    document.querySelectorAll('[data-i18n]').forEach(el => { FR_SNAPSHOT[el.dataset.i18n] = el.innerHTML; });
+    document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+      FR_SNAPSHOT[el.dataset.i18nPh] = el.getAttribute('data-placeholder') || '';
+    });
+    Object.assign(I18N.fr, FR_SNAPSHOT);
+    window.I18N_RUNTIME = I18N.fr;
+
+    document.querySelectorAll('.lang-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => setLang(btn.dataset.lang));
+    });
+
+    applyExamples('fr');
+
+    let saved = null;
+    try { saved = localStorage.getItem('mc_lang'); } catch (e) {}
+    if (!saved) saved = (navigator.language || 'fr').toLowerCase().startsWith('en') ? 'en' : 'fr';
+    if (saved === 'en') setLang('en');
+  </script>
+</body>
+</html>

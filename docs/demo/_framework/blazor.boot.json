@@ -1,10 +1,10 @@
 {
   "mainAssemblyName": "MathCursor.Demo.WebAssembly",
   "resources": {
-    "hash": "sha256-3duGhvapzCKPc+GLAi3CM+t8rTXJg4IMPkEf0acSnes=",
+    "hash": "sha256-Z6CbEbWtwnQsq1rEaXNuSdNoRIw7eDngVQjGYhH6KUM=",
     "fingerprinting": {
-      "MathCursor.Demo.WebAssembly.ovhz9tzapr.wasm": "MathCursor.Demo.WebAssembly.wasm",
-      "MathCursor.Engine.ijs2crc31p.wasm": "MathCursor.Engine.wasm",
+      "MathCursor.Demo.WebAssembly.m3ujjgzfij.wasm": "MathCursor.Demo.WebAssembly.wasm",
+      "MathCursor.Engine.ckup8ymwr0.wasm": "MathCursor.Engine.wasm",
       "Microsoft.AspNetCore.Authorization.qe23mgxr71.wasm": "Microsoft.AspNetCore.Authorization.wasm",
       "Microsoft.AspNetCore.Components.Forms.thhw8cz9wu.wasm": "Microsoft.AspNetCore.Components.Forms.wasm",
       "Microsoft.AspNetCore.Components.flveird317.wasm": "Microsoft.AspNetCore.Components.wasm",
@@ -197,21 +197,21 @@
       "System.Xml.XPath.XDocument.q0h1rtwxr6.wasm": "System.Xml.XPath.XDocument.wasm",
       "WindowsBase.pg3o6xzigg.wasm": "WindowsBase.wasm",
       "dotnet.js": "dotnet.js",
-      "dotnet.native.st0ovrfdhi.js": "dotnet.native.js",
-      "dotnet.native.67rumul467.wasm": "dotnet.native.wasm",
-      "dotnet.runtime.593bvuk5yc.js": "dotnet.runtime.js",
+      "dotnet.native.qc8g39g30v.js": "dotnet.native.js",
+      "dotnet.native.boem75ye5i.wasm": "dotnet.native.wasm",
+      "dotnet.runtime.opaiwunc3t.js": "dotnet.runtime.js",
       "icudt_CJK.tjcz0u77k5.dat": "icudt_CJK.dat",
       "icudt_EFIGS.tptq2av103.dat": "icudt_EFIGS.dat",
       "icudt_no_CJK.lfu7j35m59.dat": "icudt_no_CJK.dat"
     },
     "jsModuleNative": {
-      "dotnet.native.st0ovrfdhi.js": "sha256-MBW/zayfv+YU6mhH7y4b8NNU4D1EYd7nf9gYrFshnnY="
+      "dotnet.native.qc8g39g30v.js": "sha256-SvVveFrqwSE/8qjn/DA3aVnuMXhmK4Ln+euLxQu8azU="
     },
     "jsModuleRuntime": {
-      "dotnet.runtime.593bvuk5yc.js": "sha256-x+PnWU47EIr/zL3xxqIUMDJi/dy5904TVGunDqCvjIY="
+      "dotnet.runtime.opaiwunc3t.js": "sha256-vM4cfmuAtxs/dLoxiTCzPyPCyNkwOJu14cp6lXv3Sak="
     },
     "wasmNative": {
-      "dotnet.native.67rumul467.wasm": "sha256-zrxfVswzVbeO5uCzmKKF3OONr7OzIJ3PhZOWz9t1Rs8="
+      "dotnet.native.boem75ye5i.wasm": "sha256-NdFSj8MM4tvhMRG2JPNXYDnzqZno/RjOpUq0dxHcPVw="
     },
     "icu": {
       "icudt_CJK.tjcz0u77k5.dat": "sha256-SZLtQnRc0JkwqHab0VUVP7T3uBPSeYzxzDnpxPpUnHk=",
@@ -223,8 +223,8 @@
       "System.Runtime.InteropServices.JavaScript.ccb9zx17su.wasm": "sha256-rJh9wIpfCKorUULgleV4k5cfQ0WDM9F8YYuNo5Ri5PM="
     },
     "assembly": {
-      "MathCursor.Demo.WebAssembly.ovhz9tzapr.wasm": "sha256-RDIXtqk62esteKZnd0aMlaFjsARgUhEbrimZcapOtd4=",
-      "MathCursor.Engine.ijs2crc31p.wasm": "sha256-AqtG/A4Yja2ZTq4+G824ibwlgB095pitRcN2UzB2/is=",
+      "MathCursor.Demo.WebAssembly.m3ujjgzfij.wasm": "sha256-IkKyPZcK/ShCv+q5OvXxFJ5y05vOfxC2HPfUrJaXcGc=",
+      "MathCursor.Engine.ckup8ymwr0.wasm": "sha256-BGnoRkohGoqNw7gjsCwRQaUYdkXxQMqy/XIvQXwqMVU=",
       "Microsoft.AspNetCore.Authorization.qe23mgxr71.wasm": "sha256-8hTdrmR59LAJRrDu8LLRlNn641/iWIAjzG1GcCsAhR0=",
       "Microsoft.AspNetCore.Components.Forms.thhw8cz9wu.wasm": "sha256-b7dkg8tMPT2fEN10cgvga1DuG4BElomG5PE4E8Bv5B8=",
       "Microsoft.AspNetCore.Components.flveird317.wasm": "sha256-jTpt9y+Fzn6JeLtdS0PwW+fzVCyw2aJ8kFuDQAMFdcE=",
