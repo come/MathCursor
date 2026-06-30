@@ -8,6 +8,22 @@ ADR + plan (`/mathcursor-plan`) au moment de l'implémentation.
 
 ## TODO
 
+- [x] **[adapter VSTO] Clignotement popup matrice partielle** — ✅ fait 2026-06-30
+  (ADR `2026-06-29-Fix-auto-detect-anchor-unclosed-bracket`) : le NER fragmente
+  parfois une matrice partielle et ne renvoie que la queue au caret (`c d`),
+  imparsable seule → `HideAuto`. Fix = attempt prioritaire `SpanComputer` (ancrage
+  sur `(`/`[` non fermée) dans `AutoDetectController.RunDetection`. PAS le moteur (forest
+  C# == Rust), PAS l'espace insécable. 4 tests purs (`AutoDetectAnchorTests`).
+
+- [ ] **[NER — plus tard] Robustesse : invariance au contenu des cellules** — le NER
+  ne devrait PAS être sensible au contenu (`(a b` vs `(a n` change la fragmentation)
+  ni fragmenter sur les états transitoires. **Cas concret (sweep 2026-06-29)** : il
+  renvoie **AUCUNE zone** sur les matrices à **cellules-fonctions denses** sur 2 lignes
+  (`(f(x) g(x); h(x) k(x))`, `(cos(x) sin(x); …)`) → pas de popup. Frontière : OK dès
+  qu'une cellule est nue ou une seule ligne. Piste corpus v12 (matrices de cellules-
+  fonctions + invariance structure/contenu). Le fix adapter ci-dessus masque le
+  symptôme clignotement sans dépendre d'un réentraînement.
+
 - [x] **`**` pour la puissance** — accepter `**` comme opérateur d'exposant
   (ex. `x**2` → `x^2`), en plus de `^`. Convention répandue (Python, etc.),
   naturelle au clavier sans `AltGr`. ✅ Fait 2026-06-18 (`sameAs` dans

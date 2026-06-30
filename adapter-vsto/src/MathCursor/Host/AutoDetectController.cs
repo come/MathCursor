@@ -167,9 +167,24 @@ namespace MathCursor.Host
                 // blancs-seulement d'abord, la zone seule en repli si le
                 // moteur refuse la fusion.
                 var merged = ZoneRefiner.MergeWhitespaceAdjacent(filtered, text, zone);
-                var attempts = (merged.Start != zone.Start || merged.End != zone.End)
-                    ? new[] { merged, zone }
-                    : new[] { zone };
+
+                // Repli anti-fragmentation NER : le SpanComputer (logique Ctrl+
+                // Espace) ancre sur l'ouvrante ( / [ NON fermée englobant le caret
+                // et traite ; , internes comme STRUCTURELS. S'il démarre AVANT la
+                // zone NER, c'est que le NER a largué la tête de la matrice (ex.
+                // « (a n ;c d » → zone « c d » seule, imparsable) → on tente CE span
+                // EN PREMIER : il parse, donc TryProposeAuto affiche sans HidePopup
+                // intermédiaire (pas de flash). No-op quand la zone NER démarre déjà
+                // à l'ouvrante ou qu'il n'y a pas de bracket ouvert (aStart >= zone.Start).
+                // Cf. ADR 2026-06-29-Fix-auto-detect-anchor-unclosed-bracket.
+                var attempts = new List<DetectedZone>();
+                int aStart = SpanComputer.ComputeSpanStart(text, effCaret, paragraph.OMathRegions);
+                int aEnd = SpanComputer.ComputeSpanEnd(text, effCaret, paragraph.OMathRegions);
+                if (aStart < zone.Start && aEnd > aStart)
+                    attempts.Add(new DetectedZone(aStart, aEnd, text.Substring(aStart, aEnd - aStart), 1.0));
+                if (merged.Start != zone.Start || merged.End != zone.End)
+                    attempts.Add(merged);
+                attempts.Add(zone);
 
                 foreach (var attempt in attempts)
                 {
