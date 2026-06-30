@@ -37,6 +37,19 @@ function Invoke-DotnetTest($name, $proj) {
 Invoke-DotnetTest 'Engine'        'engine/tests/MathCursor.Engine.Tests/MathCursor.Engine.Tests.csproj'
 Invoke-DotnetTest 'Serialization' 'serialization/tests/MathCursor.Serialization.Tests/MathCursor.Serialization.Tests.csproj'
 Invoke-DotnetTest 'Analyzers'     'analyzers/MathCursor.Analyzers.Tests/MathCursor.Analyzers.Tests.csproj'
+# Build mc-ner AVANT l'adapter : binaire consommé par NerCSharpRustParityTests
+# (parité détection NER C#<->Rust). Absent -> le test SKIP (pas d'échec), mais la
+# parité n'est alors PAS vérifiée. cargo absent = avertissement.
+$cargoEarly = Get-Command cargo -ErrorAction SilentlyContinue
+if ($null -eq $cargoEarly) { $warnings += 'cargo absent -> parité NER C#/Rust NON vérifiée (mc-ner non buildé)' }
+else {
+    Write-Host "`n=== Build mc-ner (parité NER C#/Rust) ===" -ForegroundColor Cyan
+    Push-Location (Join-Path $root 'rust')
+    & $cargoEarly.Source build -q -p mc-ner --release
+    if ($LASTEXITCODE -ne 0) { $script:warnings += 'build mc-ner échoué -> parité NER skippée' }
+    Pop-Location
+}
+
 # Adapter = net48 (interop Word). Si ton environnement ne build pas net48 en
 # headless, commente la ligne suivante — les 3 projets ci-dessus suffisent au
 # verrou moteur/sérialisation.

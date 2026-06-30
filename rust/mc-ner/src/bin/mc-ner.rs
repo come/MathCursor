@@ -56,6 +56,22 @@ fn main() {
                 println!("{resp}");
                 let _ = out.flush();
             }
+            // Détection BRUTE (toutes les zones, sans raffinage) — pour le test de
+            // parité C#↔Rust (compare à MathNerDetector.Detect). Format réponse :
+            //   ZONES\t<s1>,<e1> <s2>,<e2> ...   |   NONE
+            Some("DETECTRAW") => {
+                let text = parts.next().unwrap_or("");
+                let zones = det.detect(text);
+                let resp = if zones.is_empty() {
+                    "NONE".to_string()
+                } else {
+                    let z: Vec<String> =
+                        zones.iter().map(|d| format!("{},{}", d.start, d.end)).collect();
+                    format!("ZONES\t{}", z.join(" "))
+                };
+                println!("{resp}");
+                let _ = out.flush();
+            }
             _ => {}
         }
     }
