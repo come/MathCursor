@@ -79,15 +79,16 @@
         <h2 data-i18n="dl_history_h">Historique des versions</h2>
 
         <article class="card" style="margin-bottom: 20px;">
-          <h3>0.11.3 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_0113_date">— 30 juin 2026</span></h3>
-          <p data-i18n="dl_0113_intro">Détection au caret dans Word : matrices à coefficients négatifs reconnues, popup plus stable, et installeur nettement plus léger.</p>
+          <h3>0.11.4 <span style="color: #888; font-weight: normal; font-size: 14px;" data-i18n="dl_0114_date">— 30 juin 2026</span></h3>
+          <p data-i18n="dl_0114_intro">Détection au caret dans Word : matrices à coefficients négatifs, popup plus stable, expressions courtes à nouveau reconnues, et installeur nettement plus léger.</p>
           <ul>
-            <li data-i18n="dl_0113_1"><strong>Matrices signées</strong> : les coefficients négatifs sont reconnus (ex. <code>(1 -2 ; 3 4)</code>) — ils renvoyaient une erreur auparavant.</li>
-            <li data-i18n="dl_0113_2"><strong>Matrice en cours de frappe</strong> : une matrice signée s'affiche en version partielle avec des carrés à compléter (ex. <code>(a -2 ;</code>).</li>
-            <li data-i18n="dl_0113_3"><strong>Popup plus stable</strong> : plus de clignotement quand on édite une matrice.</li>
-            <li data-i18n="dl_0113_4"><strong>Installeur allégé</strong> : ~62 Mo au lieu de ~113 Mo (modèle de détection allégé).</li>
+            <li data-i18n="dl_0114_1"><strong>Matrices signées</strong> : les coefficients négatifs sont reconnus (ex. <code>(1 -2 ; 3 4)</code>) — ils renvoyaient une erreur auparavant.</li>
+            <li data-i18n="dl_0114_2"><strong>Matrice en cours de frappe</strong> : une matrice signée s'affiche en version partielle avec des carrés à compléter (ex. <code>(a -2 ;</code>).</li>
+            <li data-i18n="dl_0114_3"><strong>Popup plus stable</strong> : plus de clignotement quand on édite une matrice.</li>
+            <li data-i18n="dl_0114_4"><strong>Expressions courtes</strong> : <code>x2</code>, <code>U_n</code>, <code>2x+1</code>… sont à nouveau détectées automatiquement (correction d'un défaut lié au nouveau modèle de détection).</li>
+            <li data-i18n="dl_0114_5"><strong>Installeur allégé</strong> : ~62 Mo au lieu de ~113 Mo (modèle de détection allégé).</li>
           </ul>
-          <a href="/download/MathCursor-Setup-0.11.3.exe" class="button button--secondary" download data-i18n="dl_0113_btn">Télécharger 0.11.3</a>
+          <a href="/download/MathCursor-Setup-0.11.4.exe" class="button button--secondary" download data-i18n="dl_0114_btn">Télécharger 0.11.4</a>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -97,7 +98,7 @@
             <li data-i18n="dl_0112_1"><strong>Matrices</strong> : <code>Ctrl+Espace</code> sur une matrice en cours de frappe (<code>(a,b ; c,d</code>) propose maintenant la matrice complète — plus de coupure au <code>;</code>.</li>
             <li data-i18n="dl_0112_2"><strong>Installeur</strong> : interface entièrement dans la langue choisie (FR ou EN) ; le tutoriel n'est proposé qu'une seule fois, à la fin de l'installation.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -111,7 +112,7 @@
             <li data-i18n="dl_0111_5"><strong>Détection automatique améliorée</strong> (nouveau modèle) : raccourci grec <code>@</code> (<code>@a</code>, <code>@p</code>…), fractions <code>½ ¾ ⅓</code>, puissances <code>**</code>.</li>
             <li data-i18n="dl_0111_6"><strong>Rendu</strong> : correction de l'affichage de <code>φ</code> (varphi).</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -121,7 +122,7 @@
             <li data-i18n="dl_0110_1"><strong>Fractions</strong> : taper <code>1/2</code> n'est plus transformé en <code>½</code> par la correction automatique de Word — la conversion math refonctionne (et un <code>½</code> collé reste lisible).</li>
             <li data-i18n="dl_0110_2"><strong>Factorielle</strong> : <code>n!</code> suivi de <code>Ctrl+Espace</code> propose de nouveau la formule (le <code>!</code> ne bloquait plus la popup).</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -132,7 +133,7 @@
             <li data-i18n="dl_0103_2"><strong>Géométrie reconnue d'office</strong> : <code>(AB) // (CD)</code> et <code>(AB) ⊥ (CD)</code> se convertissent directement.</li>
             <li data-i18n="dl_0103_3"><strong>Formulaire de contact</strong> sur le site : une page dédiée pour nous écrire, plus besoin d'ouvrir ton client mail (<a href="/contact.html">mathcursor.pages.dev/contact</a>).</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -143,7 +144,7 @@
             <li data-i18n="dl_0102_2"><strong>Lettres grecques plus claires</strong> : sous chaque exemple, le raccourci <code>@</code> (tape <code>pi</code> ou <code>@p</code>) et un rappel pour ouvrir la popup avec <code>Ctrl+Espace</code> si elle ne vient pas toute seule.</li>
             <li data-i18n="dl_0102_3"><strong>Nombres décimaux</strong> : le tuto précise qu'un <code>Ctrl+Espace</code> peut demander plusieurs appuis (le premier s'arrête à la virgule).</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -155,7 +156,7 @@
             <li data-i18n="dl_0100_3"><strong>Démo en ligne refaite sur le vrai moteur</strong> : tape une formule, vois les conversions proposées comme dans Word — tout tourne dans ton navigateur, rien n'est envoyé (<a href="/demo/">mathcursor.pages.dev/demo</a>).</li>
             <li data-i18n="dl_0100_4"><strong>Reconnaissance affinée</strong> sur de nouveaux cas (corpus de test 388 → 421).</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -164,7 +165,7 @@
           <ul>
             <li data-i18n="dl_091_1"><strong>La popup ne reste plus muette</strong> sur certaines formules longues (matrices avec sommes imbriquées…) : la détection les découpait en deux morceaux dont aucun n'était lisible seul — les morceaux séparés par de simples espaces sont maintenant recollés avant analyse.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -178,7 +179,7 @@
             <li data-i18n="dl_090_5"><strong><code>sum</code>, <code>int</code> ou <code>lim</code> seuls</strong> : les deux squelettes (complet et court) sont proposés.</li>
             <li data-i18n="dl_090_6"><strong>Stabilité</strong> : le préchauffage ne perturbe plus la première frappe.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -188,7 +189,7 @@
             <li data-i18n="dl_081_1"><strong>Astuce ajoutée</strong> sous les lettres grecques : <code>Ctrl+Espace</code> fait venir la popup si elle n'apparaît pas toute seule.</li>
             <li data-i18n="dl_081_2"><strong>Notation des parallèles clarifiée</strong> : seul l'exemple avec parenthèses <code>(AB) // (CD)</code> est conservé.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -202,7 +203,7 @@
             <li data-i18n="dl_080_5"><strong>Listes à puces</strong> : la ligne suivante ne reste plus coincée en mode équation.</li>
             <li data-i18n="dl_080_6"><strong>Démarrage préchauffé</strong> : la première popup apparaît aussi vite que les suivantes.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -232,7 +233,7 @@
             <li data-i18n="dl_071_6"><strong>Tutoriel interactif</strong> : un document Word de prise en main (16 sections, 66 exercices — chaque exemple garanti par les tests du moteur) s'ouvre à la fin de l'installation, et se rouvre à tout moment via le bouton « Réouvrir le tutoriel » du ruban.</li>
             <li data-i18n="dl_071_7"><strong>Performances revues pour les gros documents</strong> : l'add-in reste fluide sur des cours de 100 pages et plus — plus de ralentissement de la frappe au fil du document.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -244,7 +245,7 @@
             <li data-i18n="dl_058_3"><strong>Visual C++ Redist redéployés systématiquement</strong> : l'installer relance les redists x86 + x64 à chaque mise à jour (silencieux, no-op si déjà à jour).</li>
             <li data-i18n="dl_058_4"><strong>Fix duplication du marker en édit/redo</strong> : éditer puis revalider une chaîne <code>=</code> / <code>&lt;=&gt;</code> ou un système <code>{</code> ne duplique plus le caractère marker en début de ligne.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -284,7 +285,7 @@
             <li data-i18n="dl_055_2"><strong>Plus de WhatsApp / email manuel</strong> : le bundle (logs + source brute + LaTeX rendu) est packagé et envoyé automatiquement. Toujours opt-in : on n'envoie rien sans ton clic explicite sur le bouton.</li>
             <li data-i18n="dl_055_3"><strong>Confidentialité préservée</strong> : aucun contenu du document n'est envoyé — uniquement la zone math en cours et les logs techniques nécessaires au diagnostic.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -300,7 +301,7 @@
             <li data-i18n="dl_054_7"><strong>Fix NER post-équation</strong> : quand une équation est déjà placée avant, les conjonctions (<code>et</code>, <code>donc</code>…) ne sont plus aspirées dans la zone math suivante.</li>
             <li data-i18n="dl_054_8"><strong>Fix fonction trigo + exposant</strong> : <code>cos2(x)+1</code> rend <code>$\cos(x)^2+1$</code> sans aspirer la suite.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -314,7 +315,7 @@
             <li data-i18n="dl_053_5"><strong>Désambiguïsation popup</strong> : <code>f(1, 2)</code> propose function call (défaut) ou vecteur en alt ; <code>u*v</code> propose <code>u·v</code> (défaut) ou <code>$\vec{u} \cdot \vec{v}$</code> (produit scalaire) en alt.</li>
             <li data-i18n="dl_053_6"><strong>Fix critique installer</strong> : déploiement de la DLL native <code>onnxruntime.dll</code> qui manquait sur certaines machines (l'add-in plantait au démarrage avec une <code>TypeInitializationException</code>).</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -323,7 +324,7 @@
             <li data-i18n="dl_05x_1"><strong>0.5.2</strong> : fix critique <code>\int</code> rendu <code>∈t</code> au lieu de <code>∫</code>. Ordre des règles dans <code>LatexToUnicodeMath</code> qui appliquait <code>\in → ∈</code> avant <code>\int → ∫</code>.</li>
             <li data-i18n="dl_05x_2"><strong>0.5.1</strong> : numéro de version dynamique dans le ruban Word, icône « Signaler » distincte, ruban en français/anglais selon la locale Word.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -342,7 +343,7 @@
             <li data-i18n="dl_050_10"><strong>ABC → angle / triangle</strong> en désambig.</li>
             <li data-i18n="dl_050_11"><strong>Fix NBSP</strong> : les espaces insécables collés par Word ne cassent plus la conversion.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -354,7 +355,7 @@
             <li data-i18n="dl_040_3"><strong>Détection plus précise</strong> : nouveau modèle NER (DistilBERT-multilingual) entraîné sur corpus enrichi.</li>
             <li data-i18n="dl_040_4"><strong>Compat matérielle élargie</strong> : Bay Trail 2014+, VC++ Redist embarqué.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -366,7 +367,7 @@
             <li data-i18n="dl_03x_4">Sum / product / integral sans mot-clé : <code>Sum k 1 n f(x)</code>.</li>
             <li data-i18n="dl_03x_5">Angle <code>ABC</code> en notation <code>∠ABC</code>.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <article class="card" style="margin-bottom: 20px;">
@@ -374,7 +375,7 @@
           <ul>
             <li data-i18n="dl_01x_1">Premières bêta internes : détection NER, popup, insertion OMath, Ctrl+Espace, signaler un souci, alignement, fixes rendu.</li>
           </ul>
-          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.3 qui inclut ces changements.</div>
+          <div class="retired-note" data-i18n="dl_retired">Version archivée — utilise la 0.11.4 qui inclut ces changements.</div>
         </article>
 
         <p class="install-note" style="margin-top: 40px;" data-i18n="dl_note">
@@ -417,13 +418,14 @@
         dl_card_lo_dl: "Download the latest version",
         dl_card_guide_lo: "Install guide",
 
-        dl_0113_date: "— June 30, 2026",
-        dl_0113_intro: "Caret detection in Word: matrices with negative coefficients recognized, steadier popup, and a much lighter installer.",
-        dl_0113_1: "<strong>Signed matrices</strong>: negative coefficients are recognized (e.g. <code>(1 -2 ; 3 4)</code>) — they used to return an error.",
-        dl_0113_2: "<strong>Matrix while typing</strong>: a signed matrix shows a partial version with squares to fill in (e.g. <code>(a -2 ;</code>).",
-        dl_0113_3: "<strong>Steadier popup</strong>: no more flicker when editing a matrix.",
-        dl_0113_4: "<strong>Lighter installer</strong>: ~62 MB instead of ~113 MB (lighter detection model).",
-        dl_0113_btn: "Download 0.11.3",
+        dl_0114_date: "— June 30, 2026",
+        dl_0114_intro: "Caret detection in Word: matrices with negative coefficients, steadier popup, short expressions recognized again, and a much lighter installer.",
+        dl_0114_1: "<strong>Signed matrices</strong>: negative coefficients are recognized (e.g. <code>(1 -2 ; 3 4)</code>) — they used to return an error.",
+        dl_0114_2: "<strong>Matrix while typing</strong>: a signed matrix shows a partial version with squares to fill in (e.g. <code>(a -2 ;</code>).",
+        dl_0114_3: "<strong>Steadier popup</strong>: no more flicker when editing a matrix.",
+        dl_0114_4: "<strong>Short expressions</strong>: <code>x2</code>, <code>U_n</code>, <code>2x+1</code>… are detected automatically again (fix for an issue introduced by the new detection model).",
+        dl_0114_5: "<strong>Lighter installer</strong>: ~62 MB instead of ~113 MB (lighter detection model).",
+        dl_0114_btn: "Download 0.11.4",
         dl_0112_date: "— June 19, 2026",
         dl_0112_intro: "Fixes: keyboard matrices and installer (language + tutorial).",
         dl_0112_1: "<strong>Matrices</strong>: <code>Ctrl+Space</code> on a matrix being typed (<code>(a,b ; c,d</code>) now proposes the full matrix — no more cut at the <code>;</code>.",
@@ -605,7 +607,7 @@
         dl_01x_date: "— April 22-23, 2026",
         dl_01x_1: "First internal betas: NER zone detection, popup, OMath insertion, Ctrl+Space, report-an-issue, alignment, render fixes.",
 
-        dl_retired: "Archived version — use 0.11.3 which includes these changes.",
+        dl_retired: "Archived version — use 0.11.4 which includes these changes.",
         dl_note: "One-click install: no account, no cloud, no document is sent anywhere. See the <a href=\"install.html\">install guide</a> for details.",
         dl_foot: "© 2026 MathCursor · <a href=\"/contact.html\">Contact</a>"
       }
