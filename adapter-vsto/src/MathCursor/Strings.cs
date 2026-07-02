@@ -1,3 +1,19 @@
+// MathCursor — capture d'intention mathématique depuis une saisie clavier linéaire.
+// Copyright (C) 2026  Côme Percin
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 using System;
 using System.Globalization;
 
@@ -468,8 +484,13 @@ namespace MathCursor
                 "  Bouton \"Signaler un souci\" à gauche → génère un rapport prêt à envoyer\n" +
                 "  (WhatsApp ou email). Ton feedback fait avancer le produit !\n\n" +
                 "Logs techniques : %AppData%\\MathCursor\\logs\\mathcursor.log\n\n" +
-                "LICENCES\n" +
-                "  MathCursor est un logiciel libre, sous licence GNU GPL v3 (fichier LICENSE).\n" +
+                "LICENCE\n" +
+                "  MathCursor  Copyright (C) 2026  Côme Percin\n" +
+                "  Ce programme est fourni SANS AUCUNE GARANTIE.\n" +
+                "  C'est un logiciel libre, que vous pouvez redistribuer sous les\n" +
+                "  conditions de la GNU GPL v3 (voir le fichier LICENSE dans le dossier\n" +
+                "  d'installation) ou toute version ultérieure.\n" +
+                "  Code source : https://github.com/come/MathCursor\n" +
                 "  Polices math fournies : Latin Modern Math (GUST Font License) et\n" +
                 "  STIX Two Math (SIL Open Font License) — textes des licences dans le\n" +
                 "  sous-dossier fonts-licenses du dossier d'installation.\n\n" +
@@ -495,8 +516,13 @@ namespace MathCursor
                 "  \"Report an issue\" button on the left → generates a ready-to-send report\n" +
                 "  (WhatsApp or email). Your feedback drives the product forward!\n\n" +
                 "Technical logs: %AppData%\\MathCursor\\logs\\mathcursor.log\n\n" +
-                "LICENSES\n" +
-                "  MathCursor is free software, under the GNU GPL v3 (see the LICENSE file).\n" +
+                "LICENSE\n" +
+                "  MathCursor  Copyright (C) 2026  Côme Percin\n" +
+                "  This program comes with ABSOLUTELY NO WARRANTY.\n" +
+                "  This is free software, and you are welcome to redistribute it under\n" +
+                "  the terms of the GNU GPL v3 (see the LICENSE file in the install\n" +
+                "  folder) or any later version.\n" +
+                "  Source code: https://github.com/come/MathCursor\n" +
                 "  Bundled math fonts: Latin Modern Math (GUST Font License) and STIX Two\n" +
                 "  Math (SIL Open Font License) — license texts in the fonts-licenses\n" +
                 "  subfolder of the install folder.\n\n" +

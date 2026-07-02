@@ -32,8 +32,22 @@ Conditions respectées :
 |---|---|---|
 | **WpfMath** / **XamlMath.Shared** | rendu LaTeX dans la popup WPF | MIT |
 | **Microsoft.ML.OnnxRuntime** (+ natifs) | inférence du modèle de détection (NER) | MIT |
-| **Modèle NER embarqué** (`{app}\models`) | détection des zones math | _à confirmer / documenter (provenance du modèle entraîné)_ |
 
-> Note : la liste « autres composants » est tenue à jour au mieux ; un audit
-> licences complet des dépendances NuGet et du modèle NER reste un chantier à
-> part (hors périmètre de l'ajout des polices).
+## Modèle NER embarqué (`{app}\models`)
+
+Le modèle de détection des zones math (NER) livré avec MathCursor est un
+classifieur spécialisé **entraîné par l'auteur**, dérivé d'un modèle de base
+pré-entraîné open source :
+
+| Élément | Provenance | Licence |
+|---|---|---|
+| **Modèle de base** : `distilbert-base-multilingual-cased` | Hugging Face — V. Sanh, L. Debut, J. Chaumond, T. Wolf (*DistilBERT, a distilled version of BERT*, 2019) | **Apache License 2.0** — texte intégral dans [`licenses/Apache-2.0.txt`](licenses/Apache-2.0.txt) |
+| **Poids fine-tunés** (détection B-MATH / I-MATH) | © 2026 Côme Percin — entraînement maison | GNU GPL v3 (avec le reste de MathCursor) |
+| **Données de fine-tuning** | Corpus généré avec l'aide d'un assistant IA, usage autorisé ; propriété de l'auteur | — |
+
+DistilBERT est distribué sous **Apache License 2.0**, permissive et
+**compatible GPLv3** : sa redistribution au sein de MathCursor (agrégat, §5)
+est conforme. Conformément à l'Apache 2.0, l'attribution des auteurs de la base
+est conservée ci-dessus et le texte de la licence est fourni dans
+[`licenses/Apache-2.0.txt`](licenses/Apache-2.0.txt). Aucun fichier `NOTICE`
+n'accompagne le modèle de base amont ; le cas échéant il serait propagé ici.

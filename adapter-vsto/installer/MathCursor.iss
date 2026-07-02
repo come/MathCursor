@@ -130,6 +130,15 @@ Source: "fonts\STIXTwoMath-Regular.otf"; DestDir: "{autofonts}"; FontInstall: "S
 Source: "fonts\GUST-FONT-LICENSE.txt";   DestDir: "{app}\fonts-licenses"; Flags: ignoreversion
 Source: "fonts\STIX-OFL.txt";            DestDir: "{app}\fonts-licenses"; Flags: ignoreversion
 
+; Licence du logiciel (GNU GPL v3) + notices tierces + texte Apache 2.0 (base
+; du modèle NER). MathCursor est distribué sous GPL v3 : la « source
+; correspondante » exigée par la §6 est le dépôt public
+; https://github.com/come/MathCursor (cf. README « Compiler depuis les sources »).
+; Chemins relatifs au dossier de l'installeur → racine du dépôt.
+Source: "..\..\LICENSE";                 DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\THIRD-PARTY-NOTICES.md";  DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\licenses\Apache-2.0.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+
 ; Visual C++ Redistributables x86 + x64 — requis par les DLLs natives ONNX
 ; (1 par arch). Word 32-bit a besoin du x86 ; Word 64-bit a besoin du x64.
 ; `skipifsourcedoesntexist` : si build.ps1 n'a pas pu télécharger, on skippe
