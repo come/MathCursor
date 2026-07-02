@@ -148,16 +148,12 @@
               <p data-i18n="ig_lo_2_p">Double-cliquez le fichier (ou <em>Outils ▸ Gestionnaire des extensions ▸ Ajouter…</em>), puis <strong>redémarrez LibreOffice</strong>.</p>
             </li>
             <li>
-              <h3 data-i18n="ig_lo_3_h">3. Lier le raccourci</h3>
-              <p data-i18n="ig_lo_3_p"><em>Outils ▸ Personnaliser ▸ Clavier</em> : choisissez <code>Ctrl+Espace</code>, catégorie <em>Macros LibreOffice ▸ mathcursor</em>, fonction <code>convert_selection</code>, puis <em>Modifier</em>.</p>
-            </li>
-            <li>
-              <h3 data-i18n="ig_lo_4_h">4. Utiliser</h3>
-              <p data-i18n="ig_lo_4_p">Dans Writer, tapez une sténo (<code>1/2</code>, <code>x^2+1/2</code>, <code>lim x 0 g(x)</code>), <strong>sélectionnez-la</strong>, <code>Ctrl+Espace</code> et la formule est insérée.</p>
+              <h3 data-i18n="ig_lo_3_h">3. Utiliser</h3>
+              <p data-i18n="ig_lo_3_p">Dans Writer, tapez une sténo (<code>1/2</code>, <code>x^2+1/2</code>, <code>lim x 0 g(x)</code>), <strong>sélectionnez-la</strong>, puis <em>Outils ▸ MathCursor : convertir la sélection</em> — la formule est insérée. Cette entrée de menu est ajoutée automatiquement, aucun raccourci à configurer. <em>(Optionnel : pour un raccourci clavier, liez <code>Ctrl+Espace</code> à <code>convert_selection</code> via Outils ▸ Personnaliser ▸ Clavier.)</em></p>
             </li>
           </ol>
           <p class="install-config" data-i18n="ig_lo_config"><strong>Configuration :</strong> LibreOffice 7.0+ (Writer), Windows 64 bits. Le moteur et la popup sont embarqués dans le <code>.oxt</code>, rien d'autre à installer.</p>
-          <p class="install-note" data-i18n="ig_lo_note"><strong>Alpha :</strong> l'auto-détection (popup au fil de la frappe) demande le modèle de reconnaissance, pas encore embarqué : pour l'instant c'est le mode manuel (sélection + <code>Ctrl+Espace</code>). Syntaxe StarMath best-effort ; versions macOS et Linux à reconstruire sur l'OS cible.</p>
+          <p class="install-note" data-i18n="ig_lo_note"><strong>Alpha :</strong> l'auto-détection (popup au fil de la frappe) demande le modèle de reconnaissance, pas encore embarqué : pour l'instant c'est le mode manuel (sélection + <em>Outils ▸ MathCursor : convertir la sélection</em>). Syntaxe StarMath best-effort ; versions macOS et Linux à reconstruire sur l'OS cible.</p>
         </div>
 
         <p class="install-note" style="margin-top: 40px;" data-i18n="ig_foot_note">Besoin d'aide, un bug, envie de discuter ? <a href="/contact.html">Contact</a>. Installation 100&nbsp;% locale : aucun compte, aucun cloud, aucun document envoyé.</p>
@@ -229,12 +225,10 @@
         ig_lo_1_p: "Grab <code>MathCursor.oxt</code> via the button above.",
         ig_lo_2_h: "2. Install",
         ig_lo_2_p: "Double-click the file (or <em>Tools ▸ Extension Manager ▸ Add…</em>), then <strong>restart LibreOffice</strong>.",
-        ig_lo_3_h: "3. Bind the shortcut",
-        ig_lo_3_p: "<em>Tools ▸ Customize ▸ Keyboard</em>: pick <code>Ctrl+Space</code>, category <em>LibreOffice Macros ▸ mathcursor</em>, function <code>convert_selection</code>, then <em>Modify</em>.",
-        ig_lo_4_h: "4. Use it",
-        ig_lo_4_p: "In Writer, type shorthand (<code>1/2</code>, <code>x^2+1/2</code>, <code>lim x 0 g(x)</code>), <strong>select it</strong>, press <code>Ctrl+Space</code> and the formula is inserted.",
+        ig_lo_3_h: "3. Use it",
+        ig_lo_3_p: "In Writer, type shorthand (<code>1/2</code>, <code>x^2+1/2</code>, <code>lim x 0 g(x)</code>), <strong>select it</strong>, then <em>Tools ▸ MathCursor: convert selection</em> — the formula is inserted. This menu entry is added automatically, no shortcut to configure. <em>(Optional: for a keyboard shortcut, bind <code>Ctrl+Space</code> to <code>convert_selection</code> via Tools ▸ Customize ▸ Keyboard.)</em>",
         ig_lo_config: "<strong>Requirements:</strong> LibreOffice 7.0+ (Writer), Windows 64-bit. The engine and popup are bundled inside the <code>.oxt</code>, nothing else to install.",
-        ig_lo_note: "<strong>Alpha:</strong> auto-detection (popup as you type) needs the recognition model, not bundled yet: for now it's manual mode (select + <code>Ctrl+Space</code>). StarMath syntax is best-effort; macOS and Linux must be rebuilt on the target OS.",
+        ig_lo_note: "<strong>Alpha:</strong> auto-detection (popup as you type) needs the recognition model, not bundled yet: for now it's manual mode (select + <em>Tools ▸ MathCursor: convert selection</em>). StarMath syntax is best-effort; macOS and Linux must be rebuilt on the target OS.",
 
         ig_foot_note: "Need help, found a bug, want to chat? <a href=\"/contact.html\">Contact</a>. Fully local install: no account, no cloud, no document sent anywhere.",
         ig_foot: "© 2026 MathCursor · <a href=\"/contact.html\">Contact</a>"

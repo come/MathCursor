@@ -8,7 +8,7 @@
  * Préfixe `_` → fichier NON routé par Cloudflare Pages (juste un module partagé).
  * Bumpé par /deploy-prod à chaque release (cf. ADR 2026-06-18-Feat-ribbon-update-badge).
  */
-export const LATEST_VERSION = "0.11.4";
+export const LATEST_VERSION = "0.11.5";
 
 /**
  * Alphas multi-éditeur publiés sur R2 (bucket `mathcursor-releases`), servis par
@@ -28,4 +28,6 @@ export const LATEST_VSCODE_VSIX = {
 /** Cible servie par l'alias générique `latest.vsix` (rétro-compat liens existants). */
 export const DEFAULT_VSIX_TARGET = "win32-x64";
 
-export const LATEST_OXT = "MathCursor-0.1.0.oxt";
+// Fichier réel dans le bucket R2 = MathCursor.oxt (non versionné). L'alias
+// `latest.oxt` doit matcher ce nom, sinon 404 (bug corrigé le 2026-07-02).
+export const LATEST_OXT = "MathCursor.oxt";
