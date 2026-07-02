@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# MathCursor — capture d'intention mathématique depuis une saisie clavier linéaire.
+# MathCursor: capturing mathematical intent from linear keyboard input.
 # Copyright (C) 2026  Côme de Percin
 #
 # This program is free software: you can redistribute it and/or modify

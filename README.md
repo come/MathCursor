@@ -21,7 +21,7 @@ stigmatising setup.
 
 | Platform | State |
 |----------|-------|
-| **Word Desktop (Windows, VSTO)** | Available today — the primary target of phase 1 |
+| **Word Desktop (Windows, VSTO)** | Available today, the primary target of phase 1 |
 | **LibreOffice Writer** | Alpha |
 | **VS Code (LaTeX)** | Alpha |
 | Word Web / Mac / iPad (Office.js) | Planned (phase 2), once the desktop UX is validated |
@@ -33,7 +33,7 @@ learning accommodations and by a handful of maths teachers as beta testers.
 
 The **engine** is a pure function (text → ranked LaTeX candidates), fully
 portable, with zero platform dependencies. Each **adapter** drives that same
-engine for its host — identical recognition everywhere — and turns the chosen
+engine for its host (identical recognition everywhere) and turns the chosen
 LaTeX into that host's native math format:
 
 ```
@@ -43,8 +43,8 @@ engine (text → LaTeX) ────┼─ adapter-libreoffice  → StarMath  �
 ```
 
 **Hard rule:** the engine knows nothing about any host (`netstandard2.0`, no
-`Microsoft.Office.*`, no WPF). That purity is what lets every adapter — and the
-in-browser demo — reuse the exact same recognition logic. Two mirror
+`Microsoft.Office.*`, no WPF). That purity is what lets every adapter, and the
+in-browser demo, reuse the exact same recognition logic. Two mirror
 implementations keep parity, both locked to a shared conformance corpus
 (`fixtures.json`): the **C#** engine (`engine/`, plus `serialization/` for Word
 OMML) backs the Word add-in, while the **Rust** core (`rust/mc-engine`, with
@@ -85,7 +85,7 @@ scripts/run-tests.ps1          # full local xUnit gate
 msbuild adapter-vsto/src/MathCursor/MathCursor.csproj /p:Configuration=Release
 powershell -ExecutionPolicy Bypass -File adapter-vsto/installer/build.ps1
 
-# Rust core (mc-engine / mc-ner / mc-popup) — own fixtures.json parity gate
+# Rust core (mc-engine / mc-ner / mc-popup): own fixtures.json parity gate
 cd rust && cargo build --release && cargo test
 
 # VS Code extension
@@ -97,8 +97,7 @@ cd adapter-libreoffice && python build_oxt.py
 
 ## Contributing
 
-Design decisions live as ADRs under [`docs/dev/decisions/`](docs/dev/decisions/)
-— one file per decision, indexed in
+Design decisions live as ADRs under [`docs/dev/decisions/`](docs/dev/decisions/): one file per decision, indexed in
 [`docs/dev/decisions/README.md`](docs/dev/decisions/README.md). That index plus
 `git log` is the most reliable picture of the current state. Non-trivial changes
 (features, refactors, ergonomics, product rules) get an ADR before the code
@@ -107,11 +106,11 @@ lands.
 ## License
 
 MathCursor is **free software**, licensed under the **GNU General Public License,
-version 3 or (at your option) any later version** — full text in
+version 3 or (at your option) any later version**. Full text in
 [`LICENSE`](LICENSE).
 
 ```
-MathCursor — capture d'intention mathématique depuis une saisie clavier linéaire.
+MathCursor: capturing mathematical intent from linear keyboard input.
 Copyright (C) 2026  Côme de Percin
 
 This program is free software: you can redistribute it and/or modify it under
@@ -121,7 +120,7 @@ ABSOLUTELY NO WARRANTY.
 ```
 
 The pure recognition core (`engine/`, `serialization/`, `netstandard2.0`) stays
-reusable by other hosts — **under the GPL v3**.
+reusable by other hosts, **under the GPL v3**.
 
 Bundled third-party components (math fonts, WpfMath, ONNX Runtime, the DistilBERT
 base of the NER model) keep their own permissive licenses; they are aggregated in
