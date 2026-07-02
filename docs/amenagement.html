@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MathCursor · Aménagement &amp; PAP</title>
+  <meta name="description" content="MathCursor pour un élève avec un aménagement (PAP) : le même outil que la classe, pas un logiciel séparé. Réduit la friction d'écriture mathématique, 100 % local, sans installer tout un univers logiciel à part." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="/" class="brand"><img src="/assets/logo.png" alt="MathCursor" style="height:54px;width:auto" /></a>
+      <nav class="nav">
+        <a href="demo/" data-i18n="nav_demo">Démo</a>
+        <a href="releases.html" data-i18n="nav_downloads">Téléchargements</a>
+        <a href="install.html" data-i18n="nav_install">Installation</a>
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button type="button" data-lang="fr" class="active">FR</button>
+          <button type="button" data-lang="en">EN</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+
+    <section class="section">
+      <div class="container">
+        <h1 data-i18n="amg_h1">Aménagement &amp; PAP</h1>
+        <p class="lead" data-i18n="amg_intro">MathCursor pour un élève avec un aménagement : même outil que la classe, pas un logiciel séparé. Réduit la friction d'écriture mathématique sans installer tout un univers logiciel à part.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2 data-i18n="amg_classe_h">En classe</h2>
+        <p data-i18n="amg_classe_p">Même moteur, même popup. L'élève suit le rythme du cours au clavier.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2 data-i18n="amg_exam_h">En examen</h2>
+        <p data-i18n="amg_exam_p">[À rédiger : « manière habituelle de travailler », adoption classe préalable, 100 % local, pas d'IA/autocomplétion — angle clé exam.]</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2 data-i18n="amg_parents_h">Parents</h2>
+        <p data-i18n="amg_parents_p">Pour un enfant sous PAP, MathCursor réduit la friction d'écriture mathématique sans installer tout un univers logiciel séparé.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div data-i18n="foot_copy">MathCursor · 100 % local · sans compte</div>
+      <nav>
+        <a href="/contact.html">Contact</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- i18n FR/EN -->
+  <script>
+    const I18N = {
+      en: {
+        nav_demo: "Demo",
+        nav_install: "Install",
+        nav_downloads: "Downloads",
+
+        amg_h1: "Accommodation &amp; PAP",
+        amg_intro: "MathCursor for a student with a formal accommodation: the same tool as the class, not a separate piece of software. It reduces the friction of math writing without installing a whole separate software universe.",
+        amg_classe_h: "In class",
+        amg_classe_p: "Same engine, same popup. The student keeps pace with the lesson on the keyboard.",
+        amg_exam_h: "In exams",
+        amg_exam_p: "[To be written: \"usual way of working\", prior class adoption, 100% local, no AI/autocomplete — key exam angle.]",
+        amg_parents_h: "Parents",
+        amg_parents_p: "For a child with a formal accommodation, MathCursor reduces the friction of math writing without installing a whole separate software universe.",
+
+        foot_copy: "MathCursor · 100% local · no account"
+      }
+    };
+
+    function setLang(lang) {
+      const dict = I18N[lang];
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        if (!dict) return;
+        if (dict[key]) {
+          el.innerHTML = dict[key];
+        } else if (I18N.fr && I18N.fr[key]) {
+          el.innerHTML = I18N.fr[key];
+        }
+      });
+      document.querySelectorAll('.lang-toggle button').forEach(b => {
+        b.classList.toggle('active', b.dataset.lang === lang);
+      });
+      try { localStorage.setItem('mc_lang', lang); } catch (e) {}
+    }
+
+    const FR_SNAPSHOT = {};
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      FR_SNAPSHOT[el.dataset.i18n] = el.innerHTML;
+    });
+    I18N.fr = FR_SNAPSHOT;
+
+    document.querySelectorAll('.lang-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => setLang(btn.dataset.lang));
+    });
+
+    let saved = null;
+    try { saved = localStorage.getItem('mc_lang'); } catch (e) {}
+    if (!saved) {
+      saved = (navigator.language || 'fr').toLowerCase().startsWith('en') ? 'en' : 'fr';
+    }
+    if (saved === 'en') setLang('en');
+  </script>
+
+</body>
+</html>
