@@ -1,5 +1,5 @@
 > **⚠️ Document hérité de DocMath (gelé au 2026-05-21).** Sur la branche
-> `beta-clean`, l'état d'avancement vit dans [`PLAN.md`](../../../PLAN.md)
+> `beta-clean`, l'état d'avancement vit dans [`PLAN.md`](../PLAN.md)
 > (consolidation beta : phases 0-5). Ce fichier est conservé pour référence
 > historique des chantiers DocMath.
 

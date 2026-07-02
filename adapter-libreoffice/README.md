@@ -13,7 +13,7 @@ data bundlés dans l'`.oxt`) — cross-OS, aucune dépendance au repo une fois i
 
 1. **Construire** l'extension (Python pur, aucun outil externe) :
    ```
-   python libreoffice-ext/build_oxt.py        # -> libreoffice-ext/MathCursor.oxt
+   python adapter-libreoffice/build_oxt.py    # -> adapter-libreoffice/MathCursor.oxt
    ```
 2. **Installer** : double-cliquer sur `MathCursor.oxt` (ou
    `Outils ▸ Gestionnaire des extensions ▸ Ajouter…`). Redémarrer LibreOffice.

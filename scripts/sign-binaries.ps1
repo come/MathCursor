@@ -86,4 +86,4 @@ Write-Host ""
 Write-Host "OK — binaires signés dans rust/target/release/." -ForegroundColor Green
 Write-Host "Étape suivante : relancer les builds pour propager les binaires SIGNÉS :"
 Write-Host "  - VSCode      : (cd adapter-vscode/extension ; node build.mjs)  puis  vsce package --target <…>"
-Write-Host "  - LibreOffice : python libreoffice-ext/build_oxt.py"
+Write-Host "  - LibreOffice : python adapter-libreoffice/build_oxt.py"

@@ -12,7 +12,7 @@ de façon fluide au clavier. Objectif : comportement prévisible et sans frictio
 
 - **[`docs/dev/decisions/README.md`](docs/dev/decisions/README.md)** — index chrono de tous les ADRs : le journal vivant des décisions.
 - **`git log --oneline -30`** — état réel le plus fiable.
-- **[`PLAN.md`](PLAN.md)** — plan de consolidation beta (daté, partiellement exécuté).
+- **[`docs/dev/PLAN.md`](docs/dev/PLAN.md)** — plan de consolidation beta (daté, partiellement exécuté).
 - **[`docs/dev/architecture/ROADMAP.md`](docs/dev/architecture/ROADMAP.md)** — ⚠️ **gelé** (chantiers DocMath, 2026-05-21) : référence historique, ne pas suivre ses chemins.
 
 Quand tu reprends une session : `decisions/README.md` + `git log` pour l'état réel. Si plusieurs chantiers ouverts, demander la priorité utilisateur.
@@ -90,7 +90,7 @@ D:\Software\MathCursor\
 ├── rust/                        # cœur RUST des hosts non-Word : mc-engine (moteur,
 │                                #   gate fixtures.json 465/465) + mc-ner + mc-popup
 ├── adapter-vscode/              # extension VSCode (spawne les binaires Rust)
-├── libreoffice-ext/             # extension LibreOffice (spawne les mêmes binaires Rust)
+├── adapter-libreoffice/        # extension LibreOffice (spawne les mêmes binaires Rust)
 └── scripts/                     # outillage (run-tests.ps1 = gate de test local)
 ```
 

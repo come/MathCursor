@@ -44,7 +44,7 @@ build.
    #   ou : -Thumbprint <empreinte d'un cert installé>
    #   ou : -PfxPath cert.pfx -PfxPassword (Read-Host -AsSecureString)
 3. node adapter-vscode/extension/build.mjs       # propage les exes signés -> out/
-   python libreoffice-ext/build_oxt.py           # propage -> bin/<tag>/ du .oxt
+   python adapter-libreoffice/build_oxt.py       # propage -> bin/<tag>/ du .oxt
 4. (VSCode)      vsce package --target <win32-x64|…>   # 1 VSIX par plateforme
    (LibreOffice) MathCursor.oxt déjà produit à l'étape 3
 ```

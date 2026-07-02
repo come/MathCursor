@@ -48,6 +48,16 @@
               </prop>
               <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
             </node>
+            <node oor:name="M4" oor:op="replace">
+              <prop oor:name="URL" oor:type="xs:string">
+                <value>vnd.sun.star.script:MathCursor.oxt|Scripts|python|mathcursor.py$about?language=Python&amp;location=user:uno_packages</value>
+              </prop>
+              <prop oor:name="Title" oor:type="xs:string">
+                <value xml:lang="fr">MathCursor : à propos / licence</value>
+                <value xml:lang="en">MathCursor: about / license</value>
+              </prop>
+              <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+            </node>
           </node>
         </node>
       </node>

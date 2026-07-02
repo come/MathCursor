@@ -1,3 +1,19 @@
+# MathCursor — capture d'intention mathématique depuis une saisie clavier linéaire.
+# Copyright (C) 2026  Côme Percin
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 # -*- coding: utf-8 -*-
 """MathCursor — extension/macro LibreOffice Writer (P4, MVP).
 
@@ -44,7 +60,7 @@ except Exception:
 # Cœur RUST unifié : moteur (analyze) + détection (mc-ner) spawnés comme binaires
 # — LES MÊMES que VSCode. Plus de moteur ni de NER Python. Cf. ADR
 # 2026-06-25-Feat-libreoffice-rust-core.
-_DEV_EXT = r"D:\Software\MathCursor\libreoffice-ext"
+_DEV_EXT = r"D:\Software\MathCursor\adapter-libreoffice"
 _DEV_RUST = r"D:\Software\MathCursor\rust\target\release"
 _DEV_MODEL = r"D:\Software\MathCursor\models\latest"
 # Ligne LaTeX optionnelle sous la formule (False = formule seule). VSCode =
@@ -1272,6 +1288,38 @@ def autodetect_stop(*args):
         pass
 
 
+def about(*args):
+    """Affiche la notice « À propos / licence » (avis interactif recommandé
+    par la GNU GPL v3 pour un programme interactif)."""
+    text = (
+        "MathCursor  Copyright (C) 2026  Côme Percin\n"
+        "\n"
+        "Ce programme est fourni SANS AUCUNE GARANTIE.\n"
+        "C'est un logiciel libre, que vous pouvez redistribuer sous les\n"
+        "conditions de la GNU GPL v3 (fichier LICENSE) ou toute version\n"
+        "ultérieure.\n"
+        "\n"
+        "Code source : https://github.com/come/MathCursor\n"
+        "Licence complète : voir le fichier LICENSE du dépôt.\n"
+        "\n"
+        "This program comes with ABSOLUTELY NO WARRANTY. This is free\n"
+        "software, and you are welcome to redistribute it under the terms\n"
+        "of the GNU GPL v3 or any later version."
+    )
+    try:
+        doc = XSCRIPTCONTEXT.getDocument()  # noqa: F821
+        win = doc.getCurrentController().getFrame().getContainerWindow()
+        ctx = XSCRIPTCONTEXT.getComponentContext()  # noqa: F821
+        tk = ctx.ServiceManager.createInstanceWithContext(
+            "com.sun.star.awt.Toolkit", ctx)
+        box = tk.createMessageBox(
+            win, uno.Enum("com.sun.star.awt.MessageBoxType", "INFOBOX"),
+            1, "MathCursor — À propos / licence", text)
+        box.execute()
+    except Exception:
+        pass
+
+
 # Fonctions exposées au Script Provider de LibreOffice.
 g_exportedScripts = (convert_selection, autodetect_start, autodetect_autostart,
-                     autodetect_stop)
+                     autodetect_stop, about)
