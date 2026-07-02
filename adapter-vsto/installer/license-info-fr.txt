@@ -1,0 +1,23 @@
+﻿MathCursor — logiciel libre (GNU GPL v3)
+Copyright (C) 2026  Côme de Percin
+
+MathCursor est un LOGICIEL LIBRE. Vous êtes libre de l'utiliser, de l'étudier,
+de le partager et de le modifier selon les termes de la Licence publique
+générale GNU, version 3 (ou, à votre choix, toute version ultérieure).
+
+  • Vous n'avez PAS besoin d'accepter quoi que ce soit pour installer ou
+    utiliser MathCursor : la GPL encadre la redistribution et la modification,
+    pas l'usage. Cet écran est purement informatif.
+  • Le programme est fourni SANS AUCUNE GARANTIE, dans la mesure permise par
+    la loi applicable.
+
+Après installation, vous trouverez dans le dossier d'installation :
+  • LICENSE .................. texte intégral de la GNU GPL v3
+  • THIRD-PARTY-NOTICES.md ... composants tiers et leurs licences
+                              (polices, moteur ONNX, modèle NER DistilBERT)
+  • licenses\Apache-2.0.txt . licence de la base DistilBERT (Apache 2.0)
+
+Code source complet (la « source correspondante » au sens de la GPL v3) :
+  https://github.com/come/MathCursor
+
+Cliquez sur Suivant pour continuer l'installation.

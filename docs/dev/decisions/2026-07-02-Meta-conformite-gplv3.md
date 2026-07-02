@@ -14,11 +14,11 @@ Rendre le dépôt **pleinement conforme GNU GPL v3** avant publication publique
    (`{app}\LICENSE`, + `THIRD-PARTY-NOTICES.md` et `licenses/Apache-2.0.txt`).
 2. **En-tête GPLv3 « v3-or-later »** en tête de **tous** les fichiers source
    first-party (158 fichiers : 127 C#, 17 Rust, 8 TS, 6 Python), titulaire
-   **Côme Percin**. Générés (AssemblyInfo, Designer) et vendored exclus.
+   **Côme de Percin**. Générés (AssemblyInfo, Designer) et vendored exclus.
 3. **Notice interactive** GPLv3 (copyright + « sans garantie » + lien dépôt) dans
    l'« À propos » de l'add-in Word **et** de l'extension LibreOffice.
 4. `THIRD-PARTY-NOTICES.md` : entrée **NER ferme** (base DistilBERT Apache 2.0 +
-   poids fine-tunés © Côme Percin), plus aucun « à confirmer ».
+   poids fine-tunés © Côme de Percin), plus aucun « à confirmer ».
 5. `licenses/Apache-2.0.txt` + attribution DistilBERT (obligation Apache 2.0).
 6. `README` : section **Licence** + section **Compiler depuis les sources**
    (= source correspondante GPL §6).
@@ -66,7 +66,7 @@ session :
 > « peux tu faire ca ? »
 
 Décisions tranchées (AskUserQuestion) :
-- Titulaire du copyright : **Côme Percin**.
+- Titulaire du copyright : **Côme de Percin**.
 - Portée : **v3-or-later**.
 - URL dépôt : **https://github.com/come/MathCursor**.
 - Périmètre : **tout le first-party en GPLv3** →

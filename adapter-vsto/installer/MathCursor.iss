@@ -14,7 +14,7 @@
 ;   - Visual Studio Tools for Office Runtime (livré avec Office 2016+)
 
 #define MyAppName "MathCursor"
-#define MyAppVersion "0.11.4"
+#define MyAppVersion "0.11.5"
 #define MyAppPublisher "MathCursor"
 #define MyAppExeName "MathCursor.dll"
 #define MyAppId "{{6E4B3A1E-7F2D-4B8C-9A0E-2C5D6F7A8B90}"
@@ -39,8 +39,12 @@ SetupLogging=yes
 [Languages]
 ; Fenêtre d'info post-install (InfoAfterFile) localisée PAR LANGUE — sinon
 ; l'utilisateur EN voyait le texte FR (bug remonté 2026-06-19).
-Name: "french";  MessagesFile: "compiler:Languages\French.isl"; InfoAfterFile: "after-install.txt"
-Name: "english"; MessagesFile: "compiler:Default.isl";          InfoAfterFile: "after-install-en.txt"
+; InfoBeforeFile = page « Licence » NON-BLOQUANTE avant l'install (Suivant
+; toujours actif, pas de « J'accepte »). La GPL v3 ne régit pas l'usage : forcer
+; une acceptation serait trompeur (cf. FSF). Page purement informative +
+; renvoi vers LICENSE / THIRD-PARTY-NOTICES / dépôt. Localisée par langue.
+Name: "french";  MessagesFile: "compiler:Languages\French.isl"; InfoBeforeFile: "license-info-fr.txt"; InfoAfterFile: "after-install.txt"
+Name: "english"; MessagesFile: "compiler:Default.isl";          InfoBeforeFile: "license-info-en.txt"; InfoAfterFile: "after-install-en.txt"
 
 [CustomMessages]
 ; Tous les textes custom de l'installeur, par langue (le préfixe = Name de la

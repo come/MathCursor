@@ -112,7 +112,7 @@ version 3 or (at your option) any later version** — full text in
 
 ```
 MathCursor — capture d'intention mathématique depuis une saisie clavier linéaire.
-Copyright (C) 2026  Côme Percin
+Copyright (C) 2026  Côme de Percin
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU GPL as published by the Free Software Foundation, either

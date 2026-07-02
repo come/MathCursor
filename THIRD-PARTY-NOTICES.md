@@ -42,7 +42,7 @@ pré-entraîné open source :
 | Élément | Provenance | Licence |
 |---|---|---|
 | **Modèle de base** : `distilbert-base-multilingual-cased` | Hugging Face — V. Sanh, L. Debut, J. Chaumond, T. Wolf (*DistilBERT, a distilled version of BERT*, 2019) | **Apache License 2.0** — texte intégral dans [`licenses/Apache-2.0.txt`](licenses/Apache-2.0.txt) |
-| **Poids fine-tunés** (détection B-MATH / I-MATH) | © 2026 Côme Percin — entraînement maison | GNU GPL v3 (avec le reste de MathCursor) |
+| **Poids fine-tunés** (détection B-MATH / I-MATH) | © 2026 Côme de Percin — entraînement maison | GNU GPL v3 (avec le reste de MathCursor) |
 | **Données de fine-tuning** | Corpus généré avec l'aide d'un assistant IA, usage autorisé ; propriété de l'auteur | — |
 
 DistilBERT est distribué sous **Apache License 2.0**, permissive et

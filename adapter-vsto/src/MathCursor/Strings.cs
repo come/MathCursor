@@ -1,5 +1,5 @@
 // MathCursor — capture d'intention mathématique depuis une saisie clavier linéaire.
-// Copyright (C) 2026  Côme Percin
+// Copyright (C) 2026  Côme de Percin
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -485,7 +485,7 @@ namespace MathCursor
                 "  (WhatsApp ou email). Ton feedback fait avancer le produit !\n\n" +
                 "Logs techniques : %AppData%\\MathCursor\\logs\\mathcursor.log\n\n" +
                 "LICENCE\n" +
-                "  MathCursor  Copyright (C) 2026  Côme Percin\n" +
+                "  MathCursor  Copyright (C) 2026  Côme de Percin\n" +
                 "  Ce programme est fourni SANS AUCUNE GARANTIE.\n" +
                 "  C'est un logiciel libre, que vous pouvez redistribuer sous les\n" +
                 "  conditions de la GNU GPL v3 (voir le fichier LICENSE dans le dossier\n" +
@@ -517,7 +517,7 @@ namespace MathCursor
                 "  (WhatsApp or email). Your feedback drives the product forward!\n\n" +
                 "Technical logs: %AppData%\\MathCursor\\logs\\mathcursor.log\n\n" +
                 "LICENSE\n" +
-                "  MathCursor  Copyright (C) 2026  Côme Percin\n" +
+                "  MathCursor  Copyright (C) 2026  Côme de Percin\n" +
                 "  This program comes with ABSOLUTELY NO WARRANTY.\n" +
                 "  This is free software, and you are welcome to redistribute it under\n" +
                 "  the terms of the GNU GPL v3 (see the LICENSE file in the install\n" +
