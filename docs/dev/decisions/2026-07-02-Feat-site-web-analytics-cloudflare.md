@@ -21,7 +21,8 @@ consolidée de la **fréquentation des pages**, de l'usage de la démo (`/demo/`
 ni des referers des **visiteurs** (d'où viennent les gens qui arrivent).
 
 L'utilisateur veut ces stats **de site**. Point clé de cadrage explicite : c'est
-distinct de la promesse **produit** « add-in Word 100 % local, zéro télémétrie ».
+distinct de la promesse **produit** « add-in Word 100 % local » (hors compteur
+d'usage anonyme opt-out, cf. ADR 2026-06-18-Feat-usage-counter-telemetry).
 Ces claims portent sur le **logiciel** qui tourne sur la machine, pas sur le site
 marketing. Mesurer la fréquentation du site vitrine ne les contredit pas.
 
@@ -46,7 +47,17 @@ sans code à maintenir.
 Mise en place effective : **auto-injection au niveau du projet Pages** (Cloudflare
 insère le beacon sur toutes les réponses HTML) — pas de snippet versionné.
 
-Le **logiciel reste à zéro télémétrie** — inchangé, aucun impact.
+Côté **logiciel**, cette décision n'ajoute **aucune** télémétrie : le seul envoi
+automatique du binaire reste le **compteur d'usage anonyme opt-out** acté par
+l'ADR [2026-06-18-Feat-usage-counter-telemetry](2026-06-18-Feat-usage-counter-telemetry.md)
+(nombre de formules converties, sans contenu ni identifiant, désactivable dans les
+Paramètres). Le Web Analytics de cette ADR ne concerne que le **site vitrine**.
+
+> Correction 2026-07-02 : une version antérieure de cette ADR affirmait « le
+> logiciel reste à zéro télémétrie ». C'était inexact — le compteur d'usage
+> ci-dessus est actif depuis l'ADR 2026-06-18. Le cadrage reste valable (le Web
+> Analytics du site est distinct du binaire), mais le binaire n'est pas « zéro
+> télémétrie ».
 
 ## Tradeoff & alternatives écartées
 

@@ -109,7 +109,16 @@ D:\Software\MathCursor\
 - Pas de core TypeScript (cf. ADR-001) — ajouté en phase 2.
 - Pas d'adapter Office.js — phase 2.
 - Pas d'éditeur web standalone — phase 3+ si besoin.
-- Pas de backend, pas de télémétrie réseau, pas de cloud.
+- Pas de télémétrie de contenu, pas de tracking publicitaire, pas de cloud pour le
+  contenu des documents. **Nuance (ADR
+  [2026-06-18-Feat-usage-counter-telemetry](docs/dev/decisions/2026-06-18-Feat-usage-counter-telemetry.md),
+  acté)** : un **compteur d'usage anonyme opt-out** — uniquement le *nombre de
+  formules converties*, aucun contenu, aucun identifiant — est envoyé à un backend
+  Cloudflare léger (`/api/v1/usage` → R2) sur perte de focus / shutdown, désactivable
+  dans les Paramètres (`SendUsageStats`, défaut `true`). Le rapport « Signaler une
+  erreur » part uniquement sur clic explicite. La comm publique (`docs/privacy.html`,
+  home) DOIT refléter ça — ne pas y ré-écrire « aucune télémétrie » / « pas de
+  statistiques d'usage ».
 - Pas de VBA.
 
 ## Moteur : portage « forest » (fait)

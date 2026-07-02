@@ -36,7 +36,7 @@
       <div class="container">
         <h1 data-i18n="h1">Confidentialité</h1>
         <p class="lead" data-i18n="intro">
-          MathCursor est conçu pour rester hors-cloud par défaut. La seule fois où des données quittent votre ordinateur, c'est quand <strong>vous</strong> cliquez sur « Envoyer » dans la fenêtre « Signaler une erreur ». Cette page liste ce qui est envoyé, ce qui ne l'est pas, et combien de temps c'est gardé.
+          MathCursor est conçu pour rester hors-cloud par défaut : vos documents ne quittent jamais votre ordinateur. Deux données seulement sortent de la machine, décrites sur cette page : un <strong>compteur d'usage anonyme</strong> (un simple nombre, désactivable), et le rapport que <strong>vous</strong> envoyez vous-même via « Signaler une erreur ». Cette page liste ce qui est envoyé, ce qui ne l'est pas, et combien de temps c'est gardé.
         </p>
 
         <h2 data-i18n="h_collected">Ce qui est envoyé quand vous cliquez sur « Envoyer »</h2>
@@ -55,8 +55,13 @@
           <li data-i18n="n_2">Aucun <strong>identifiant utilisateur</strong> : ni adresse e-mail, ni nom, ni identifiant machine, ni cookie de session.</li>
           <li data-i18n="n_3">Aucun <strong>contenu d'autres documents</strong> ouverts simultanément dans Word.</li>
           <li data-i18n="n_4">Aucune <strong>frappe au clavier</strong> ni <strong>contenu du presse-papier</strong> en arrière-plan. MathCursor ne suit pas votre activité.</li>
-          <li data-i18n="n_5">Aucune <strong>télémétrie</strong> automatique : pas d'envoi en arrière-plan, pas de heartbeat, pas de statistiques d'usage.</li>
+          <li data-i18n="n_5">Aucun <strong>contenu</strong> envoyé automatiquement : ni le texte que vous tapez, ni les formules, ni le presse-papier en arrière-plan. La seule donnée envoyée automatiquement est un compteur anonyme (voir ci-dessous).</li>
         </ul>
+
+        <h2 data-i18n="h_counter">Le compteur d'usage anonyme</h2>
+        <p data-i18n="counter_p">
+          MathCursor envoie une seule statistique automatique : le <strong>nombre de formules que vous convertissez</strong>. C'est un simple compteur, un nombre entier. Il ne contient <strong>aucun texte, aucune formule, aucun identifiant</strong>, rien qui permette de vous reconnaître. Il sert uniquement à savoir si l'outil est utilisé, et vous pouvez le <strong>désactiver</strong> dans les Paramètres de l'add-in (case « Envoyer les statistiques d'usage anonymes »).
+        </p>
 
         <h2 data-i18n="h_screenshot">À propos de la capture d'écran</h2>
         <p data-i18n="screenshot_p">
@@ -88,7 +93,7 @@
           Pour demander la suppression d'un rapport que vous avez envoyé, ou pour toute question sur cette page, utilisez le <a href="/contact.html">formulaire de contact</a>. Comme aucun identifiant utilisateur n'est envoyé, précisez la date approximative et le contenu du rapport pour qu'on puisse le retrouver. Les messages envoyés via ce formulaire (votre email et votre texte) sont stockés au même endroit, uniquement pour pouvoir vous répondre, et supprimés sur simple demande.
         </p>
 
-        <p data-i18n="updated"><small>Dernière mise à jour : 2026-04-30.</small></p>
+        <p data-i18n="updated"><small>Dernière mise à jour : 2026-07-02.</small></p>
       </div>
     </section>
 
@@ -96,7 +101,7 @@
 
   <footer class="site-footer">
     <div class="container">
-      <div data-i18n="foot_copy">MathCursor · 100 % local, sans tracking, sans compte</div>
+      <div data-i18n="foot_copy">MathCursor · 100 % local, sans compte</div>
       <nav>
         <a href="/" data-i18n="foot_home">Accueil</a>
         <a href="/contact.html">Contact</a>
@@ -115,7 +120,7 @@
         nav_downloads: "Downloads",
 
         h1: "Privacy",
-        intro: "MathCursor is designed to stay off-cloud by default. The only time data leaves your computer is when <strong>you</strong> click \"Send\" in the \"Report an issue\" window. This page lists what is sent, what is not, and how long it is kept.",
+        intro: "MathCursor is designed to stay off-cloud by default: your documents never leave your computer. Only two pieces of data leave the machine, both described on this page: an <strong>anonymous usage counter</strong> (a plain number, can be turned off), and the report <strong>you</strong> send yourself via \"Report an issue\". This page lists what is sent, what is not, and how long it is kept.",
 
         h_collected: "What is sent when you click \"Send\"",
         c_1: "Your <strong>latest action</strong> in MathCursor: what you typed, what the add-in proposed in the popup, and what was (or would be) inserted in Word.",
@@ -130,7 +135,10 @@
         n_2: "No <strong>user identifier</strong>: no email, no name, no machine ID, no session cookie.",
         n_3: "No <strong>content from other documents</strong> open at the same time in Word.",
         n_4: "No <strong>keystrokes</strong> nor <strong>clipboard content</strong> in the background. MathCursor doesn't track your activity.",
-        n_5: "No automatic <strong>telemetry</strong>: no background sends, no heartbeat, no usage statistics.",
+        n_5: "No <strong>content</strong> sent automatically: not the text you type, not the formulas, not the clipboard in the background. The only thing sent automatically is an anonymous counter (see below).",
+
+        h_counter: "The anonymous usage counter",
+        counter_p: "MathCursor sends a single automatic statistic: the <strong>number of formulas you convert</strong>. It is a plain integer counter. It contains <strong>no text, no formula, no identifier</strong>, nothing that could identify you. It is only used to know whether the tool is being used, and you can <strong>turn it off</strong> in the add-in Settings (\"Send anonymous usage statistics\" checkbox).",
 
         h_screenshot: "About the screenshot",
         screenshot_p: "The \"Include a screenshot\" box is <strong>ticked by default</strong> but clearly visible before sending. You see the preview in the window. If your document contains anything you'd rather not share (personal notes, drafts, student data), <strong>uncheck the box before sending</strong>.",
@@ -150,9 +158,9 @@
         h_contact: "Contact, deletion, questions",
         contact_p: "To request deletion of a report you sent, or for any question about this page, use the <a href=\"/contact.html\">contact form</a>. Since no user identifier is sent, please give an approximate date and the content of the report so we can find it. Messages sent via this form (your email and your text) are stored in the same place, only so we can reply to you, and deleted on request.",
 
-        updated: "Last updated: 2026-04-30.",
+        updated: "Last updated: 2026-07-02.",
 
-        foot_copy: "MathCursor · 100% local, no tracking, no account",
+        foot_copy: "MathCursor · 100% local, no account",
         foot_home: "Home"
       }
     };
