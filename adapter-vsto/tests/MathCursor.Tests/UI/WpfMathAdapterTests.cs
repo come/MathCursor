@@ -45,6 +45,23 @@ namespace MathCursor.Tests.UI
         public void Plain_latex_unchanged()
             => Assert.Equal("x + 1", WpfMathAdapter.Adapt("x + 1"));
 
+        // ---- \quad / \qquad : WpfMath 2.1 ne les connaît PAS (FormulaControl
+        //      rend son erreur en ROUGE, bug user 2026-07-05). Émis par le moteur
+        //      pour la séparation « (E)\quad équation » (·gap). Dégradés en espaces
+        //      fines \, (supportées). Aperçu seulement ; Word garde le vrai U+2003. ----
+
+        [Fact]
+        public void Quad_is_substituted_no_red_bar()
+        {
+            var s = WpfMathAdapter.Adapt("(E)\\quad ax^{2}+by+c=0");
+            Assert.DoesNotContain("\\quad", s);
+            Assert.Contains("\\,", s);
+        }
+
+        [Fact]
+        public void Qquad_is_substituted()
+            => Assert.DoesNotContain("\\qquad", WpfMathAdapter.Adapt("A\\qquad B"));
+
         // ---- norme : \| → \Vert (WpfMath parse \| mais le rend en barre
         //      SIMPLE ; \Vert rend la double — probes PNG 70/71, user 2026-06-10) ----
 

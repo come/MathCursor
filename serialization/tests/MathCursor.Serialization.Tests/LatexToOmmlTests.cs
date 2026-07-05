@@ -309,6 +309,20 @@ namespace MathCursor.Serialization.Tests
             Assert.Equal(content, AllText(acc.Element(M + "e")));
         }
 
+        // ── Espaces nommés (\quad) ───────────────────────────────────────
+
+        // \quad NE doit PAS ressortir en toutes lettres « quad » (bug user
+        // 2026-07-05 : « (A)quadf(x)=1 » dans Word). Émis par le moteur pour la
+        // séparation « deux propositions » (·gap). Rendu = espace cadratin U+2003.
+        [Fact]
+        public void Quad_rendersSpace_notLiteralWord()
+        {
+            var x = LatexToOmml.Convert("(A)\\quad f(x)=1");
+            var text = AllText(x);
+            Assert.DoesNotContain("quad", text);
+            Assert.Contains(" ", text); // cadratin visible entre (A) et f(x)
+        }
+
         // ── Matrices & binôme ────────────────────────────────────────────
 
         [Fact]

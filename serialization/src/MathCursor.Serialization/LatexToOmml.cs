@@ -179,6 +179,19 @@ namespace MathCursor.Serialization
         {
             switch (cmd)
             {
+                // Espacements NOMMÉS (\quad = 1 cadratin, \qquad = 2) : émettre un
+                // espace cadratin U+2003 (× 2), sinon le default rendrait le nom
+                // « quad » en toutes lettres dans Word. L'espace qui SUIT le nom est
+                // le délimiteur LaTeX (consommé), pas un espace visuel. Utilisé par
+                // le fallback « deux propositions séparées par un espace » (·gap).
+                case "quad":
+                    text.Append(' ');
+                    if (i < s.Length && s[i] == ' ') i++;
+                    return null;
+                case "qquad":
+                    text.Append(' '); text.Append(' ');
+                    if (i < s.Length && s[i] == ' ') i++;
+                    return null;
                 case "frac": case "dfrac": case "tfrac":
                 {
                     var a = ReadArg(s, ref i); var b = ReadArg(s, ref i);

@@ -280,6 +280,14 @@ namespace MathCursor.UI
         // Substitutions simples (ordre important : remplacements longs d'abord).
         private static readonly (string from, string to)[] LiteralSubs = new[]
         {
+            // Espaces nommés \quad / \qquad : WpfMath 2.1 ne les connaît PAS
+            // (FormulaControl rend son erreur interne en ROUGE). Émis par le
+            // moteur pour la séparation « deux propositions » (·gap, ex.
+            // « (E)\quad ax^2+... »). On dégrade en espaces fines \, (supportées,
+            // cf. \bmod ci-dessous) — visuel APERÇU seulement ; Word reçoit le
+            // vrai cadratin U+2003 via LatexToOmml. \qquad avant \quad (ordre).
+            ("\\qquad", "\\,\\,\\,\\,\\,\\,"),
+            ("\\quad", "\\,\\,\\,"),
             // Parallèle penché du moteur forest (AB parallel CD) : géré
             // désormais par MixedLatexRenderer (TextBlock Unicode ⫽). Si on
             // arrive ici avec un \mathbin{/\!/} (cas niché \frac{…}), on
