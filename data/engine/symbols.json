@@ -136,7 +136,8 @@
     "vdots":    { "shape": "atom", "lower": "\\vdots ",    "upper": "\\vdots " },
     "ddots":    { "shape": "atom", "lower": "\\ddots ",    "upper": "\\ddots " },
 
-    "partial": { "shape": "prefix", "arity": 1, "class": "STRONG", "looseness": "APP", "tight": true, "render": "\\partial {0}" },
+    "partial": { "shape": "nary", "arity": 2, "class": "STRONG", "looseness": "APP", "render": "\\frac{\\partial {0}}{\\partial {1}}",
+                 "variants": [ { "arity": 1, "render": "\\partial {0}", "acceptGuard": "tight_body_0" } ] },
     "nabla":   { "shape": "prefix", "arity": 1, "class": "STRONG", "looseness": "APP", "tight": true, "render": "\\nabla {0}" },
     "det":     { "shape": "prefix", "arity": 1, "class": "STRONG", "looseness": "APP", "render": "\\det {0}" },
     "dim":     { "shape": "prefix", "arity": 1, "class": "STRONG", "looseness": "APP", "render": "\\dim {0}" },
