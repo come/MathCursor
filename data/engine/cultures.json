@@ -18,6 +18,7 @@
       "plusminus": "pm", "angle": "hat",
       "gcd": "pgcd", "lcm": "ppcm",
       "integral": "int", "lmt": "lim",
+      "mid": "·mid",
       "@a": "alpha", "@b": "beta", "@g": "gamma", "@d": "delta",
       "@z": "zeta", "@i": "iota", "@k": "kappa", "@l": "lambda",
       "@m": "mu", "@n": "nu", "@x": "xi", "@o": "omega",
@@ -41,8 +42,11 @@
       "rond": "circ", "conj": "bar",
       "module": "abs",
       "plusmoins": "pm",
-      "parmi": "·parmi"
+      "parmi": "·parmi",
+      "sachant": "·mid", "sach": "·mid"
     },
-    "en": {}
+    "en": {
+      "given": "·mid", "giv": "·mid"
+    }
   }
 }
