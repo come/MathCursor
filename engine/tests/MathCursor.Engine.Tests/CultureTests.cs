@@ -81,6 +81,17 @@ public sealed class CultureTests
         Assert.Contains(top, l => l.Contains("\\begin{bmatrix}") && l.Contains("\\end{bmatrix}"));
     }
 
-    // Les cas alias-par-culture, tolérance NBSP/casse et notations (//, (AB))
-    // vivent dans fixtures.json (champ "culture") — cf. politique FixtureTests.
+    // ── proba conditionnelle : isolation par culture (PROPRIÉTÉ) ──────────────
+    // Les cas POSITIFS déterministes (sachant/given/mid → \mid, étiquette (E) →
+    // \quad, produit x b/a → x\frac{b}{a}) vivent dans fixtures.json (rejoués
+    // C#+Rust). Ici on garde la PROPRIÉTÉ d'isolation : un alias d'une langue
+    // n'agit PAS dans l'autre culture (sortie non fixée — matrice littérale).
+
+    [Fact]
+    public void Conditional_AliasesAreCultureScoped()
+    {
+        // « sachant » n'est pas un alias en US, « given » pas en FR : pas de \mid.
+        Assert.DoesNotContain("\\mid", Top("P(A given M)"));
+        Assert.DoesNotContain("\\mid", Top("P(A sachant M)", EngineCulture.Us));
+    }
 }
