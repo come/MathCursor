@@ -73,6 +73,7 @@
     "·div":   { "shape": "infix", "arity": 2, "class": "STRONG", "looseness": "PROD", "render": "{0}\\div {1}" },
     "·colon": { "shape": "infix", "arity": 2, "class": "WEAK", "looseness": "REL", "cut": true, "render": "{0}\\colon {1}" },
     "·mid":   { "shape": "infix", "arity": 2, "class": "WEAK", "looseness": "REL", "cut": true, "render": "{0}\\mid {1}" },
+    "·gap":   { "shape": "infix", "arity": 2, "class": "WEAK", "looseness": "REL", "render": "{0}\\quad {1}" },
 
     "neg": { "shape": "prefix", "arity": 1, "class": "STRONG", "looseness": "APP", "renderHook": "neg" },
     "pos": { "shape": "prefix", "arity": 1, "class": "STRONG", "looseness": "APP", "renderHook": "pos" },

@@ -49,6 +49,10 @@ public sealed class ForestEngine
     private const string Note_ = "expression dense/ambiguë — ajoutez des espaces ou des parenthèses pour préciser.";
 
     private bool _deepNote;
+    // Profondeur d'intérieur de parenthèses (via OnGroup). > 0 → on interdit le
+    // fallback « espace = deux propositions » du parser (sinon « (x 1/2) » lirait
+    // « (x\frac{1}{2}) » par réentrance).
+    private int _groupDepth;
     private readonly EngineCulture _culture;
 
     private ForestEngine(EngineCulture culture) { _culture = culture; }
@@ -67,7 +71,7 @@ public sealed class ForestEngine
     }
 
     private List<Node> ParsesOf(List<Token> toks) =>
-        Forest.Parse(toks, OnGroup, _culture).Where(p => !Score.CrossesCut(p)).ToList();
+        Forest.Parse(toks, OnGroup, _culture, _groupDepth == 0).Where(p => !Score.CrossesCut(p)).ToList();
 
     private Node? BestOf(List<Token> toks)
     {
@@ -223,9 +227,14 @@ public sealed class ForestEngine
     // callback de parsing d'un intérieur de parenthèse : MÊME pipeline (récursif).
     private List<Node> OnGroup(List<Token> interior)
     {
-        var r = Assemble(interior);
-        if (r.Note != null) _deepNote = true;
-        return r.Parses;
+        _groupDepth++;
+        try
+        {
+            var r = Assemble(interior);
+            if (r.Note != null) _deepNote = true;
+            return r.Parses;
+        }
+        finally { _groupDepth--; }
     }
 
     private static List<Node> WindowOf(List<Node> list)
@@ -283,7 +292,7 @@ public sealed class ForestEngine
 
         // 2) N-AIRE en TÊTE : scope toute la suite → PAS de segmentation (forêt entière).
         if (toks.Count > 0 && toks[0].Kind == "nary" && Segment.ChainLen(toks) < Segment.MaxChain)
-            return new Asm(Forest.Parse(toks, OnGroup, _culture).Where(p => !Score.CrossesCut(p)).ToList(), null);
+            return new Asm(Forest.Parse(toks, OnGroup, _culture, _groupDepth == 0).Where(p => !Score.CrossesCut(p)).ToList(), null);
 
         // 3) sinon : segmentation aux signes espacés + repli si trop long.
         var (segs, ops) = Segment.Split(toks);
@@ -292,7 +301,7 @@ public sealed class ForestEngine
         var lists3 = new List<List<Node>>();
         foreach (var seg in segs)
         {
-            if (Segment.ChainLen(seg) < Segment.MaxChain) lists3.Add(Forest.Parse(seg, OnGroup, _culture));
+            if (Segment.ChainLen(seg) < Segment.MaxChain) lists3.Add(Forest.Parse(seg, OnGroup, _culture, _groupDepth == 0));
             else { note3 = Note_; lists3.Add(FoldSmart(seg).Parses); }
         }
         return Recombine(lists3, ops, note3);

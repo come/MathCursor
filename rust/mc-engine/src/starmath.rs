@@ -112,6 +112,7 @@ fn infix_tmpl(sym: &str) -> Option<&'static str> {
         "mod" => "{0} mod {1}", "perp" => "{0} ortho {1}", "circ" => "{0} circ {1}",
         "pm" => "{0} +- {1}", "mp" => "{0} -+ {1}", "parallel" => "{0} parallel {1}",
         "·colon" => "{0} : {1}", "·mid" => "{0} divides {1}",
+        "·gap" => "{0} ~ {1}",
         _ => return None,
     })
 }

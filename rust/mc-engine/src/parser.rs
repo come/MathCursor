@@ -199,6 +199,20 @@ struct Forest<'a> {
     cu: &'a Culture,
     memo: HashMap<(usize, usize), Vec<Node>>,
     end: usize,
+    // fallback « espace = deux propositions » autorisé au vrai top-level seulement
+    // (jamais dans un intérieur de parenthèses via on_group).
+    allow_space_fallback: bool,
+}
+
+// Fraction = infixe division (rendu \frac). Facteur = opérande multipliable :
+// atome nu, OU application d'opérateur (préfixe cos/sin/ln, n-aire int/sum/lim,
+// postfixe n!). Parenthèses gérées par le tier A (étiquette \quad), pas ici.
+fn is_fraction(n: &Node) -> bool {
+    n.ntype == NType::Infix && n.sym.as_deref() == Some("/")
+}
+fn is_factor(n: &Node) -> bool {
+    (n.ntype == NType::Atom && !n.hole)
+        || matches!(n.ntype, NType::Prefix | NType::Nary | NType::Postfix)
 }
 
 impl<'a> Forest<'a> {
@@ -594,6 +608,71 @@ impl<'a> Forest<'a> {
             }
         }
 
+        // FALLBACK « espace séparant deux propositions » — SEULEMENT si l'entrée ENTIÈRE
+        // n'a aucune lecture (vrai fallback) et au vrai top-level (allow_space_fallback :
+        // jamais dans un intérieur de parenthèses via on_group — « (x 1/2) » ne doit PAS
+        // devenir « (x\frac{1}{2}) »).
+        if self.allow_space_fallback && outl.is_empty() && i == 0 && j == toks.len() {
+            // (A) ÉTIQUETTE : groupe parenthésé fermé en tête + espace → (groupe)\quad reste.
+            if head.kind == "lparen" {
+                let close = match_close(toks, i);
+                if close != -1
+                    && (close as usize) < j - 1
+                    && toks[close as usize + 1].space_before
+                    && !is_word_atom_seg(toks, close as usize + 1, j)
+                {
+                    let ls = self.parse_span(i, close as usize + 1);
+                    let rs = self.parse_span(close as usize + 1, j);
+                    for l in &ls {
+                        if l.ntype == NType::Paren {
+                            for rr in &rs {
+                                outl.push(Node {
+                                    ntype: NType::Infix,
+                                    sym: Some("·gap".into()),
+                                    parts: Some(vec![l.clone(), rr.clone()]),
+                                    ..Default::default()
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // (B) PRODUIT fraction × facteur : couper à un espace de profondeur 0 ; si un
+            // côté est une FRACTION et l'autre un FACTEUR (atome / cos / int / sum…), lire
+            // le PRODUIT implicite collé. « 2 x » (aucune fraction) reste erreur.
+            let imul = reg().role["implicit"].clone();
+            let mut depth: i32 = 0;
+            for k in (i + 1)..j {
+                let prev = &toks[k - 1];
+                if prev.kind == "lparen" || prev.kind == "lbrace" {
+                    depth += 1;
+                } else if prev.kind == "rparen" || prev.kind == "rbrace" {
+                    depth -= 1;
+                } else if prev.kind == "bracket" {
+                    depth += if prev.sym.as_deref() == Some("[") { 1 } else { -1 };
+                }
+                if depth != 0 || !toks[k].space_before {
+                    continue;
+                }
+                let ls = self.parse_span(i, k);
+                let rs = self.parse_span(k, j);
+                for l in &ls {
+                    for rr in &rs {
+                        if (is_fraction(l) && is_factor(rr)) || (is_factor(l) && is_fraction(rr)) {
+                            outl.push(Node {
+                                ntype: NType::Infix,
+                                sym: Some(imul.clone()),
+                                implicit: true,
+                                parts: Some(vec![l.clone(), rr.clone()]),
+                                ..Default::default()
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
         let sg = sig_of(toks, i, j);
         for n in &mut outl {
             n.sig = Some(sg.clone());
@@ -838,6 +917,7 @@ pub fn parse(
     toks: &[Token],
     on_group: Option<&dyn Fn(&[Token]) -> Vec<Node>>,
     cu: &Culture,
+    allow_space_fallback: bool,
 ) -> Vec<Node> {
     let end = toks.iter().position(|t| t.virtual_).unwrap_or(toks.len());
     let mut f = Forest {
@@ -846,6 +926,7 @@ pub fn parse(
         cu,
         memo: HashMap::new(),
         end,
+        allow_space_fallback,
     };
     f.parse_span(0, toks.len())
 }

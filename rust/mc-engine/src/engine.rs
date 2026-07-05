@@ -66,11 +66,16 @@ fn cmp_cost(a: f64, b: f64) -> std::cmp::Ordering {
 struct Engine<'a> {
     cu: &'a Culture,
     deep_note: Cell<bool>,
+    // profondeur d'intérieur de parenthèses (via on_group) ; > 0 → fallback
+    // « espace = deux propositions » interdit (anti-réentrance « (x 1/2) »).
+    group_depth: Cell<i32>,
 }
 
 impl<'a> Engine<'a> {
     fn on_group(&self, interior: &[Token]) -> Vec<Node> {
+        self.group_depth.set(self.group_depth.get() + 1);
         let (parses, note) = self.assemble(interior);
+        self.group_depth.set(self.group_depth.get() - 1);
         if note.is_some() {
             self.deep_note.set(true);
         }
@@ -79,7 +84,7 @@ impl<'a> Engine<'a> {
 
     fn forest(&self, toks: &[Token]) -> Vec<Node> {
         let og = |interior: &[Token]| -> Vec<Node> { self.on_group(interior) };
-        parser::parse(toks, Some(&og), self.cu)
+        parser::parse(toks, Some(&og), self.cu, self.group_depth.get() == 0)
     }
 
     fn parses_of(&self, toks: &[Token]) -> Vec<Node> {
@@ -459,6 +464,7 @@ pub fn analyze(src: &str, cu: Option<&Culture>) -> AnalyzeResult {
     let eng = Engine {
         cu: culture,
         deep_note: Cell::new(false),
+        group_depth: Cell::new(0),
     };
     eng.run(src)
 }

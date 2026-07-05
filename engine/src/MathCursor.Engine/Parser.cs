@@ -31,18 +31,24 @@ internal sealed class Forest
     private readonly EngineCulture _culture;
     private readonly Dictionary<string, List<Node>> _memo = new();
     private readonly int _end;
+    // Fallback « espace séparant deux propositions » (étiquette \quad + produit
+    // fraction×scalaire) : autorisé UNIQUEMENT au vrai top-level. Faux quand on
+    // parse un INTÉRIEUR de parenthèses (via OnGroup), sinon « (x 1/2) » lirait
+    // « (x\frac{1}{2}) » par réentrance — ne doit jamais arriver.
+    private readonly bool _allowSpaceFallback;
 
-    private Forest(List<Token> toks, Func<List<Token>, List<Node>>? onGroup, EngineCulture culture)
+    private Forest(List<Token> toks, Func<List<Token>, List<Node>>? onGroup, EngineCulture culture, bool allowSpaceFallback)
     {
         _toks = toks;
         _onGroup = onGroup;
         _culture = culture;
+        _allowSpaceFallback = allowSpaceFallback;
         int vIdx = toks.FindIndex(t => t.Virtual);
         _end = vIdx == -1 ? toks.Count : vIdx;
     }
 
-    public static List<Node> Parse(List<Token> toks, Func<List<Token>, List<Node>>? onGroup, EngineCulture culture)
-        => new Forest(toks, onGroup, culture).ParseSpan(0, toks.Count);
+    public static List<Node> Parse(List<Token> toks, Func<List<Token>, List<Node>>? onGroup, EngineCulture culture, bool allowSpaceFallback = true)
+        => new Forest(toks, onGroup, culture, allowSpaceFallback).ParseSpan(0, toks.Count);
 
     private static Node Hole() => new() { Type = "atom", Sym = "\\square ", Hole = true };
 
@@ -94,6 +100,15 @@ internal sealed class Forest
             if (!char.IsLetter(c)) return false;
         return true;
     }
+
+    // Fraction = infixe division (rendu \frac). Facteur = opérande multipliable :
+    // atome nu (variable/nombre), OU application d'opérateur (préfixe cos/sin/ln,
+    // n-aire int/sum/lim, postfixe n!) — un coefficient fractionnaire devant une
+    // intégrale/fonction est courant. Les parenthèses sont gérées par le tier A
+    // (étiquette \quad), pas ici. Servent au fallback produit fraction×facteur.
+    private static bool IsFraction(Node n) => n.Type == "infix" && n.Sym == "/";
+    private static bool IsFactor(Node n) =>
+        (n.Type == "atom" && !n.Hole) || n.Type is "prefix" or "nary" or "postfix";
 
     private int MatchClose(int i)
     {
@@ -329,6 +344,46 @@ internal sealed class Forest
                 foreach (var l in ParseSpan(i, k))
                     foreach (var r in ParseSpan(k + 1, j))
                         outl.Add(new Node { Type = "infix", Sym = "·mid", Parts = new() { l, r } });
+
+        // FALLBACK « espace séparant deux propositions » — SEULEMENT si l'entrée
+        // ENTIÈRE n'a aucune lecture (vrai fallback, zéro impact sur l'existant) et au
+        // vrai top-level (jamais dans un intérieur de parenthèses : « (x 1/2) » ne doit
+        // PAS devenir « (x\frac{1}{2}) »). Un espace de profondeur 0 a laissé un trou
+        // opératoire (l'espace supprime la jonction implicite du lexer).
+        if (_allowSpaceFallback && outl.Count == 0 && i == 0 && j == _toks.Count)
+        {
+            // (A) ÉTIQUETTE : groupe parenthésé FERMÉ en tête + espace → (groupe)\quad reste.
+            // Garde anti-prose : droite pas un mot nu (« (E) triangle »). Le cas « () » NE
+            // change PAS. « (E)x » collé reste une multiplication (jonction collée).
+            if (head.Kind == "lparen")
+            {
+                int close = MatchClose(i);
+                if (close != -1 && close < j - 1 && _toks[close + 1].SpaceBefore && !IsWordAtomSeg(close + 1, j))
+                    foreach (var lab in ParseSpan(i, close + 1))
+                        if (lab.Type == "paren")
+                            foreach (var body in ParseSpan(close + 1, j))
+                                outl.Add(new Node { Type = "infix", Sym = "·gap", Parts = new() { lab, body } });
+            }
+
+            // (B) PRODUIT fraction × facteur : couper à un espace de profondeur 0 ; si
+            // un côté est une FRACTION et l'autre un FACTEUR (atome, ou application cos/
+            // int/sum…), lire le PRODUIT implicite COLLÉ « x b/a → x\frac{b}{a} »,
+            // « 1/x cos x → \frac{1}{x}\cos(x) ». « 2 x » (aucune fraction) reste erreur ;
+            // fraction × fraction hors scope (le facteur exclut la fraction).
+            int depth = 0;
+            for (int k = i + 1; k < j; k++)
+            {
+                var prev = _toks[k - 1];
+                if (prev.Kind is "lparen" or "lbrace") depth++;
+                else if (prev.Kind is "rparen" or "rbrace") depth--;
+                else if (prev.Kind == "bracket") depth += prev.Sym == "[" ? 1 : -1;
+                if (depth != 0 || !_toks[k].SpaceBefore) continue;
+                foreach (var l in ParseSpan(i, k))
+                    foreach (var r in ParseSpan(k, j))
+                        if ((IsFraction(l) && IsFactor(r)) || (IsFactor(l) && IsFraction(r)))
+                            outl.Add(new Node { Type = "infix", Sym = Vocabulary.Role["implicit"], Implicit = true, Parts = new() { l, r } });
+            }
+        }
 
         if (head.Kind == "prefix")
         {
