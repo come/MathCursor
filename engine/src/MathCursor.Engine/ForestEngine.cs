@@ -269,6 +269,19 @@ public sealed class ForestEngine
         return new Asm(parses, note);
     }
 
+    // Appariement de parenthèses sur une liste de tokens (pour peler l'étiquette
+    // en tête au niveau Assemble, avant la segmentation).
+    private static int MatchCloseTok(List<Token> t, int i)
+    {
+        int d = 0;
+        for (int k = i; k < t.Count; k++)
+        {
+            if (t[k].Kind == "lparen") d++;
+            else if (t[k].Kind == "rparen" && --d == 0) return k;
+        }
+        return -1;
+    }
+
     private Asm Assemble(List<Token> toks)
     {
         // 1) RELATIONS = coupe la plus forte : chaque MEMBRE assemblé à part puis recombiné.
@@ -293,6 +306,23 @@ public sealed class ForestEngine
         // 2) N-AIRE en TÊTE : scope toute la suite → PAS de segmentation (forêt entière).
         if (toks.Count > 0 && toks[0].Kind == "nary" && Segment.ChainLen(toks) < Segment.MaxChain)
             return new Asm(Forest.Parse(toks, OnGroup, _culture, _groupDepth == 0).Where(p => !Score.CrossesCut(p)).ToList(), null);
+
+        // 2.5) ÉTIQUETTE en tête : « (A) <expression> » — peler AVANT la segmentation.
+        // Sinon les « + » espacés coupent « (A) ax2 + bx + c » en segments et l'étiquette
+        // ne coifferait que le 1er terme (« ((A)\quad ax2)+bx+c », bug 2026-07-06). Quand
+        // ça commence par un groupe parenthésé KEEP-ELIGIBLE (nœud « paren » : (A), (E_1)…)
+        // suivi d'un ESPACE, on parse le TOUT d'un bloc → le tier A du parser coiffe le
+        // corps entier. Repli sur la segmentation si le bloc ne se lit pas.
+        if (toks.Count >= 3 && toks[0].Kind == "lparen")
+        {
+            int k = MatchCloseTok(toks, 0);
+            if (k != -1 && k + 1 < toks.Count && toks[k + 1].SpaceBefore
+                && Forest.Parse(toks.GetRange(0, k + 1), OnGroup, _culture, false).Exists(p => p.Type == "paren"))
+            {
+                var whole = ParsesOf(toks);
+                if (whole.Count > 0) return new Asm(whole, null);
+            }
+        }
 
         // 3) sinon : segmentation aux signes espacés + repli si trop long.
         var (segs, ops) = Segment.Split(toks);

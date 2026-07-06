@@ -63,6 +63,22 @@ fn cmp_cost(a: f64, b: f64) -> std::cmp::Ordering {
     a.partial_cmp(&b).unwrap_or(std::cmp::Ordering::Equal)
 }
 
+// Appariement de parenthèses sur une liste de tokens (pelage de l'étiquette en tête).
+fn match_close_tok(toks: &[Token], i: usize) -> Option<usize> {
+    let mut d = 0i32;
+    for (k, t) in toks.iter().enumerate().skip(i) {
+        if t.kind == "lparen" {
+            d += 1;
+        } else if t.kind == "rparen" {
+            d -= 1;
+            if d == 0 {
+                return Some(k);
+            }
+        }
+    }
+    None
+}
+
 struct Engine<'a> {
     cu: &'a Culture,
     deep_note: Cell<bool>,
@@ -285,6 +301,24 @@ impl<'a> Engine<'a> {
         if !toks.is_empty() && toks[0].kind == "nary" && segment::chain_len(toks) < segment::MAX_CHAIN {
             let parses = self.parses_of(toks);
             return (parses, None);
+        }
+
+        // 2.5) ÉTIQUETTE en tête : « (A) <expr> » — peler AVANT la segmentation, sinon les
+        // « + » espacés coupent « (A) ax2 + bx + c » et l'étiquette ne coifferait que le
+        // 1er terme (« ((A)\quad ax2)+bx+c », bug). Groupe parenthésé keep-eligible (nœud
+        // Paren) + espace → on parse le TOUT d'un bloc (tier A coiffe le corps entier).
+        if toks.len() >= 3 && toks[0].kind == "lparen" {
+            if let Some(k) = match_close_tok(toks, 0) {
+                if k + 1 < toks.len()
+                    && toks[k + 1].space_before
+                    && self.forest(&toks[0..k + 1]).iter().any(|p| p.ntype == NType::Paren)
+                {
+                    let whole = self.parses_of(toks);
+                    if !whole.is_empty() {
+                        return (whole, None);
+                    }
+                }
+            }
         }
 
         // 3) segmentation aux signes espacés + repli si trop long

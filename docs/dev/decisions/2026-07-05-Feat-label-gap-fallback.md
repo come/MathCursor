@@ -75,6 +75,13 @@ barre rouge → dégradé en `\,`).
 - `(x+1) y` (parenthèse à intérieur composé, pas un atome-étiquette ni fraction×facteur)
   → **erreur** (ni `\quad` ni produit ; group×scalaire hors scope).
 - WASM rebuild ; **add-in VSTO à rebuild** (les 3 couches sont compilées dedans).
+- **Fix 2026-07-06** : `(A) ax2 + bx + c` (corps avec `+` espacés) rendait
+  `((A)\quad ax^2)+bx+c` — la segmentation aux `+` coupait avant que le tier A voie
+  l'étiquette, qui ne coiffait que le 1er terme. Corrigé en **pelant l'étiquette au
+  niveau `Assemble` avant la segmentation** (C# `ForestEngine` + Rust `engine.rs`) :
+  un groupe parenthésé keep-eligible + espace en tête → le TOUT est parsé d'un bloc
+  (le tier A coiffe le corps entier). `(A) ax2 + bx + c` → `(A)\quad ax^{2}+bx+c`.
+  Fixtures `(A) ax2 + bx + c` / `(A) x + 1` ajoutées (gate 484 → 486).
 
 ## Validation
 
