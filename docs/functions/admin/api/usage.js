@@ -16,13 +16,18 @@
  * Cf. ADR 2026-06-18-Feat-usage-counter-telemetry.md.
  */
 
-const CACHE_SECONDS = 60;
+const CACHE_SECONDS = 300;   // 5 min : réduit la fréquence de recalcul (cf. incident 429)
 const WINDOW_DAYS = 30;
+// Plafond de lectures d'objets par calcul, pour rester sous la limite de
+// sous-requêtes du worker (1000/invocation). Au-delà, on plafonne et on
+// signale `truncated` (le total est alors sous-évalué — le vrai fix = agrégation,
+// cf. dette notée pour la migration Analytics Engine).
+const MAX_OBJECT_READS = 800;
 
 export async function onRequestGet({ env, request }) {
-  if (!env.CLOUDFLARE_API_TOKEN_READ || !env.CLOUDFLARE_ACCOUNT_ID) {
-    return jsonError('CLOUDFLARE_API_TOKEN_READ ou CLOUDFLARE_ACCOUNT_ID non configuré côté Pages.', 503);
-  }
+  // Depuis l'incident 429 (2026-08-16) on n'utilise PLUS l'API REST
+  // api.cloudflare.com (rate-limitée au niveau du compte) : seul le binding R2
+  // REPORTS_BUCKET est requis.
   if (!env.REPORTS_BUCKET) {
     return jsonError('REPORTS_BUCKET non bindé côté Pages.', 503);
   }
@@ -30,83 +35,103 @@ export async function onRequestGet({ env, request }) {
   const cacheKey = new Request('https://internal-cache/admin/usage', { method: 'GET' });
   const cache = caches.default;
   const force = new URL(request.url).searchParams.get('refresh') === '1';
+
+  // Filet global : toute exception (dont `caches.default` / cache.match /
+  // cache.put, hors du try du listing) doit devenir un JSON 502 lisible et
+  // JAMAIS la page « Bad gateway / Host: Error » opaque de Cloudflare.
+  // Cf. incident 2026-08-16. Voir jumeau dans admin/api/stats.js.
+  try {
+    return await handleUsage({ env, cache, cacheKey, force });
+  } catch (e) {
+    console.error('[usage] interne:', e && e.stack ? e.stack : String(e));
+    return jsonError(`Erreur interne usage : ${e && e.message ? e.message : e}`, 502);
+  }
+}
+
+async function handleUsage({ env, cache, cacheKey, force }) {
+  // Lecture cache non-fatale.
   if (!force) {
-    const hit = await cache.match(cacheKey);
+    let hit = null;
+    try { hit = await cache.match(cacheKey); } catch { /* cache indispo : on recalcule */ }
     if (hit) return hit;
   }
 
-  let objects;
-  try {
-    objects = await listAllObjects(env);
-  } catch (e) {
-    return jsonError(`Listing R2 inaccessible : ${e.message}`, 502);
-  }
-
-  const jsonObjects = objects.filter(o => o.key.endsWith('.json'));
-
-  // Somme des `count` par jour. La clé porte déjà la date (usage/<date>/<id>),
-  // donc on agrège sans avoir à parser received_at, mais on lit le JSON pour
-  // récupérer la valeur du compteur (et ignorer les objets illisibles).
+  // Listing via le BINDING R2 (env.REPORTS_BUCKET.list), PAS l'API REST
+  // api.cloudflare.com : le binding n'est pas soumis à la rate-limit compte qui
+  // a causé l'incident 429 du 2026-08-16. On ne parcourt que les préfixes des
+  // 30 derniers jours (usage/<date>/) — la fenêtre affichée — et on borne le
+  // nombre de lectures d'objets à MAX_OBJECT_READS pour rester sous le plafond
+  // de sous-requêtes du worker.
+  const windowDates = lastNDates(WINDOW_DAYS);   // ["YYYY-MM-DD", ...] ASC
   const byDate = new Map();
-  let total = 0;
   let batches = 0;
-  await Promise.all(jsonObjects.map(async obj => {
-    const dateKey = dateFromKey(obj.key);
-    try {
-      const r2obj = await env.REPORTS_BUCKET.get(obj.key);
-      if (!r2obj) return;
-      const data = JSON.parse(await r2obj.text());
-      const count = Number(data.count);
-      if (!Number.isFinite(count) || count <= 0) return;
-      total += count;
-      batches += 1;
-      if (dateKey) byDate.set(dateKey, (byDate.get(dateKey) || 0) + count);
-    } catch { /* objet illisible : ignoré */ }
-  }));
+  let truncated = false;
+
+  try {
+    // 1) Collecte des clés de la fenêtre (borne dure MAX_OBJECT_READS).
+    const keysByDate = [];
+    for (const date of windowDates) {
+      let cursor;
+      do {
+        const listing = await env.REPORTS_BUCKET.list({ prefix: `usage/${date}/`, cursor, limit: 1000 });
+        for (const obj of listing.objects) {
+          if (!obj.key.endsWith('.json')) continue;
+          if (keysByDate.length >= MAX_OBJECT_READS) { truncated = true; break; }
+          keysByDate.push({ key: obj.key, date });
+        }
+        cursor = (!truncated && listing.truncated) ? listing.cursor : undefined;
+      } while (cursor);
+      if (truncated) break;
+    }
+
+    // 2) Lecture concurrente des `count` (objets illisibles ignorés).
+    await Promise.all(keysByDate.map(async ({ key, date }) => {
+      try {
+        const r2obj = await env.REPORTS_BUCKET.get(key);
+        if (!r2obj) return;
+        const data = JSON.parse(await r2obj.text());
+        const count = Number(data.count);
+        if (!Number.isFinite(count) || count <= 0) return;
+        batches += 1;
+        byDate.set(date, (byDate.get(date) || 0) + count);
+      } catch { /* objet illisible : ignoré */ }
+    }));
+  } catch (e) {
+    console.error('[usage] agrégation R2 échouée:', e && e.stack ? e.stack : String(e));
+    return jsonError(`Agrégation R2 échouée : ${e.message}`, 502);
+  }
+  if (truncated) {
+    console.warn(`[usage] lecture plafonnée à ${MAX_OBJECT_READS} objets sur la fenêtre — total sous-évalué (dette : agrégation).`);
+  }
 
   const byDay = fillMissingDays(byDate, WINDOW_DAYS);
   const totalWindow = byDay.reduce((acc, d) => acc + d.count, 0);
 
   const response = jsonOk({
     generated_at: new Date().toISOString(),
-    total,                 // total tous temps confondus (tous les objets R2)
     total_window: totalWindow, // somme sur la fenêtre affichée (30 j)
     batches,
+    truncated,                 // true si plafonné (total sous-évalué)
     by_day: byDay,
   });
   response.headers.set('Cache-Control', `public, max-age=${CACHE_SECONDS}`);
-  await cache.put(cacheKey, response.clone());
+  // Écriture cache non-fatale (best-effort).
+  try { await cache.put(cacheKey, response.clone()); } catch { /* cache best-effort */ }
   return response;
 }
 
-async function listAllObjects(env) {
-  const accountId = env.CLOUDFLARE_ACCOUNT_ID;
-  const token = env.CLOUDFLARE_API_TOKEN_READ;
-  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/r2/buckets/mathcursor-reports/objects`;
+/** Les N derniers jours au format "YYYY-MM-DD" (UTC), tri ASC. Cadré sur la
+ * même logique que fillMissingDays pour que préfixes listés et jours affichés
+ * coïncident. */
+function lastNDates(nDays) {
   const out = [];
-  let cursor = '';
-  while (true) {
-    const params = new URLSearchParams({ per_page: '1000', prefix: 'usage/' });
-    if (cursor) params.set('cursor', cursor);
-    const resp = await fetch(`${url}?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!resp.ok) {
-      throw new Error(`R2 list API failed: ${resp.status} ${await resp.text()}`);
-    }
-    const data = await resp.json();
-    if (!data.success) throw new Error(`R2 list API not success: ${JSON.stringify(data.errors)}`);
-    for (const o of (data.result || [])) out.push(o);
-    cursor = ((data.result_info || {}).cursor) || '';
-    if (!cursor) break;
+  const today = new Date();
+  for (let i = nDays - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setUTCDate(d.getUTCDate() - i);
+    out.push(d.toISOString().slice(0, 10));
   }
   return out;
-}
-
-/** usage/2026-06-18/<uuid>.json → "2026-06-18" */
-function dateFromKey(key) {
-  const m = key.match(/^usage\/(\d{4}-\d{2}-\d{2})\//);
-  return m ? m[1] : null;
 }
 
 /**

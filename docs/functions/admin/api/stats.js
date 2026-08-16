@@ -16,7 +16,7 @@
  *   double1 = taille fichier, index1 = filename.
  */
 
-const CACHE_SECONDS = 60;
+const CACHE_SECONDS = 300;   // 5 min : limite la fréquence des 7 requêtes AE (cf. incident 429 du 2026-08-16)
 
 /**
  * Heuristique « bot » — expression SQL booléenne TRUE pour une ligne de
@@ -79,50 +79,88 @@ export async function onRequestGet({ env, request }) {
   const cacheKey = new Request(`https://internal-cache/admin/stats?nobots=${nobots ? 1 : 0}`, { method: 'GET' });
   const cache = caches.default;
   const force = url.searchParams.get('refresh') === '1';
+
+  // Filet global : TOUTE exception (y compris `caches.default` /
+  // cache.match / cache.put, hors du try des queries) doit devenir un JSON
+  // 502 lisible et JAMAIS la page « Bad gateway / Host: Error » opaque de
+  // Cloudflare — sinon le dashboard n'a aucun moyen de savoir ce qui a
+  // cassé. Cf. incident 2026-08-16 (les 2 endpoints admin tombaient sur la
+  // page CF générique, symptôme d'un crash worker sur les lignes cache).
+  try {
+    return await handleStats({ env, cache, cacheKey, force, bf, nobots });
+  } catch (e) {
+    console.error('[stats] interne:', e && e.stack ? e.stack : String(e));
+    return jsonError(`Erreur interne stats : ${e && e.message ? e.message : e}`, 502);
+  }
+}
+
+async function handleStats({ env, cache, cacheKey, force, bf, nobots }) {
+  // Clé du « dernier bon résultat connu » (TTL long) : filet servi si AE 429.
+  const lastGoodKey = new Request(`https://internal-cache/admin/stats-lastgood?nobots=${nobots ? 1 : 0}`, { method: 'GET' });
+
+  // Lecture cache non-fatale : un hoquet de la Cache API ne doit pas faire
+  // tomber l'endpoint, on dégrade en « pas de cache ».
   if (!force) {
-    const hit = await cache.match(cacheKey);
+    let hit = null;
+    try { hit = await cache.match(cacheKey); } catch { /* cache indispo : on recalcule */ }
     if (hit) return hit;
   }
 
-  // Lance les queries en parallèle. try/catch obligatoire : sans lui, un
-  // runSql qui throw (token expiré, AE down) remonte en exception worker
-  // → page d'erreur Cloudflare 1101 illisible côté dashboard.
-  let total, versions, countries, days, referers, recent, botTypes;
-  try {
-    [total, versions, countries, days, referers, recent, botTypes] = await Promise.all([
-    runSql(env, `SELECT count() AS total FROM mathcursor_downloads
-                 WHERE timestamp > NOW() - INTERVAL '30' DAY${bf}`),
-    runSql(env, `SELECT blob1 AS file, count() AS downloads
+  // Requêtes AE EN SÉRIE (pas Promise.all) : 7 requêtes concurrentes tripaient
+  // une limite de burst/concurrence d'Analytics Engine → 429 « Rate limited »
+  // (incident 2026-08-16). En série, chaque requête est isolée. try/catch
+  // obligatoire : un runSql qui throw remonterait en page d'erreur CF illisible.
+  const queries = [
+    `SELECT count() AS total FROM mathcursor_downloads
+                 WHERE timestamp > NOW() - INTERVAL '30' DAY${bf}`,
+    `SELECT blob1 AS file, count() AS downloads
                  FROM mathcursor_downloads
                  WHERE timestamp > NOW() - INTERVAL '30' DAY${bf}
-                 GROUP BY file ORDER BY downloads DESC LIMIT 20`),
-    runSql(env, `SELECT blob3 AS country, count() AS downloads
+                 GROUP BY file ORDER BY downloads DESC LIMIT 20`,
+    `SELECT blob3 AS country, count() AS downloads
                  FROM mathcursor_downloads
                  WHERE timestamp > NOW() - INTERVAL '30' DAY${bf}
-                 GROUP BY country ORDER BY downloads DESC LIMIT 30`),
-    runSql(env, `SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day,
+                 GROUP BY country ORDER BY downloads DESC LIMIT 30`,
+    `SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day,
                         count() AS downloads
                  FROM mathcursor_downloads
                  WHERE timestamp > NOW() - INTERVAL '30' DAY${bf}
-                 GROUP BY day ORDER BY day`),
-    runSql(env, `SELECT blob6 AS referer, count() AS hits
+                 GROUP BY day ORDER BY day`,
+    `SELECT blob6 AS referer, count() AS hits
                  FROM mathcursor_downloads
                  WHERE blob6 != '' AND timestamp > NOW() - INTERVAL '30' DAY${bf}
-                 GROUP BY referer ORDER BY hits DESC LIMIT 20`),
+                 GROUP BY referer ORDER BY hits DESC LIMIT 20`,
     // Derniers événements bruts (pas d'agrégation) — pour voir qui a DL quoi
-    runSql(env, `SELECT timestamp, blob1 AS file, blob3 AS country,
+    `SELECT timestamp, blob1 AS file, blob3 AS country,
                         blob4 AS colo, blob5 AS user_agent
                  FROM mathcursor_downloads
                  WHERE timestamp > NOW() - INTERVAL '30' DAY${bf}
-                 ORDER BY timestamp DESC LIMIT 10`),
+                 ORDER BY timestamp DESC LIMIT 10`,
     // Bots écartés sur la fenêtre, ventilés par type — toujours calculé, pour
     // afficher « N bots masqués » + le détail quel que soit le mode courant.
-    runSql(env, `SELECT ${BOT_CATEGORY} AS type, count() AS hits
+    `SELECT ${BOT_CATEGORY} AS type, count() AS hits
                  FROM mathcursor_downloads
                  WHERE timestamp > NOW() - INTERVAL '30' DAY AND (${BOT_MATCH})
-                 GROUP BY type ORDER BY hits DESC`),
-    ]);
+                 GROUP BY type ORDER BY hits DESC`,
+  ];
+  let total, versions, countries, days, referers, recent, botTypes;
+  try {
+    const r = [];
+    for (const sql of queries) r.push(await runSql(env, sql));
+    [total, versions, countries, days, referers, recent, botTypes] = r;
   } catch (e) {
+    console.error('[stats] AE inaccessible:', e && e.stack ? e.stack : String(e));
+    // Filet « servir périmé » : plutôt qu'un 502 (masqué en page CF opaque),
+    // on renvoie le dernier bon résultat connu s'il existe (marqué stale).
+    try {
+      const stale = await cache.match(lastGoodKey);
+      if (stale) {
+        const h = new Headers(stale.headers);
+        h.set('X-MC-Stale', '1');
+        h.set('Cache-Control', 'public, max-age=60');
+        return new Response(stale.body, { status: 200, headers: h });
+      }
+    } catch { /* pas de dernier-bon dispo */ }
     return jsonError(`Analytics Engine inaccessible : ${e.message}`, 502);
   }
 
@@ -133,15 +171,28 @@ export async function onRequestGet({ env, request }) {
   // début de jour UTC).
   const filledDays = fillMissingDays(days, 30);
 
-  const response = jsonOk({
+  const bodyStr = JSON.stringify({
     generated_at: new Date().toISOString(),
     nobots,
     bots_excluded: (botTypes || []).reduce((acc, r) => acc + (Number(r.hits) || 0), 0),
     bot_types: botTypes || [],
     total, versions, countries, days: filledDays, referers, recent,
   });
-  response.headers.set('Cache-Control', `public, max-age=${CACHE_SECONDS}`);
-  await cache.put(cacheKey, response.clone());
+  const response = new Response(bodyStr, {
+    status: 200,
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${CACHE_SECONDS}` },
+  });
+  // Écriture cache non-fatale : si la Cache API rejette (indispo, réponse
+  // non-cacheable…), on sert quand même la réponse sans planter.
+  try { await cache.put(cacheKey, response.clone()); } catch { /* cache best-effort */ }
+  // Met à jour le « dernier bon connu » (TTL 24 h) pour le filet stale du catch.
+  try {
+    const lastGood = new Response(bodyStr, {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=86400' },
+    });
+    await cache.put(lastGoodKey, lastGood);
+  } catch { /* filet best-effort */ }
   return response;
 }
 
