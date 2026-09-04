@@ -84,6 +84,25 @@ namespace MathCursor.Host.Caret
             }
         }
 
+        /// <summary>
+        /// HWND de la fenêtre ACTIVE du thread d'entrée (= la fenêtre Word
+        /// top-level qui possède le caret). Word étant SDI (une fenêtre
+        /// top-level par document depuis 2013), c'est le bon owner pour une
+        /// popup ancrée au caret. False si indisponible.
+        /// </summary>
+        public static bool TryGetActiveWindowHandle(out IntPtr hwnd)
+        {
+            hwnd = IntPtr.Zero;
+            try
+            {
+                var gti = new GUITHREADINFO { cbSize = (uint)Marshal.SizeOf(typeof(GUITHREADINFO)) };
+                if (!GetGUIThreadInfo(0, ref gti) || gti.hwndActive == IntPtr.Zero) return false;
+                hwnd = gti.hwndActive;
+                return true;
+            }
+            catch { return false; }
+        }
+
         /// <summary>Facteur DPI écran→DIP (96 = 1.0). Exposé pour les callers
         /// qui convertissent d'autres coordonnées pixels (ex. Word GetPoint).</summary>
         internal static double GetDpiScale()

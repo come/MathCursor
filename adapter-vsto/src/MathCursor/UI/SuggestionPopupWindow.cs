@@ -135,10 +135,13 @@ namespace MathCursor.UI
                 var helper = new WindowInteropHelper(this);
                 int exStyle = GetWindowLong(helper.Handle, GWL_EXSTYLE);
                 SetWindowLong(helper.Handle, GWL_EXSTYLE, exStyle | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
-                // Owner = fenêtre principale Word (on tourne DANS Word) :
-                // z-order lié à Word, pas au bureau entier.
-                try { helper.Owner = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle; }
-                catch { }
+                // PAS d'Owner ici : Word est SDI (une fenêtre top-level par
+                // document), et la popup est UNIQUE et réutilisée. Figer l'owner
+                // une fois sur Process.MainWindowHandle (= 1re fenêtre arbitraire)
+                // faisait remonter cette fenêtre-là à chaque affichage en
+                // multi-fenêtres (une fenêtre owned est z-ordonnée au-dessus de
+                // son owner). L'owner est désormais RE-POSÉ à chaque show sur la
+                // fenêtre Word active. Cf. ADR 2026-09-04-Fix-popup-owner-multiwindow.
             };
         }
 
@@ -187,6 +190,11 @@ namespace MathCursor.UI
             UpdateHighlight();
             Left = anchorX;
             Top = anchorYBelow;
+            // Owner = fenêtre Word ACTIVE, re-posé à CHAQUE show (multi-fenêtres,
+            // Word SDI) — cf. ADR 2026-09-04-Fix-popup-owner-multiwindow. Sans
+            // effet visible si l'owner ne change pas (même fenêtre en frappe
+            // continue). À faire AVANT Show pour un z-order correct dès l'apparition.
+            ReparentToActiveWordWindow();
             if (!IsVisible) base.Show();
 
             // Clamp aux bords de l'écran APRÈS layout (SizeToContent → les
@@ -432,8 +440,26 @@ namespace MathCursor.UI
         private static string Truncate(string s, int max)
             => string.IsNullOrEmpty(s) || s.Length <= max ? s : s.Substring(0, max) + "…";
 
-        // --- Win32 : WS_EX_NOACTIVATE / WS_EX_TOOLWINDOW ---
+        /// <summary>Re-parente la popup sur la fenêtre Word active (owner
+        /// z-order). Idempotent si l'owner ne change pas. Cf. ADR
+        /// 2026-09-04-Fix-popup-owner-multiwindow.</summary>
+        private void ReparentToActiveWordWindow()
+        {
+            try
+            {
+                var helper = new WindowInteropHelper(this);
+                IntPtr popup = helper.EnsureHandle();
+                if (popup == IntPtr.Zero) return;
+                if (Host.Caret.CaretScreenPositionReader.TryGetActiveWindowHandle(out IntPtr active)
+                    && active != IntPtr.Zero)
+                    SetOwnerHandle(popup, active);
+            }
+            catch { }
+        }
+
+        // --- Win32 : WS_EX_NOACTIVATE / WS_EX_TOOLWINDOW + owner (GWLP_HWNDPARENT) ---
         private const int GWL_EXSTYLE = -20;
+        private const int GWLP_HWNDPARENT = -8;
         private const int WS_EX_NOACTIVATE = 0x08000000;
         private const int WS_EX_TOOLWINDOW = 0x00000080;
 
@@ -442,5 +468,20 @@ namespace MathCursor.UI
 
         [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+        // Owner = un HANDLE : 64 bits sur Word x64 → l'API `int` tronquerait.
+        // On route vers SetWindowLongPtr (x64) ou SetWindowLong (x86) selon la
+        // bitness du process.
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr")]
+        private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLong")]
+        private static extern int SetWindowLongPtr32(IntPtr hWnd, int nIndex, int dwNewLong);
+
+        private static void SetOwnerHandle(IntPtr hWnd, IntPtr owner)
+        {
+            if (IntPtr.Size == 8) SetWindowLongPtr64(hWnd, GWLP_HWNDPARENT, owner);
+            else SetWindowLongPtr32(hWnd, GWLP_HWNDPARENT, owner.ToInt32());
+        }
     }
 }

@@ -285,6 +285,13 @@ namespace MathCursor
         // si l'opt-out est coupé ou si le compteur est à zéro.
         private void OnWindowDeactivate(Word.Document doc, Word.Window wn)
         {
+            // Masque la popup de suggestion quand Word perd le focus (Alt-Tab,
+            // bascule vers l'autre fenêtre Word) : évite qu'une popup fantôme
+            // réapparaisse mal placée au retour (ADR 2026-09-04-Fix-popup-owner-
+            // multiwindow, option B). Gardé par IsCommitting (un commit ne
+            // change pas de fenêtre, ceinture + bretelles). La popup WPF est
+            // WS_EX_NOACTIVATE → son apparition ne déclenche pas ce deactivate.
+            try { if (_conversion?.IsCommitting != true) _conversion?.HidePopup(); } catch { }
             try { _ = Host.Usage.UsageStatsClient.FlushAsync(); } catch { }
         }
 
