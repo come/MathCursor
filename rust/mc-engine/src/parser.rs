@@ -609,6 +609,10 @@ impl<'a> Forest<'a> {
                 for l in &ls {
                     for rr in &rs {
                         for sym in &syms {
+                            // tight = opérande droite d'un seul morceau (comme un préfixe tight).
+                            if reg().vocab[sym.as_str()].tight && (j - k - 1) != 1 {
+                                continue;
+                            }
                             outl.push(Node {
                                 ntype: NType::Infix,
                                 sym: Some(sym.clone()),

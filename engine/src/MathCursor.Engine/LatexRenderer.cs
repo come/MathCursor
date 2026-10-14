@@ -35,6 +35,9 @@ internal static class LatexRenderer
         string s = Render(c, cu);
         if (parent.Bracketed) return s;
         if (c.Type == "atom" && !parent.Apply) return s;
+        // Grandeur à exposant devant une unité : x^{2}\,\mathrm{m}, 10^{-3}\,\mathrm{ms},
+        // pas (x^{2}) m. Un script atomique se lit d'un bloc (cf. Score.Inversions).
+        if (parent.UnitOp && Score.AtomicScript(c)) return s;
         bool selfGrouped = c.Sym != null && Vocabulary.Vocab.TryGetValue(c.Sym, out var cv) && cv.Bracketed;
         if ((c.Grouped && !selfGrouped) ||
             (c.Type == "infix" && Vocabulary.Vocab[c.Sym!].Looseness > parent.Looseness))

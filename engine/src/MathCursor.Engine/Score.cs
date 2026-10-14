@@ -70,7 +70,9 @@ internal static class Score
         var d = Decl(n);
         foreach (var c in Parts(n))
         {
-            if (c.Type != "atom" && d != null && Loose(n) < Loose(c)) inv++;
+            // Devant une unité, un script atomique (x² m, 10⁻³ ms) n'est pas une
+            // inversion : il se lit d'un bloc (cf. LatexRenderer.Child).
+            if (c.Type != "atom" && d != null && Loose(n) < Loose(c) && !(d.UnitOp && AtomicScript(c))) inv++;
             inv += Inversions(c);
         }
         return inv;
@@ -82,17 +84,23 @@ internal static class Score
         return true;
     }
 
-    // Script à opérandes atomiques (x², u_n) : une lettre habillée.
-    private static bool AtomicScript(Node n) =>
-        Decl(n) is { Sup: true } or { Sub: true } && AllAtomParts(n);
+    // Script à opérandes atomiques (x², u_n, 10⁻³ tight) : une lettre habillée,
+    // visuellement d'un seul bloc.
+    internal static bool AtomicScript(Node n) =>
+        Decl(n) is { Sup: true } or { Sub: true } or { Tight: true } && AllAtomParts(n);
 
     // Les décorations TIGHT (bar/vec/hat : opérande d'un seul morceau) sont
     // visuellement atomiques — \bar{z} est une lettre décorée, pas une
     // imbrication : elles ne déclenchent pas la pénalité de nesting (sinon
     // « abs z-conjz » perdait la lecture large \left|z-\bar{z}\right| que
     // « abs z+1 » propose).
+    // Grandeur à exposant (10⁻³ ms, x² m) : la puissance et son unité forment un
+    // seul bloc — pas une imbrication (sinon 2,5×10⁻³ ms passait derrière la
+    // soustraction, ADR 2026-10-14-Feat-scientific-notation-linear-minus).
     private static bool NestStrong(Node n) =>
-        IsStrong(n) && !n.Implicit && Decl(n) is not { Tight: true };
+        IsStrong(n) && !n.Implicit && Decl(n) is not { Tight: true } && !ScriptQuantity(n);
+    private static bool ScriptQuantity(Node n) =>
+        Decl(n) is { UnitOp: true } && Parts(n) is { Count: > 0 } p && AtomicScript(p[0]);
     // inBrackets : sous un conteneur Bracketed (fraction…), un script
     // atomique est aplati par les accolades — x² n'y est pas une imbrication
     // (sinon « 1/x+x2 » perd \frac{1}{x+x^2}). HORS conteneur bracketed

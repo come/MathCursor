@@ -32,4 +32,21 @@ public static class ScriptMarkers
     public const char SupClose = '';
 
     public static bool IsMarker(char c) => c >= SubOpen && c <= SupClose;
+
+    // Caractères exposant / indice Unicode (², ⁻¹, ₂ — touche ² AZERTY, H₂O) :
+    // MÊME sens qu'une mise en forme Word → même chemin que les marqueurs
+    // (ADR 2026-10-14-Feat-unicode-greek-micro-symbols). Aligné par index sur Plain.
+    private const string SupChars = "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿ";
+    private const string SubChars = "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₙ";
+    private const string Plain    = "0123456789+-=()n";
+
+    /// <summary>Caractère exposant/indice Unicode → (indice ?, caractère simple).</summary>
+    public static bool TryScriptChar(char c, out bool sub, out char plain)
+    {
+        int k = SupChars.IndexOf(c);
+        sub = k < 0;
+        if (k < 0) k = SubChars.IndexOf(c);
+        plain = k < 0 ? '\0' : Plain[k];
+        return k >= 0;
+    }
 }

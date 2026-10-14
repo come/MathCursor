@@ -81,7 +81,10 @@ fn inversions(n: &Node) -> i32 {
     let has_decl = decl(n).is_some();
     let ln = loose_node(n);
     for c in n.effective_parts() {
-        if c.ntype != NType::Atom && has_decl && ln < loose_node(c) {
+        // Devant une unité, un script atomique (x² m, 10⁻³ ms) n'est pas une
+        // inversion : il se lit d'un bloc (cf. render::child).
+        let unit_script = decl(n).map(|d| d.unit_op).unwrap_or(false) && atomic_script(c);
+        if c.ntype != NType::Atom && has_decl && ln < loose_node(c) && !unit_script {
             inv += 1;
         }
         inv += inversions(c);
@@ -92,11 +95,18 @@ fn inversions(n: &Node) -> i32 {
 fn all_atom_parts(n: &Node) -> bool {
     n.effective_parts().iter().all(|c| c.ntype == NType::Atom)
 }
-fn atomic_script(n: &Node) -> bool {
-    decl(n).map(|d| (d.sup || d.sub) && all_atom_parts(n)).unwrap_or(false)
+/// Script à opérandes atomiques (x², u_n, 10⁻³ tight) : visuellement d'un seul bloc.
+pub(crate) fn atomic_script(n: &Node) -> bool {
+    decl(n).map(|d| (d.sup || d.sub || d.tight) && all_atom_parts(n)).unwrap_or(false)
 }
+// Grandeur à exposant (10⁻³ ms, x² m) : la puissance et son unité forment un
+// seul bloc — pas une imbrication. Miroir C# ScriptQuantity.
 fn nest_strong(n: &Node) -> bool {
-    is_strong(n) && !n.implicit && !decl(n).map(|d| d.tight).unwrap_or(false)
+    is_strong(n) && !n.implicit && !decl(n).map(|d| d.tight).unwrap_or(false) && !script_quantity(n)
+}
+fn script_quantity(n: &Node) -> bool {
+    decl(n).map(|d| d.unit_op).unwrap_or(false)
+        && n.effective_parts().first().map(|p| atomic_script(p)).unwrap_or(false)
 }
 fn contains_nest(n: &Node, in_brackets: bool) -> bool {
     if n.ntype == NType::Atom {

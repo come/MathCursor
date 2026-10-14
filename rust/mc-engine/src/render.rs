@@ -46,6 +46,11 @@ fn child(c: &Node, parent: &VocabEntry, cu: &Culture) -> String {
     if c.ntype == NType::Atom && !parent.apply {
         return s;
     }
+    // Grandeur à exposant devant une unité : x^{2}\,\mathrm{m}, pas (x^{2}) m.
+    // Un script atomique se lit d'un bloc (cf. score::inversions).
+    if parent.unit_op && crate::score::atomic_script(c) {
+        return s;
+    }
     let self_grouped = c
         .sym
         .as_deref()

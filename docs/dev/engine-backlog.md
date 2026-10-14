@@ -8,6 +8,11 @@ ADR + plan (`/mathcursor-plan`) au moment de l'implémentation.
 
 ## TODO
 
+- [x] **[moteur] Unité après une puissance de 10** — ✅ fait 2026-10-14 (ADR
+  `2026-10-14-Feat-scientific-notation-linear-minus`, extension 1) :
+  `3*10^8 m/s` → `3\times 10^{8}\,\mathrm{m/s}`, `3*10-3 ms` →
+  `3\times 10^{-3}\,\mathrm{ms}` en 1er choix, `x2 m` → `x^{2}\,\mathrm{m}`.
+
 - [ ] **[adapter VSTO — mineur] Revert d'une équation tapée avec Indice/Exposant
   Word** — la sténo stockée est le texte brut : un revert de `f` + indice `2+1`
   rend `f2+1` sans mise en forme (reconverti → `f^{2}+1`). Piste : stocker la

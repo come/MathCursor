@@ -140,6 +140,48 @@ impl<'a> Lex<'a> {
         is_space(ch(self.src, a)) || is_space(ch(self.src, b))
     }
 
+    /// Notation scientifique linéaire « 2,5×10-3 » : nombre, multiplication
+    /// TAPÉE (l'opérateur qui porte le rôle implicit : * ×), « 10 » collé à
+    /// l'opérateur, chiffre collé derrière. Miroir C# SciContext.
+    fn sci_context(&self, after: usize) -> bool {
+        let n = self.toks.len();
+        if n < 3 || self.saw_space || !is_digit(ch(self.src, after as i64)) {
+            return false;
+        }
+        let ten = &self.toks[n - 1];
+        ten.num && ten.sym.as_deref() == Some("10") && self.sci_lead(n - 1)
+    }
+
+    /// « nombre × » juste avant l'index end des tokens. Miroir C# SciLead.
+    fn sci_lead(&self, end: usize) -> bool {
+        if end < 2 {
+            return false;
+        }
+        let (mant, times) = (&self.toks[end - 2], &self.toks[end - 1]);
+        mant.num
+            && times.kind == "infix"
+            && !times.implicit
+            && times.sym.as_deref().and_then(|s| reg().vocab.get(s)).map(|e| e.implicit).unwrap_or(false)
+    }
+
+    /// Indice / exposant EXACT : groupe analysé à part puis émis en UN atome
+    /// derrière un _ / ^ sticky (vide = ignoré). Miroir C# EmitScript.
+    fn emit_script(&mut self, is_sub: bool, inner: &str) {
+        let latex = script_group_latex(inner, self.cu);
+        if latex.is_empty() {
+            return;
+        }
+        let role = if is_sub { "sub" } else { "sup" };
+        self.push(Token {
+            kind: "infix".into(),
+            sym: Some(reg().role[role].clone()),
+            sticky: true,
+            hard: true,
+            ..Default::default()
+        });
+        self.push(Token { kind: "atom".into(), sym: Some(latex), ..Default::default() });
+    }
+
     fn push(&mut self, mut t: Token) {
         t.space_before = self.saw_space;
         self.toks.push(t);
@@ -255,24 +297,28 @@ impl<'a> Lex<'a> {
                 let close_ch = if is_sub { SUB_CLOSE } else { SUP_CLOSE };
                 let close = (i + 1..n).find(|&k| src[k] == close_ch);
                 let stop = close.unwrap_or(n);
-                let latex = script_group_latex(&src[i + 1..stop], cu);
+                let inner: String = src[i + 1..stop].iter().collect();
                 i = close.map(|k| k + 1).unwrap_or(n);
-                if latex.is_empty() {
-                    continue;
-                }
-                let role = if is_sub { "sub" } else { "sup" };
-                self.push(Token {
-                    kind: "infix".into(),
-                    sym: Some(r.role[role].clone()),
-                    sticky: true,
-                    hard: true,
-                    ..Default::default()
-                });
-                self.push(Token { kind: "atom".into(), sym: Some(latex), ..Default::default() });
+                self.emit_script(is_sub, &inner);
                 continue;
             }
             if is_script_marker(c) {
                 i += 1;
+                continue;
+            }
+            // Run de caractères exposant/indice Unicode (x², x⁻¹, H₂O) = même groupe exact.
+            if let Some((is_sub, _)) = script_char(c) {
+                let mut inner = String::new();
+                while i < n {
+                    match script_char(src[i]) {
+                        Some((s2, p)) if s2 == is_sub => {
+                            inner.push(p);
+                            i += 1;
+                        }
+                        _ => break,
+                    }
+                }
+                self.emit_script(is_sub, &inner);
                 continue;
             }
             if c == '(' {
@@ -444,10 +490,12 @@ impl<'a> Lex<'a> {
                     i += 1;
                 }
                 let cn = ch(src, i as i64);
+                let mut integer = true;
                 if cu.decimals_in.contains(&cn)
                     && !(cn == ',' && brc > 0)
                     && is_digit(ch(src, i as i64 + 1))
                 {
+                    integer = false;
                     i += 1;
                     s.push_str(&cu.decimal_tex);
                     while i < n && is_digit(src[i]) {
@@ -455,7 +503,14 @@ impl<'a> Lex<'a> {
                         i += 1;
                     }
                 }
-                self.push(Token { kind: "atom".into(), sym: Some(s), num: true, ..Default::default() });
+                // « 2,5×103 » : 103 se lit AUSSI 10³ (notation scientifique sans
+                // exposant). Le nombre reste la 1re lecture. Miroir C#.
+                if s.len() >= 3 && s.starts_with("10") && !s[2..].starts_with('0') && integer && self.sci_lead(self.toks.len()) {
+                    let pow = format!("10^{{{}}}", &s[2..]);
+                    self.push(Token { kind: "atom".into(), syms: Some(vec![s, pow]), num: true, ..Default::default() });
+                } else {
+                    self.push(Token { kind: "atom".into(), sym: Some(s), num: true, ..Default::default() });
+                }
                 continue;
             }
 
@@ -471,8 +526,16 @@ impl<'a> Lex<'a> {
                     None => continue,
                 };
                 let shape = v.shape.as_deref();
-                if !matches!(shape, Some("infix") | Some("postfix") | Some("atom")) {
+                if !matches!(shape, Some("infix") | Some("postfix") | Some("atom") | Some("prefix")) {
                     continue;
+                }
+                // symbole-préfixe (« √ ») : comme un mot-préfixe (sqrt).
+                if shape == Some("prefix") {
+                    let sp = self.spaced(i as i64 - 1, (i + length) as i64);
+                    self.push(Token { kind: "prefix".into(), sym: Some(op), spaced: sp, ..Default::default() });
+                    i += length;
+                    matched = true;
+                    break;
                 }
                 if shape == Some("atom") {
                     self.push(Token { kind: "atom".into(), sym: v.lower.clone(), ..Default::default() });
@@ -513,6 +576,13 @@ impl<'a> Lex<'a> {
                     self.push(Token {
                         kind: "infix".into(),
                         syms: v.alts.clone(),
+                        spaced: self.spaced(i as i64 - 1, (i + length) as i64),
+                        ..Default::default()
+                    });
+                } else if v.sci_alt.is_some() && self.sci_context(i + length) {
+                    self.push(Token {
+                        kind: "infix".into(),
+                        syms: Some(vec![v.sci_alt.clone().unwrap(), op]),
                         spaced: self.spaced(i as i64 - 1, (i + length) as i64),
                         ..Default::default()
                     });
@@ -568,10 +638,25 @@ pub fn is_script_marker(c: char) -> bool {
     (SUB_OPEN..=SUP_CLOSE).contains(&c)
 }
 
+// Caractères exposant / indice Unicode (², ⁻¹, ₂) : même sens qu'une mise en
+// forme Word → même chemin que les marqueurs. Miroir C# ScriptMarkers.TryScriptChar.
+const SUP_CHARS: &str = "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿ";
+const SUB_CHARS: &str = "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₙ";
+const PLAIN_CHARS: &str = "0123456789+-=()n";
+
+/// Caractère exposant/indice Unicode → (indice ?, caractère simple).
+pub fn script_char(c: char) -> Option<(bool, char)> {
+    let plain = |k: usize| PLAIN_CHARS.chars().nth(k).unwrap();
+    if let Some(k) = SUP_CHARS.chars().position(|x| x == c) {
+        return Some((false, plain(k)));
+    }
+    SUB_CHARS.chars().position(|x| x == c).map(|k| (true, plain(k)))
+}
+
 /// Contenu d'un groupe exact → meilleure lecture du moteur (marqueurs internes
 /// retirés) ; illisible → texte brut, vide → "".
-fn script_group_latex(inner: &[char], cu: &Culture) -> String {
-    let text: String = inner.iter().filter(|c| !is_script_marker(**c)).collect();
+fn script_group_latex(inner: &str, cu: &Culture) -> String {
+    let text: String = inner.chars().filter(|c| !is_script_marker(*c)).collect();
     let text = text.trim().to_string();
     if text.is_empty() {
         return text;

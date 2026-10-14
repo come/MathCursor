@@ -27,6 +27,10 @@
     "tr/min": "tr/min",
     "kg/m3": "kg/m^3",
     "g/mol": "g/mol",
-    "mol/L": "mol/L"
+    "mol/L": "mol/L",
+    "µm": "\\mu m", "µs": "\\mu s", "µg": "\\mu g", "µL": "\\mu L", "µA": "\\mu A",
+    "µV": "\\mu V", "µF": "\\mu F", "µW": "\\mu W", "µJ": "\\mu J", "µmol": "\\mu mol",
+    "μm": "\\mu m", "μs": "\\mu s", "μg": "\\mu g", "μL": "\\mu L", "μA": "\\mu A",
+    "μV": "\\mu V", "μF": "\\mu F", "μW": "\\mu W", "μJ": "\\mu J", "μmol": "\\mu mol"
   }
 }

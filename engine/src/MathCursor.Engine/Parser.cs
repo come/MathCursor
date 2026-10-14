@@ -455,6 +455,8 @@ internal sealed class Forest
                 foreach (var l in ParseSpan(i, k))
                     foreach (var r in ParseSpan(k + 1, j))
                         foreach (var sym in syms)
+                            // tight = opérande droite d'un seul morceau (comme un préfixe tight).
+                            if (!Vocabulary.Vocab[sym].Tight || j - k - 1 == 1)
                             outl.Add(new Node { Type = "infix", Sym = sym, Spaced = _toks[k].Spaced, Implicit = _toks[k].Implicit, Choice = choice, Parts = new() { l, r } });
             }
 

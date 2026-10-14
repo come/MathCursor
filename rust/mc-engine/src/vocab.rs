@@ -73,6 +73,7 @@ pub struct VocabEntry {
     pub apply: bool,
     pub unary: Option<String>,
     pub post_sign: Option<String>,
+    pub sci_alt: Option<String>,
     pub lower: Option<String>,
     pub upper: Option<String>,
     pub alts: Option<Vec<String>>,
@@ -103,6 +104,7 @@ impl Default for VocabEntry {
             apply: false,
             unary: None,
             post_sign: None,
+            sci_alt: None,
             lower: None,
             upper: None,
             alts: None,
@@ -303,6 +305,9 @@ pub(crate) fn build_entry(j: &Value, loose_map: &HashMap<String, f64>) -> VocabE
     }
     if let Some(s) = j.get("postSign").and_then(|v| v.as_str()) {
         e.post_sign = Some(s.to_string());
+    }
+    if let Some(s) = j.get("sciAlt").and_then(|v| v.as_str()) {
+        e.sci_alt = Some(s.to_string());
     }
     if let Some(s) = j.get("lower").and_then(|v| v.as_str()) {
         e.lower = Some(s.to_string());

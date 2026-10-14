@@ -163,6 +163,36 @@ internal static class Lexer
             return outp;
         }
 
+        // Notation scientifique linéaire « 2,5×10-3 » (ADR 2026-10-14-Feat-
+        // scientific-notation-linear-minus) : nombre, multiplication TAPÉE
+        // (l'opérateur qui porte le rôle implicit : * ×), « 10 » collé à
+        // l'opérateur, chiffre collé derrière.
+        bool SciContext(int after)
+        {
+            int n = toks.Count;
+            if (n < 3 || sawSpace || !IsDigit(Ch(after))) return false;
+            return toks[n - 1] is { Num: true, Sym: "10" } && SciLead(n - 1);
+        }
+
+        // « nombre × » juste avant l'index end des tokens (fin de liste par défaut).
+        bool SciLead(int end)
+        {
+            if (end < 2) return false;
+            Token mant = toks[end - 2], times = toks[end - 1];
+            return mant.Num && times is { Kind: "infix", Implicit: false, Sym: { } ts }
+                && Vocabulary.Vocab.TryGetValue(ts, out var tv) && tv.Implicit;
+        }
+
+        // Indice / exposant EXACT : groupe analysé à part puis émis en UN atome
+        // derrière un _ / ^ sticky (vide = ignoré).
+        void EmitScript(bool sub, string inner)
+        {
+            string latex = ScriptGroupLatex(inner, culture);
+            if (latex.Length == 0) return;
+            Push(new Token { Kind = "infix", Sym = Vocabulary.Role[sub ? "sub" : "sup"], Sticky = true, Hard = true });
+            Push(new Token { Kind = "atom", Sym = latex });
+        }
+
         while (i < src.Length)
         {
             char c = src[i];
@@ -180,14 +210,20 @@ internal static class Lexer
                 bool sub = c == ScriptMarkers.SubOpen;
                 int close = src.IndexOf(sub ? ScriptMarkers.SubClose : ScriptMarkers.SupClose, i + 1);
                 int stop = close < 0 ? src.Length : close;
-                string latex = ScriptGroupLatex(src.Substring(i + 1, stop - i - 1), culture);
+                string inner = src.Substring(i + 1, stop - i - 1);
                 i = close < 0 ? src.Length : close + 1;
-                if (latex.Length == 0) continue;
-                Push(new Token { Kind = "infix", Sym = Vocabulary.Role[sub ? "sub" : "sup"], Sticky = true, Hard = true });
-                Push(new Token { Kind = "atom", Sym = latex });
+                EmitScript(sub, inner);
                 continue;
             }
             if (ScriptMarkers.IsMarker(c)) { i++; continue; }
+            // Run de caractères exposant/indice Unicode (x², x⁻¹, H₂O) = même groupe exact.
+            if (ScriptMarkers.TryScriptChar(c, out bool usub, out _))
+            {
+                var gb = new System.Text.StringBuilder();
+                while (i < src.Length && ScriptMarkers.TryScriptChar(src[i], out bool s2, out char p) && s2 == usub) { gb.Append(p); i++; }
+                EmitScript(usub, gb.ToString());
+                continue;
+            }
             if (c == '(') { Push(new Token { Kind = "lparen" }); i++; continue; }
             if (c == ')') { Push(new Token { Kind = "rparen" }); i++; continue; }
             if (c == '[' || c == ']') { Push(new Token { Kind = "bracket", Sym = c.ToString() }); brk++; i++; continue; }
@@ -292,13 +328,22 @@ internal static class Lexer
             {
                 var sb = new System.Text.StringBuilder();
                 while (i < src.Length && IsDigit(src[i])) sb.Append(src[i++]);
+                bool integer = true;
                 if (Array.IndexOf(culture.DecimalsIn, Ch(i)) >= 0
                     && !(Ch(i) == ',' && brc > 0) && IsDigit(Ch(i + 1)))
                 {
+                    integer = false;
                     i++; sb.Append(culture.DecimalTex);
                     while (i < src.Length && IsDigit(src[i])) sb.Append(src[i++]);
                 }
-                Push(new Token { Kind = "atom", Sym = sb.ToString(), Num = true });
+                string num = sb.ToString();
+                // « 2,5×103 » : 103 se lit AUSSI 10³ (notation scientifique sans
+                // exposant). Le nombre reste la 1re lecture : c'est un vrai nombre.
+                if (num.Length >= 3 && num.StartsWith("10") && num[2] != '0'
+                    && integer && SciLead(toks.Count))
+                    Push(new Token { Kind = "atom", Syms = new List<string> { num, "10^{" + num.Substring(2) + "}" }, Num = true });
+                else
+                    Push(new Token { Kind = "atom", Sym = num, Num = true });
                 continue;
             }
 
@@ -309,11 +354,13 @@ internal static class Lexer
                 if (i + len > src.Length) continue;
                 string op = src.Substring(i, len);
                 if (!Vocabulary.Vocab.TryGetValue(op, out var v)
-                    || (v.Shape != "infix" && v.Shape != "postfix" && v.Shape != "atom")) continue;
+                    || (v.Shape != "infix" && v.Shape != "postfix" && v.Shape != "atom" && v.Shape != "prefix")) continue;
                 // symbole-atome (« ... » 3 chars, « … » autocorrigé par Word →
                 // \ldots) : poussé comme un mot-atome, Sym = LaTeX du Lit.
                 if (v.Shape == "atom") { Push(new Token { Kind = "atom", Sym = v.Lower }); i += len; matched = true; break; }
                 if (v.Shape == "postfix") { Push(new Token { Kind = "postfix", Sym = op }); i += len; matched = true; break; }
+                // symbole-préfixe (« √ ») : comme un mot-préfixe (sqrt).
+                if (v.Shape == "prefix") { Push(new Token { Kind = "prefix", Sym = op, Spaced = Spaced(i - 1, i + len) }); i += len; matched = true; break; }
 
                 var prev = Last();
                 bool binaryPos = prev != null && (prev.Kind is "atom" or "rparen" or "bracket" or "bar" or "postfix");
@@ -328,6 +375,8 @@ internal static class Lexer
                     Push(new Token { Kind = "prefix", Sym = v.Unary, Spaced = Spaced(i - 1, i + 1) });
                 else if (v.Alts != null)
                     Push(new Token { Kind = "infix", Syms = v.Alts, Spaced = Spaced(i - 1, i + len) });
+                else if (v.SciAlt != null && SciContext(i + len))
+                    Push(new Token { Kind = "infix", Syms = new List<string> { v.SciAlt, op }, Spaced = Spaced(i - 1, i + len) });
                 else
                     Push(new Token { Kind = "infix", Sym = op, Spaced = Spaced(i - 1, i + len) });
                 i += len; matched = true; break;

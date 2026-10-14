@@ -56,6 +56,7 @@ internal sealed class VocabEntry
     public bool Apply;
     public string? Unary;          // symbole à émettre en position d'opérande
     public string? PostSign;       // LaTeX de l'exposant quand le signe est terminal
+    public string? SciAlt;         // lecture alternative dans « nombre × 10-entier » (notation scientifique)
     public string? Lower;          // atom
     public string? Upper;          // atom
     public List<string>? Alts;     // atom/infix : lectures multiples
@@ -209,6 +210,7 @@ internal static class Vocabulary
         e.Apply = Flag(j, "apply");
         if (j.TryGetValue("unary", out var un)) e.Unary = EngineData.Str(un);
         if (j.TryGetValue("postSign", out var ps)) e.PostSign = EngineData.Str(ps);
+        if (j.TryGetValue("sciAlt", out var sa)) e.SciAlt = EngineData.Str(sa);
         if (j.TryGetValue("lower", out var lw)) e.Lower = EngineData.Str(lw);
         if (j.TryGetValue("upper", out var up)) e.Upper = EngineData.Str(up);
         if (j.TryGetValue("alts", out var al)) e.Alts = StrList(al);
