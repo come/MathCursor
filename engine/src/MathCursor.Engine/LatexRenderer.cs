@@ -35,14 +35,20 @@ internal static class LatexRenderer
         string s = Render(c, cu);
         if (parent.Bracketed) return s;
         if (c.Type == "atom" && !parent.Apply) return s;
-        // fonction indicée/puissance appliquée : f_{n}(x), \sin^{2}(x) — pas (f_{n})(x).
-        if (parent.Apply && c.Type == "infix" && Vocabulary.Vocab[c.Sym!] is { Sub: true } or { Sup: true }) return s;
         bool selfGrouped = c.Sym != null && Vocabulary.Vocab.TryGetValue(c.Sym, out var cv) && cv.Bracketed;
         if ((c.Grouped && !selfGrouped) ||
             (c.Type == "infix" && Vocabulary.Vocab[c.Sym!].Looseness > parent.Looseness))
             return $"({s})";
         return s;
     }
+
+    // Tête d'une application : fonction indicée/puissance non parenthésée par
+    // l'utilisateur → f_{n}(x), \sin^{2}(x), pas (f_{n})(x). L'argument, lui,
+    // passe par Child comme tout opérande.
+    private static string ApplyHead(Node head, VocabEntry apply, EngineCulture cu) =>
+        head.Type == "infix" && !head.Grouped && Vocabulary.Vocab[head.Sym!] is { Sub: true } or { Sup: true }
+            ? Render(head, cu)
+            : Child(head, apply, cu);
 
     public static string Render(Node n, EngineCulture cu)
     {
@@ -78,6 +84,8 @@ internal static class LatexRenderer
         {
             if (d.Sup || d.Sub)
                 return d.Render!(new[] { Child(n.Parts![0], d, cu), Render(n.Parts[1], cu) }, n);
+            if (d.Apply)
+                return d.Render!(new[] { ApplyHead(n.Parts![0], d, cu), Child(n.Parts[1], d, cu) }, n);
             return d.Render!(n.Parts!.Select(c => Child(c, d, cu)).ToList(), n);
         }
         // prefix / nary — les n-aires dispatchent par arité (formes courtes).

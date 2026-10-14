@@ -24,6 +24,16 @@ use crate::node::{NType, Node};
 use crate::reg;
 use crate::vocab::{apply_render, render_for, VocabEntry};
 
+// Tête d'une application : fonction indicée/puissance non parenthésée par
+// l'utilisateur → f_{n}(x), \sin^{2}(x), pas (f_{n})(x). L'argument, lui,
+// passe par child comme tout opérande.
+fn apply_head(head: &Node, apply: &VocabEntry, cu: &Culture) -> String {
+    let script = head.ntype == NType::Infix
+        && !head.grouped
+        && head.sym.as_deref().and_then(|sy| reg().vocab.get(sy)).map(|e| e.sub || e.sup).unwrap_or(false);
+    if script { render(head, cu) } else { child(head, apply, cu) }
+}
+
 fn child(c: &Node, parent: &VocabEntry, cu: &Culture) -> String {
     if c.ntype == NType::Paren {
         let inner = &c.parts.as_ref().unwrap()[0];
@@ -34,13 +44,6 @@ fn child(c: &Node, parent: &VocabEntry, cu: &Culture) -> String {
         return s;
     }
     if c.ntype == NType::Atom && !parent.apply {
-        return s;
-    }
-    // fonction indicée/puissance appliquée : f_{n}(x), \sin^{2}(x) — pas (f_{n})(x).
-    if parent.apply
-        && c.ntype == NType::Infix
-        && c.sym.as_deref().and_then(|sy| reg().vocab.get(sy)).map(|e| e.sub || e.sup).unwrap_or(false)
-    {
         return s;
     }
     let self_grouped = c
@@ -134,6 +137,8 @@ pub fn render(n: &Node, cu: &Culture) -> String {
             if d.shape.as_deref() == Some("infix") {
                 let a: Vec<String> = if d.sup || d.sub {
                     vec![child(&parts[0], d, cu), render(&parts[1], cu)]
+                } else if d.apply {
+                    vec![apply_head(&parts[0], d, cu), child(&parts[1], d, cu)]
                 } else {
                     parts.iter().map(|c| child(c, d, cu)).collect()
                 };
