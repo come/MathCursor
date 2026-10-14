@@ -59,7 +59,7 @@ public sealed class FixtureTests
     public void AllFixturesMatch()
     {
         var fixtures = Load();
-        Assert.Equal(486, fixtures.Count);
+        Assert.Equal(499, fixtures.Count);
 
         var fails = new List<string>();
         int pass = 0;

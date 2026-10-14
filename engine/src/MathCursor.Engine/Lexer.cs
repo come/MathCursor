@@ -171,6 +171,23 @@ internal static class Lexer
             // forall — le mot se résout ensuite par vocab + alias (les noms
             // divergents sont des alias génériques : \infty → inf, etc.).
             if (c == '\\' && IsAlpha(Ch(i + 1))) { i++; continue; }
+
+            // Indice / exposant EXACTS (ScriptMarkers, mise en forme Word) :
+            // groupe analysé à part puis émis en UN atome derrière un _ / ^
+            // sticky. Non fermé = jusqu'à la fin ; orphelin/vide = ignoré.
+            if (c == ScriptMarkers.SubOpen || c == ScriptMarkers.SupOpen)
+            {
+                bool sub = c == ScriptMarkers.SubOpen;
+                int close = src.IndexOf(sub ? ScriptMarkers.SubClose : ScriptMarkers.SupClose, i + 1);
+                int stop = close < 0 ? src.Length : close;
+                string latex = ScriptGroupLatex(src.Substring(i + 1, stop - i - 1), culture);
+                i = close < 0 ? src.Length : close + 1;
+                if (latex.Length == 0) continue;
+                Push(new Token { Kind = "infix", Sym = Vocabulary.Role[sub ? "sub" : "sup"], Sticky = true, Hard = true });
+                Push(new Token { Kind = "atom", Sym = latex });
+                continue;
+            }
+            if (ScriptMarkers.IsMarker(c)) { i++; continue; }
             if (c == '(') { Push(new Token { Kind = "lparen" }); i++; continue; }
             if (c == ')') { Push(new Token { Kind = "rparen" }); i++; continue; }
             if (c == '[' || c == ']') { Push(new Token { Kind = "bracket", Sym = c.ToString() }); brk++; i++; continue; }
@@ -326,6 +343,23 @@ internal static class Lexer
         if (brk % 2 == 1) toks.Add(new Token { Kind = "bracket", Sym = "]", SpaceBefore = false, Virtual = true });
 
         return Juxtapose(toks);
+    }
+
+    // Contenu d'un groupe indice/exposant exact → meilleure lecture du moteur
+    // (marqueurs internes retirés) ; illisible → texte brut, vide → "".
+    private static string ScriptGroupLatex(string inner, EngineCulture culture)
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (char ch in inner) if (!ScriptMarkers.IsMarker(ch)) sb.Append(ch);
+        string text = sb.ToString().Trim();
+        if (text.Length == 0) return "";
+        try
+        {
+            var r = ForestEngine.Analyze(text, culture);
+            if (r.Decision != "erreur" && r.Ranked.Count > 0) return r.Ranked[0].Latex;
+        }
+        catch { }
+        return text;
     }
 
     private static string? Cat(Token? t)

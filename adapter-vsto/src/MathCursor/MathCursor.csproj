@@ -226,6 +226,8 @@
     <Compile Include="Host\Detection\NerInputWindow.cs" />
     <Compile Include="Host\Detection\ParagraphPositionTranslator.cs" />
     <Compile Include="Host\Detection\ZoneEngineText.cs" />
+    <Compile Include="Host\Detection\ScriptMarkup.cs" />
+    <Compile Include="Host\Detection\ScriptFormatReader.cs" />
     <Compile Include="Host\Detection\ZoneRefiner.cs" />
     <Compile Include="Host\Detection\ZoneSpan.cs" />
     <Compile Include="Host\Settings\AppSettings.cs" />

@@ -193,6 +193,20 @@ namespace MathCursor.Host
             return AnalyzeAndShow(zone, silent: true);
         }
 
+        /// <summary>Texte moteur de la zone, avec la mise en forme Indice/Exposant
+        /// de Word traduite en marqueurs (ADR 2026-10-14-Feat-word-subscript-
+        /// superscript-format). Sans mise en forme : <see cref="ZoneSpan.TextForEngine"/>.</summary>
+        private string EngineInputWithScripts(ZoneSpan zone)
+        {
+            Word.Document doc = null;
+            try { if (_app.Documents.Count > 0) doc = _app.ActiveDocument; } catch { }
+            var kinds = ScriptFormatReader.TryRead(doc, zone);
+            if (kinds == null) return zone.TextForEngine;
+            _log($"convert: indice/exposant \"{Preview(zone.Text)}\" masque=\"{new string(kinds.Select(k => k == ScriptKind.Sub ? '_' : k == ScriptKind.Sup ? '^' : '.').ToArray())}\"");
+            return ZoneEngineText.WithTrailingSpaceSignal(
+                ScriptMarkup.Apply(zone.Text, kinds), zone.ParagraphText, zone.StringEnd);
+        }
+
         /// <summary>Moteur forest + affichage popup. Garde la zone si OK.
         /// <paramref name="silent"/> : échec sans StatusBar, popup masquée.</summary>
         private bool AnalyzeAndShow(ZoneSpan zone, bool silent = false)
@@ -204,7 +218,7 @@ namespace MathCursor.Host
             // ne trim pas la fin → l'espace-signal (R*␣) survit dans Rest.
             _pendingSystem = false;
             _pendingChainMatch = null;
-            string engineInput = zone.TextForEngine;
+            string engineInput = EngineInputWithScripts(zone);
             string displayPrefix = "";
 
             // SYSTÈME (modèle matrice, ADR 2026-06-29) : accolade `{` non fermée
@@ -221,8 +235,11 @@ namespace MathCursor.Host
                 if (e2 > s2)
                 {
                     var sysZone = new ZoneSpan(zone.ParagraphAbsStart, s2, e2, para, zone.OMaths);
-                    int bp = RelationLineDetector.FindUnclosedBrace(sysZone.TextForEngine);
-                    if (bp >= 0) return ShowSystem(sysZone, sysZone.TextForEngine, bp, silent);
+                    // Indice/Exposant Word lus sur le ¶ entier (marqueurs hors
+                    // accolades : FindUnclosedBrace et le split `;` les ignorent).
+                    string sysInput = EngineInputWithScripts(sysZone);
+                    int bp = RelationLineDetector.FindUnclosedBrace(sysInput);
+                    if (bp >= 0) return ShowSystem(sysZone, sysInput, bp, silent);
                 }
             }
 
@@ -340,7 +357,7 @@ namespace MathCursor.Host
             _pendingRestCandidates = null;
 
             string sysLatex = Blocks.ChainComposer.ComposeSystemLatex(prefixLatex, rowLatexes);
-            _log($"convert: système, {rowLatexes.Count} ligne(s), préfixe=\"{prefixLatex}\"");
+            _log($"convert: système, {rowLatexes.Count} ligne(s), préfixe=\"{prefixLatex}\" latex=\"{Preview(sysLatex)}\"");
             EnsurePopup();
             var (x, yBelow, yAbove) = ComputeAnchor(zone);
             _zone = zone;

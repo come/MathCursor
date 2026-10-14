@@ -247,6 +247,34 @@ impl<'a> Lex<'a> {
                 i += 1;
                 continue;
             }
+            // Indice / exposant EXACTS (marqueurs, mise en forme Word) : groupe
+            // analysé à part puis émis en UN atome derrière un _ / ^ sticky.
+            // Non fermé = jusqu'à la fin ; orphelin/vide = ignoré. Miroir C#.
+            if c == SUB_OPEN || c == SUP_OPEN {
+                let is_sub = c == SUB_OPEN;
+                let close_ch = if is_sub { SUB_CLOSE } else { SUP_CLOSE };
+                let close = (i + 1..n).find(|&k| src[k] == close_ch);
+                let stop = close.unwrap_or(n);
+                let latex = script_group_latex(&src[i + 1..stop], cu);
+                i = close.map(|k| k + 1).unwrap_or(n);
+                if latex.is_empty() {
+                    continue;
+                }
+                let role = if is_sub { "sub" } else { "sup" };
+                self.push(Token {
+                    kind: "infix".into(),
+                    sym: Some(r.role[role].clone()),
+                    sticky: true,
+                    hard: true,
+                    ..Default::default()
+                });
+                self.push(Token { kind: "atom".into(), sym: Some(latex), ..Default::default() });
+                continue;
+            }
+            if is_script_marker(c) {
+                i += 1;
+                continue;
+            }
             if c == '(' {
                 self.push(Token { kind: "lparen".into(), ..Default::default() });
                 i += 1;
@@ -526,6 +554,35 @@ impl<'a> Lex<'a> {
 
         juxtapose(self.toks)
     }
+}
+
+/// Contrat d'entrée « indice / exposant exacts » (ADR 2026-10-14-Feat-word-
+/// subscript-superscript-format) : marqueurs d'usage privé posés par un hôte
+/// qui connaît la mise en forme. Miroir de `ScriptMarkers` (C#).
+pub const SUB_OPEN: char = '\u{E000}';
+pub const SUB_CLOSE: char = '\u{E001}';
+pub const SUP_OPEN: char = '\u{E002}';
+pub const SUP_CLOSE: char = '\u{E003}';
+
+pub fn is_script_marker(c: char) -> bool {
+    (SUB_OPEN..=SUP_CLOSE).contains(&c)
+}
+
+/// Contenu d'un groupe exact → meilleure lecture du moteur (marqueurs internes
+/// retirés) ; illisible → texte brut, vide → "".
+fn script_group_latex(inner: &[char], cu: &Culture) -> String {
+    let text: String = inner.iter().filter(|c| !is_script_marker(**c)).collect();
+    let text = text.trim().to_string();
+    if text.is_empty() {
+        return text;
+    }
+    let r = crate::engine::analyze(&text, Some(cu));
+    if r.decision != "erreur" {
+        if let Some(c) = r.ranked.first() {
+            return c.latex.clone();
+        }
+    }
+    text
 }
 
 fn cat(t: Option<&Token>) -> Option<&'static str> {

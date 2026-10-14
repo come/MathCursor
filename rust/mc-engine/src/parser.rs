@@ -64,6 +64,19 @@ fn cartesian(lists: &[Vec<Node>]) -> Vec<Vec<Node>> {
     acc
 }
 
+// Base d'un indice/exposant EXACT (marqueurs) : la mise en forme Word s'attache
+// au glyphe précédent → un seul atome, un groupe ( … ), ou une base déjà
+// scriptée exactement (x₁²). Jamais « 2u » ni « a+x ». Miroir de IsScriptBase (C#).
+fn is_script_base(toks: &[Token], a: usize, b: usize) -> bool {
+    if b - a == 1 {
+        return toks[a].kind == "atom";
+    }
+    if toks[a].kind == "lparen" && match_close(toks, a) == (b - 1) as i64 {
+        return true;
+    }
+    b - a >= 3 && toks[b - 2].hard && is_script_base(toks, a, b - 2)
+}
+
 fn match_close(toks: &[Token], i: usize) -> i64 {
     let mut d = 0i32;
     for k in i..toks.len() {
@@ -578,6 +591,9 @@ impl<'a> Forest<'a> {
                     continue;
                 }
                 if toks[k].sticky && (j - k - 1) != 1 {
+                    continue;
+                }
+                if toks[k].hard && k > i && !is_script_base(toks, i, k) {
                     continue;
                 }
                 let syms: Vec<String> = if let Some(s) = &toks[k].syms {

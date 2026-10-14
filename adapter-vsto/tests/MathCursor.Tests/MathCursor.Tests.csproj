@@ -74,6 +74,7 @@
     <Compile Include="..\..\src\MathCursor\Host\AutocorrectNormalizer.cs" Link="adapter-sources\Host\AutocorrectNormalizer.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Detection\NerInputWindow.cs" Link="adapter-sources\Host\Detection\NerInputWindow.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Detection\ZoneEngineText.cs" Link="adapter-sources\Host\Detection\ZoneEngineText.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Detection\ScriptMarkup.cs" Link="adapter-sources\Host\Detection\ScriptMarkup.cs" />
     <Compile Include="..\..\src\MathCursor\Host\Detection\ZoneRefiner.cs" Link="adapter-sources\Host\Detection\ZoneRefiner.cs" />
     <Compile Include="..\..\src\MathCursor\Host\ParagraphTextExtractor.cs" Link="adapter-sources\Host\ParagraphTextExtractor.cs" />
     <Compile Include="..\..\src\MathCursor\Host\SpanComputer.cs" Link="adapter-sources\Host\SpanComputer.cs" />

@@ -35,6 +35,8 @@ internal static class LatexRenderer
         string s = Render(c, cu);
         if (parent.Bracketed) return s;
         if (c.Type == "atom" && !parent.Apply) return s;
+        // fonction indicée/puissance appliquée : f_{n}(x), \sin^{2}(x) — pas (f_{n})(x).
+        if (parent.Apply && c.Type == "infix" && Vocabulary.Vocab[c.Sym!] is { Sub: true } or { Sup: true }) return s;
         bool selfGrouped = c.Sym != null && Vocabulary.Vocab.TryGetValue(c.Sym, out var cv) && cv.Bracketed;
         if ((c.Grouped && !selfGrouped) ||
             (c.Type == "infix" && Vocabulary.Vocab[c.Sym!].Looseness > parent.Looseness))

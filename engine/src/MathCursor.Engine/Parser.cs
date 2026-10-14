@@ -110,6 +110,16 @@ internal sealed class Forest
     private static bool IsFactor(Node n) =>
         (n.Type == "atom" && !n.Hole) || n.Type is "prefix" or "nary" or "postfix";
 
+    // Base d'un indice/exposant EXACT (ScriptMarkers) : la mise en forme Word
+    // s'attache au glyphe précédent → un seul atome, un groupe ( … ), ou une
+    // base déjà scriptée exactement (x₁²). Jamais « 2u » ni « a+x ».
+    private bool IsScriptBase(int a, int b)
+    {
+        if (b - a == 1) return _toks[a].Kind == "atom";
+        if (_toks[a].Kind == "lparen" && MatchClose(a) == b - 1) return true;
+        return b - a >= 3 && _toks[b - 2].Hard && IsScriptBase(a, b - 2);
+    }
+
     private int MatchClose(int i)
     {
         int d = 0;
@@ -436,6 +446,7 @@ internal sealed class Forest
                 if (k == i && i != 0) continue;             // trou gauche : seulement au début de l'entrée
                 if (k == j - 1 && j < _end) continue;       // trou droite : seulement à la frontière de frappe
                 if (_toks[k].Sticky && j - k - 1 != 1) continue;
+                if (_toks[k].Hard && k > i && !IsScriptBase(i, k)) continue;
                 var syms = _toks[k].Syms ?? new List<string> { _toks[k].Sym! };
                 // Choice : il restait >1 token à droite — l'opérande droite
                 // pouvait déborder (slurp) ou s'arrêter. Le Score couple ces

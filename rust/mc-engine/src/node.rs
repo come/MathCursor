@@ -120,6 +120,7 @@ pub struct Token {
     pub virtual_: bool, // ) ou ] ajouté en fin de frappe
     pub num: bool,
     pub sticky: bool,
+    pub hard: bool, // _ / ^ EXACT (marqueurs d'indice/exposant) : base = un seul élément
     pub implicit: bool,
     pub rank: i32, // sep : 0 = "," , 2 = ";"
     pub unit_word: bool,
@@ -138,6 +139,7 @@ impl Default for Token {
             virtual_: false,
             num: false,
             sticky: false,
+            hard: false,
             implicit: false,
             rank: 0,
             unit_word: false,

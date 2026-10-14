@@ -36,6 +36,13 @@ fn child(c: &Node, parent: &VocabEntry, cu: &Culture) -> String {
     if c.ntype == NType::Atom && !parent.apply {
         return s;
     }
+    // fonction indicée/puissance appliquée : f_{n}(x), \sin^{2}(x) — pas (f_{n})(x).
+    if parent.apply
+        && c.ntype == NType::Infix
+        && c.sym.as_deref().and_then(|sy| reg().vocab.get(sy)).map(|e| e.sub || e.sup).unwrap_or(false)
+    {
+        return s;
+    }
     let self_grouped = c
         .sym
         .as_deref()
