@@ -29,6 +29,19 @@ namespace MathCursor.Host.Blocks
         public const string System = "system";
     }
 
+    /// <summary>Cible de fusion d'une ligne MARQUÉE (« = 2 »), décidée en UN
+    /// seul endroit (<c>FindMergeTarget</c>) pour le commit ET l'aperçu.
+    /// Cf. ADR 2026-10-14-Feat-chain-same-line-merge.</summary>
+    internal enum MergeTargetKind
+    {
+        /// <summary>Rien à fusionner : équation autonome, marqueur rendu.</summary>
+        None,
+        /// <summary>Équation simple à nous juste à gauche sur le même ¶ → une seule formule.</summary>
+        SameLine,
+        /// <summary>Ligne seule sous une équation/chaîne à nous → bloc chaîne multiligne.</summary>
+        Above,
+    }
+
     /// <summary>
     /// Exécuteur Word des blocs multilignes (M2, ADR 2026-06-10-Feat-
     /// multiline-chain-eqarr-architecture). Toute opération suit le même
@@ -58,35 +71,53 @@ namespace MathCursor.Host.Blocks
         }
 
         /// <summary>
-        /// Commit d'une ligne MARQUÉE (« ⟺ x=3 », « = 2x »…). Crée ou étend
-        /// le bloc chaîne si le ¶ au-dessus porte une équation/chaîne à nous ;
-        /// sinon repli : équation autonome avec le marqueur RENDU (décision
-        /// user : « si l'utilisateur l'a écrit il veut le voir »).
+        /// Commit d'une ligne MARQUÉE (« ⟺ x=3 », « = 2x »…) selon la cible de
+        /// <see cref="FindMergeTarget"/> : <c>SameLine</c> → une seule formule
+        /// avec l'équation de gauche ; <c>Above</c> → crée/étend le bloc chaîne ;
+        /// <c>None</c> → équation autonome avec le marqueur RENDU (décision
+        /// user : « si l'utilisateur l'a écrit il veut le voir »). Les deux
+        /// fusions suivent la même recette : suppression de l'ancien puis
+        /// insertion sur la zone tapée. Renvoie la cible appliquée.
         /// </summary>
-        public bool CommitChainLine(Word.Document doc, ZoneSpan zone, RelationLineMatch match, string restLatex)
+        public MergeTargetKind CommitChainLine(Word.Document doc, ZoneSpan zone, RelationLineMatch match, string restLatex)
         {
-            if (!zone.TryToInternal(doc, out int zStart, out int zEnd)) return false;
+            if (!zone.TryToInternal(doc, out int zStart, out int zEnd)) return MergeTargetKind.None;
+            string typed = zone.Text.Trim();
 
-            var above = FindOurEquationAbove(doc, zStart);
-            if (!IsAloneOnItsLine(doc, zStart)) above = null;   // ligne mixte → repli autonome
-            if (above == null || (above.Value.Source.Type != null && above.Value.Source.Type != BlockTypes.Chain))
+            var (kind, om, source) = FindMergeTarget(doc, zStart);
+            switch (kind)
             {
-                // Repli autonome (rien à nous au-dessus, ou bloc d'un autre type).
-                _log($"chain: repli autonome \"{match.MarkerTyped} {restLatex}\"");
-                _inserter.Insert(zStart, zEnd, match.MarkerLatex + restLatex, zone.Text.Trim());
-                return true;
+                case MergeTargetKind.SameLine:
+                {
+                    // Une formule : sténo/LaTeX de gauche + ligne tapée. Coupe au
+                    // 1er caractère tapé (les blancs entre les deux partent avec
+                    // l'ancienne OMath — sinon blanc résiduel en tête).
+                    int omStart = om.Range.Start;
+                    int cut = zStart + (zone.Text.Length - zone.Text.TrimStart().Length);
+                    string steno = (source.Steno ?? "") + " " + typed;
+                    string latex = (source.Latex ?? "") + match.MarkerLatex + restLatex;
+                    _log($"chain: FUSION même ligne [{omStart},{zEnd})");
+                    int removed = RemoveOldBlock(doc, omStart, cut);
+                    _inserter.Insert(omStart, zEnd - removed, latex, steno);
+                    return kind;
+                }
+                case MergeTargetKind.Above:
+                {
+                    string steno = (source.Steno ?? "") + "\n" + typed;
+                    string latexJoined = (source.Latex ?? "") + "\n" + (restLatex ?? "");
+                    var oMath = ChainComposer.ComposeChain(steno.Split('\n'), latexJoined.Split('\n'));
+
+                    int repStart = ReplaceStart(doc, om);
+                    _log($"chain: {(source.Type == null ? "CRÉATION" : "EXTENSION")} bloc [{repStart},{zEnd}) lignes={steno.Split('\n').Length}");
+                    int removed = RemoveOldBlock(doc, repStart, zStart);
+                    _inserter.InsertBlock(repStart, zEnd - removed, oMath, latexJoined, steno, BlockTypes.Chain);
+                    return kind;
+                }
+                default:
+                    _log($"chain: repli autonome \"{match.MarkerTyped} {restLatex}\"");
+                    _inserter.Insert(zStart, zEnd, match.MarkerLatex + restLatex, typed);
+                    return kind;
             }
-
-            var (om, source) = above.Value;
-            string steno = (source.Steno ?? "") + "\n" + zone.Text.Trim();
-            string latexJoined = (source.Latex ?? "") + "\n" + (restLatex ?? "");
-            var oMath = ChainComposer.ComposeChain(steno.Split('\n'), latexJoined.Split('\n'));
-
-            int repStart = ReplaceStart(doc, om);
-            _log($"chain: {(source.Type == null ? "CRÉATION" : "EXTENSION")} bloc [{repStart},{zEnd}) lignes={steno.Split('\n').Length}");
-            int removed = RemoveOldBlock(doc, repStart, zStart);
-            var (s, e, h) = _inserter.InsertBlock(repStart, zEnd - removed, oMath, latexJoined, steno, BlockTypes.Chain);
-            return h != null || s != e;
         }
 
         /// <summary>
@@ -110,24 +141,21 @@ namespace MathCursor.Host.Blocks
         }
 
         /// <summary>
-        /// Sonde NON-mutante pour la popup : le ¶ au-dessus de la zone
-        /// porte-t-il une cible de merge ? Renvoie (type, latex par ligne)
-        /// — type "" pour une équation simple à nous, lignes lues du Tag.
-        /// Null si rien à merger.
+        /// Sonde NON-mutante pour la popup : MÊME décision que le commit
+        /// (<see cref="FindMergeTarget"/>). Renvoie la cible et le LaTeX par
+        /// ligne de l'équation/du bloc visé (null si <c>None</c>).
         /// </summary>
-        public (string Type, string[] LatexLines)? ProbeMergeAbove(Word.Document doc, ZoneSpan zone)
+        public (MergeTargetKind Kind, string[] LatexLines) ProbeMerge(Word.Document doc, ZoneSpan zone)
         {
             try
             {
-                if (!zone.TryToInternal(doc, out int zStart, out _)) return null;
-                if (!IsAloneOnItsLine(doc, zStart)) return null;   // aperçu cohérent avec le commit
-                var above = FindOurEquationAbove(doc, zStart);
-                if (above == null) return null;
-                var source = above.Value.Source;
-                var lines = (source.Latex ?? "").Split('\n');
-                return (source.Type ?? "", lines);
+                if (!zone.TryToInternal(doc, out int zStart, out _)) return (MergeTargetKind.None, null);
+                var (kind, _, source) = FindMergeTarget(doc, zStart);
+                return kind == MergeTargetKind.None
+                    ? (kind, null)
+                    : (kind, (source.Latex ?? "").Split('\n'));
             }
-            catch { return null; }
+            catch { return (MergeTargetKind.None, null); }
         }
 
         // ── Internals ────────────────────────────────────────────────────
@@ -182,35 +210,60 @@ namespace MathCursor.Host.Blocks
         // un <w:p> vide sans run au-dessus du bloc).
 
         /// <summary>
-        /// Le marqueur de chaîne ne FUSIONNE que depuis une ligne AUTONOME
-        /// (retour user 2026-06-12) : de la prose ou une OMath AVANT la zone
-        /// dans le MÊME ¶ = ligne mixte → repli autonome (marqueur rendu).
-        /// La fusion étant destructive (l'ancien bloc est remplacé), le
-        /// doute (probe KO) répond FAUX — l'autonome est toujours bénin.
+        /// LA décision de fusion d'une ligne marquée (ADR 2026-10-14-Feat-
+        /// chain-same-line-merge), partagée par commit et aperçu :
+        /// <list type="bullet">
+        /// <item>Contenu AVANT la zone dans le ¶ (ligne mixte) : <c>SameLine</c>
+        ///   seulement si c'est une équation SIMPLE à nous (résolution
+        ///   CONFIRMÉE, destructif) juste à gauche, blancs seuls entre ; sinon
+        ///   <c>None</c>. Jamais de merge avec le ¶ du dessus depuis une ligne
+        ///   mixte (retour user 2026-06-12).</item>
+        /// <item>Ligne seule : <c>Above</c> si le ¶ du dessus porte une
+        ///   équation/chaîne à nous, sinon <c>None</c>.</item>
+        /// </list>
+        /// Fusion destructive → le doute (probe KO) répond <c>None</c>,
+        /// l'autonome est toujours bénin.
         /// </summary>
-        private bool IsAloneOnItsLine(Word.Document doc, int zStart)
+        private (MergeTargetKind Kind, Word.OMath Om, SourceMap.EquationSource Source) FindMergeTarget(
+            Word.Document doc, int zStart)
         {
+            var none = (MergeTargetKind.None, (Word.OMath)null, (SourceMap.EquationSource)null);
             try
             {
-                var para = doc.Range(zStart, zStart).Paragraphs[1].Range;
-                int paraStart = para.Start;
-                if (zStart <= paraStart) return true;
-                var before = doc.Range(paraStart, zStart);
-                if (before.OMaths.Count > 0)
+                int paraStart = doc.Range(zStart, zStart).Paragraphs[1].Range.Start;
+                if (zStart > paraStart)
                 {
-                    _log($"chain: OMath avant la zone dans le ¶ [{paraStart},{zStart}) → ligne mixte");
-                    return false;
+                    var before = doc.Range(paraStart, zStart);
+                    Word.OMath left = null;
+                    foreach (Word.OMath o in before.OMaths) left = o;
+                    if (left != null)
+                    {
+                        string gap = doc.Range(left.Range.End, zStart).Text ?? "";
+                        var source = IsBlank(gap) ? _resolver.ResolveConfirmed(doc, left) : null;
+                        if (source != null && source.Type == null)
+                            return (MergeTargetKind.SameLine, left, source);
+                        _log($"chain: OMath avant la zone dans le ¶ [{paraStart},{zStart}) non fusionnable → ligne mixte");
+                        return none;
+                    }
+                    string lead = (before.Text ?? "").Replace("\r", "").Replace("\n", "").Trim();
+                    if (lead.Length > 0)
+                    {
+                        _log($"chain: prose avant la zone (\"{lead}\") → ligne mixte");
+                        return none;
+                    }
                 }
-                string lead = (before.Text ?? "").Replace("\r", "").Replace("\n", "").Trim();
-                if (lead.Length > 0)
-                {
-                    _log($"chain: prose avant la zone (\"{lead}\") → ligne mixte");
-                    return false;
-                }
-                return true;
+
+                var above = FindOurEquationAbove(doc, zStart);
+                if (above == null) return none;
+                var (om, src) = above.Value;
+                if (src.Type != null && src.Type != BlockTypes.Chain) return none;   // bloc d'un autre type
+                return (MergeTargetKind.Above, om, src);
             }
-            catch (Exception ex) { _log("chain: alone_probe_error: " + ex.Message); return false; }
+            catch (Exception ex) { _log("chain: merge_target_error: " + ex.Message); return none; }
         }
+
+        private static bool IsBlank(string s) =>
+            s.Replace("​", "").Replace("\r", "").Replace("\n", "").Trim().Length == 0;
 
         /// <summary>L'équation/le bloc À NOUS porté par le ¶ qui précède
         /// IMMÉDIATEMENT le ¶ de la zone (adjacence stricte). Identification

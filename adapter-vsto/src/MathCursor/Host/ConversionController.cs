@@ -284,14 +284,16 @@ namespace MathCursor.Host
             // dessus sera fusionnée au commit, chaque candidat est rendu
             // INTÉGRÉ dans l'aperçu du bloc (lignes précédentes grisées,
             // « ⋯ » au-delà de 2 lignes, accolade pour les systèmes).
-            var (mergeKind, mergePrevLines) = ProbeMergePreview(zone);
+            var (mergeKind, mergePrevLines, sameLineLatex) = ProbeMergePreview(zone);
 
             // Bloc en attente : la popup AFFICHE le marqueur en préfixe, mais
             // le commit utilise le LaTeX du RESTE (aligné par index).
             // Exception : aperçu SYSTÈME actif → l'accolade de l'aperçu
             // représente déjà le « { », pas de préfixe (sinon double {{).
+            // Fusion même ligne : l'aperçu montre la formule entière (f(x)=2).
             _pendingRestCandidates = candidates;
             if (mergeKind == Blocks.BlockTypes.System) displayPrefix = "";
+            if (sameLineLatex != null) displayPrefix = sameLineLatex + displayPrefix;
             var display = displayPrefix.Length == 0
                 ? candidates
                 : candidates.Select(c => displayPrefix + c).ToList();
@@ -366,28 +368,30 @@ namespace MathCursor.Host
             return true;
         }
 
-        /// <summary>Contexte de merge pour l'aperçu popup : ("chain"|"system",
-        /// LaTeX des lignes du bloc du dessus) si la ligne committée sera
-        /// fusionnée, (null, null) sinon. Règle système 2026-06-10 : « { »
-        /// requis sur la ligne courante ET système au-dessus. Sonde
-        /// non-mutante, silencieuse.</summary>
-        private (string Kind, IReadOnlyList<string> PrevLines) ProbeMergePreview(ZoneSpan zone)
+        /// <summary>Contexte de merge pour l'aperçu popup, MÊME décision que le
+        /// commit (<c>ChainController.ProbeMerge</c>) : ("chain", LaTeX des
+        /// lignes du bloc du dessus) si la ligne rejoindra un bloc ;
+        /// <c>SameLineLatex</c> = LaTeX de l'équation de gauche si elle sera
+        /// fusionnée en une formule (ADR 2026-10-14-Feat-chain-same-line-merge).
+        /// Sonde non-mutante, silencieuse.</summary>
+        private (string Kind, IReadOnlyList<string> PrevLines, string SameLineLatex) ProbeMergePreview(ZoneSpan zone)
         {
             try
             {
                 var doc = _app.ActiveDocument;
-                if (doc == null || zone == null) return (null, null);
+                if (doc == null || zone == null) return (null, null, null);
                 // Les SYSTÈMES sont composés en un coup (ShowSystem) → pas d'aperçu
                 // de merge : seules les CHAÎNES (incrémentales) en ont un.
-                if (_pendingChainMatch == null) return (null, null);
-                var probe = _chain.ProbeMergeAbove(doc, zone);
-                if (probe == null) return (null, null);
-                var (t, lines) = probe.Value;
-                return (t == "" || t == Blocks.BlockTypes.Chain)
-                    ? (Blocks.BlockTypes.Chain, (IReadOnlyList<string>)lines)
-                    : (null, null);
+                if (_pendingChainMatch == null) return (null, null, null);
+                var (kind, lines) = _chain.ProbeMerge(doc, zone);
+                switch (kind)
+                {
+                    case Blocks.MergeTargetKind.Above: return (Blocks.BlockTypes.Chain, lines, null);
+                    case Blocks.MergeTargetKind.SameLine: return (null, null, lines[0]);
+                    default: return (null, null, null);
+                }
             }
-            catch { return (null, null); }
+            catch { return (null, null, null); }
         }
 
         /// <summary>
@@ -474,6 +478,7 @@ namespace MathCursor.Host
 
                 _log($"commit: [{absStart},{absEnd}) latex=\"{latex}\" source=\"{Preview(zone.Text)}\""
                     + (_pendingSystem ? " [système]" : _pendingChainMatch != null ? $" [chaîne {_pendingChainMatch.MarkerTyped}]" : ""));
+                var chainTarget = Blocks.MergeTargetKind.None;
                 using (new UndoRecordScope(_app, "MathCursor : conversion"))
                 {
                     if (_pendingSystem)
@@ -487,7 +492,7 @@ namespace MathCursor.Host
                         _chain.CommitSystem(doc, zone, oMath, sysLatex, sysSteno);
                     }
                     else if (_pendingChainMatch != null)
-                        _chain.CommitChainLine(doc, zone, _pendingChainMatch, latex);
+                        chainTarget = _chain.CommitChainLine(doc, zone, _pendingChainMatch, latex);
                     else
                     {
                         _inserter.Insert(absStart, absEnd, latex, zone.Text);
@@ -502,7 +507,9 @@ namespace MathCursor.Host
                     // avec le marqueur pré-placé, dans le MÊME record undo.
                     // (Les SYSTÈMES sont composés en un coup → pas de flow M4 ;
                     // les lignes y sont ajoutées par Maj+Entrée dans la zone.)
-                    string nextPrefix = _pendingChainMatch != null
+                    // Ni après une fusion MÊME LIGNE : on complète une formule
+                    // dans la ligne, pas un bloc (ADR 2026-10-14-Feat-chain-same-line-merge).
+                    string nextPrefix = _pendingChainMatch != null && chainTarget != Blocks.MergeTargetKind.SameLine
                         ? _pendingChainMatch.MarkerTyped + " "
                         : null;
                     if (nextPrefix != null)
