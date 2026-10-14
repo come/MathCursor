@@ -264,6 +264,19 @@ namespace MathCursor
             _    => "On: MathCursor makes suggestions as you type. Off (no-math classes): no more spontaneous popup — Ctrl+Space stays available to convert on demand.",
         };
 
+        // Pause par document (ADR 2026-10-14-UX-escape-pauses-autodetect).
+        public static string AutoDetectPausedStatus => Lang switch
+        {
+            "fr" => "MathCursor : détection auto en pause pour ce document, Ctrl+Espace pour reprendre",
+            _    => "MathCursor: auto-detection paused for this document, Ctrl+Space to resume",
+        };
+
+        public static string PopupPauseHint => Lang switch
+        {
+            "fr" => "Échap : pause · Ctrl+Espace : reprendre",
+            _    => "Esc: pause · Ctrl+Space: resume",
+        };
+
         public static string TabValidateToggleLabel => Lang switch
         {
             "fr" => "Tab valide",

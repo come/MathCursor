@@ -195,6 +195,7 @@
     <Compile Include="Host\Update\VersionCompare.cs" />
     <Compile Include="Host\Update\UpdateChecker.cs" />
     <Compile Include="Host\AutoDetectController.cs" />
+    <Compile Include="Host\AutoDetectPause.cs" />
     <Compile Include="Host\EquationDeletionGuard.cs" />
     <Compile Include="Host\Blocks\RelationMarkers.cs" />
     <Compile Include="Host\Blocks\RelationLineDetector.cs" />

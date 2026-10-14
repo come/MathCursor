@@ -300,6 +300,7 @@ namespace MathCursor
         // suivants popup ouverte = étend la zone d'un cran à gauche).
         private bool HandleCtrlSpacePressed()
         {
+            _autoDetect?.ResumeActiveDocument();
             _conversion?.Trigger();
             return true; // consomme (évite l'IME/compose de Word)
         }
@@ -340,10 +341,20 @@ namespace MathCursor
             return _conversion.MoveSelection(-1);
         }
 
-        // Esc : ferme la popup suggestion, sinon la popup edit.
+        // Esc : ferme la popup suggestion ET met la détection auto en pause
+        // pour le document (ADR 2026-10-14-UX-escape-pauses-autodetect),
+        // sinon ferme la popup edit.
         private bool HandleEscapePressed()
         {
-            if (_conversion?.IsPopupVisible == true) { _conversion.HidePopup(); return true; }
+            if (_conversion?.IsPopupVisible == true)
+            {
+                _conversion.HidePopup();
+                if (_autoDetect?.PauseActiveDocument() == true)
+                {
+                    try { this.Application.StatusBar = Strings.AutoDetectPausedStatus; } catch { }
+                }
+                return true;
+            }
             if (_editMode?.IsPopupVisible == true) { _editMode.HidePopup(); return true; }
             return false;
         }

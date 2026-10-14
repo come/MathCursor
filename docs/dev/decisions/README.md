@@ -20,6 +20,7 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-10-14
+- `[molle]` UX — [Échap met la détection auto en pause pour le document](2026-10-14-UX-escape-pauses-autodetect.md) — Échap sur la popup la masque **et** pause la détection auto du document actif (mémoire de session, clé `FullName`, n'écrit pas le réglage persisté) jusqu'au prochain Ctrl+Espace ; message en barre d'état + rappel gris « Échap : pause · Ctrl+Espace : reprendre » dans le pied de la popup. Pour ne plus être pollué en histoire-géo. Écartés : réglage persisté (Échap réflexe = coupure durable), pause globale (coupe aussi le doc de maths), pause par paragraphe, double Échap.
 - `[molle]` Refactor — [Nettoyage du code mort (lot 1 de l'audit d'architecture)](2026-10-14-Refactor-dead-code-cleanup.md) — supprime l'endpoint admin `create-issue` (sans appelant, il aurait recopié paragraphe Word + log dans une issue du repo GitHub **public**, contraire à `privacy.html`), 5 POCs VSTO compilés mais jamais appelés (~1 510 l : HashKeyPoc, UndoPoc, OmathWalkerConformance, ChainEqArrPoc, ChainTablePoc), le chemin dev `D:\Software\DocMath\models` livré en prod, les restes du port Python. Aucun changement de comportement. Hors scope : démo WASM (lot 2), `host-contract`, `catch {}`/`LogDiag`.
 
 ### 2026-09-04

@@ -51,6 +51,7 @@ namespace MathCursor.UI
 
         private readonly StackPanel _rows;
         private readonly TextBlock _debugFooter;
+        private readonly TextBlock _pauseHint;
 
         private IReadOnlyList<string> _candidates = Array.Empty<string>();
         private int _selectedIndex;
@@ -102,6 +103,17 @@ namespace MathCursor.UI
                 TextWrapping = TextWrapping.Wrap,
             };
 
+            // Rappel du geste pause/reprise (ADR 2026-10-14-UX-escape-pauses-
+            // autodetect) ; visible seulement si la détection auto est active.
+            _pauseHint = new TextBlock
+            {
+                Text = Strings.PopupPauseHint,
+                FontSize = 10,
+                Foreground = new SolidColorBrush(Color.FromRgb(140, 140, 140)),
+                Margin = new Thickness(8, 2, 8, 0),
+                TextWrapping = TextWrapping.Wrap,
+            };
+
             var reportLink = new TextBlock
             {
                 Text = "Signaler une erreur",
@@ -119,7 +131,7 @@ namespace MathCursor.UI
                 BorderBrush = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
                 BorderThickness = new Thickness(0, 1, 0, 0),
                 Margin = new Thickness(0, 4, 0, 0),
-                Child = new StackPanel { Children = { _debugFooter, reportLink } },
+                Child = new StackPanel { Children = { _debugFooter, _pauseHint, reportLink } },
             };
 
             Content = new Border
@@ -185,6 +197,8 @@ namespace MathCursor.UI
                 : 0;
             if (_selectedIndex > MaxCandidatesCollapsed - 1) _expanded = true; // sélection hors zone repliée → déplie
             _debugFooter.Text = string.IsNullOrEmpty(sourceText) ? "" : "« " + Truncate(sourceText, 60) + " »";
+            _pauseHint.Visibility = Host.Settings.SettingsStore.Current.AutoDetect
+                ? Visibility.Visible : Visibility.Collapsed;
 
             BuildRows();
             UpdateHighlight();

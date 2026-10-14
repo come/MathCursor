@@ -57,6 +57,7 @@ namespace MathCursor.Host
         private readonly DispatcherTimer _timer;
 
         private MathNerDetector _detector; // null tant que le modèle n'est pas chargé
+        private readonly AutoDetectPause _pause = new AutoDetectPause();
 
         public AutoDetectController(
             Word.Application app,
@@ -109,6 +110,32 @@ namespace MathCursor.Host
             _timer.Start();
         }
 
+        /// <summary>Échap sur la popup (ADR 2026-10-14-UX-escape-pauses-
+        /// autodetect) : met le document actif en pause jusqu'au prochain
+        /// Ctrl+Espace. Sans effet si la détection auto est désactivée.
+        /// True si le document vient de passer en pause.</summary>
+        public bool PauseActiveDocument()
+        {
+            if (!Settings.SettingsStore.Current.AutoDetect) return false;
+            _timer.Stop();
+            bool paused = _pause.Pause(ActiveDocumentKey());
+            if (paused) _log("auto: pause (Échap) pour le document actif");
+            return paused;
+        }
+
+        /// <summary>Ctrl+Espace : lève la pause du document actif.</summary>
+        public void ResumeActiveDocument()
+        {
+            if (_pause.Resume(ActiveDocumentKey()))
+                _log("auto: reprise (Ctrl+Espace) pour le document actif");
+        }
+
+        private string ActiveDocumentKey()
+        {
+            try { return _app.Documents.Count > 0 ? _app.ActiveDocument.FullName : null; }
+            catch { return null; }
+        }
+
         public void Dispose()
         {
             try { _timer.Stop(); } catch { }
@@ -129,6 +156,7 @@ namespace MathCursor.Host
                 // (retour user 2026-06-10).
                 if (_isEditPopupVisible()) return;
                 if (_app.Documents.Count == 0) return;
+                if (_pause.IsPaused(ActiveDocumentKey())) return;
 
                 var paragraph = _contextReader.ReadCurrentParagraph();
                 string text = paragraph.Text ?? "";
