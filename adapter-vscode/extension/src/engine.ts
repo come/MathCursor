@@ -20,7 +20,7 @@ import * as fs from 'fs';
 
 // Pilote le moteur forest porté en RUST (mc-engine), service stdio PERSISTANT
 // (remplace le sidecar WASM .NET : −23 Mo, plus de runtime dotnet.js). Même
-// Analyze que Word et la démo web → zéro divergence (gate fixtures.json 456/456).
+// Analyze que Word et la démo web → zéro divergence (gate fixtures.json).
 // Robuste : timeout par requête + re-spawn auto si le process meurt.
 // Portable (Rust pur) : tourne sur tout OS où le binaire `analyze` est bundlé ;
 // si absent (cible pas encore buildée) → `dead` → erreur propre, pas de crash.

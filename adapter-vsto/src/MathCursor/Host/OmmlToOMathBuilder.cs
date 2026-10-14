@@ -37,10 +37,6 @@ namespace MathCursor.Host
     /// constructible — verrou du « pas de fallback », amendement 2026-06-12).
     /// Inconstructible = échec franc : l'appelant restaure la sténo, jamais
     /// de demi-équation ni d'InsertXML.</para>
-    ///
-    /// <para>Fidélité prouvée par le conformance runner in-Word
-    /// (<c>OmathWalkerConformance</c>) : build → relecture WordOpenXML →
-    /// comparaison normalisée à l'OMML attendu.</para>
     /// </summary>
     internal static class OmmlToOMathBuilder
     {

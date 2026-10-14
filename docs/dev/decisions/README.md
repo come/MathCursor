@@ -19,6 +19,9 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-10-14
+- `[molle]` Refactor — [Nettoyage du code mort (lot 1 de l'audit d'architecture)](2026-10-14-Refactor-dead-code-cleanup.md) — supprime l'endpoint admin `create-issue` (sans appelant, il aurait recopié paragraphe Word + log dans une issue du repo GitHub **public**, contraire à `privacy.html`), 5 POCs VSTO compilés mais jamais appelés (~1 510 l : HashKeyPoc, UndoPoc, OmathWalkerConformance, ChainEqArrPoc, ChainTablePoc), le chemin dev `D:\Software\DocMath\models` livré en prod, les restes du port Python. Aucun changement de comportement. Hors scope : démo WASM (lot 2), `host-contract`, `catch {}`/`LogDiag`.
+
 ### 2026-09-04
 - `[forte]` Fix — [Popup de suggestion : owner suivi de la fenêtre Word active (multi-fenêtres)](2026-09-04-Fix-popup-owner-multiwindow.md) — deux Word ouverts (SDI), taper dans l'un puis l'autre **basculait le focus sur la première fenêtre**. Cause : la popup **unique** figeait son `Owner` **une seule fois** (`SourceInitialized`) sur `Process.MainWindowHandle` (= première fenêtre arbitraire) ; une fenêtre *owned* étant z-ordonnée au-dessus de son owner, l'afficher au-dessus de la #2 remontait la #1. Fix : sortir l'`Owner` de `SourceInitialized` et **re-parenter au show** (`GWLP_HWNDPARENT` via `SetWindowLongPtr`) sur le HWND de la fenêtre active lu par `GetGUIThreadInfo(0).hwndActive` (mécanique déjà présente dans `CaretScreenPositionReader`) ; `WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW` conservés. **+ option B** : `Application.WindowDeactivate` masque désormais aussi la popup de suggestion (plus de popup fantôme périmée au retour d'Alt-Tab, gardé par `IsCommitting`). Aucune touche OMath/CC/positions Word. Validation par observation (deux Word). Écartés : une popup par fenêtre (lourd, gain nul), `GetForegroundWindow` (moins robuste que `hwndActive`), garder la popup au retour de focus (réapparition périmée si scroll).
 

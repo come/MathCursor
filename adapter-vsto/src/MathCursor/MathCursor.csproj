@@ -201,12 +201,8 @@
     <Compile Include="Host\Blocks\LatexTopLevelSplit.cs" />
     <Compile Include="Host\Blocks\ChainComposer.cs" />
     <Compile Include="Host\Blocks\ChainController.cs" />
-    <Compile Include="Host\Blocks\ChainTablePoc.cs" />
-    <Compile Include="Host\Blocks\ChainEqArrPoc.cs" />
     <Compile Include="Host\OMathInserter.cs" />
     <Compile Include="Host\OmmlToOMathBuilder.cs" />
-    <Compile Include="Host\OmathWalkerConformance.cs" />
-    <Compile Include="Host\UndoPoc.cs" />
     <Compile Include="Host\WordContextReader.cs" />
     <Compile Include="Host\KeyboardInterceptor.cs" />
     <Compile Include="Host\ZoneCleaner.cs" />
@@ -221,7 +217,6 @@
     <Compile Include="Host\SourceMap\Sha1Helper.cs" />
     <Compile Include="Host\SourceMap\SourceMapStore.cs" />
     <Compile Include="Host\SourceMap\OmmlWalkerWhitelist.cs" />
-    <Compile Include="Host\Debug\HashKeyPoc.cs" />
     <Compile Include="Host\Caret\CaretScreenPositionReader.cs" />
     <Compile Include="Host\EditMode\EditModeController.cs" />
     <Compile Include="Detection\DetectedZone.cs" />

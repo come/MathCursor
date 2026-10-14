@@ -220,7 +220,7 @@ namespace MathCursor
         /// emplacements standards, en préférant l'alias stable <c>latest</c>
         /// (partagé entre adapters), fallback versionnés <c>distilmult-v7/v6</c>). Null si absent
         /// (le modèle ~132 Mo n'est pas dans git ; l'installer le déploie, et en
-        /// dev le fallback DocMath s'applique).
+        /// dev <c>MATHCURSOR_MODEL_DIR</c> permet de pointer un autre dossier).
         /// </summary>
         private static string TryFindModelDir()
         {
@@ -231,7 +231,6 @@ namespace MathCursor
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "MathCursor", "models"),
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "models"),
-                @"D:\Software\DocMath\models", // dev
             };
             // Préférence à la version la plus récente, TOUTES racines confondues
             // (un v7 en dev prime sur un v6 résiduel ailleurs).

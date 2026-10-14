@@ -1,5 +1,5 @@
 # CI cross-OS du cœur Rust (Phase 4) : build les 3 crates (mc-engine, mc-ner,
-# mc-popup) + rejoue le gate moteur 456/456, et upload les binaires.
+# mc-popup) + rejoue le gate moteur fixtures.json, et upload les binaires.
 #
 # Coût (dépôt PRIVÉ) : macOS = ×10 minutes. Donc matrice DYNAMIQUE :
 #  - push touchant rust/  → Linux + Windows seulement (×1 + ×2) ;
@@ -55,7 +55,7 @@ jobs:
         working-directory: rust
         run: cargo build --release --workspace
 
-      - name: Gate moteur — conformance 456/456
+      - name: Gate moteur — conformance fixtures.json
         working-directory: rust
         run: cargo run --release -p mc-engine --bin conformance
 

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-//! Moteur « forest » porté en Rust (transcription fidèle du C#/Python).
+//! Moteur « forest » porté en Rust (transcription fidèle du C#).
 //!
 //! src → candidats LaTeX classés + décision. PUR : aucune dépendance plateforme.
 //! Registre global (VOCAB, splittable, role, cultures) bâti une fois, à la
@@ -41,7 +41,7 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
 
-// Data universelle embarquée (MÊME source que le moteur C#/Python).
+// Data universelle embarquée (MÊME source que le moteur C#).
 const SYMBOLS_JSON: &str = include_str!("../../../data/engine/symbols.json");
 const CULTURES_JSON: &str = include_str!("../../../data/engine/cultures.json");
 const UNITS_JSON: &str = include_str!("../../../data/engine/units.json");

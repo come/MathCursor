@@ -15,9 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 //! AST → StarMath (format formule natif de LibreOffice Math) — port de
-//! starmath.py. Rend depuis l'AST (pas de re-parsing du LaTeX). Best-effort
-//! (justesse fine confirmée visuellement dans LibreOffice) ; verrouillé par la
-//! parité Python↔Rust sur fixtures.json.
+//! starmath.py (retiré). Rend depuis l'AST (pas de re-parsing du LaTeX). Best-effort
+//! (justesse fine confirmée visuellement dans LibreOffice) ; pas de corpus de
+//! parité dédié depuis le retrait du port Python.
 
 use crate::culture::Culture;
 use crate::node::{NType, Node};

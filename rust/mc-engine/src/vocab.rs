@@ -18,7 +18,7 @@
 //!
 //! La TABLE vient de data/engine/symbols.json (source unique partagée). Ce
 //! module = les types d'entrée + le builder + les logiques non-déclaratives
-//! (render-hooks, accept-guards), strictement équivalentes au C#/Python.
+//! (render-hooks, accept-guards), strictement équivalentes au C#.
 
 use crate::node::{NType, Node};
 use crate::reg;
@@ -121,7 +121,7 @@ pub fn decl(n: &Node) -> Option<&'static VocabEntry> {
     n.sym.as_deref().and_then(|s| reg().vocab.get(s))
 }
 
-/// loose(sym) du C#/Python : looseness de l'entrée, 0 si inconnue/None.
+/// loose(sym) du C# : looseness de l'entrée, 0 si inconnue/None.
 pub fn loose(sym: Option<&str>) -> f64 {
     sym.and_then(|s| reg().vocab.get(s))
         .map(|e| e.looseness)
