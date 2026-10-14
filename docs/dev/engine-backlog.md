@@ -8,6 +8,14 @@ ADR + plan (`/mathcursor-plan`) au moment de l'implémentation.
 
 ## TODO
 
+- [ ] **[adapter VSTO — mineur] Revert d'une équation tapée avec Indice/Exposant
+  Word** — la sténo stockée est le texte brut : un revert de `f` + indice `2+1`
+  rend `f2+1` sans mise en forme (reconverti → `f^{2}+1`). Piste : stocker la
+  sténo avec les marqueurs `ScriptMarkers`, et au revert retaper le texte puis
+  reposer `Font.Subscript/Superscript` sur les plages (curseur remis en format
+  normal). Touche l'API Word au revert → POC ruban d'abord. Cf. ADR
+  `2026-10-14-Feat-word-subscript-superscript-format` (limites).
+
 - [x] **[adapter VSTO] Clignotement popup matrice partielle** — ✅ fait 2026-06-30
   (ADR `2026-06-29-Fix-auto-detect-anchor-unclosed-bracket`) : le NER fragmente
   parfois une matrice partielle et ne renvoie que la queue au caret (`c d`),
