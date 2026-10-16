@@ -110,8 +110,9 @@ namespace MathCursor.UI
                 Text = Strings.PopupPauseHint,
                 FontSize = 10,
                 Foreground = new SolidColorBrush(Color.FromRgb(140, 140, 140)),
-                Margin = new Thickness(8, 2, 8, 0),
+                Margin = new Thickness(8, 2, 0, 4),
                 TextWrapping = TextWrapping.Wrap,
+                VerticalAlignment = VerticalAlignment.Bottom,
             };
 
             var reportLink = new TextBlock
@@ -120,18 +121,25 @@ namespace MathCursor.UI
                 FontSize = 10,
                 Foreground = new SolidColorBrush(Color.FromRgb(90, 110, 160)),
                 Cursor = System.Windows.Input.Cursors.Hand,
-                Margin = new Thickness(8, 2, 8, 4),
+                Margin = new Thickness(6, 2, 8, 4),
                 TextDecorations = TextDecorations.Underline,
-                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Bottom,
             };
             reportLink.MouseLeftButtonUp += (_, __) => ReportRequested?.Invoke();
+
+            // Rappel pause à gauche, lien de signalement à droite, sur la même
+            // ligne de base.
+            var bottomRow = new DockPanel { LastChildFill = true };
+            DockPanel.SetDock(reportLink, Dock.Right);
+            bottomRow.Children.Add(reportLink);
+            bottomRow.Children.Add(_pauseHint);
 
             var footer = new Border
             {
                 BorderBrush = new SolidColorBrush(Color.FromRgb(220, 220, 220)),
                 BorderThickness = new Thickness(0, 1, 0, 0),
                 Margin = new Thickness(0, 4, 0, 0),
-                Child = new StackPanel { Children = { _debugFooter, _pauseHint, reportLink } },
+                Child = new StackPanel { Children = { _debugFooter, bottomRow } },
             };
 
             Content = new Border
