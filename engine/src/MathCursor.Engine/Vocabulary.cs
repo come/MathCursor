@@ -48,6 +48,7 @@ internal sealed class VocabEntry
     public bool Sup;
     public bool Sub;
     public bool Tight;
+    public bool SupRender;          // rendu = exposant de l'argument (exp → e^{…}) : un script dessus s'empile
     public bool List;
     public bool Mapping;
     public bool WordSpace;
@@ -202,6 +203,7 @@ internal static class Vocabulary
         e.Sup = Flag(j, "sup");
         e.Sub = Flag(j, "sub");
         e.Tight = Flag(j, "tight");
+        e.SupRender = Flag(j, "supRender");
         e.List = Flag(j, "list");
         e.Mapping = Flag(j, "mapping");
         e.WordSpace = Flag(j, "wordSpace");

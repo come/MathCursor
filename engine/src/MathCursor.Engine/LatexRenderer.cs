@@ -39,7 +39,12 @@ internal static class LatexRenderer
         // pas (x^{2}) m. Un script atomique se lit d'un bloc (cf. Score.Inversions).
         if (parent.UnitOp && Score.AtomicScript(c)) return s;
         bool selfGrouped = c.Sym != null && Vocabulary.Vocab.TryGetValue(c.Sym, out var cv) && cv.Bracketed;
-        if ((c.Grouped && !selfGrouped) ||
+        // Script sur un script de même nature : x^{2}^{+} est un double exposant
+        // (LaTeX invalide) → la base se parenthèse, (x^{2})^{+}, comme (x^2)^3 tapé.
+        bool stacked = c.Sym != null && Vocabulary.Vocab.TryGetValue(c.Sym, out var cd)
+            && ((c.Type == "infix" && ((parent.Sup && cd.Sup) || (parent.Sub && cd.Sub)))
+                || (c.Type == "prefix" && parent.Sup && cd.SupRender));
+        if ((c.Grouped && !selfGrouped) || stacked ||
             (c.Type == "infix" && Vocabulary.Vocab[c.Sym!].Looseness > parent.Looseness))
             return $"({s})";
         return s;

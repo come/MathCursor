@@ -91,7 +91,7 @@
     "cosh":   { "shape": "prefix", "arity": 1, "class": "STRONG", "looseness": "APP", "render": "\\cosh({0})" },
     "tanh":   { "shape": "prefix", "arity": 1, "class": "STRONG", "looseness": "APP", "render": "\\tanh({0})" },
     "coth":   { "shape": "prefix", "arity": 1, "class": "STRONG", "looseness": "APP", "render": "\\coth({0})" },
-    "exp":    { "shape": "prefix", "arity": 1, "class": "STRONG", "looseness": "APP", "render": "e^{{0}}" },
+    "exp":    { "shape": "prefix", "arity": 1, "class": "STRONG", "looseness": "APP", "supRender": true, "render": "e^{{0}}" },
     "arg":    { "shape": "prefix", "arity": 1, "class": "STRONG", "looseness": "APP", "render": "\\arg({0})" },
     "Re":     { "shape": "prefix", "arity": 1, "class": "STRONG", "looseness": "APP", "render": "\\operatorname{Re}({0})" },
     "Im":     { "shape": "prefix", "arity": 1, "class": "STRONG", "looseness": "APP", "render": "\\operatorname{Im}({0})" },

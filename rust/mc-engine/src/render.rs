@@ -63,7 +63,19 @@ fn child(c: &Node, parent: &VocabEntry, cu: &Culture) -> String {
             .and_then(|sy| reg().vocab.get(sy))
             .map(|e| e.looseness > parent.looseness)
             .unwrap_or(false);
-    if (c.grouped && !self_grouped) || looser {
+    // Script sur un script de même nature : x^{2}^{+} est un double exposant
+    // (LaTeX invalide) → la base se parenthèse, (x^{2})^{+}, comme (x^2)^3 tapé.
+    let stacked = c
+        .sym
+        .as_deref()
+        .and_then(|sy| reg().vocab.get(sy))
+        .map(|e| match c.ntype {
+            NType::Infix => (parent.sup && e.sup) || (parent.sub && e.sub),
+            NType::Prefix => parent.sup && e.sup_render,
+            _ => false,
+        })
+        .unwrap_or(false);
+    if (c.grouped && !self_grouped) || stacked || looser {
         return format!("({})", s);
     }
     s

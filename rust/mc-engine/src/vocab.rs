@@ -65,6 +65,7 @@ pub struct VocabEntry {
     pub sup: bool,
     pub sub: bool,
     pub tight: bool,
+    pub sup_render: bool, // rendu = exposant de l'argument (exp → e^{…}) : un script dessus s'empile
     pub list: bool,
     pub mapping: bool,
     pub word_space: bool,
@@ -96,6 +97,7 @@ impl Default for VocabEntry {
             sup: false,
             sub: false,
             tight: false,
+            sup_render: false,
             list: false,
             mapping: false,
             word_space: false,
@@ -294,6 +296,7 @@ pub(crate) fn build_entry(j: &Value, loose_map: &HashMap<String, f64>) -> VocabE
     e.sup = flag("sup");
     e.sub = flag("sub");
     e.tight = flag("tight");
+    e.sup_render = flag("supRender");
     e.list = flag("list");
     e.mapping = flag("mapping");
     e.word_space = flag("wordSpace");
