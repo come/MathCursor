@@ -87,5 +87,35 @@ namespace MathCursor.Tests.Host.Detection
             Assert.Equal("f^{2+1}", ForestEngine.Analyze(rows[0]).Ranked[0].Latex);
             Assert.Equal("x_{1}=0", ForestEngine.Analyze(rows[1]).Ranked[0].Latex);
         }
+
+        // ── Ordinaux mis en exposant par Word (ADR 2026-10-16-Fix-word-ordinal-
+        // superscript-ignored) : du texte, pas un exposant mathématique.
+
+        [Fact]
+        public void Ordinal_de_Word_est_lu_comme_texte()
+        {
+            // Relevé réel (logs 2026-10-16) : « 2e- » avec le « e » en exposant.
+            Assert.Equal("2He + 2e-", ScriptMarkup.Apply("2He + 2e-", Mask(".......^.")));
+            Assert.Equal("1er", ScriptMarkup.Apply("1er", Mask(".^^")));
+            Assert.Equal("XIXe 3ème", ScriptMarkup.Apply("XIXe 3ème", Mask(".... .^^^".Replace(' ', '.'))));
+        }
+
+        [Fact]
+        public void Ordinal_mode_physique_chimie_donne_l_electron()
+        {
+            string input = ScriptMarkup.Apply("2Fe + 2e-", Mask(".......^."));
+            var r = ForestEngine.Analyze(input, EngineCulture.Fr.WithPhysChem(true));
+            Assert.Equal("2\\mathrm{Fe}+2\\mathrm{e}^{-}", r.Ranked[0].Latex);
+        }
+
+        [Fact]
+        public void Exposant_qui_n_est_pas_un_ordinal_reste_un_exposant()
+        {
+            // pas derrière un chiffre, suffixe inconnu, ou suivi d'une lettre
+            Assert.Equal("x[^e^]", Show(ScriptMarkup.Apply("xe", Mask(".^"))));
+            Assert.Equal("2[^x^]", Show(ScriptMarkup.Apply("2x", Mask(".^"))));
+            Assert.Equal("2[^e^]x", Show(ScriptMarkup.Apply("2ex", Mask(".^."))));
+            Assert.Equal("x[^2^]", Show(ScriptMarkup.Apply("x2", Mask(".^"))));
+        }
     }
 }

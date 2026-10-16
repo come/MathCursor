@@ -39,6 +39,7 @@ namespace MathCursor.Host.Detection
         {
             if (string.IsNullOrEmpty(text) || kinds == null || kinds.Count != text.Length)
                 return text ?? "";
+            kinds = WithoutOrdinals(text, kinds);
             var sb = new StringBuilder(text.Length + 8);
             var current = ScriptKind.None;
             for (int i = 0; i < text.Length; i++)
@@ -53,6 +54,36 @@ namespace MathCursor.Host.Detection
             }
             Close(sb, current);
             return sb.ToString();
+        }
+
+        // Suffixes d'ordinal que la correction automatique de Word met en exposant
+        // (2ᵉ, 1ᵉʳ, 2ⁿᵈ, 3ʳᵈ) : du texte, pas un exposant mathématique (ADR
+        // 2026-10-16-Fix-word-ordinal-superscript-ignored).
+        private static readonly HashSet<string> OrdinalSuffixes = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase)
+        {
+            "e", "er", "re", "ère", "ème", "eme", "es", "ers", "res", "èmes",
+            "nd", "nde", "nds", "ndes", "d", "de", "st", "rd", "th",
+        };
+
+        // Run en exposant = suffixe d'ordinal collé derrière un chiffre et suivi
+        // d'une fin de mot → lu comme texte normal.
+        private static IReadOnlyList<ScriptKind> WithoutOrdinals(string text, IReadOnlyList<ScriptKind> kinds)
+        {
+            List<ScriptKind> result = null;
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (kinds[i] != ScriptKind.Sup || (i > 0 && kinds[i - 1] == ScriptKind.Sup)) continue;
+                int end = i;
+                while (end < text.Length && kinds[end] == ScriptKind.Sup) end++;
+                bool afterDigit = i > 0 && char.IsDigit(text[i - 1]);
+                bool wordEnd = end == text.Length || !char.IsLetter(text[end]);
+                if (afterDigit && wordEnd && OrdinalSuffixes.Contains(text.Substring(i, end - i)))
+                {
+                    if (result == null) result = new List<ScriptKind>(kinds);
+                    for (int k = i; k < end; k++) result[k] = ScriptKind.None;
+                }
+            }
+            return result ?? kinds;
         }
 
         private static void Open(StringBuilder sb, ScriptKind k)
