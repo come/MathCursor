@@ -55,6 +55,10 @@
   transition: all 0.15s;
 }
 
+.math-culture button.physchem-toggle {
+  margin-left: 8px;
+}
+
 .math-culture button.active {
   background: var(--ink);
   border-color: var(--ink);
