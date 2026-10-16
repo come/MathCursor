@@ -123,6 +123,9 @@ namespace MathCursor
                 // 2026-06-18-Feat-usage-counter-telemetry). Anti-spam interne :
                 // n'envoie que si le compteur > 0.
                 this.Application.WindowDeactivate += OnWindowDeactivate;
+                // Toggle Physique-chimie = état du document actif : à resynchroniser
+                // quand le document actif change (ADR 2026-10-16-Feat-physics-chemistry-mode).
+                this.Application.DocumentChange += OnDocumentChange;
 
                 // Préchauffage (UX 2026-06-12) : la PREMIÈRE popup payait HWND
                 // WPF + JIT WpfMath (~1 s de lag perçu). Hors écran, à
@@ -167,6 +170,7 @@ namespace MathCursor
         {
             try { this.Application.WindowSelectionChange -= OnWindowSelectionChange; } catch { }
             try { this.Application.WindowDeactivate -= OnWindowDeactivate; } catch { }
+            try { this.Application.DocumentChange -= OnDocumentChange; } catch { }
             // Dernier flush du compteur d'usage, best-effort, borné dans le temps
             // pour ne pas retarder la fermeture de Word (souvent déjà à 0 grâce au
             // flush sur perte de focus). Hors thread UI → pas de deadlock de contexte.
@@ -282,6 +286,11 @@ namespace MathCursor
 
         // Flush du compteur d'usage (fire-and-forget). FlushAsync ne fait rien
         // si l'opt-out est coupé ou si le compteur est à zéro.
+        private void OnDocumentChange()
+        {
+            try { RibbonCallback.Instance?.InvalidatePhysChemToggle(); } catch { }
+        }
+
         private void OnWindowDeactivate(Word.Document doc, Word.Window wn)
         {
             // Masque la popup de suggestion quand Word perd le focus (Alt-Tab,

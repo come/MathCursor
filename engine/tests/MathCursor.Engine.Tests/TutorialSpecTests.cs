@@ -49,7 +49,8 @@ public sealed class TutorialSpecTests
             File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "fixtures.json")));
         var byInput = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
         foreach (var f in fixtures.RootElement.EnumerateArray())
-            if (!f.TryGetProperty("culture", out var cu) || cu.GetString() == "fr")
+            if ((!f.TryGetProperty("culture", out var cu) || cu.GetString() == "fr")
+                && !(f.TryGetProperty("physchem", out var ch) && ch.GetBoolean()))   // tuto = mode maths
                 byInput[f.GetProperty("in").GetString()!] = f;
 
         // TOUS les specs présents (fr + en) sont validés : un tuto qui ment au

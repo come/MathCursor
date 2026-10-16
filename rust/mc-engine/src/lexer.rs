@@ -65,21 +65,31 @@ struct Join {
     roles: &'static [&'static str],
     sticky: bool,
     cross: bool,
+    // mode physique-chimie : indice ET puissance, ordre par physchem::ScriptOrder
+    physchem_alt: bool,
 }
 
 // jonction de tokens collés (JOIN) — premier match gagne.
 const JOIN: &[Join] = &[
-    Join { left: &["name"], right: &["num"], roles: &["sup"], sticky: true, cross: false },
-    Join { left: &["close"], right: &["num"], roles: &["sup"], sticky: true, cross: false },
-    Join { left: &["unit"], right: &["num"], roles: &["sup"], sticky: true, cross: false },
-    Join { left: &["num"], right: &["unit"], roles: &["unitOp"], sticky: true, cross: true },
-    Join { left: &["name", "unit", "post"], right: &["open"], roles: &["apply"], sticky: false, cross: false },
+    Join { left: &["name"], right: &["num"], roles: &["sup"], sticky: true, cross: false, physchem_alt: true },
+    Join { left: &["close"], right: &["num"], roles: &["sup"], sticky: true, cross: false, physchem_alt: false },
+    Join { left: &["unit"], right: &["num"], roles: &["sup"], sticky: true, cross: false, physchem_alt: true },
+    Join { left: &["num"], right: &["unit"], roles: &["unitOp"], sticky: true, cross: true, physchem_alt: false },
+    Join {
+        left: &["name", "unit", "post"],
+        right: &["open"],
+        roles: &["apply"],
+        sticky: false,
+        cross: false,
+        physchem_alt: false,
+    },
     Join {
         left: &["num", "name", "close", "post"],
         right: &["name", "open", "func"],
         roles: &["implicit"],
         sticky: false,
         cross: false,
+        physchem_alt: false,
     },
 ];
 
@@ -321,6 +331,29 @@ impl<'a> Lex<'a> {
                 self.emit_script(is_sub, &inner);
                 continue;
             }
+            // mode physique-chimie : une formule chimique bornée (H2O, Fe2+) = UN atome à lectures
+            // multiples ; une particule (e-) = un atome (ADR 2026-10-16-Feat-physics-chemistry-mode)
+            if cu.physchem {
+                let (mut len, mut readings) = crate::chem::scan(src, i);
+                if len == 0 {
+                    let (pl, particle) = crate::physchem::scan_particle(src, i);
+                    if pl > 0 {
+                        len = pl;
+                        readings = vec![particle];
+                    }
+                }
+                if len > 0 {
+                    let tok = if readings.len() > 1 {
+                        Token { kind: "atom".into(), syms: Some(readings), ..Default::default() }
+                    } else {
+                        Token { kind: "atom".into(), sym: Some(readings.remove(0)), ..Default::default() }
+                    };
+                    self.push(tok);
+                    i += len;
+                    continue;
+                }
+            }
+
             if c == '(' {
                 self.push(Token { kind: "lparen".into(), ..Default::default() });
                 i += 1;
@@ -431,6 +464,13 @@ impl<'a> Lex<'a> {
                     i += 1;
                 }
                 let sp = self.spaced(st as i64 - 1, i as i64);
+                // mode physique-chimie : grandeur usuelle indicée en lettres (Ec → E_c)
+                if cu.physchem {
+                    if let Some(q) = crate::physchem::quantity(&s) {
+                        self.push(Token { kind: "atom".into(), sym: Some(q.clone()), ..Default::default() });
+                        continue;
+                    }
+                }
                 let dots_len = if starts_with_at(src, "...", i) {
                     3
                 } else if ch(src, i as i64) == '…' {
@@ -622,7 +662,7 @@ impl<'a> Lex<'a> {
                 .push(Token { kind: "bracket".into(), sym: Some("]".into()), virtual_: true, ..Default::default() });
         }
 
-        juxtapose(self.toks)
+        juxtapose(self.toks, self.cu.physchem)
     }
 }
 
@@ -693,8 +733,9 @@ fn cat(t: Option<&Token>) -> Option<&'static str> {
     })
 }
 
-fn juxtapose(toks: Vec<Token>) -> Vec<Token> {
+fn juxtapose(toks: Vec<Token>, physchem: bool) -> Vec<Token> {
     let r = reg();
+    let script_order = if physchem { Some(crate::physchem::ScriptOrder::new(&toks)) } else { None };
     let mut out: Vec<Token> = Vec::new();
     for idx in 0..toks.len() {
         let l = &toks[idx];
@@ -722,13 +763,22 @@ fn juxtapose(toks: Vec<Token>) -> Vec<Token> {
         if rtok.space_before && !rule.cross {
             continue;
         }
-        let syms: Vec<String> = rule
+        let mut syms: Vec<String> = rule
             .roles
             .iter()
             .filter_map(|role| r.role.get(*role).cloned())
             .collect();
         if syms.is_empty() {
             continue;
+        }
+        // mode physique-chimie : indice et puissance, ordonnés (v0 → v₀ puis v⁰)
+        let ordered = match (&script_order, rule.physchem_alt) {
+            (Some(o), true) => o.order(&toks, idx, lc == Some("unit")),
+            _ => None,
+        };
+        let ranked = ordered.is_some();
+        if let Some(o) = ordered {
+            syms = o;
         }
         let mut t = Token {
             kind: "infix".into(),
@@ -746,6 +796,7 @@ fn juxtapose(toks: Vec<Token>) -> Vec<Token> {
         if rule.sticky {
             t.sticky = true;
         }
+        t.ranked = ranked;
         out.push(t);
     }
     out

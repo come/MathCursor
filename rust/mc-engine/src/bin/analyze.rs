@@ -3,6 +3,7 @@
 //! chaque requête répond en ~µs. Protocole stdio (parité ner-helper) :
 //!
 //!   stdin  : <culture>\t<src>          |  QUIT
+//!            (<culture> = fr | us, suffixe « +physchem » = mode physique-chimie : fr+physchem)
 //!            COMPOSE\t<culture>\t<json>  (chaîne multiligne ; json = [{"steno":..,"index":N}])
 //!            COMPOSE_SYSTEM\t<culture>\t<rest>  (système { ; rest = contenu après le `{`, lignes par `;`)
 //!   stdout : READY  puis 1 ligne JSON par requête :
@@ -43,7 +44,7 @@ fn main() {
             let mut cit = rest.splitn(2, '\t');
             let culture = cit.next().unwrap_or("fr");
             let payload = cit.next().unwrap_or("[]");
-            let cu = if culture == "us" { &reg().us } else { &reg().fr };
+            let cu = &culture_of(culture);
             // [{"steno":..,"index":N}, …] (le JSON échappe tabs/newlines → pas de
             // collision avec le split sur \t).
             let parsed: Vec<(String, usize)> = serde_json::from_str::<serde_json::Value>(payload)
@@ -78,7 +79,7 @@ fn main() {
             let mut sit = rest.splitn(2, '\t');
             let culture = sit.next().unwrap_or("fr");
             let body = sit.next().unwrap_or("");
-            let cu = if culture == "us" { &reg().us } else { &reg().fr };
+            let cu = &culture_of(culture);
             let json_line = match catch_unwind(AssertUnwindSafe(|| chain::compose_system(body, cu))) {
                 Ok(r) => json!({ "latex": r.latex, "starmath": r.starmath }),
                 Err(_) => json!({ "latex": "", "starmath": "" }),
@@ -90,7 +91,7 @@ fn main() {
         let mut it = trimmed.splitn(2, '\t');
         let culture = it.next().unwrap_or("fr");
         let src = it.next().unwrap_or("");
-        let cu = if culture == "us" { &reg().us } else { &reg().fr };
+        let cu = &culture_of(culture);
 
         let json_line = match catch_unwind(AssertUnwindSafe(|| analyze(src, Some(cu)))) {
             Ok(r) => {
@@ -110,4 +111,15 @@ fn main() {
         let _ = writeln!(out, "{json_line}");
         let _ = out.flush();
     }
+}
+
+/// Culture du protocole : « fr », « us », suffixe « +physchem » pour le mode physique-chimie
+/// (ADR 2026-10-16-Feat-chemistry-mode). Inconnu → fr.
+fn culture_of(token: &str) -> mc_engine::Culture {
+    let (base, physchem) = match token.strip_suffix("+physchem") {
+        Some(b) => (b, true),
+        None => (token, false),
+    };
+    let cu = if base == "us" { &reg().us } else { &reg().fr };
+    cu.with_physchem(physchem)
 }

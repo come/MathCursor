@@ -1,0 +1,26 @@
+{
+  "_doc": "Mode physique-chimie (ADR 2026-10-16-Feat-physics-chemistry-mode) : symboles des 118 éléments, états physiques et grandeurs indicées usuelles. Une formule = éléments + indices + parenthèses + charge + état, reconnue par grammaire (ChemFormula), pas par liste de molécules.",
+  "elements": [
+    "H", "He",
+    "Li", "Be", "B", "C", "N", "O", "F", "Ne",
+    "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar",
+    "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr",
+    "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe",
+    "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu",
+    "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn",
+    "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr",
+    "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og"
+  ],
+  "states": ["aq", "s", "l", "g"],
+  "_subscriptFirst": "Grandeurs numérotées (lettre + chiffre) : ces chiffres lisent l'indice d'abord (v0, T1 : une puissance 0 ou 1 n'a pas de sens) ; les autres, la puissance d'abord (mv2, gt2). L'autre lecture reste dans la popup.",
+  "subscriptFirst": ["0", "1"],
+  "_particles": "Particules : mot exact, borné comme une charge (fin, espace, fermant…) → LaTeX. 2e- → 2e⁻ même en fin de saisie.",
+  "particles": { "e-": "\\mathrm{e}^{-}", "e+": "\\mathrm{e}^{+}" },
+  "_quantities": "Grandeurs usuelles de physique indicées en lettres, mot entier exact → LaTeX. Indice descriptif en romain (E_c), composante de vecteur en italique (v_x).",
+  "quantities": {
+    "Ec": "E_{\\mathrm{c}}", "Ep": "E_{\\mathrm{p}}", "Epp": "E_{\\mathrm{pp}}", "Em": "E_{\\mathrm{m}}",
+    "Req": "R_{\\mathrm{eq}}", "Ceq": "C_{\\mathrm{eq}}", "Vm": "V_{\\mathrm{m}}",
+    "vx": "v_{x}", "vy": "v_{y}", "vz": "v_{z}",
+    "Fx": "F_{x}", "Fy": "F_{y}", "Fz": "F_{z}"
+  }
+}

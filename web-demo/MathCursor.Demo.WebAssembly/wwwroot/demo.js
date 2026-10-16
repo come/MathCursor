@@ -21,6 +21,7 @@
   const ASSEMBLY = 'MathCursor.Demo.WebAssembly';
   let timer = null;
   let mathCulture = 'fr';
+  let physchem = false;   // mode physique-chimie (ADR 2026-10-16-Feat-physics-chemistry-mode)
   let lastResult = null;
 
   const t = (key, fallback) => {
@@ -105,7 +106,7 @@
     if (!value.trim()) { lastResult = null; renderEmpty(); return; }
     let result;
     try {
-      result = await DotNet.invokeMethodAsync(ASSEMBLY, 'Analyze', value, mathCulture);
+      result = await DotNet.invokeMethodAsync(ASSEMBLY, 'Analyze', value, mathCulture + (physchem ? '+physchem' : ''));
     } catch (e) {
       popup.innerHTML = `<div class="popup-empty popup-err">${t('runtime_engine_error', 'Erreur moteur — voir console.')}</div>`;
       console.error(e);
@@ -123,10 +124,20 @@
   });
 
   // Toggle FR/US math → re-analyse (la culture change le résultat moteur).
-  document.querySelectorAll('.math-culture button').forEach(btn => {
+  document.querySelectorAll('.math-culture button[data-mc]').forEach(btn => {
     btn.addEventListener('click', () => {
       mathCulture = btn.dataset.mc;
-      document.querySelectorAll('.math-culture button').forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('.math-culture button[data-mc]').forEach(b => b.classList.toggle('active', b === btn));
+      analyze();
+    });
+  });
+
+  // Bouton Physique-chimie : H2O → H₂O, Fe2+ → Fe²⁺, v0 → v₀.
+  document.querySelectorAll('.math-culture .physchem-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      physchem = !physchem;
+      btn.classList.toggle('active', physchem);
+      btn.setAttribute('aria-pressed', String(physchem));
       analyze();
     });
   });

@@ -48,9 +48,13 @@ namespace MathCursor.Tests.SourceMap
 
             foreach (var input in LoadFixtureInputs())
             {
-                List<string> cands;
-                try { cands = ForestEngine.Analyze(input).Ranked.Select(r => r.Latex).ToList(); }
-                catch (Exception) { continue; }   // entrées erreur : pas de candidat
+                // maths ET mode chimie (superset de candidats)
+                var cands = new List<string>();
+                foreach (var cu in new[] { EngineCulture.Fr, EngineCulture.Fr.WithPhysChem(true) })
+                {
+                    try { cands.AddRange(ForestEngine.Analyze(input, cu).Ranked.Select(r => r.Latex)); }
+                    catch (Exception) { }   // entrées erreur : pas de candidat
+                }
 
                 foreach (var latex in cands)
                 {

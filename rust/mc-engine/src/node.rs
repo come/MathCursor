@@ -64,6 +64,7 @@ pub struct Node {
     pub grouped: bool,
     pub hole: bool,
     pub choice: bool,
+    pub secondary: bool, // lecture non préférée d'un token ranked (coûte score::SECONDARY)
     pub sig: Option<String>,
     pub coh: Option<String>,
     pub ai: i32,
@@ -85,6 +86,7 @@ impl Default for Node {
             grouped: false,
             hole: false,
             choice: false,
+            secondary: false,
             sig: None,
             coh: None,
             ai: 0,
@@ -125,6 +127,7 @@ pub struct Token {
     pub rank: i32, // sep : 0 = "," , 2 = ";"
     pub unit_word: bool,
     pub sign_sup: bool, // sup issu d'un postSign (0⁺) : jamais un chapeau orphelin
+    pub ranked: bool,   // syms ordonnés par préférence : les suivantes sont des lectures secondaires
     pub coh: Option<String>,
 }
 
@@ -144,6 +147,7 @@ impl Default for Token {
             rank: 0,
             unit_word: false,
             sign_sup: false,
+            ranked: false,
             coh: None,
         }
     }

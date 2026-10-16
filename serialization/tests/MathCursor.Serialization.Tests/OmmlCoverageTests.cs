@@ -34,6 +34,7 @@ public sealed class OmmlCoverageTests
     {
         [JsonPropertyName("in")] public string In { get; set; } = "";
         [JsonPropertyName("culture")] public string Culture { get; set; }
+        [JsonPropertyName("physchem")] public bool PhysChem { get; set; }
         [JsonPropertyName("cands")] public List<string> Cands { get; set; } = new();
     }
 
@@ -61,7 +62,7 @@ public sealed class OmmlCoverageTests
         int n = 0;
         foreach (var f in fixtures)
         {
-            var r = ForestEngine.Analyze(f.In, f.Culture == "us" ? EngineCulture.Us : null);
+            var r = ForestEngine.Analyze(f.In, (f.Culture == "us" ? EngineCulture.Us : EngineCulture.Fr).WithPhysChem(f.PhysChem));
             foreach (var cand in r.Ranked)
             {
                 n++;

@@ -58,9 +58,12 @@ public static class Bridge
 
         try
         {
-            var cult = string.Equals(culture, "us", System.StringComparison.OrdinalIgnoreCase)
+            // suffixe « +physchem » = mode physique-chimie (ADR 2026-10-16-Feat-physics-chemistry-mode)
+            bool physChem = culture != null && culture.EndsWith("+physchem", System.StringComparison.OrdinalIgnoreCase);
+            string baseCulture = physChem ? culture!.Substring(0, culture.Length - "+physchem".Length) : culture ?? "";
+            var cult = (string.Equals(baseCulture, "us", System.StringComparison.OrdinalIgnoreCase)
                 ? EngineCulture.Us
-                : EngineCulture.Fr;
+                : EngineCulture.Fr).WithPhysChem(physChem);
 
             var r = ForestEngine.Analyze(input, cult);
             var cands = new DemoCand[r.Ranked.Count];

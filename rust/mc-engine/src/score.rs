@@ -378,6 +378,22 @@ fn def_chain(n: &Node) -> f64 {
     r
 }
 
+// lecture secondaire d'un token ranked (mode physique-chimie : v⁰ derrière v₀) :
+// reste dans la popup (< PopupGap = 2) mais toujours derrière la préférée.
+// COUPLAGE : doit dépasser l'écart d'inversion de 1 entre (x^2) et (x_2) sous une
+// fonction (la parenthèse d'un indice reste un nœud « paren », celle d'une
+// puissance se dissout) — sinon f(x2) lit x₂ d'abord. Gardé par les fixtures
+// physchem « f(x2) » et « cos(x2) ».
+const SECONDARY: f64 = 1.5;
+
+fn secondaries(n: &Node) -> i32 {
+    let mut s = if n.secondary { 1 } else { 0 };
+    for c in n.effective_parts() {
+        s += secondaries(c);
+    }
+    s
+}
+
 fn holes(n: &Node) -> i32 {
     let mut h = if n.hole { 1 } else { 0 };
     for c in n.effective_parts() {
@@ -388,6 +404,7 @@ fn holes(n: &Node) -> i32 {
 
 pub fn cost(n: &Node) -> f64 {
     base(n) + matrix_extra(n) + HOLE_COST * holes(n) as f64
+        + SECONDARY * secondaries(n) as f64
         + global_coherence(n)
         + mode_coherence(n)
         + slurp_coherence(n)

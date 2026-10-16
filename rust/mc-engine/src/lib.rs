@@ -21,11 +21,13 @@
 //! première analyse, depuis les data JSON embarquées (data/engine/*.json).
 
 pub mod chain;
+pub mod chem;
 pub mod culture;
 pub mod engine;
 pub mod lexer;
 pub mod node;
 pub mod parser;
+pub mod physchem;
 pub mod render;
 pub mod score;
 pub mod segment;
@@ -45,6 +47,7 @@ use std::sync::OnceLock;
 const SYMBOLS_JSON: &str = include_str!("../../../data/engine/symbols.json");
 const CULTURES_JSON: &str = include_str!("../../../data/engine/cultures.json");
 const UNITS_JSON: &str = include_str!("../../../data/engine/units.json");
+const PHYSCHEM_JSON: &str = include_str!("../../../data/engine/physchem.json");
 
 /// Constantes de looseness (doivent coïncider avec symbols.json `const`).
 pub struct Consts {
@@ -62,6 +65,11 @@ pub struct Registry {
     pub role: HashMap<String, String>,
     pub sep: HashMap<char, i32>,
     pub units_compound: HashMap<String, String>,
+    pub elements: HashSet<String>, // mode physique-chimie : symboles des éléments
+    pub states: Vec<String>,       // mode physique-chimie : états (aq, s, l, g)
+    pub quantities: HashMap<String, String>, // mode physique-chimie : grandeurs indicées (Ec → E_c)
+    pub subscript_first: HashSet<String>,    // mode physique-chimie : chiffres « indice d'abord » (v0)
+    pub particles: Vec<(String, String)>,    // mode physique-chimie : particules (e- → e⁻), ordre des données
     pub sameas: HashMap<String, String>, // alias → clé de base (×→*, ≤→<=…), pour StarMath
     pub consts: Consts,
     pub fr: Culture,
@@ -247,8 +255,42 @@ fn build_registry() -> Registry {
             interval_sep: c["intervalSep"].as_str().unwrap().to_string(),
             matrix_env: c["matrixEnv"].as_str().unwrap().to_string(),
             aliases: make_aliases(lang_key),
+            physchem: false,
         }
     };
+    // mode physique-chimie (data/engine/physchem.json)
+    let physchem: serde_json::Value = serde_json::from_str(PHYSCHEM_JSON).unwrap();
+    let elements: HashSet<String> = physchem["elements"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| x.as_str().unwrap().to_string())
+        .collect();
+    let states: Vec<String> = physchem["states"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| x.as_str().unwrap().to_string())
+        .collect();
+    let subscript_first: HashSet<String> = physchem["subscriptFirst"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| x.as_str().unwrap().to_string())
+        .collect();
+    let particles: Vec<(String, String)> = physchem["particles"]
+        .as_object()
+        .unwrap()
+        .iter()
+        .map(|(k, v)| (k.clone(), v.as_str().unwrap().to_string()))
+        .collect();
+    let quantities: HashMap<String, String> = physchem["quantities"]
+        .as_object()
+        .unwrap()
+        .iter()
+        .map(|(k, v)| (k.clone(), v.as_str().unwrap().to_string()))
+        .collect();
+
     let fr = make_culture("fr", "fr");
     let us = make_culture("us", "en");
 
@@ -258,6 +300,11 @@ fn build_registry() -> Registry {
         role,
         sep,
         units_compound,
+        elements,
+        states,
+        quantities,
+        subscript_first,
+        particles,
         sameas,
         consts,
         fr,

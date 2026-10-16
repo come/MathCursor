@@ -19,11 +19,13 @@ fn main() {
 
     for f in &fixtures {
         let input = f["in"].as_str().unwrap();
-        let cu = if f.get("culture").and_then(|v| v.as_str()) == Some("us") {
+        let base = if f.get("culture").and_then(|v| v.as_str()) == Some("us") {
             &reg().us
         } else {
             &reg().fr
         };
+        let physchem = f.get("physchem").and_then(|v| v.as_bool()).unwrap_or(false);
+        let cu = &base.with_physchem(physchem);
         let exp_dec = f["decision"].as_str().unwrap();
         let exp_cands: Vec<String> = f["cands"]
             .as_array()

@@ -97,6 +97,7 @@ namespace MathCursor
                 ? Strings.MathCursorTabLabelUpdate
                 : Strings.MathCursorTabLabel;
         public string OnGetConversionGroupLabel(IRibbonControl control) => Strings.ConversionGroupLabel;
+        public string OnGetDomainsGroupLabel(IRibbonControl control) => Strings.DomainsGroupLabel;
         public string OnGetLayoutGroupLabel(IRibbonControl control) => Strings.LayoutGroupLabel;
         public string OnGetToolsGroupLabel(IRibbonControl control) => Strings.ToolsTabGroupLabel;
         public string OnGetHelpGroupLabel(IRibbonControl control) => Strings.HelpGroupLabel;
@@ -114,6 +115,9 @@ namespace MathCursor
         public string OnGetTabValidateToggleLabel(IRibbonControl control) => Strings.TabValidateToggleLabel;
         public string OnGetTabValidateToggleScreentip(IRibbonControl control) => Strings.TabValidateToggleScreentip;
         public bool OnGetTabValidatePressed(IRibbonControl control) => Host.Settings.SettingsStore.Current.TabValidate;
+        public string OnGetPhysChemToggleLabel(IRibbonControl control) => Strings.PhysChemToggleLabel;
+        public string OnGetPhysChemToggleScreentip(IRibbonControl control) => Strings.PhysChemToggleScreentip;
+        public bool OnGetPhysChemPressed(IRibbonControl control) => Host.DocumentMode.IsPhysChemActive(Globals.ThisAddIn?.Application);
         public string OnGetConvertButtonLabel(IRibbonControl control) => Strings.ConvertButtonLabel;
         public string OnGetConvertButtonScreentip(IRibbonControl control) => Strings.ConvertButtonScreentip;
         public string OnGetBoxResultButtonLabel(IRibbonControl control) => Strings.BoxResultButtonLabel;
@@ -382,6 +386,26 @@ namespace MathCursor
                 LogDebug($"tabvalidate_toggle → {pressed}");
             }
             catch (Exception ex) { LogDebug("tabvalidate_toggle_error: " + ex.Message); }
+        }
+
+        /// <summary>Toggle Physique-chimie = mode du DOCUMENT ACTIF, mémorisé dans
+        /// le .docx (ADR 2026-10-16-Feat-physics-chemistry-mode).</summary>
+        public void OnPhysChemToggled(IRibbonControl control, bool pressed)
+        {
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null || app.Documents.Count == 0) { InvalidatePhysChemToggle(); return; }
+                Host.DocumentMode.SetPhysChem(app.ActiveDocument, pressed);
+                LogDebug($"physchem_toggle → {pressed}");
+            }
+            catch (Exception ex) { LogDebug("physchem_toggle_error: " + ex.Message); InvalidatePhysChemToggle(); }
+        }
+
+        /// <summary>Resynchronise le toggle Physique-chimie (changement de document actif).</summary>
+        internal void InvalidatePhysChemToggle()
+        {
+            try { _ribbon?.InvalidateControl("PhysChemToggle"); } catch { }
         }
 
         public void OnSettingsClicked(IRibbonControl control)

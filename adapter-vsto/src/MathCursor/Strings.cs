@@ -277,6 +277,24 @@ namespace MathCursor
             _    => "Esc: pause · Ctrl+Space: resume",
         };
 
+        public static string DomainsGroupLabel => Lang switch
+        {
+            "fr" => "Domaines",
+            _    => "Subjects",
+        };
+
+        public static string PhysChemToggleLabel => Lang switch
+        {
+            "fr" => "Physique-chimie",
+            _    => "Physics-chemistry",
+        };
+
+        public static string PhysChemToggleScreentip => Lang switch
+        {
+            "fr" => "Activé pour ce document : formules chimiques (H2O → H₂O, Fe2+ → Fe²⁺) et grandeurs de physique (v0 → v₀, Ec → Ec indicé) proposées dans la popup. Le réglage est enregistré dans le document.",
+            _    => "On for this document: chemical formulas (H2O → H₂O, Fe2+ → Fe²⁺) and physics quantities (v0 → v₀, Ec → subscripted E) are offered in the popup. The setting is saved in the document.",
+        };
+
         public static string TabValidateToggleLabel => Lang switch
         {
             "fr" => "Tab valide",

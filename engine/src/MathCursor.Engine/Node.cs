@@ -35,6 +35,7 @@ internal sealed class Node
     public bool Grouped;
     public bool Hole;
     public bool Choice;              // infixe qui AVAIT la place de déborder à droite (>1 token)
+    public bool Secondary;           // lecture non préférée d'un token Ranked (coûte Score.SECONDARY)
 
     public string? Sig;
     public string? Coh;
@@ -56,6 +57,7 @@ internal sealed class Node
         Grouped = Grouped,
         Hole = Hole,
         Choice = Choice,
+        Secondary = Secondary,
         Sig = Sig,
         Coh = Coh,
         Ai = Ai,
@@ -95,6 +97,7 @@ internal sealed class Token
     public bool Sticky;              // infixe qui ne prend qu'un atome à droite
     public bool Hard;                // _ / ^ EXACT (ScriptMarkers) : base = un seul élément
     public bool SignSup;             // sup issu d'un postSign (0⁺) : signe d'exposant, jamais un chapeau orphelin
+    public bool Ranked;              // Syms ordonnés par préférence : les suivantes sont des lectures secondaires
     public bool Implicit;            // juxtaposition (rendu collé)
     public int Rank;                 // sep : rang (0 = "," , 2 = ";")
     public bool UnitWord;            // atome mot-unité

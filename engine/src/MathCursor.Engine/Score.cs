@@ -28,6 +28,13 @@ internal static class Score
     private const double ORIENT = 0.5;
     private const double MAP_DEF = 2.5;
     private const double HOLE_COST = 3;
+    // lecture secondaire d'un token Ranked (mode physique-chimie : v⁰ derrière v₀) :
+    // reste dans la popup (< PopupGap = 2) mais toujours derrière la préférée.
+    // COUPLAGE : doit dépasser l'écart d'inversion de 1 entre (x^2) et (x_2) sous une
+    // fonction (la parenthèse d'un indice reste un nœud « paren », celle d'une
+    // puissance se dissout) — sinon f(x2) lit x₂ d'abord. Gardé par les fixtures
+    // physchem « f(x2) » et « cos(x2) ».
+    private const double SECONDARY = 1.5;
     private const double SUM = 3; // pour cohérence avec looseness (non utilisé directement ici)
 
     private static VocabEntry? Decl(Node n) => n.Sym != null && Vocabulary.Vocab.TryGetValue(n.Sym, out var v) ? v : null;
@@ -328,6 +335,13 @@ internal static class Score
         return h;
     }
 
+    private static int Secondaries(Node n)
+    {
+        int s = n.Secondary ? 1 : 0;
+        foreach (var c in Parts(n)) s += Secondaries(c);
+        return s;
+    }
+
     public static double Cost(Node n) =>
-        Base(n) + MatrixExtra(n) + HOLE_COST * Holes(n) + GlobalCoherence(n) + ModeCoherence(n) + SlurpCoherence(n) - ParentRefund(n) - DefChain(n);
+        Base(n) + MatrixExtra(n) + HOLE_COST * Holes(n) + SECONDARY * Secondaries(n) + GlobalCoherence(n) + ModeCoherence(n) + SlurpCoherence(n) - ParentRefund(n) - DefChain(n);
 }

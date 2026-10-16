@@ -45,16 +45,22 @@ public sealed class EngineCulture
     /// précalculé par <see cref="Vocabulary"/> (ADR 2026-06-10-Feat-culture-scoped-aliases).</summary>
     internal IReadOnlyDictionary<string, string> Aliases { get; }
 
+    /// <summary>Mode physique-chimie : formules chimiques (H2O, Fe2+) et grandeurs
+    /// indicées (v0, Ec) lues comme en physique-chimie (ADR 2026-10-16-Feat-
+    /// physics-chemistry-mode). Désactivé par défaut.</summary>
+    public bool PhysChem { get; }
+
     internal string Canon(string w) => Aliases.TryGetValue(w, out var c) ? c : w;
 
     internal EngineCulture(char[] decimalsIn, string decimalTex, string intervalSep, string matrixEnv,
-        IReadOnlyDictionary<string, string> aliases)
+        IReadOnlyDictionary<string, string> aliases, bool physChem = false)
     {
         DecimalsIn = decimalsIn;
         DecimalTex = decimalTex;
         IntervalSep = intervalSep;
         MatrixEnv = matrixEnv;
         Aliases = aliases;
+        PhysChem = physChem;
     }
 
     /// <summary>Clone du preset avec les réglages utilisateur non-null appliqués.
@@ -63,7 +69,11 @@ public sealed class EngineCulture
     public EngineCulture WithOverrides(string? intervalSep = null, string? matrixEnv = null)
         => intervalSep == null && matrixEnv == null
             ? this
-            : new EngineCulture(DecimalsIn, DecimalTex, intervalSep ?? IntervalSep, matrixEnv ?? MatrixEnv, Aliases);
+            : new EngineCulture(DecimalsIn, DecimalTex, intervalSep ?? IntervalSep, matrixEnv ?? MatrixEnv, Aliases, PhysChem);
+
+    /// <summary>Clone avec le mode physique-chimie activé ou non.</summary>
+    public EngineCulture WithPhysChem(bool physChem)
+        => physChem == PhysChem ? this : new EngineCulture(DecimalsIn, DecimalTex, IntervalSep, MatrixEnv, Aliases, physChem);
 
     public static readonly EngineCulture Fr = FromData("fr", Vocabulary.AliasesFr);
     public static readonly EngineCulture Us = FromData("us", Vocabulary.AliasesUs);

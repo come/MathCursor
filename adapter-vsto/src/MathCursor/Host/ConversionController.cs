@@ -207,6 +207,11 @@ namespace MathCursor.Host
                 ScriptMarkup.Apply(zone.Text, kinds), zone.ParagraphText, zone.StringEnd);
         }
 
+        /// <summary>Culture moteur : réglages utilisateur + mode physique-chimie du document
+        /// actif (ADR 2026-10-16-Feat-physics-chemistry-mode).</summary>
+        private MathCursor.Engine.EngineCulture CurrentCulture() =>
+            Settings.SettingsStore.Current.ToEngineCulture().WithPhysChem(DocumentMode.IsPhysChemActive(_app));
+
         /// <summary>Moteur forest + affichage popup. Garde la zone si OK.
         /// <paramref name="silent"/> : échec sans StatusBar, popup masquée.</summary>
         private bool AnalyzeAndShow(ZoneSpan zone, bool silent = false)
@@ -261,7 +266,7 @@ namespace MathCursor.Host
             MathCursor.Engine.AnalyzeResult result;
             // Culture relue à chaque trigger : un changement dans la popup
             // Paramètres s'applique sans redémarrage.
-            try { result = MathCursor.Engine.ForestEngine.Analyze(engineInput, Settings.SettingsStore.Current.ToEngineCulture()); }
+            try { result = MathCursor.Engine.ForestEngine.Analyze(engineInput, CurrentCulture()); }
             catch (Exception ex)
             {
                 _log($"convert: engine error sur \"{Preview(zone.Text)}\": {ex.Message}");
@@ -324,7 +329,7 @@ namespace MathCursor.Host
                 return false;
             }
 
-            var culture = Settings.SettingsStore.Current.ToEngineCulture();
+            var culture = CurrentCulture();
             string Top(string steno)
             {
                 if (string.IsNullOrWhiteSpace(steno)) return "";

@@ -94,12 +94,12 @@ namespace MathCursor.Tests.UI
             Assert.True(inputs.Count >= 310);
 
             // 1. Tous les candidats LaTeX émis par le moteur (dédupliqués).
-            //    Chaque entrée est analysée en FR ET en US (plus simple que de
-            //    parser le champ "culture", et couvre un superset de candidats).
+            //    Chaque entrée est analysée en FR, en US et en mode chimie (plus
+            //    simple que de parser "culture"/"chem", superset de candidats).
             var candidates = new List<string>();
             var seen = new HashSet<string>(StringComparer.Ordinal);
             foreach (var input in inputs)
-                foreach (var culture in new[] { MathCursor.Engine.EngineCulture.Fr, MathCursor.Engine.EngineCulture.Us })
+                foreach (var culture in new[] { MathCursor.Engine.EngineCulture.Fr, MathCursor.Engine.EngineCulture.Us, MathCursor.Engine.EngineCulture.Fr.WithPhysChem(true) })
                 {
                     MathCursor.Engine.AnalyzeResult r;
                     try { r = MathCursor.Engine.ForestEngine.Analyze(input, culture); }

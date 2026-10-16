@@ -454,10 +454,10 @@ internal sealed class Forest
                 bool choice = j - k - 1 > 1;
                 foreach (var l in ParseSpan(i, k))
                     foreach (var r in ParseSpan(k + 1, j))
-                        foreach (var sym in syms)
+                        for (int s = 0; s < syms.Count; s++)
                             // tight = opérande droite d'un seul morceau (comme un préfixe tight).
-                            if (!Vocabulary.Vocab[sym].Tight || j - k - 1 == 1)
-                            outl.Add(new Node { Type = "infix", Sym = sym, Spaced = _toks[k].Spaced, Implicit = _toks[k].Implicit, Choice = choice, Parts = new() { l, r } });
+                            if (!Vocabulary.Vocab[syms[s]].Tight || j - k - 1 == 1)
+                            outl.Add(new Node { Type = "infix", Sym = syms[s], Spaced = _toks[k].Spaced, Implicit = _toks[k].Implicit, Choice = choice, Secondary = _toks[k].Ranked && s > 0, Parts = new() { l, r } });
             }
 
         string sg = SigOf(i, j);

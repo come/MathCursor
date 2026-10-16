@@ -82,6 +82,11 @@ else {
     Push-Location $rustDir
     & $cargo.Source run -q -p mc-engine --bin conformance
     if ($LASTEXITCODE -ne 0) { $failures += 'Conformance Rust (mc-engine)' }
+    # Tests unitaires Rust : composition multiligne (= / <=>) et systemes { ...
+    # (chain.rs), sert VSCode + LibreOffice -> BLOQUANT.
+    Write-Host "`n=== Tests unitaires Rust (mc-engine) ===" -ForegroundColor Cyan
+    & $cargo.Source test -q -p mc-engine
+    if ($LASTEXITCODE -ne 0) { $failures += 'Tests unitaires Rust (mc-engine)' }
     Pop-Location
 }
 

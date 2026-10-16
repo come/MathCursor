@@ -59,6 +59,10 @@ jobs:
         working-directory: rust
         run: cargo run --release -p mc-engine --bin conformance
 
+      - name: Tests unitaires moteur (multiligne, systèmes)
+        working-directory: rust
+        run: cargo test --release -p mc-engine
+
       - name: Upload binaires
         uses: actions/upload-artifact@v4
         with:

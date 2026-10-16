@@ -28,9 +28,16 @@ pub struct Culture {
     pub interval_sep: String,
     pub matrix_env: String,
     pub aliases: HashMap<String, String>,
+    /// Mode physique-chimie (ADR 2026-10-16-Feat-physics-chemistry-mode) : formules et grandeurs indicées.
+    pub physchem: bool,
 }
 
 impl Culture {
+    /// Clone avec le mode physique-chimie activé ou non.
+    pub fn with_physchem(&self, physchem: bool) -> Culture {
+        Culture { physchem, ..self.clone() }
+    }
+
     pub fn canon(&self, w: &str) -> String {
         self.aliases
             .get(w)

@@ -46,6 +46,18 @@
                   imageMso="BorderOutside"
                   onAction="OnBoxResultClicked" />
         </group>
+        <!-- Domaines : lectures propres à une matière, activées PAR DOCUMENT
+             (variable de document). Physique-chimie : H2O, Fe2+, v0, Ec. Accueille
+             les domaines à venir. Cf. ADR 2026-10-16-Feat-physics-chemistry-mode. -->
+        <group id="MathCursorDomainsGroup" getLabel="OnGetDomainsGroupLabel">
+          <toggleButton id="PhysChemToggle"
+                        getLabel="OnGetPhysChemToggleLabel"
+                        getScreentip="OnGetPhysChemToggleScreentip"
+                        getPressed="OnGetPhysChemPressed"
+                        size="large"
+                        imageMso="SymbolInsert"
+                        onAction="OnPhysChemToggled" />
+        </group>
         <group id="MathCursorLayoutGroup" getLabel="OnGetLayoutGroupLabel">
           <menu id="ColumnsMenu"
                 getLabel="OnGetColumnsMenuLabel"

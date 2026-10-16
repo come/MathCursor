@@ -604,11 +604,12 @@ impl<'a> Forest<'a> {
                 let choice = (j - k - 1) > 1;
                 let spaced = toks[k].spaced;
                 let implicit = toks[k].implicit;
+                let ranked = toks[k].ranked;
                 let ls = self.parse_span(i, k);
                 let rs = self.parse_span(k + 1, j);
                 for l in &ls {
                     for rr in &rs {
-                        for sym in &syms {
+                        for (s, sym) in syms.iter().enumerate() {
                             // tight = opérande droite d'un seul morceau (comme un préfixe tight).
                             if reg().vocab[sym.as_str()].tight && (j - k - 1) != 1 {
                                 continue;
@@ -619,6 +620,7 @@ impl<'a> Forest<'a> {
                                 spaced,
                                 implicit,
                                 choice,
+                                secondary: ranked && s > 0,
                                 parts: Some(vec![l.clone(), rr.clone()]),
                                 ..Default::default()
                             });

@@ -41,15 +41,17 @@ internal static class Lexer
         public string[] Roles = Array.Empty<string>();
         public bool Sticky;
         public bool CrossSpace;
+        // mode physique-chimie : indice ET puissance, ordre par PhysChem.ScriptOrder
+        public bool PhysChemAlt;
     }
 
     private static readonly JoinRule[] Join =
     {
         // « x2 » → puissance SEULE (ADR 2026-06-10 sup-only : l'indice se
         // force avec _, les suites s'écrivent u_1 — contre-cas documenté).
-        new() { Left = new[] { "name" }, Right = new[] { "num" }, Roles = new[] { "sup" }, Sticky = true },
+        new() { Left = new[] { "name" }, Right = new[] { "num" }, Roles = new[] { "sup" }, Sticky = true, PhysChemAlt = true },
         new() { Left = new[] { "close" }, Right = new[] { "num" }, Roles = new[] { "sup" }, Sticky = true },
-        new() { Left = new[] { "unit" }, Right = new[] { "num" }, Roles = new[] { "sup" }, Sticky = true },
+        new() { Left = new[] { "unit" }, Right = new[] { "num" }, Roles = new[] { "sup" }, Sticky = true, PhysChemAlt = true },
         new() { Left = new[] { "num" }, Right = new[] { "unit" }, Roles = new[] { "unitOp" }, Sticky = true, CrossSpace = true },
         new() { Left = new[] { "name", "unit", "post" }, Right = new[] { "open" }, Roles = new[] { "apply" } },
         new() { Left = new[] { "num", "name", "close", "post" }, Right = new[] { "name", "open", "func" }, Roles = new[] { "implicit" } },
@@ -224,6 +226,24 @@ internal static class Lexer
                 EmitScript(usub, gb.ToString());
                 continue;
             }
+            // mode physique-chimie : une formule chimique bornée (H2O, Fe2+) = UN atome à lectures
+            // multiples ; une particule (e-) = un atome (ADR 2026-10-16-Feat-physics-chemistry-mode)
+            if (culture.PhysChem)
+            {
+                int len = ChemFormula.Scan(src, i, out var readings);
+                if (len == 0 && PhysChem.ScanParticle(src, i, out var particle) is var pl && pl > 0)
+                {
+                    len = pl;
+                    readings = new List<string> { particle };
+                }
+                if (len > 0)
+                {
+                    Push(readings.Count > 1 ? new Token { Kind = "atom", Syms = readings } : new Token { Kind = "atom", Sym = readings[0] });
+                    i += len;
+                    continue;
+                }
+            }
+
             if (c == '(') { Push(new Token { Kind = "lparen" }); i++; continue; }
             if (c == ')') { Push(new Token { Kind = "rparen" }); i++; continue; }
             if (c == '[' || c == ']') { Push(new Token { Kind = "bracket", Sym = c.ToString() }); brk++; i++; continue; }
@@ -285,6 +305,12 @@ internal static class Lexer
                 while (i < src.Length && IsAlpha(src[i])) sb.Append(src[i++]);
                 string s = sb.ToString();
                 bool sp = Spaced(st - 1, i);
+                // mode physique-chimie : grandeur usuelle indicée en lettres (Ec → E_c)
+                if (culture.PhysChem && PhysChem.TryQuantity(s, out var qty))
+                {
+                    Push(new Token { Kind = "atom", Sym = qty });
+                    continue;
+                }
                 // raccourcis dots « v... » / « d... » / « c... » (et formes
                 // autocorrigées « v… ») : le mot absorbe les points qui
                 // suivent si l'ALIAS « mot... » existe (table aliasGeneric,
@@ -391,7 +417,7 @@ internal static class Lexer
         while (depth-- > 0) toks.Add(new Token { Kind = "rparen", SpaceBefore = false, Virtual = true });
         if (brk % 2 == 1) toks.Add(new Token { Kind = "bracket", Sym = "]", SpaceBefore = false, Virtual = true });
 
-        return Juxtapose(toks);
+        return Juxtapose(toks, culture.PhysChem);
     }
 
     // Contenu d'un groupe indice/exposant exact → meilleure lecture du moteur
@@ -431,8 +457,9 @@ internal static class Lexer
         };
     }
 
-    private static List<Token> Juxtapose(List<Token> toks)
+    private static List<Token> Juxtapose(List<Token> toks, bool physChem)
     {
+        var scriptOrder = physChem ? new PhysChem.ScriptOrder(toks) : null;
         var outp = new List<Token>();
         for (int i = 0; i < toks.Count; i++)
         {
@@ -450,11 +477,16 @@ internal static class Lexer
             var syms = new List<string>();
             foreach (var role in rule.Roles) if (Vocabulary.Role.TryGetValue(role, out var sym)) syms.Add(sym);
             if (syms.Count == 0) continue;
+            // mode physique-chimie : indice et puissance, ordonnés (v0 → v₀ puis v⁰)
+            var ordered = rule.PhysChemAlt ? scriptOrder?.For(toks, i, lc == "unit") : null;
+            bool ranked = ordered != null;
+            if (ranked) syms = ordered!;
 
             var t = new Token { Kind = "infix", Spaced = rule.CrossSpace && R.SpaceBefore };
             if (syms.Count > 1) t.Syms = syms; else t.Sym = syms[0];
             if (Array.IndexOf(rule.Roles, "implicit") >= 0 || Array.IndexOf(rule.Roles, "apply") >= 0) t.Implicit = true;
             if (rule.Sticky) t.Sticky = true;
+            if (ranked) t.Ranked = true;
             outp.Add(t);
         }
         return outp;
