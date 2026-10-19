@@ -210,6 +210,18 @@ namespace MathCursor
             _    => "Concrete multi-syntax examples gallery (coming).",
         };
 
+        public static string StudyTableMenuLabel => Lang switch
+        {
+            "fr" => "Tableau",
+            _    => "Table",
+        };
+
+        public static string StudyTableMenuScreentip => Lang switch
+        {
+            "fr" => "Insère un tableau de signe ou de variation prêt à remplir (flèches ↗ ↘ incluses).",
+            _    => "Insert a ready-to-fill sign or variation table (↗ ↘ arrows included).",
+        };
+
         public static string ConstructionSignTableLabel => Lang switch
         {
             "fr" => "Tableau de signe",
@@ -1004,6 +1016,12 @@ namespace MathCursor
         {
             "fr" => "Impossible d'insérer les colonnes :\n",
             _    => "Couldn't insert the columns:\n",
+        };
+
+        public static string StudyTableInsertFailed => Lang switch
+        {
+            "fr" => "Impossible d'insérer le tableau :\n",
+            _    => "Couldn't insert the table:\n",
         };
     }
 }

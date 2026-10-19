@@ -43,6 +43,7 @@ namespace MathCursor
         private ConversionController _conversion;
         private EditModeController _editMode;
         private EquationDeletionGuard _deletionGuard;
+        private ArrowCellController _arrowCells;
         private AutoDetectController _autoDetect;
         private Detection.MathNerDetector _ner;
         private KeyboardInterceptor _keyboard;
@@ -84,6 +85,10 @@ namespace MathCursor
                 // Suppression atomique Backspace/Suppr (héritier minimal de
                 // l'ex-AnchorHygiene H1 ; H2/H3 caducs sans CC — ADR
                 // hash-source-map).
+                // Palette ↗ ↘ → des cases de flèche des tableaux de variation
+                // (ADR 2026-10-19-UX-variation-arrow-palette).
+                _arrowCells = new ArrowCellController(this.Application, LogStartup);
+
                 _deletionGuard = new EquationDeletionGuard(
                     this.Application, _conversion.Resolver, LogStartup);
 
@@ -104,9 +109,15 @@ namespace MathCursor
                     OnUpPressed = HandleUpPressed,
                     OnDownPressed = HandleDownPressed,
                     OnEscapePressed = HandleEscapePressed,
+                    OnLeftPressed = () => HandleArrowPaletteHorizontal(-1),
+                    OnRightPressed = () => HandleArrowPaletteHorizontal(+1),
                     OnBackspacePressed = () => _deletionGuard?.TrySelectEquationBeforeCaret() ?? false,
                     OnDeletePressed = () => _deletionGuard?.TrySelectEquationAfterCaret() ?? false,
-                    OnTextKeyTyped = () => _autoDetect?.OnTextKeyTyped(),
+                    OnTextKeyTyped = () =>
+                    {
+                        if (_arrowCells?.IsPopupVisible == true) _arrowCells.Dismiss();
+                        _autoDetect?.OnTextKeyTyped();
+                    },
                 };
                 _keyboard.Install();
 
@@ -185,6 +196,7 @@ namespace MathCursor
             try { _ner?.Dispose(); } catch { }
             try { _conversion?.Dispose(); } catch { }
             try { _editMode?.Close(); } catch { }
+            try { _arrowCells?.Close(); } catch { }
         }
 
         // ── NER (auto-détection) ─────────────────────────────────────────
@@ -269,6 +281,8 @@ namespace MathCursor
                 catch { }
                 _editMode?.Sync(omAtCaret, inPostCommitCooldown: false);
 
+                try { _arrowCells?.OnSelectionChanged(sel); } catch { }
+
                 // QOL 2026-06-12 : un CLIC dans du texte (sélection réduite,
                 // hors OMath) relance la détection — la popup se (re)propose
                 // sur une expression existante, ou se ferme si rien au caret.
@@ -300,6 +314,7 @@ namespace MathCursor
             // change pas de fenêtre, ceinture + bretelles). La popup WPF est
             // WS_EX_NOACTIVATE → son apparition ne déclenche pas ce deactivate.
             try { if (_conversion?.IsCommitting != true) _conversion?.HidePopup(); } catch { }
+            try { _arrowCells?.HidePopup(); } catch { }
             try { _ = Host.Usage.UsageStatsClient.FlushAsync(); } catch { }
         }
 
@@ -332,22 +347,46 @@ namespace MathCursor
         {
             if (_conversion?.IsPopupVisible == true && _conversion.IsNavMode)
                 return _conversion.CommitSelected();
+            if (_arrowCells?.IsNavMode == true)
+                return _arrowCells.CommitSelected();
             return _conversion?.TryExitFlowOnEnter() ?? false;
         }
 
-        // Down : entre en nav mode, puis descend.
+        // Down : entre en nav mode, puis descend. Palette de flèches (en
+        // ligne) : ↓ entre en navigation, ↓ suivant sans effet.
         private bool HandleDownPressed()
         {
-            if (_conversion?.IsPopupVisible != true) return false;
+            if (_conversion?.IsPopupVisible != true)
+            {
+                if (_arrowCells?.IsPopupVisible != true) return false;
+                _arrowCells.EnterNavMode();
+                return true;
+            }
             if (!_conversion.IsNavMode) { _conversion.EnterNavMode(); return true; }
             return _conversion.MoveSelection(+1);
         }
 
-        // Up : remonte si déjà en nav mode, sinon pass-through.
+        // Up : remonte si déjà en nav mode, sinon pass-through. Palette de
+        // flèches : ↑ sort de la navigation (touche consommée).
         private bool HandleUpPressed()
         {
-            if (_conversion?.IsPopupVisible != true || !_conversion.IsNavMode) return false;
+            if (_conversion?.IsPopupVisible != true || !_conversion.IsNavMode)
+            {
+                if (_arrowCells?.IsNavMode != true) return false;
+                _arrowCells.ExitNavMode();
+                return true;
+            }
             return _conversion.MoveSelection(-1);
+        }
+
+        // ← / → : choix dans la palette de flèches, en navigation seulement
+        // (sinon le caret se déplace normalement).
+        private bool HandleArrowPaletteHorizontal(int delta)
+        {
+            if (_conversion?.IsPopupVisible == true) return false;
+            if (_arrowCells?.IsNavMode != true) return false;
+            _arrowCells.MoveSelection(delta);
+            return true;
         }
 
         // Esc : ferme la popup suggestion ET met la détection auto en pause
@@ -364,6 +403,7 @@ namespace MathCursor
                 }
                 return true;
             }
+            if (_arrowCells?.IsPopupVisible == true) { _arrowCells.Dismiss(); return true; }
             if (_editMode?.IsPopupVisible == true) { _editMode.HidePopup(); return true; }
             return false;
         }

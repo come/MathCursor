@@ -185,6 +185,9 @@
     <Compile Include="RibbonCallback.cs" />
     <EmbeddedResource Include="Ribbon.xml" />
     <Compile Include="Host\ColumnLayoutInserter.cs" />
+    <Compile Include="Host\StudyTableInserter.cs" />
+    <Compile Include="Host\ArrowCellController.cs" />
+    <Compile Include="Host\StudyTableTemplate.cs" />
     <Compile Include="Host\CalloutInserter.cs" />
     <Compile Include="Host\MathFontCatalog.cs" />
     <Compile Include="Host\MathFontApplier.cs" />
@@ -243,6 +246,7 @@
     <Compile Include="UI\SettingsWindow.cs" />
     <Compile Include="UI\SuggestionPopupWindow.cs" />
     <Compile Include="UI\EditModePopupWindow.cs" />
+    <Compile Include="UI\ArrowPalettePopupWindow.cs" />
     <Compile Include="UI\FeedbackDialog.cs" />
     <Compile Include="UI\WpfMathAdapter.cs" />
     <Compile Include="UI\MixedLatexRenderer.cs" />

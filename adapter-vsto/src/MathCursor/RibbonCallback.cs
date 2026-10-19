@@ -107,6 +107,10 @@ namespace MathCursor
         public string OnGetColumns2Label(IRibbonControl control) => Strings.Columns2Label;
         public string OnGetColumns3Label(IRibbonControl control) => Strings.Columns3Label;
         public string OnGetColumns4Label(IRibbonControl control) => Strings.Columns4Label;
+        public string OnGetStudyTableMenuLabel(IRibbonControl control) => Strings.StudyTableMenuLabel;
+        public string OnGetStudyTableMenuScreentip(IRibbonControl control) => Strings.StudyTableMenuScreentip;
+        public string OnGetSignTableLabel(IRibbonControl control) => Strings.ConstructionSignTableLabel;
+        public string OnGetVariationTableLabel(IRibbonControl control) => Strings.ConstructionVariationTableLabel;
         public string OnGetSettingsButtonLabel(IRibbonControl control) => Strings.SettingsButtonLabel;
         public string OnGetSettingsButtonScreentip(IRibbonControl control) => Strings.SettingsButtonScreentip;
         public string OnGetAutoDetectToggleLabel(IRibbonControl control) => Strings.AutoDetectToggleLabel;
@@ -346,6 +350,29 @@ namespace MathCursor
                     "MathCursor",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
+            }
+        }
+
+        /// <summary>Insère un tableau de signe ou de variation préformaté.
+        /// Le type est résolu depuis l'id du bouton du menu.</summary>
+        public void OnInsertStudyTableClicked(IRibbonControl control)
+        {
+            try
+            {
+                var kind = control?.Id == "InsertVariationTableButton"
+                    ? Host.StudyTableKind.Variation
+                    : Host.StudyTableKind.Sign;
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null) { LogDebug("study_table: app null"); return; }
+                Host.StudyTableInserter.Insert(app, kind);
+                LogDebug($"study_table_done kind={kind}");
+            }
+            catch (Exception ex)
+            {
+                LogDebug("study_table_error: " + ex.Message);
+                MessageBox.Show(
+                    Strings.StudyTableInsertFailed + ex.Message,
+                    "MathCursor", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 

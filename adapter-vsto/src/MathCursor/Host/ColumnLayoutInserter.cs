@@ -54,8 +54,32 @@ namespace MathCursor.Host
             var sel = app.Selection;
             if (sel == null) return;
 
-            var currentPara = sel.Paragraphs[1];
             bool hasSelection = sel.Start != sel.End;
+            var insertRange = ResolveInsertRange(doc, sel);
+            var table = doc.Tables.Add(insertRange, NumRows: 1, NumColumns: columnCount);
+
+            bool contentInCol1 = false;
+            if (hasSelection)
+            {
+                // Copie FormattedText (préserve OMaths + anchor CCs + styles
+                // + runs) dans col 1, puis supprime la source.
+                var col1 = table.Cell(1, 1).Range;
+                col1.FormattedText = sel.Range.FormattedText;
+                contentInCol1 = true;
+                sel.Range.Delete();
+            }
+
+            ConfigureBordersAndWidths(table, columnCount);
+            PlaceCursorAfterInsertion(table, columnCount, contentInCol1);
+        }
+
+        /// <summary>
+        /// Range (collapsée) où poser un tableau inséré depuis le ruban.
+        /// Partagé avec <see cref="StudyTableInserter"/>.
+        /// </summary>
+        internal static Word.Range ResolveInsertRange(Word.Document doc, Word.Selection sel)
+        {
+            var currentPara = sel.Paragraphs[1];
 
             // Position d'insertion :
             //  - ¶ courant VIDE → table À LA PLACE du ¶ vide (= insertion à
@@ -81,22 +105,7 @@ namespace MathCursor.Host
                 }
             }
 
-            var insertRange = doc.Range(insertPos, insertPos);
-            var table = doc.Tables.Add(insertRange, NumRows: 1, NumColumns: columnCount);
-
-            bool contentInCol1 = false;
-            if (hasSelection)
-            {
-                // Copie FormattedText (préserve OMaths + anchor CCs + styles
-                // + runs) dans col 1, puis supprime la source.
-                var col1 = table.Cell(1, 1).Range;
-                col1.FormattedText = sel.Range.FormattedText;
-                contentInCol1 = true;
-                sel.Range.Delete();
-            }
-
-            ConfigureBordersAndWidths(table, columnCount);
-            PlaceCursorAfterInsertion(table, columnCount, contentInCol1);
+            return doc.Range(insertPos, insertPos);
         }
 
         // ─── Helpers ──────────────────────────────────────────────────
