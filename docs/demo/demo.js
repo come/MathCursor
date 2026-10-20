@@ -144,6 +144,11 @@
 
   document.querySelectorAll('.examples button').forEach(b => {
     b.addEventListener('click', () => {
+      // Exemple de physique-chimie : active le mode s'il ne l'est pas (H2O, Fe2+…).
+      if (b.dataset.physchem === '1' && !physchem) {
+        const toggle = document.querySelector('.math-culture .physchem-toggle');
+        if (toggle) toggle.click();
+      }
       input.value = b.dataset.ex;
       input.focus();
       analyze();

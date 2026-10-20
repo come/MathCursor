@@ -49,10 +49,10 @@
           </div>
           <div class="hero-badges">
             <span class="badge" data-i18n="badge_friction">Sans syntaxe à apprendre</span>
-            <span class="badge" data-i18n="badge_local">100 % local</span>
+            <span class="badge" data-i18n="badge_local">Vos documents restent chez vous</span>
             <span class="badge" data-i18n="badge_account">Sans compte</span>
           </div>
-          <p class="hero-platforms" data-i18n="hero_platforms">Dans votre éditeur : <strong>Word</strong> · LibreOffice <span class="alpha">(alpha)</span></p>
+          <p class="hero-platforms" data-i18n="hero_platforms">Dans votre éditeur : <strong>Word</strong> · LibreOffice <span class="alpha">(alpha)</span> · VS&nbsp;Code <span class="alpha">(alpha)</span></p>
         </div>
         <figure class="hero-figure">
           <video class="hero-figure-video" autoplay muted loop playsinline preload="auto" aria-label="Aperçu : MathCursor convertit une notation clavier en équation, au fil de la frappe">
@@ -110,6 +110,22 @@
       </div>
     </section>
 
+    <!-- Nouveau : tableaux de signe et de variation (0.12.0) -->
+    <section id="tableaux" class="section">
+      <div class="container">
+        <h2 data-i18n="tab_h">Nouveau : les tableaux de signe et de variation</h2>
+        <p class="scope-lead" data-i18n="tab_lead">Un bouton dans le ruban de Word, et le tableau se remplit au clavier, sans dessiner une seule bordure.</p>
+        <figure class="card" style="margin: 20px 0 24px; padding: 12px;">
+          <img src="assets/tableau-variation.png" alt="Tableau de variation de f(x) dans Word : x de moins l'infini à plus l'infini, valeurs -1 et 1, signes de f'(x) et flèches de variation" style="width: 100%; height: auto; display: block;" loading="lazy" />
+        </figure>
+        <ul class="features">
+          <li data-i18n="tab_1"><strong>Des valeurs de x au clavier.</strong> Tapez une valeur entre deux valeurs de <em>x</em> : elle s'ajoute avec ses intervalles. Videz-la : elle disparaît. La ligne de séparation se trace toute seule, coupée par les 0.</li>
+          <li data-i18n="tab_2"><strong>Un clic sur une case.</strong> Sur une étiquette, ajoutez une ligne de signe ou de variation. Sous une valeur, posez un 0 ou une valeur interdite (double barre). Dans une ligne de variation, choisissez la flèche ↗ ↘ →.</li>
+          <li data-i18n="tab_3"><strong>Les formules comme ailleurs.</strong> Valeurs, étiquettes et extremums se tapent avec MathCursor (<code>rac 3 / 2</code>, <code>f(2)</code>…). Maximums et minimums se placent en haut ou en bas d'après les flèches.</li>
+        </ul>
+      </div>
+    </section>
+
     <!-- Couverture math actuelle -->
     <section id="scope" class="section">
       <div class="container">
@@ -124,16 +140,20 @@
               <li data-i18n="scope_ok_3">Sommes, intégrales, limites, produits.</li>
               <li data-i18n="scope_ok_4">Fonctions usuelles (<code>sin</code>, <code>cos</code>, <code>log</code>, <code>ln</code>…) en français, anglais, allemand, espagnol.</li>
               <li data-i18n="scope_ok_5">Matrices et systèmes d'équations simples.</li>
-              <li data-i18n="scope_ok_6">Symboles courants (∀, ∃, ∈, ≤, ≥, →, ⇒…).</li>
+              <li data-i18n="scope_ok_6">Symboles courants (∀, ∃, ∈, ≤, ≥, →, ⇒…), et lettres grecques ou symboles déjà tapés en Unicode (λ, Δ, µ, ², √).</li>
+              <li data-i18n="scope_ok_8">Notation scientifique telle qu'on l'écrit vite : <code>2,5*10-3</code> donne 2,5×10⁻³.</li>
+              <li data-i18n="scope_ok_9">Dérivées partielles (<code>part f x</code>), égalités en chaîne sur une ligne (<code>f(x)</code> puis <code>=2</code>), et les boutons Indice / Exposant de Word pris en compte.</li>
+              <li data-i18n="scope_ok_10"><strong>Mode Physique-chimie</strong>, activable document par document : formules et ions (<code>H2O</code>, <code>Fe2+</code>, <code>SO42-</code>), équations de réaction (<code>2H2 + O2 -> 2H2O</code>), et les grandeurs <code>v0</code>, <code>T2 - T1</code>.</li>
+              <li data-i18n="scope_ok_11"><strong>Tableaux de signe et de variation</strong>, remplis au clavier.</li>
+              <li data-i18n="scope_ok_12"><strong>Mise en page Word</strong> : encadrés Théorème, Définition, Exemple, Propriété ; mise en page en colonnes ; police des équations au choix (Cambria Math, Latin Modern, STIX).</li>
               <li data-i18n="scope_ok_7">Réédition d'une équation déjà convertie sans tout retaper.</li>
             </ul>
           </div>
           <div class="scope-col scope-col--todo">
             <h3 data-i18n="scope_todo_h">Bientôt, sur la feuille de route</h3>
             <ul>
-              <li data-i18n="scope_todo_1">Chimie (équations de réaction, états d'oxydation) : moteur séparé en cours.</li>
+              <li data-i18n="scope_todo_1">Chimie : équilibres (⇌) et nombres d'oxydation.</li>
               <li data-i18n="scope_todo_2">Schémas, figures, graphes.</li>
-              <li data-i18n="scope_todo_3">Dérivées partielles à longue portée.</li>
               <li data-i18n="scope_todo_4">Word sur Mac, Word Web, iPad : prévus en phase 2.</li>
               <li data-i18n="scope_todo_5">Calculs posés en colonnes (mise en forme tabulaire).</li>
             </ul>
@@ -150,7 +170,7 @@
         <div class="cards">
           <article class="card card--red">
             <h3 data-i18n="for_1_h">Profs de maths, c'est pour vous, d'abord</h3>
-            <p data-i18n="for_1_p">L'outil est pour vous, d'abord : tapez vos interros, exercices, corrigés et supports au clavier : fractions, sommes, systèmes et matrices prennent forme tout seuls. Vous écrivez vos maths bien plus vite, et repartez avec un document Word propre, réutilisable d'une année sur l'autre.</p>
+            <p data-i18n="for_1_p">L'outil est pour vous, d'abord : tapez vos interros, exercices, corrigés et supports au clavier : fractions, sommes, systèmes et matrices prennent forme tout seuls, les tableaux de signe et de variation se remplissent au clavier, et les encadrés Théorème ou Définition se posent d'un clic. Vous écrivez vos maths bien plus vite, et repartez avec un document Word propre, réutilisable d'une année sur l'autre.</p>
           </article>
           <article class="card">
             <h3 data-i18n="for_2_h">Lycéens et étudiants au clavier</h3>
@@ -195,7 +215,7 @@
         <div class="faq">
           <details>
             <summary data-i18n="faq_0_q">Est-ce que la popup va surgir tout le temps ?</summary>
-            <p data-i18n="faq_0_a">Non. Elle n'apparaît que sur les zones que MathCursor identifie comme math (avec une certaine confiance). Sur du texte normal, rien ne se passe. Et si la popup gêne ponctuellement, vous l'ignorez : Échap, ou continuez simplement à taper.</p>
+            <p data-i18n="faq_0_a">Non. Elle n'apparaît que sur les zones que MathCursor identifie comme math (avec une certaine confiance). Sur du texte normal, rien ne se passe. Et si la popup gêne ponctuellement, vous l'ignorez : continuez simplement à taper. <code>Échap</code> la ferme et met la détection automatique en pause dans ce document (pratique pour un document qui n'est pas de maths) ; <code>Ctrl + Espace</code> la relance.</p>
           </details>
           <details>
             <summary data-i18n="faq_1_q">Mes données sont-elles envoyées sur Internet ? Et le RGPD ?</summary>
@@ -229,7 +249,7 @@
 
   <footer class="site-footer">
     <div class="container">
-      <div data-i18n="foot_copy">MathCursor · 100 % local · sans compte</div>
+      <div data-i18n="foot_copy">MathCursor · vos documents restent chez vous · sans compte</div>
       <nav>
         <a href="/contact.html">Contact</a>
       </nav>
@@ -251,8 +271,8 @@
         cta_demo: "Try it online",
         cta_dl: "Install for Word",
         badge_friction: "No syntax to learn",
-        hero_platforms: "In your editor: <strong>Word</strong> · LibreOffice <span class=\"alpha\">(alpha)</span>",
-        badge_local: "100% local",
+        hero_platforms: "In your editor: <strong>Word</strong> · LibreOffice <span class=\"alpha\">(alpha)</span> · VS&nbsp;Code <span class=\"alpha\">(alpha)</span>",
+        badge_local: "Your documents stay with you",
         badge_account: "No account",
 
         how_h: "How it works",
@@ -275,7 +295,7 @@
 
         for_h: "Who it's for",
         for_1_h: "Math teachers, it's for you first",
-        for_1_p: "The tool is for you, first: type your tests, exercises, answer keys and handouts on the keyboard: fractions, sums, systems and matrices take shape on their own. You write your math far faster, and walk away with a clean Word document, reusable year after year.",
+        for_1_p: "The tool is for you, first: type your tests, exercises, answer keys and handouts on the keyboard: fractions, sums, systems and matrices take shape on their own, sign and variation tables are filled in from the keyboard, and Theorem or Definition boxes are one click away. You write your math far faster, and walk away with a clean Word document, reusable year after year.",
         for_2_h: "High-schoolers and students on a keyboard",
         for_2_p: "If you take your math notes on a keyboard, the equation editor slows you down and pulls you out of the lesson. MathCursor lets you keep pace and formats afterwards.",
         for_pap: "<strong>A student with a formal accommodation (PAP)?</strong> The same tool as their classmates, not a piece of software \"apart\". → <a href=\"amenagement.html\">Accommodation &amp; PAP</a>",
@@ -296,7 +316,7 @@
 
         faq_h: "Frequently asked questions",
         faq_0_q: "Will the popup pop up all the time?",
-        faq_0_a: "No. It only appears on zones MathCursor identifies as math (with some confidence). On regular text, nothing happens. And if the popup gets in the way occasionally, ignore it: Esc, or just keep typing.",
+        faq_0_a: "No. It only appears on zones MathCursor identifies as math (with some confidence). On regular text, nothing happens. And if the popup gets in the way occasionally, ignore it: just keep typing. <code>Esc</code> closes it and pauses automatic detection in that document (handy for a non-math document); <code>Ctrl + Space</code> turns it back on.",
         faq_1_q: "Is my data sent over the Internet? What about GDPR?",
         faq_1_a: "Your documents and your keystrokes never leave the computer. The only data sent automatically is an anonymous counter: the number of formulas converted, a plain number, with no content and no identifier, and it can be turned off in Settings. No account, no cloud, no personal data, no cookie. See the <a href=\"/privacy.html\">Privacy page</a> for details.",
         faq_2_q: "Does it work offline?",
@@ -318,22 +338,32 @@
         scope_ok_3: "Sums, integrals, limits, products.",
         scope_ok_4: "Common functions (<code>sin</code>, <code>cos</code>, <code>log</code>, <code>ln</code>…) in French, English, German, Spanish.",
         scope_ok_5: "Matrices and simple systems of equations.",
-        scope_ok_6: "Common symbols (∀, ∃, ∈, ≤, ≥, →, ⇒…).",
+        scope_ok_6: "Common symbols (∀, ∃, ∈, ≤, ≥, →, ⇒…), and Greek letters or symbols already typed in Unicode (λ, Δ, µ, ², √).",
+        scope_ok_8: "Scientific notation the quick way: <code>2,5*10-3</code> gives 2.5×10⁻³.",
+        scope_ok_9: "Partial derivatives (<code>part f x</code>), chained equalities on one line (<code>f(x)</code> then <code>=2</code>), and Word's Subscript / Superscript buttons taken into account.",
+        scope_ok_10: "<strong>Physics-chemistry mode</strong>, turned on document by document: formulas and ions (<code>H2O</code>, <code>Fe2+</code>, <code>SO42-</code>), reaction equations (<code>2H2 + O2 -> 2H2O</code>), and quantities like <code>v0</code>, <code>T2 - T1</code>.",
+        scope_ok_11: "<strong>Sign and variation tables</strong>, filled in from the keyboard.",
+        scope_ok_12: "<strong>Word layout</strong>: Theorem, Definition, Example, Property boxes; column layout; equation font of your choice (Cambria Math, Latin Modern, STIX).",
         scope_ok_7: "Re-editing an already-converted equation without retyping everything.",
         scope_todo_h: "Coming, on the roadmap",
-        scope_todo_1: "Chemistry (reaction equations, oxidation states): separate engine in progress.",
+        scope_todo_1: "Chemistry: equilibria (⇌) and oxidation numbers.",
         scope_todo_2: "Diagrams, figures, graphs.",
-        scope_todo_3: "Long-range partial derivatives.",
         scope_todo_4: "Word on Mac, Word Web, iPad: planned for phase 2.",
         scope_todo_5: "Column-stacked computations (tabular layout).",
         scope_foot: "If a case you'd find useful is missing, tell me, that's what drives the roadmap.",
+
+        tab_h: "New: sign and variation tables",
+        tab_lead: "One button in the Word ribbon, and the table is filled in from the keyboard, without drawing a single border.",
+        tab_1: "<strong>x values from the keyboard.</strong> Type a value between two <em>x</em> values: it is added with its intervals. Empty it: it goes away. The separator line draws itself, broken by the zeros.",
+        tab_2: "<strong>One click on a cell.</strong> On a label, add a sign or variation row. Under a value, put a 0 or a forbidden value (double bar). In a variation row, pick the arrow ↗ ↘ →.",
+        tab_3: "<strong>Formulas as anywhere else.</strong> Values, labels and extrema are typed with MathCursor (<code>rac 3 / 2</code>, <code>f(2)</code>…). Maxima and minima go to the top or bottom based on the arrows.",
 
         bio_h: "Who builds MathCursor",
         bio_p1: "<strong>Côme</strong>, tech engineer and father of a son with a formal accommodation.",
         bio_p2: "MathCursor was born watching my son fight Word's equation editor while I spent my days with the autocomplete of a code editor. The gap was too big.",
         bio_p3: "No company behind it, no investors. One dev, a few beta-testers. The <a href=\"/contact.html\">contact form</a> comes straight to me: I read every message.",
 
-        foot_copy: "MathCursor · 100% local · no account"
+        foot_copy: "MathCursor · your documents stay with you · no account"
       }
     };
 
