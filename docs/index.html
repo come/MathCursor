@@ -3,25 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MathCursor · Tapez comme vous pensez, on met vos maths en forme</title>
-  <meta name="description" content="MathCursor capte votre intention mathématique au fil de la frappe : vous tapez relâché, la popup vous guide, vous validez et la formule se fige, propre. Rien à apprendre. Pour les profs de maths et les élèves qui travaillent au clavier. Disponible dans Word ; démo en ligne." />
+  <title>MathCursor · Tapez vos maths comme vous pensez, dans Word</title>
+  <meta name="description" content="MathCursor met en forme vos maths au fil de la frappe dans Word : vous tapez x2 + 1/2 comme ça vient, la popup propose la formule, vous validez d'une touche. Gratuit, logiciel libre, sans compte. Pour les profs, les élèves au clavier et les élèves avec un aménagement (PAP, dys)." />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" />
 
   <link rel="icon" type="image/png" href="/favicon.png" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="site.css" />
 </head>
 <body>
 
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-check" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-prof" viewBox="0 0 24 24"><path d="M3 5h18v11H3z M8 20h8 M12 16v4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 9.5h4 M7 12.5h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-student" viewBox="0 0 24 24"><path d="M3 6l9-3 9 3-9 3z M7 8v5c0 1.7 2.2 3 5 3s5-1.3 5-3V8 M21 6v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-parent" viewBox="0 0 24 24"><circle cx="8" cy="7" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="10" r="2.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M2.5 20c.5-3.5 2.8-5.5 5.5-5.5s5 2 5.5 5.5 M13.5 20c.3-2.4 1.7-3.8 3.5-3.8s3.2 1.4 3.5 3.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  </svg>
+
   <header class="site-header">
     <div class="container">
-      <a href="#" class="brand"><img src="/assets/logo.png" alt="MathCursor" style="height:54px;width:auto" /></a>
+      <a href="/" class="brand"><img src="/assets/logo.png" alt="MathCursor" /></a>
       <nav class="nav">
         <a href="demo/" data-i18n="nav_demo">Démo</a>
+        <a href="prof/" data-i18n="nav_prof">Profs</a>
+        <a href="amenagement.html" data-i18n="nav_pap">Parents &amp; PAP</a>
         <a href="releases.html" data-i18n="nav_downloads">Téléchargements</a>
-        <a href="install.html" data-i18n="nav_install">Installation</a>
+        <a href="releases.html" class="nav-cta" data-i18n="nav_cta">Installer</a>
         <div class="lang-toggle" role="group" aria-label="Language">
           <button type="button" data-lang="fr" class="active">FR</button>
           <button type="button" data-lang="en">EN</button>
@@ -32,215 +42,273 @@
 
   <main>
 
-    <!-- Hero -->
+    <!-- En-tête -->
     <section class="hero">
-      <div class="hero-body">
-        <div class="hero-content">
-          <h1>
-            <span data-i18n="hero_h1_pre">Tapez comme vous pensez.</span><br /><span class="highlighter" data-i18n="hero_h1_hl">On capte l'intention.</span>
-          </h1>
-          <div class="hero-tag" data-i18n="tag">Projet MathCursor · Bêta publique</div>
-          <p class="lead" data-i18n="hero_lead">
-            MathCursor capte ce que vous <strong>voulez</strong> écrire, au fil de la frappe : vous tapez comme vous l'entendez, la popup vous guide en direct, vous validez et la formule se fige, propre. Le tout dans votre éditeur habituel, rien à réapprendre.
-          </p>
-          <div class="cta-row">
-            <a href="demo/" class="button button--primary" data-i18n="cta_demo">Tester en ligne</a>
-            <a href="releases.html" class="button button--secondary" data-i18n="cta_dl">Installer pour Word</a>
+      <div class="container">
+        <div class="hero-grid">
+          <div>
+            <span class="eyebrow" data-i18n="hero_eyebrow">Gratuit · pour Word · bêta publique</span>
+            <h1 data-i18n="hero_h1">Tapez vos maths comme vous pensez. <span class="hl">Elles s'affichent proprement.</span></h1>
+            <p class="lead" data-i18n="hero_lead">Dans Word, écrivez <code>x2 + 1/2</code> comme ça vient : MathCursor vous propose la formule en direct, vous validez d'une touche. Pour les profs qui préparent leurs cours et les élèves qui prennent leurs notes au clavier.</p>
+            <div class="btn-row">
+              <a href="demo/" class="btn btn--primary" data-i18n="cta_demo">Essayer en ligne <small>sans installer</small></a>
+              <a href="releases.html" class="btn btn--ghost" data-i18n="cta_install">Installer pour Word</a>
+            </div>
+            <p class="hero-note" data-i18n="hero_note">Windows 10 et 11 · Word 2016 et suivants, Microsoft 365</p>
           </div>
-          <div class="hero-badges">
-            <span class="badge" data-i18n="badge_friction">Sans syntaxe à apprendre</span>
-            <span class="badge" data-i18n="badge_local">Vos documents restent chez vous</span>
-            <span class="badge" data-i18n="badge_account">Sans compte</span>
+          <div class="window">
+            <video autoplay muted loop playsinline preload="auto" aria-label="Aperçu : MathCursor convertit une notation tapée au clavier en équation Word">
+              <source src="assets/demo.mp4" type="video/mp4" />
+            </video>
           </div>
-          <p class="hero-platforms" data-i18n="hero_platforms">Dans votre éditeur : <strong>Word</strong> · LibreOffice <span class="alpha">(alpha)</span> · VS&nbsp;Code <span class="alpha">(alpha)</span></p>
         </div>
-        <figure class="hero-figure">
-          <video class="hero-figure-video" autoplay muted loop playsinline preload="auto" aria-label="Aperçu : MathCursor convertit une notation clavier en équation, au fil de la frappe">
-            <source src="assets/demo.mp4" type="video/mp4">
-          </video>
-        </figure>
-      </div>
-    </section>
-
-    <!-- Comment ça marche -->
-    <section id="fonctionnement" class="section">
-      <div class="container">
-        <h2 data-i18n="how_h">Comment ça marche</h2>
-        <ol class="steps">
-          <li>
-            <h3 data-i18n="how_1_h">Vous tapez.</h3>
-            <p data-i18n="how_1_p">Relâché, dans votre phrase, sans chercher les parenthèses ni les bons symboles : <code>x2 + 1/2</code>, <code>lim x 0 sin x / x</code>, <code>somme k 1 n k2</code>.</p>
-          </li>
-          <li>
-            <h3 data-i18n="how_2_h">La popup vous guide.</h3>
-            <p data-i18n="how_2_p">Dès qu'une zone math est reconnue, une popup montre la formule en train de se dessiner, avec des carrés là où il manque quelque chose. Vous voyez en direct que vous êtes sur le bon chemin. Vous validez d'une touche, ou vous ignorez et continuez à écrire.</p>
-          </li>
-          <li>
-            <h3 data-i18n="how_3_h">Si la détection a raté.</h3>
-            <p data-i18n="how_3_p"><code>Ctrl + Espace</code> force la conversion sur la zone autour du curseur.</p>
-          </li>
-          <li>
-            <h3 data-i18n="how_4_h">Réédition.</h3>
-            <p data-i18n="how_4_p">Curseur dans une équation existante : MathCursor vous redonne la sténo. Vous modifiez, vous reconvertissez.</p>
-          </li>
-        </ol>
-        <p class="how-note" data-i18n="how_note"><em>MathCursor propose, vous validez. Aucune transformation sans votre accord.</em></p>
-        <div class="cta-row" style="margin-top: 24px; justify-content: center;">
-          <a href="demo/" class="button button--primary" data-i18n="how_cta">Essayer dans le navigateur</a>
-        </div>
-      </div>
-    </section>
-
-    <!-- Le geste -->
-    <section id="le-geste" class="section">
-      <div class="container">
-        <h2 data-i18n="gest_h">Un geste, et c'est figé</h2>
-        <ol class="steps">
-          <li>
-            <p data-i18n="gest_1">Vous tapez votre notation au fil du cours, sans casser le rythme.</p>
-          </li>
-          <li>
-            <p data-i18n="gest_2">Vous validez dans la popup : la formule se fige, propre et nette. La petite satisfaction qui donne envie de continuer.</p>
-          </li>
-          <li>
-            <p data-i18n="gest_3">Pas la bonne ? <code>Ctrl + Z</code>, vous retapez. Aucune punition, juste le flow.</p>
-          </li>
-        </ol>
-        <p class="how-note" data-i18n="gest_note"><em>Flèches pour choisir, Entrée pour valider : le geste s'ancre en quelques minutes, après vous n'y pensez plus.</em></p>
-      </div>
-    </section>
-
-    <!-- Nouveau : tableaux de signe et de variation (0.12.0) -->
-    <section id="tableaux" class="section">
-      <div class="container">
-        <h2 data-i18n="tab_h">Nouveau : les tableaux de signe et de variation</h2>
-        <p class="scope-lead" data-i18n="tab_lead">Un bouton dans le ruban de Word, et le tableau se remplit au clavier, sans dessiner une seule bordure.</p>
-        <figure class="card" style="margin: 20px 0 24px; padding: 12px;">
-          <img src="assets/tableau-variation.png" alt="Tableau de variation de f(x) dans Word : x de moins l'infini à plus l'infini, valeurs -1 et 1, signes de f'(x) et flèches de variation" style="width: 100%; height: auto; display: block;" loading="lazy" />
-        </figure>
-        <ul class="features">
-          <li data-i18n="tab_1"><strong>Des valeurs de x au clavier.</strong> Tapez une valeur entre deux valeurs de <em>x</em> : elle s'ajoute avec ses intervalles. Videz-la : elle disparaît. La ligne de séparation se trace toute seule, coupée par les 0.</li>
-          <li data-i18n="tab_2"><strong>Un clic sur une case.</strong> Sur une étiquette, ajoutez une ligne de signe ou de variation. Sous une valeur, posez un 0 ou une valeur interdite (double barre). Dans une ligne de variation, choisissez la flèche ↗ ↘ →.</li>
-          <li data-i18n="tab_3"><strong>Les formules comme ailleurs.</strong> Valeurs, étiquettes et extremums se tapent avec MathCursor (<code>rac 3 / 2</code>, <code>f(2)</code>…). Maximums et minimums se placent en haut ou en bas d'après les flèches.</li>
+        <ul class="trust">
+          <li><span class="check"><svg><use href="#i-check"/></svg></span><span data-i18n="trust_1">Gratuit</span></li>
+          <li><span class="check"><svg><use href="#i-check"/></svg></span><span data-i18n="trust_2">Logiciel libre</span></li>
+          <li><span class="check"><svg><use href="#i-check"/></svg></span><span data-i18n="trust_3">Sans compte</span></li>
+          <li><span class="check"><svg><use href="#i-check"/></svg></span><span data-i18n="trust_4">Vos documents restent chez vous</span></li>
+          <li><span class="check"><svg><use href="#i-check"/></svg></span><span data-i18n="trust_5">Des équations Word standard</span></li>
         </ul>
       </div>
     </section>
 
-    <!-- Couverture math actuelle -->
-    <section id="scope" class="section">
+    <!-- Avant / après -->
+    <section class="section section--soft" id="exemples">
       <div class="container">
-        <h2 data-i18n="scope_h">Tout ce que MathCursor met déjà en forme</h2>
-        <p class="scope-lead" data-i18n="scope_lead">Une large couverture, du lycée au supérieur, et elle s'étend à chaque version.</p>
-        <div class="scope-grid">
-          <div class="scope-col scope-col--ok">
-            <h3 data-i18n="scope_ok_h">Pris en charge aujourd'hui</h3>
-            <ul>
-              <li data-i18n="scope_ok_1"><strong>Équations Word natives (OMath).</strong> Le format de sortie est celui de l'éditeur d'équations Word standard. Pas de plugin pour relire, pas d'image, pas de format exotique. Les documents restent éditables normalement, même sans MathCursor installé.</li>
-              <li data-i18n="scope_ok_2">Fractions, exposants, indices, racines.</li>
-              <li data-i18n="scope_ok_3">Sommes, intégrales, limites, produits.</li>
-              <li data-i18n="scope_ok_4">Fonctions usuelles (<code>sin</code>, <code>cos</code>, <code>log</code>, <code>ln</code>…) en français, anglais, allemand, espagnol.</li>
-              <li data-i18n="scope_ok_5">Matrices et systèmes d'équations simples.</li>
-              <li data-i18n="scope_ok_6">Symboles courants (∀, ∃, ∈, ≤, ≥, →, ⇒…), et lettres grecques ou symboles déjà tapés en Unicode (λ, Δ, µ, ², √).</li>
-              <li data-i18n="scope_ok_8">Notation scientifique telle qu'on l'écrit vite : <code>2,5*10-3</code> donne 2,5×10⁻³.</li>
-              <li data-i18n="scope_ok_9">Dérivées partielles (<code>part f x</code>), égalités en chaîne sur une ligne (<code>f(x)</code> puis <code>=2</code>), et les boutons Indice / Exposant de Word pris en compte.</li>
-              <li data-i18n="scope_ok_10"><strong>Mode Physique-chimie</strong>, activable document par document : formules et ions (<code>H2O</code>, <code>Fe2+</code>, <code>SO42-</code>), équations de réaction (<code>2H2 + O2 -> 2H2O</code>), et les grandeurs <code>v0</code>, <code>T2 - T1</code>.</li>
-              <li data-i18n="scope_ok_11"><strong>Tableaux de signe et de variation</strong>, remplis au clavier.</li>
-              <li data-i18n="scope_ok_12"><strong>Mise en page Word</strong> : encadrés Théorème, Définition, Exemple, Propriété ; mise en page en colonnes ; police des équations au choix (Cambria Math, Latin Modern, STIX).</li>
-              <li data-i18n="scope_ok_7">Réédition d'une équation déjà convertie sans tout retaper.</li>
-            </ul>
-          </div>
-          <div class="scope-col scope-col--todo">
-            <h3 data-i18n="scope_todo_h">Bientôt, sur la feuille de route</h3>
-            <ul>
-              <li data-i18n="scope_todo_1">Chimie : équilibres (⇌) et nombres d'oxydation.</li>
-              <li data-i18n="scope_todo_2">Schémas, figures, graphes.</li>
-              <li data-i18n="scope_todo_4">Word sur Mac, Word Web, iPad : prévus en phase 2.</li>
-              <li data-i18n="scope_todo_5">Calculs posés en colonnes (mise en forme tabulaire).</li>
-            </ul>
-          </div>
+        <div class="section-head">
+          <span class="eyebrow" data-i18n="ba_eyebrow">Sans syntaxe à apprendre</span>
+          <h2 data-i18n="ba_h">Vous tapez comme ça vient. La formule suit.</h2>
+          <p data-i18n="ba_p">Pas de menus, pas de codes à retenir : la notation que vous écririez au brouillon suffit.</p>
         </div>
-        <p class="scope-foot" data-i18n="scope_foot">Si un cas qui vous est utile manque, dites-le-moi, c'est ce qui pilote la roadmap.</p>
+        <div class="ba">
+          <div class="ba-row ba-head"><span data-i18n="ba_col_in">Ce que vous tapez</span><span></span><span data-i18n="ba_col_out">Ce qui s'affiche dans Word</span></div>
+          <div class="ba-row"><div class="ba-in"><code>x2 + 1/2</code></div><div class="ba-arrow">→</div><div class="ba-out"><span data-tex="x^{2}+\frac{1}{2}"></span></div></div>
+          <div class="ba-row"><div class="ba-in"><code>rac 3 / 2</code></div><div class="ba-arrow">→</div><div class="ba-out"><span data-tex="\frac{\sqrt{3}}{2}"></span></div></div>
+          <div class="ba-row"><div class="ba-in"><code>somme k 1 n k2</code></div><div class="ba-arrow">→</div><div class="ba-out"><span data-tex="\sum_{k=1}^{n} k^{2}"></span></div></div>
+          <div class="ba-row"><div class="ba-in"><code>f(x) = 1/x+1</code></div><div class="ba-arrow">→</div><div class="ba-out"><span data-tex="f(x)=\frac{1}{x}+1"></span><span class="ba-alt" data-i18n="ba_or">ou</span><span class="ba-alt" data-tex="f(x)=\frac{1}{x+1}"></span><span class="ba-tag" data-i18n="ba_tag_choice">la popup vous laisse choisir</span></div></div>
+          <div class="ba-row"><div class="ba-in"><code>2H2 + O2 -> 2H2O</code></div><div class="ba-arrow">→</div><div class="ba-out"><span data-tex="2\mathrm{H}_{2}+\mathrm{O}_{2}\to 2\mathrm{H}_{2}\mathrm{O}"></span><span class="ba-tag" data-i18n="ba_tag_chem">mode Physique-chimie</span></div></div>
+        </div>
+        <p class="ba-foot" data-i18n="ba_foot">Le résultat est une vraie équation Word : modifiable, imprimable, lisible sur n'importe quel ordinateur, même sans MathCursor.</p>
       </div>
     </section>
 
-    <!-- Pour qui -->
-    <section id="pour-qui" class="section">
+    <!-- Comment ça marche -->
+    <section class="section" id="fonctionnement">
       <div class="container">
-        <h2 data-i18n="for_h">Pour qui</h2>
-        <div class="cards">
-          <article class="card card--red">
-            <h3 data-i18n="for_1_h">Profs de maths, c'est pour vous, d'abord</h3>
-            <p data-i18n="for_1_p">L'outil est pour vous, d'abord : tapez vos interros, exercices, corrigés et supports au clavier : fractions, sommes, systèmes et matrices prennent forme tout seuls, les tableaux de signe et de variation se remplissent au clavier, et les encadrés Théorème ou Définition se posent d'un clic. Vous écrivez vos maths bien plus vite, et repartez avec un document Word propre, réutilisable d'une année sur l'autre.</p>
+        <div class="section-head">
+          <span class="eyebrow" data-i18n="how_eyebrow">Comment ça marche</span>
+          <h2 data-i18n="how_h">Trois gestes, et vous n'y pensez plus</h2>
+        </div>
+        <ol class="steps">
+          <li><h3 data-i18n="how_1_h">Vous tapez</h3><p data-i18n="how_1_p">Dans votre phrase, au rythme du cours. MathCursor repère les passages mathématiques.</p></li>
+          <li><h3 data-i18n="how_2_h">La popup propose</h3><p data-i18n="how_2_p">La formule se dessine en direct sous le curseur. S'il y a deux lectures possibles, vous choisissez.</p></li>
+          <li><h3 data-i18n="how_3_h">Vous validez</h3><p data-i18n="how_3_p">Une touche, et la formule se fige dans le document. Pas la bonne ? <kbd>Ctrl</kbd>+<kbd>Z</kbd> et vous retapez.</p></li>
+        </ol>
+        <p class="keys" data-i18n="how_keys"><kbd>↓</kbd> puis <kbd>Entrée</kbd> pour valider · <kbd>Ctrl</kbd>+<kbd>Espace</kbd> pour convertir à la demande · <kbd>Échap</kbd> pour mettre la détection en pause dans un document</p>
+      </div>
+    </section>
+
+    <!-- Fonctionnalités -->
+    <section class="section section--soft" id="fonctionnalites">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow" data-i18n="feat_eyebrow">Dans Word</span>
+          <h2 data-i18n="feat_h">Tout pour écrire un cours de maths, au clavier</h2>
+        </div>
+        <div class="features">
+          <article class="feature">
+            <div class="feature-visual">
+              <div class="math-stack">
+                <span data-tex="\int_{0}^{1} x^{2}\,dx=\frac{1}{3}"></span>
+                <span data-tex="\lim_{x\to +\infty}\frac{1}{x}=0"></span>
+                <span data-tex="\begin{pmatrix}1&amp;2\\3&amp;4\end{pmatrix}"></span>
+              </div>
+            </div>
+            <div class="feature-body">
+              <h3 data-i18n="feat_1_h">Toutes les formules du lycée et au-delà</h3>
+              <p data-i18n="feat_1_p">Fractions, puissances, racines, sommes, intégrales, limites, matrices, systèmes, symboles et lettres grecques. Fonctions en français, anglais, allemand et espagnol.</p>
+            </div>
           </article>
-          <article class="card">
-            <h3 data-i18n="for_2_h">Lycéens et étudiants au clavier</h3>
-            <p data-i18n="for_2_p">Si vous prenez vos cours de maths au clavier, l'éditeur d'équations vous ralentit et vous sort du cours. MathCursor vous laisse suivre le rythme et met en forme après.</p>
+          <article class="feature">
+            <div class="feature-visual">
+              <picture>
+                <source media="(max-width: 640px)" srcset="assets/tableau-variation-mobile.png" />
+                <img src="assets/tableau-variation.png" alt="Tableau de variation dans Word, rempli au clavier avec MathCursor" loading="lazy" />
+              </picture>
+            </div>
+            <div class="feature-body">
+              <h3><span data-i18n="feat_2_h">Tableaux de signe et de variation</span><span class="badge-new" data-i18n="badge_new">Nouveau</span></h3>
+              <p data-i18n="feat_2_p">Un bouton dans le ruban, puis tout se remplit au clavier : tapez une valeur de <em>x</em> entre deux autres, la colonne s'ajoute. Flèches, zéros et valeurs interdites se posent d'un clic.</p>
+            </div>
+          </article>
+          <article class="feature">
+            <div class="feature-visual">
+              <div class="math-stack">
+                <span data-tex="\mathrm{Fe}^{3+}+3\mathrm{e}^{-}\to \mathrm{Fe}"></span>
+                <span data-tex="\mathrm{SO}_{4}^{2-}"></span>
+                <span data-tex="v_{0}"></span>
+                <span data-tex="T_{2}-T_{1}"></span>
+              </div>
+            </div>
+            <div class="feature-body">
+              <h3 data-i18n="feat_3_h">Physique-chimie</h3>
+              <p data-i18n="feat_3_p">Un mode activable document par document : formules, ions, équations de réaction et grandeurs s'écrivent comme en cours, sans toucher à vos documents de maths.</p>
+            </div>
+          </article>
+          <article class="feature">
+            <div class="feature-visual">
+              <picture>
+                <source media="(max-width: 640px)" srcset="assets/encadres-mobile.png" />
+                <img src="assets/encadres.png" alt="Encadrés Théorème et Définition dans Word" loading="lazy" />
+              </picture>
+            </div>
+            <div class="feature-body">
+              <h3 data-i18n="feat_4_h">Mise en page de cours</h3>
+              <p data-i18n="feat_4_p">Encadrés Théorème, Définition, Exemple et Propriété, mise en page en colonnes, police des équations au choix (Cambria Math, Latin Modern, STIX).</p>
+            </div>
           </article>
         </div>
-        <p class="scope-foot" data-i18n="for_pap"><strong>Un élève avec un aménagement (PAP) ?</strong> Même outil que ses camarades, pas un logiciel « à part ». → <a href="amenagement.html">Aménagement &amp; PAP</a></p>
+      </div>
+    </section>
+
+    <!-- Parcours -->
+    <section class="section" id="pour-qui">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow" data-i18n="paths_eyebrow">Pour qui</span>
+          <h2 data-i18n="paths_h">Que vous fassiez cours, que vous le suiviez ou que vous accompagniez</h2>
+        </div>
+        <div class="paths">
+          <article class="path">
+            <div class="path-icon"><svg><use href="#i-prof"/></svg></div>
+            <h3 data-i18n="path_1_h">Je suis prof</h3>
+            <ul data-i18n="path_1_list">
+              <li>Contrôles, fiches et corrigés tapés au fil de l'eau</li>
+              <li>Tableaux de signe et encadrés de cours en un clic</li>
+              <li>Des documents Word propres, réutilisables d'une année sur l'autre</li>
+            </ul>
+            <a class="path-link" href="prof/" data-i18n="path_1_link">La page des profs</a>
+          </article>
+          <article class="path">
+            <div class="path-icon"><svg><use href="#i-student"/></svg></div>
+            <h3 data-i18n="path_2_h">Je suis élève</h3>
+            <ul data-i18n="path_2_list">
+              <li>Suivre le cours de maths au clavier, sans décrocher</li>
+              <li>La notation du brouillon suffit, rien à apprendre</li>
+              <li>Un rendu propre, que le prof lit sans rien installer</li>
+            </ul>
+            <a class="path-link" href="demo/" data-i18n="path_2_link">Essayer en ligne</a>
+          </article>
+          <article class="path">
+            <div class="path-icon"><svg><use href="#i-parent"/></svg></div>
+            <h3 data-i18n="path_3_h">J'accompagne un enfant (PAP, dys)</h3>
+            <ul data-i18n="path_3_list">
+              <li>Le même outil que toute la classe, pas un logiciel à part</li>
+              <li>Il met en forme, il ne calcule rien à la place de l'élève</li>
+              <li>Gratuit, installé en moins d'une minute</li>
+            </ul>
+            <a class="path-link" href="amenagement.html" data-i18n="path_3_link">Aménagement et PAP</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Confiance -->
+    <section class="section section--soft" id="confiance">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow" data-i18n="trust_eyebrow">Confiance</span>
+          <h2 data-i18n="trust_h">Pensé pour l'école, sans mauvaise surprise</h2>
+        </div>
+        <div class="trust-grid">
+          <div class="trust-item"><h3><span class="check"><svg><use href="#i-check"/></svg></span><span data-i18n="ti_1_h">Gratuit et libre</span></h3><p data-i18n="ti_1_p">MathCursor est gratuit, et c'est un logiciel libre (licence GNU GPL v3).</p></div>
+          <div class="trust-item"><h3><span class="check"><svg><use href="#i-check"/></svg></span><span data-i18n="ti_2_h">Sans compte</span></h3><p data-i18n="ti_2_p">Aucune inscription, aucun cloud : on installe et on écrit.</p></div>
+          <div class="trust-item"><h3><span class="check"><svg><use href="#i-check"/></svg></span><span data-i18n="ti_3_h">Vos documents restent chez vous</span></h3><p data-i18n="ti_3_p">La frappe et les documents ne quittent pas l'ordinateur. Seul un compteur anonyme (le nombre de formules converties) est envoyé, et il se désactive dans les Paramètres. <a href="privacy.html">Détails</a></p></div>
+          <div class="trust-item"><h3><span class="check"><svg><use href="#i-check"/></svg></span><span data-i18n="ti_4_h">Des équations Word standard</span></h3><p data-i18n="ti_4_p">Le résultat est l'équation native de Word : rien à installer pour la lire, l'imprimer ou l'exporter en PDF.</p></div>
+          <div class="trust-item"><h3><span class="check"><svg><use href="#i-check"/></svg></span><span data-i18n="ti_5_h">Il ne calcule rien</span></h3><p data-i18n="ti_5_p">MathCursor met en forme ce que l'on écrit. Il ne résout pas d'exercice et ne propose pas de réponse.</p></div>
+          <div class="trust-item"><h3><span class="check"><svg><use href="#i-check"/></svg></span><span data-i18n="ti_6_h">Une pause par document</span></h3><p data-i18n="ti_6_p"><kbd>Échap</kbd> met la détection en pause dans un document, par exemple pour un devoir d'une autre matière ; <kbd>Ctrl</kbd>+<kbd>Espace</kbd> la relance.</p></div>
+        </div>
       </div>
     </section>
 
     <!-- Installation -->
-    <section id="installation" class="section">
+    <section class="section" id="installation">
       <div class="container">
-        <h2 data-i18n="inst_h">Installation</h2>
-        <p data-i18n="inst_p">Voici l'installation pour <strong>Word</strong>, prête aujourd'hui : moins d'une minute, une seule fois par machine. Ou <a href="demo/">testez d'abord en ligne</a>, sans rien installer.</p>
-
-        <div class="cta-row" style="margin: 16px 0 28px; flex-wrap: wrap; gap: 10px;">
-          <a href="/download/latest.exe" class="button button--primary" download data-i18n="inst_dl">Télécharger pour Word</a>
-          <a href="install.html#word" class="button button--secondary" data-i18n="inst_guide">Guide d'installation</a>
+        <div class="section-head">
+          <span class="eyebrow" data-i18n="inst_eyebrow">Installation</span>
+          <h2 data-i18n="inst_h">Prêt en moins d'une minute</h2>
         </div>
-
-        <p class="install-config" data-i18n="inst_config"><strong>Configuration :</strong> Windows 10 ou 11, Word 2016+ ou Microsoft 365. Langues d'interface : français, anglais, allemand, espagnol.</p>
-        <p class="install-note" data-i18n="inst_platforms"><strong>Autres éditeurs :</strong> les versions <strong>LibreOffice</strong> et <strong>VS&nbsp;Code – LaTeX</strong> sont en <strong>alpha</strong> : ça marche déjà, mais ça bouge encore. Tous les guides et téléchargements sont sur la page <a href="install.html">Installation</a>. Un souci ? <a href="/contact.html">Écrivez-moi</a>.</p>
-        <p class="install-note" data-i18n="inst_note">Besoin d'aide, un bug, envie de discuter ? <a href="/contact.html">Contact</a>.</p>
+        <div class="install">
+          <div>
+            <ol class="install-steps">
+              <li data-i18n="inst_1"><strong>Téléchargez</strong> l'installeur pour Word.</li>
+              <li data-i18n="inst_2"><strong>Lancez-le</strong> : pas besoin de droits administrateur, il s'installe dans votre session.</li>
+              <li data-i18n="inst_3"><strong>Ouvrez Word</strong> : un onglet MathCursor apparaît dans le ruban. Tapez <code>x2+1/2</code>, la popup vous propose la formule.</li>
+            </ol>
+            <div class="btn-row">
+              <a href="/download/latest.exe" class="btn btn--primary" download data-i18n="inst_dl">Télécharger pour Word</a>
+              <a href="install.html#word" class="btn btn--ghost" data-i18n="inst_guide">Guide d'installation</a>
+            </div>
+          </div>
+          <aside class="install-side">
+            <h3 data-i18n="inst_cfg_h">Configuration</h3>
+            <p data-i18n="inst_cfg_p">Windows 10 ou 11, Word 2016 et suivants ou Microsoft 365. Interface en français, anglais, allemand et espagnol.</p>
+            <h3 data-i18n="inst_other_h">Autres éditeurs</h3>
+            <p data-i18n="inst_other_p">LibreOffice et VS&nbsp;Code (LaTeX) <span class="alpha">alpha</span> : le même moteur, la même popup. Guides sur la page <a href="install.html">Installation</a>.</p>
+          </aside>
+        </div>
       </div>
     </section>
 
-    <!-- Qui développe MathCursor -->
-    <section id="auteur" class="section">
+    <!-- Qui développe -->
+    <section class="section section--soft" id="auteur">
       <div class="container">
-        <h2 data-i18n="bio_h">Qui développe MathCursor</h2>
-        <p data-i18n="bio_p1"><strong>Côme</strong>, ingénieur tech et père d'un fils sous PAP.</p>
-        <p data-i18n="bio_p2">MathCursor est né en regardant mon fils se battre avec l'éditeur d'équations de Word, pendant que je passais mes journées avec l'autocomplétion d'un éditeur de code. L'écart était trop grand.</p>
-        <p data-i18n="bio_p3">Pas d'entreprise derrière, pas d'investisseurs. Un dev, quelques bêta-testeurs. Le <a href="/contact.html">formulaire de contact</a> arrive directement chez moi : je lis chaque message.</p>
+        <div class="section-head">
+          <span class="eyebrow" data-i18n="bio_eyebrow">Qui développe MathCursor</span>
+        </div>
+        <div class="author">
+          <div class="author-mark">C</div>
+          <div>
+            <p data-i18n="bio_p1"><strong>Côme</strong>, ingénieur et père d'un fils sous PAP.</p>
+            <p data-i18n="bio_p2">MathCursor est né en regardant mon fils se battre avec l'éditeur d'équations de Word, pendant que je passais mes journées avec l'autocomplétion d'un éditeur de code. L'écart était trop grand.</p>
+            <p data-i18n="bio_p3">Pas d'entreprise derrière, pas d'investisseurs : un développeur et des profs bêta-testeurs. Le <a href="/contact.html">formulaire de contact</a> arrive directement chez moi, je lis chaque message.</p>
+          </div>
+        </div>
       </div>
     </section>
 
     <!-- FAQ -->
-    <section id="faq" class="section">
+    <section class="section" id="faq">
       <div class="container">
-        <h2 data-i18n="faq_h">Questions fréquentes</h2>
+        <div class="section-head">
+          <span class="eyebrow" data-i18n="faq_eyebrow">Questions fréquentes</span>
+          <h2 data-i18n="faq_h">Vos questions</h2>
+        </div>
         <div class="faq">
-          <details>
-            <summary data-i18n="faq_0_q">Est-ce que la popup va surgir tout le temps ?</summary>
-            <p data-i18n="faq_0_a">Non. Elle n'apparaît que sur les zones que MathCursor identifie comme math (avec une certaine confiance). Sur du texte normal, rien ne se passe. Et si la popup gêne ponctuellement, vous l'ignorez : continuez simplement à taper. <code>Échap</code> la ferme et met la détection automatique en pause dans ce document (pratique pour un document qui n'est pas de maths) ; <code>Ctrl + Espace</code> la relance.</p>
-          </details>
-          <details>
-            <summary data-i18n="faq_1_q">Mes données sont-elles envoyées sur Internet ? Et le RGPD ?</summary>
-            <p data-i18n="faq_1_a">Vos documents et votre frappe ne quittent jamais l'ordinateur. La seule donnée envoyée automatiquement est un compteur anonyme : le nombre de formules converties, un simple nombre, sans aucun contenu ni identifiant, désactivable dans les Paramètres. Pas de compte, pas de cloud, aucune donnée personnelle, aucun cookie. Détails sur la <a href="/privacy.html">page Confidentialité</a>.</p>
-          </details>
-          <details>
-            <summary data-i18n="faq_2_q">Ça fonctionne hors ligne ?</summary>
-            <p data-i18n="faq_2_a">Oui. Une connexion Internet ne sert qu'à signaler une nouvelle version : à l'ouverture de Word, MathCursor vérifie en ligne si une mise à jour existe et, le cas échéant, affiche un badge « Mise à jour disponible » dans le ruban (le téléchargement reste manuel). Sans réseau, la version installée fonctionne normalement.</p>
-          </details>
-          <details>
-            <summary data-i18n="faq_4_q">Quelles versions de Word sont supportées ?</summary>
-            <p data-i18n="faq_4_a">Word 2016, 2019, 2021 et Microsoft 365 Desktop sur Windows 10 et 11. Les portages Mac, Word Web et iPad sont prévus pour la phase 2, après validation de la bêta Windows.</p>
-          </details>
-          <details>
-            <summary data-i18n="faq_3_q">Et en dehors de Word ?</summary>
-            <p data-i18n="faq_3_a">Word est la version la plus aboutie aujourd'hui. <strong>LibreOffice</strong> et <strong>VS&nbsp;Code – LaTeX</strong> existent déjà en <strong>alpha</strong> et avancent vite : le même moteur, la même popup, dans votre éditeur habituel. Téléchargement et marche à suivre sur la page <a href="releases.html#vscode">Téléchargements</a>.</p>
-          </details>
-          <details>
-            <summary data-i18n="faq_5_q">Le certificat auto-signé, c'est safe ?</summary>
-            <p data-i18n="faq_5_a">Oui. Le certificat est importé dans le compte utilisateur uniquement (pas au niveau système), sans droits administrateur. Il peut être supprimé à tout moment via <code>certmgr.msc</code>. Le <a href="install-cert.ps1">script d'import</a> est consultable avant exécution.</p>
-          </details>
-          <details>
-            <summary data-i18n="faq_6_q">Comment signaler un bug ou proposer une amélioration ?</summary>
-            <p data-i18n="faq_6_a">Via le <a href="/contact.html">formulaire de contact</a>, ou via le bouton <strong>« Signaler un souci »</strong> dans le ruban Word une fois MathCursor installé. Les retours des profs et des élèves pilotent la roadmap.</p>
-          </details>
+          <details><summary data-i18n="faq_0_q">La popup va-t-elle surgir tout le temps ?</summary><p data-i18n="faq_0_a">Non. Elle n'apparaît que sur les passages que MathCursor reconnaît comme des maths. Sur du texte ordinaire, rien ne se passe. Si elle gêne, continuez simplement à taper ; <kbd>Échap</kbd> la ferme et met la détection en pause dans ce document, <kbd>Ctrl</kbd>+<kbd>Espace</kbd> la relance.</p></details>
+          <details><summary data-i18n="faq_7_q">Le prof pourra-t-il ouvrir le document ?</summary><p data-i18n="faq_7_a">Oui. Les formules sont des équations Word standard : elles s'ouvrent, s'impriment et s'exportent en PDF sur n'importe quel ordinateur, sans MathCursor.</p></details>
+          <details><summary data-i18n="faq_1_q">Mes données sont-elles envoyées sur Internet ? Et le RGPD ?</summary><p data-i18n="faq_1_a">Vos documents et votre frappe ne quittent jamais l'ordinateur. La seule donnée envoyée automatiquement est un compteur anonyme : le nombre de formules converties, un simple nombre, sans contenu ni identifiant, désactivable dans les Paramètres. Pas de compte, pas de cloud, pas de cookie. Détails sur la <a href="/privacy.html">page Confidentialité</a>.</p></details>
+          <details><summary data-i18n="faq_2_q">Ça fonctionne hors ligne ?</summary><p data-i18n="faq_2_a">Oui. Une connexion ne sert qu'à signaler une nouvelle version : un badge « Mise à jour disponible » apparaît alors dans le ruban, le téléchargement reste manuel.</p></details>
+          <details><summary data-i18n="faq_4_q">Quelles versions de Word sont prises en charge ?</summary><p data-i18n="faq_4_a">Word 2016, 2019, 2021 et Microsoft 365 sur Windows 10 et 11. Mac, Word en ligne et iPad sont prévus dans un second temps.</p></details>
+          <details><summary data-i18n="faq_3_q">Et en dehors de Word ?</summary><p data-i18n="faq_3_a">LibreOffice et VS&nbsp;Code (LaTeX) existent en alpha, avec le même moteur et la même popup. Téléchargements et marche à suivre sur la page <a href="install.html">Installation</a>.</p></details>
+          <details><summary data-i18n="faq_5_q">Le certificat de l'installeur, c'est sans risque ?</summary><p data-i18n="faq_5_a">Oui. Il est importé dans votre compte utilisateur uniquement, sans droits administrateur, et peut être retiré à tout moment via <code>certmgr.msc</code>. Le <a href="install-cert.ps1">script d'import</a> est consultable.</p></details>
+          <details><summary data-i18n="faq_6_q">Comment signaler un problème ou proposer une idée ?</summary><p data-i18n="faq_6_a">Par le <a href="/contact.html">formulaire de contact</a>, ou par le bouton « Signaler un souci » du ruban Word. Les retours des profs et des élèves décident de la suite.</p></details>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bandeau final -->
+    <section class="section" style="padding-top: 0;">
+      <div class="container">
+        <div class="cta-band">
+          <div>
+            <h2 data-i18n="band_h">Essayez en 30 secondes, sans rien installer</h2>
+            <p data-i18n="band_p">La démo en ligne utilise le même moteur que l'add-in Word.</p>
+          </div>
+          <div class="btn-row">
+            <a href="demo/" class="btn btn--primary" data-i18n="band_demo">Essayer en ligne</a>
+            <a href="releases.html" class="btn btn--ghost" data-i18n="band_install">Installer pour Word</a>
+          </div>
         </div>
       </div>
     </section>
@@ -249,121 +317,155 @@
 
   <footer class="site-footer">
     <div class="container">
-      <div data-i18n="foot_copy">MathCursor · vos documents restent chez vous · sans compte</div>
+      <div data-i18n="foot_copy">MathCursor · gratuit et libre · vos documents restent chez vous</div>
       <nav>
-        <a href="/contact.html">Contact</a>
+        <a href="demo/" data-i18n="nav_demo">Démo</a>
+        <a href="prof/" data-i18n="nav_prof">Profs</a>
+        <a href="amenagement.html" data-i18n="nav_pap">Parents &amp; PAP</a>
+        <a href="releases.html" data-i18n="nav_downloads">Téléchargements</a>
+        <a href="install.html" data-i18n="nav_install">Installation</a>
+        <a href="privacy.html" data-i18n="nav_privacy">Confidentialité</a>
+        <a href="contact.html" data-i18n="nav_contact">Contact</a>
       </nav>
     </div>
   </footer>
 
-  <!-- i18n FR/EN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
   <script>
+    // Formules rendues dans la page (LaTeX produit par le moteur MathCursor pour chaque exemple).
+    function renderMath() {
+      if (!window.katex) return;
+      document.querySelectorAll('[data-tex]').forEach(el => {
+        // \displaystyle : fractions et sommes à leur taille d'équation Word, pas en taille de texte.
+        try { katex.render('\\displaystyle ' + el.dataset.tex, el, { throwOnError: false, displayMode: false }); } catch (e) {}
+      });
+    }
+    renderMath();
+
     const I18N = {
       en: {
         nav_demo: "Demo",
-        nav_install: "Install",
+        nav_prof: "Teachers",
+        nav_pap: "Parents & accommodations",
         nav_downloads: "Downloads",
+        nav_install: "Install",
+        nav_privacy: "Privacy",
+        nav_contact: "Contact",
+        nav_cta: "Install",
 
-        tag: "Project MathCursor · Public beta",
-        hero_h1_pre: "Type the way you think.",
-        hero_h1_hl:  "We catch the intent.",
-        hero_lead: "MathCursor catches what you <strong>mean</strong> to write, as you type: you type however you like, the popup guides you live, you validate and the formula locks in, clean. All inside your usual editor, nothing to relearn.",
-        cta_demo: "Try it online",
-        cta_dl: "Install for Word",
-        badge_friction: "No syntax to learn",
-        hero_platforms: "In your editor: <strong>Word</strong> · LibreOffice <span class=\"alpha\">(alpha)</span> · VS&nbsp;Code <span class=\"alpha\">(alpha)</span>",
-        badge_local: "Your documents stay with you",
-        badge_account: "No account",
+        hero_eyebrow: "Free · for Word · public beta",
+        hero_h1: "Type your math the way you think. <span class=\"hl\">It comes out clean.</span>",
+        hero_lead: "In Word, write <code>x2 + 1/2</code> however it comes: MathCursor suggests the formula live, you confirm with one key. For teachers preparing their lessons and students taking notes on a keyboard.",
+        cta_demo: "Try it online <small>nothing to install</small>",
+        cta_install: "Install for Word",
+        hero_note: "Windows 10 and 11 · Word 2016 and later, Microsoft 365",
+        trust_1: "Free",
+        trust_2: "Free software",
+        trust_3: "No account",
+        trust_4: "Your documents stay with you",
+        trust_5: "Standard Word equations",
 
-        how_h: "How it works",
-        how_1_h: "You type.",
-        how_1_p: "Loosely, inside your sentence, without hunting for brackets or the right symbols: <code>x2 + 1/2</code>, <code>lim x 0 sin x / x</code>, <code>somme k 1 n k2</code>.",
-        how_2_h: "The popup guides you.",
-        how_2_p: "As soon as a math zone is recognised, a popup shows the formula taking shape, with little squares where something is missing. You see in real time that you're on the right track. Validate with one keystroke, or ignore it and keep writing.",
-        how_3_h: "If detection missed it.",
-        how_3_p: "<code>Ctrl + Space</code> forces conversion on the zone around the caret.",
-        how_4_h: "Re-edit.",
-        how_4_p: "Place the caret inside an existing equation: MathCursor brings back the keyboard shorthand. You edit, you re-convert.",
-        how_note: "<em>MathCursor proposes, you validate. No transformation without your consent.</em>",
-        how_cta: "Try it in your browser",
+        ba_eyebrow: "No syntax to learn",
+        ba_h: "You type however it comes. The formula follows.",
+        ba_p: "No menus, no codes to remember: the notation you'd use on scratch paper is enough.",
+        ba_col_in: "What you type",
+        ba_col_out: "What shows up in Word",
+        ba_or: "or",
+        ba_tag_choice: "the popup lets you choose",
+        ba_tag_chem: "Physics-chemistry mode",
+        ba_foot: "The result is a real Word equation: editable, printable, readable on any computer, even without MathCursor.",
 
-        gest_h: "One keystroke, and it's locked in",
-        gest_1: "You type your notation as the lesson goes, without breaking your rhythm.",
-        gest_2: "You validate in the popup: the formula locks in, clean and crisp. The little hit of satisfaction that makes you want to keep going.",
-        gest_3: "Not the right one? <code>Ctrl + Z</code>, you retype. No penalty, just flow.",
-        gest_note: "<em>Arrows to choose, Enter to validate: the gesture sinks in within minutes, then you stop thinking about it.</em>",
+        how_eyebrow: "How it works",
+        how_h: "Three gestures, then you stop thinking about it",
+        how_1_h: "You type",
+        how_1_p: "Inside your sentence, at the pace of the lesson. MathCursor spots the math passages.",
+        how_2_h: "The popup suggests",
+        how_2_p: "The formula takes shape live under the caret. If there are two possible readings, you choose.",
+        how_3_h: "You confirm",
+        how_3_p: "One key, and the formula locks into the document. Not the right one? <kbd>Ctrl</kbd>+<kbd>Z</kbd> and retype.",
+        how_keys: "<kbd>↓</kbd> then <kbd>Enter</kbd> to confirm · <kbd>Ctrl</kbd>+<kbd>Space</kbd> to convert on demand · <kbd>Esc</kbd> to pause detection in a document",
 
-        for_h: "Who it's for",
-        for_1_h: "Math teachers, it's for you first",
-        for_1_p: "The tool is for you, first: type your tests, exercises, answer keys and handouts on the keyboard: fractions, sums, systems and matrices take shape on their own, sign and variation tables are filled in from the keyboard, and Theorem or Definition boxes are one click away. You write your math far faster, and walk away with a clean Word document, reusable year after year.",
-        for_2_h: "High-schoolers and students on a keyboard",
-        for_2_p: "If you take your math notes on a keyboard, the equation editor slows you down and pulls you out of the lesson. MathCursor lets you keep pace and formats afterwards.",
-        for_pap: "<strong>A student with a formal accommodation (PAP)?</strong> The same tool as their classmates, not a piece of software \"apart\". → <a href=\"amenagement.html\">Accommodation &amp; PAP</a>",
+        feat_eyebrow: "In Word",
+        feat_h: "Everything to write a math lesson, on the keyboard",
+        feat_1_h: "Every formula from high school and beyond",
+        feat_1_p: "Fractions, powers, roots, sums, integrals, limits, matrices, systems, symbols and Greek letters. Functions in French, English, German and Spanish.",
+        feat_2_h: "Sign and variation tables",
+        badge_new: "New",
+        feat_2_p: "One button in the ribbon, then everything is filled in from the keyboard: type an <em>x</em> value between two others and the column is added. Arrows, zeros and forbidden values are one click away.",
+        feat_3_h: "Physics and chemistry",
+        feat_3_p: "A mode turned on document by document: formulas, ions, reaction equations and quantities are written the way they are in class, without touching your math documents.",
+        feat_4_h: "Lesson layout",
+        feat_4_p: "Theorem, Definition, Example and Property boxes, column layout, equation font of your choice (Cambria Math, Latin Modern, STIX).",
 
-        inst_h: "Installation",
-        inst_p: "Here's the install for <strong>Word</strong>, ready today: less than a minute, once per machine. Or <a href=\"demo/\">try it online first</a>, with nothing to install.",
+        paths_eyebrow: "Who it's for",
+        paths_h: "Whether you teach, follow the lesson or support a student",
+        path_1_h: "I'm a teacher",
+        path_1_list: "<li>Tests, handouts and answer keys typed as you go</li><li>Sign tables and lesson boxes in one click</li><li>Clean Word documents, reusable year after year</li>",
+        path_1_link: "The teachers' page",
+        path_2_h: "I'm a student",
+        path_2_list: "<li>Follow the math lesson on a keyboard, without falling behind</li><li>Scratch-paper notation is enough, nothing to learn</li><li>A clean result the teacher reads with nothing to install</li>",
+        path_2_link: "Try it online",
+        path_3_h: "I support a child (accommodation, dyslexia)",
+        path_3_list: "<li>The same tool as the whole class, not separate software</li><li>It formats, it never calculates in the student's place</li><li>Free, installed in under a minute</li>",
+        path_3_link: "Accommodations",
+
+        trust_eyebrow: "Trust",
+        trust_h: "Built for school, with no bad surprises",
+        ti_1_h: "Free and open",
+        ti_1_p: "MathCursor is free, and it's free software (GNU GPL v3 license).",
+        ti_2_h: "No account",
+        ti_2_p: "No sign-up, no cloud: install it and write.",
+        ti_3_h: "Your documents stay with you",
+        ti_3_p: "Keystrokes and documents never leave the computer. Only an anonymous counter (the number of formulas converted) is sent, and it can be turned off in Settings. <a href=\"privacy.html\">Details</a>",
+        ti_4_h: "Standard Word equations",
+        ti_4_p: "The result is Word's native equation: nothing to install to read it, print it or export it to PDF.",
+        ti_5_h: "It doesn't calculate",
+        ti_5_p: "MathCursor formats what you write. It doesn't solve exercises or suggest answers.",
+        ti_6_h: "A pause per document",
+        ti_6_p: "<kbd>Esc</kbd> pauses detection in a document, for instance for homework in another subject; <kbd>Ctrl</kbd>+<kbd>Space</kbd> turns it back on.",
+
+        inst_eyebrow: "Installation",
+        inst_h: "Ready in under a minute",
+        inst_1: "<strong>Download</strong> the installer for Word.",
+        inst_2: "<strong>Run it</strong>: no admin rights needed, it installs into your user session.",
+        inst_3: "<strong>Open Word</strong>: a MathCursor tab appears in the ribbon. Type <code>x2+1/2</code>, the popup suggests the formula.",
         inst_dl: "Download for Word",
         inst_guide: "Install guide",
-        inst_1_h: "1. Download the installer",
-        inst_1_p: "Grab <a href=\"/download/latest.exe\"><code>MathCursor-Setup.exe</code></a> (latest) or pick a version on the <a href=\"releases.html\">Downloads</a> page.",
-        inst_2_h: "2. Run the installer",
-        inst_2_p: "Double-click the file. The installer imports the required <a href=\"mathcursor.cer\">certificate</a> itself, then installs the add-in into your user profile, with no admin rights and no PowerShell step.",
-        inst_3_h: "3. Use it",
-        inst_3_p: "Open Word: a <strong>MathCursor</strong> tab appears in the ribbon. Type <code>x2+1/2</code> in a document, then trigger the conversion (ribbon button or keyboard shortcut).",
-        inst_config: "<strong>Configuration:</strong> Windows 10 or 11, Word 2016+ or Microsoft 365. Interface languages: French, English, German, Spanish.",
-        inst_platforms: "<strong>Other editors:</strong> the <strong>LibreOffice</strong> and <strong>VS&nbsp;Code – LaTeX</strong> versions are in <strong>alpha</strong>: they already work, but they're still moving. All guides and downloads are on the <a href=\"install.html\">Install</a> page. Something off? <a href=\"/contact.html\">Write to me</a>.",
-        inst_note: "Need help, found a bug, want to chat? <a href=\"/contact.html\">Contact</a>.",
+        inst_cfg_h: "Requirements",
+        inst_cfg_p: "Windows 10 or 11, Word 2016 and later or Microsoft 365. Interface in French, English, German and Spanish.",
+        inst_other_h: "Other editors",
+        inst_other_p: "LibreOffice and VS&nbsp;Code (LaTeX) <span class=\"alpha\">alpha</span>: the same engine, the same popup. Guides on the <a href=\"install.html\">Install</a> page.",
 
-        faq_h: "Frequently asked questions",
-        faq_0_q: "Will the popup pop up all the time?",
-        faq_0_a: "No. It only appears on zones MathCursor identifies as math (with some confidence). On regular text, nothing happens. And if the popup gets in the way occasionally, ignore it: just keep typing. <code>Esc</code> closes it and pauses automatic detection in that document (handy for a non-math document); <code>Ctrl + Space</code> turns it back on.",
-        faq_1_q: "Is my data sent over the Internet? What about GDPR?",
-        faq_1_a: "Your documents and your keystrokes never leave the computer. The only data sent automatically is an anonymous counter: the number of formulas converted, a plain number, with no content and no identifier, and it can be turned off in Settings. No account, no cloud, no personal data, no cookie. See the <a href=\"/privacy.html\">Privacy page</a> for details.",
-        faq_2_q: "Does it work offline?",
-        faq_2_a: "Yes. An Internet connection is only used to flag a new version: when Word starts, MathCursor checks online for an update and, if any, shows an “Update available” badge in the ribbon (downloading stays manual). Without a network, the installed version keeps working as usual.",
-        faq_4_q: "Which Word versions are supported?",
-        faq_4_a: "Word 2016, 2019, 2021 and Microsoft 365 Desktop on Windows 10 and 11. Mac, Word Web and iPad ports are planned for phase 2, after validating the Windows beta.",
-        faq_3_q: "What about outside Word?",
-        faq_3_a: "Word is the most polished version today. <strong>LibreOffice</strong> and <strong>VS&nbsp;Code – LaTeX</strong> already exist in <strong>alpha</strong> and are moving fast: the same engine, the same popup, inside your usual editor. Download them and find the steps on the <a href=\"releases.html#vscode\">Downloads</a> page.",
-        faq_5_q: "Is the self-signed certificate safe?",
-        faq_5_a: "Yes. The certificate is imported into the user account only (not system-wide), with no admin rights. It can be removed at any time via <code>certmgr.msc</code>. The <a href=\"install-cert.ps1\">import script</a> can be inspected before running it.",
-        faq_6_q: "How do I report a bug or suggest an improvement?",
-        faq_6_a: "Via the <a href=\"/contact.html\">contact form</a>, or via the <strong>\"Report an issue\"</strong> button in the Word ribbon once MathCursor is installed. Teacher and student feedback drives the roadmap.",
-
-        scope_h: "Everything MathCursor already formats",
-        scope_lead: "Broad coverage, from high school to higher ed, and it grows with every release.",
-        scope_ok_h: "Supported today",
-        scope_ok_1: "<strong>Native Word equations (OMath).</strong> The output format is the one of Word's standard equation editor. No plugin to read it back, no image, no exotic format. Documents stay editable normally, even without MathCursor installed.",
-        scope_ok_2: "Fractions, superscripts, subscripts, roots.",
-        scope_ok_3: "Sums, integrals, limits, products.",
-        scope_ok_4: "Common functions (<code>sin</code>, <code>cos</code>, <code>log</code>, <code>ln</code>…) in French, English, German, Spanish.",
-        scope_ok_5: "Matrices and simple systems of equations.",
-        scope_ok_6: "Common symbols (∀, ∃, ∈, ≤, ≥, →, ⇒…), and Greek letters or symbols already typed in Unicode (λ, Δ, µ, ², √).",
-        scope_ok_8: "Scientific notation the quick way: <code>2,5*10-3</code> gives 2.5×10⁻³.",
-        scope_ok_9: "Partial derivatives (<code>part f x</code>), chained equalities on one line (<code>f(x)</code> then <code>=2</code>), and Word's Subscript / Superscript buttons taken into account.",
-        scope_ok_10: "<strong>Physics-chemistry mode</strong>, turned on document by document: formulas and ions (<code>H2O</code>, <code>Fe2+</code>, <code>SO42-</code>), reaction equations (<code>2H2 + O2 -> 2H2O</code>), and quantities like <code>v0</code>, <code>T2 - T1</code>.",
-        scope_ok_11: "<strong>Sign and variation tables</strong>, filled in from the keyboard.",
-        scope_ok_12: "<strong>Word layout</strong>: Theorem, Definition, Example, Property boxes; column layout; equation font of your choice (Cambria Math, Latin Modern, STIX).",
-        scope_ok_7: "Re-editing an already-converted equation without retyping everything.",
-        scope_todo_h: "Coming, on the roadmap",
-        scope_todo_1: "Chemistry: equilibria (⇌) and oxidation numbers.",
-        scope_todo_2: "Diagrams, figures, graphs.",
-        scope_todo_4: "Word on Mac, Word Web, iPad: planned for phase 2.",
-        scope_todo_5: "Column-stacked computations (tabular layout).",
-        scope_foot: "If a case you'd find useful is missing, tell me, that's what drives the roadmap.",
-
-        tab_h: "New: sign and variation tables",
-        tab_lead: "One button in the Word ribbon, and the table is filled in from the keyboard, without drawing a single border.",
-        tab_1: "<strong>x values from the keyboard.</strong> Type a value between two <em>x</em> values: it is added with its intervals. Empty it: it goes away. The separator line draws itself, broken by the zeros.",
-        tab_2: "<strong>One click on a cell.</strong> On a label, add a sign or variation row. Under a value, put a 0 or a forbidden value (double bar). In a variation row, pick the arrow ↗ ↘ →.",
-        tab_3: "<strong>Formulas as anywhere else.</strong> Values, labels and extrema are typed with MathCursor (<code>rac 3 / 2</code>, <code>f(2)</code>…). Maxima and minima go to the top or bottom based on the arrows.",
-
-        bio_h: "Who builds MathCursor",
-        bio_p1: "<strong>Côme</strong>, tech engineer and father of a son with a formal accommodation.",
+        bio_eyebrow: "Who builds MathCursor",
+        bio_p1: "<strong>Côme</strong>, engineer and father of a son with a formal accommodation.",
         bio_p2: "MathCursor was born watching my son fight Word's equation editor while I spent my days with the autocomplete of a code editor. The gap was too big.",
-        bio_p3: "No company behind it, no investors. One dev, a few beta-testers. The <a href=\"/contact.html\">contact form</a> comes straight to me: I read every message.",
+        bio_p3: "No company behind it, no investors: one developer and a few teacher beta-testers. The <a href=\"/contact.html\">contact form</a> comes straight to me, and I read every message.",
 
-        foot_copy: "MathCursor · your documents stay with you · no account"
+        faq_eyebrow: "Frequently asked questions",
+        faq_h: "Your questions",
+        faq_0_q: "Will the popup pop up all the time?",
+        faq_0_a: "No. It only appears on passages MathCursor recognises as math. On ordinary text, nothing happens. If it gets in the way, just keep typing; <kbd>Esc</kbd> closes it and pauses detection in that document, <kbd>Ctrl</kbd>+<kbd>Space</kbd> turns it back on.",
+        faq_7_q: "Will the teacher be able to open the document?",
+        faq_7_a: "Yes. Formulas are standard Word equations: they open, print and export to PDF on any computer, without MathCursor.",
+        faq_1_q: "Is my data sent over the Internet? What about GDPR?",
+        faq_1_a: "Your documents and keystrokes never leave the computer. The only data sent automatically is an anonymous counter: the number of formulas converted, a plain number, with no content or identifier, and it can be turned off in Settings. No account, no cloud, no cookie. See the <a href=\"/privacy.html\">Privacy page</a>.",
+        faq_2_q: "Does it work offline?",
+        faq_2_a: "Yes. A connection is only used to flag a new version: an “Update available” badge then shows in the ribbon, and downloading stays manual.",
+        faq_4_q: "Which Word versions are supported?",
+        faq_4_a: "Word 2016, 2019, 2021 and Microsoft 365 on Windows 10 and 11. Mac, Word on the web and iPad are planned later.",
+        faq_3_q: "What about outside Word?",
+        faq_3_a: "LibreOffice and VS&nbsp;Code (LaTeX) exist in alpha, with the same engine and the same popup. Downloads and steps on the <a href=\"install.html\">Install</a> page.",
+        faq_5_q: "Is the installer's certificate safe?",
+        faq_5_a: "Yes. It's imported into your user account only, with no admin rights, and can be removed at any time via <code>certmgr.msc</code>. The <a href=\"install-cert.ps1\">import script</a> can be inspected.",
+        faq_6_q: "How do I report a problem or suggest an idea?",
+        faq_6_a: "Through the <a href=\"/contact.html\">contact form</a>, or the “Report an issue” button in the Word ribbon. Teacher and student feedback decides what comes next.",
+
+        band_h: "Try it in 30 seconds, with nothing to install",
+        band_p: "The online demo runs the same engine as the Word add-in.",
+        band_demo: "Try it online",
+        band_install: "Install for Word",
+
+        foot_copy: "MathCursor · free and open · your documents stay with you"
       }
     };
 
@@ -372,34 +474,22 @@
       document.documentElement.lang = lang;
       document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.dataset.i18n;
-        if (!dict) return;
-        if (dict[key]) {
-          el.innerHTML = dict[key];
-        } else if (I18N.fr && I18N.fr[key]) {
-          el.innerHTML = I18N.fr[key];
-        }
+        if (dict && dict[key]) el.innerHTML = dict[key];
+        else if (I18N.fr && I18N.fr[key]) el.innerHTML = I18N.fr[key];
       });
-      document.querySelectorAll('.lang-toggle button').forEach(b => {
-        b.classList.toggle('active', b.dataset.lang === lang);
-      });
+      document.querySelectorAll('.lang-toggle button').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
       try { localStorage.setItem('mc_lang', lang); } catch (e) {}
     }
 
     const FR_SNAPSHOT = {};
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-      FR_SNAPSHOT[el.dataset.i18n] = el.innerHTML;
-    });
+    document.querySelectorAll('[data-i18n]').forEach(el => { FR_SNAPSHOT[el.dataset.i18n] = el.innerHTML; });
     I18N.fr = FR_SNAPSHOT;
 
-    document.querySelectorAll('.lang-toggle button').forEach(btn => {
-      btn.addEventListener('click', () => setLang(btn.dataset.lang));
-    });
+    document.querySelectorAll('.lang-toggle button').forEach(btn => btn.addEventListener('click', () => setLang(btn.dataset.lang)));
 
     let saved = null;
     try { saved = localStorage.getItem('mc_lang'); } catch (e) {}
-    if (!saved) {
-      saved = (navigator.language || 'fr').toLowerCase().startsWith('en') ? 'en' : 'fr';
-    }
+    if (!saved) saved = (navigator.language || 'fr').toLowerCase().startsWith('en') ? 'en' : 'fr';
     if (saved === 'en') setLang('en');
   </script>
 
