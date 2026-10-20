@@ -51,13 +51,20 @@ clic), affichée quand le curseur entre dans la case :
 | Case | Choix |
 |---|---|
 | Étiquette de ligne | ＋ ligne de signe · ＋ ligne de variation · supprimer la ligne |
-| Valeur de `x` | ＋ valeur à gauche · ＋ valeur à droite · valeur interdite · supprimer |
+| Valeur de `x` | **aucune popup** (2026-10-20, voir « Ligne x sans popup ») |
 | Frontière (ligne de signe ou de variation) | `0` · `‖` (valeur interdite) |
 | Intervalle de variation | `↗` · `↘` · `→` |
 | Intervalle de signe | aucune popup |
 
 Règles : la popup **s'efface à la première touche** (on écrit directement) et
 **cède toujours la place** aux popups de conversion et d'édition de MathCursor.
+**Exception (retour d'usage, 2026-10-19)** : dans une **étiquette de ligne**, une
+formule convertie occupe toute la case, le clic ouvrait la popup d'édition et
+les actions de ligne devenaient inaccessibles. Choix utilisateur (« Actions de
+ligne seulement ») : sur une formule convertie d'étiquette, pas de mode édition,
+la popup de ligne s'affiche ; pour corriger la formule, on la retape. Le texte
+pas encore converti garde la popup de conversion. Ailleurs (valeurs,
+extremums, reste du document), mode édition inchangé.
 Les nouvelles lignes s'insèrent sous la ligne cliquée ; une valeur de `x`
 ajoute une **paire** intervalle + frontière dans toutes les lignes, chaque case
 mise en forme selon le type de sa ligne.
@@ -69,6 +76,69 @@ Chaque case porte son rôle par un style (« MathCursor Flèche » existe déjà
 intervalle, flèche. Les actions lisent ces rôles plutôt que de deviner à partir
 des positions : robuste aux modifications de l'élève, voyage avec le
 copier-coller.
+
+### Les `0` posés sur une simple ligne (ajout du 2026-10-19)
+
+> « et classiquement la valeur interdite avec double ligne c'est super, et du
+> coup les 0 qui sont aussi des "separation" on le met avec une simple ligne de
+> separation » puis, après les spikes, « ok c'est bien ! » — utilisateur.
+
+Dès qu'une frontière contient un `0` (popup ou frappe), **toute la colonne sous
+x** reçoit une simple ligne verticale centrée : les cases `0` = trois
+paragraphes [bout de ligne / `0` centré / bout de ligne] (la ligne est
+interrompue par le `0`), les cases vides = ligne pleine ; une case portant une
+autre valeur (extremum d'une ligne de variation) garde sa valeur sans ligne. La
+ligne disparaît avec le dernier `0` de la colonne ; la valeur interdite (double
+barre) reste prioritaire. Bout de ligne = paragraphe vide à bordure gauche,
+retrait gauche = milieu de la case, interligne exact = longueur du bout.
+
+Spikes (Word COM, PDF relu) : **B écarté** (retrait de première ligne négatif
+pour poser le `0` sur la bordure) : Word dessine la bordure au début du texte,
+le `0` reste toujours à côté de la ligne. **A retenu** (trois paragraphes) : `0`
+centré sur la ligne, hauteur des lignes quasi inchangée ; la ligne pleine dans
+les autres cases de la colonne donne la ligne continue des manuels.
+
+### Une valeur de x écrite pose aussi la séparation (ajout du 2026-10-19)
+
+> « quand j'ecris quelque chose dans l'axe des x dans une case "vide" il
+> faudrait que ca declenche une separation. tu vois le truc ? et inversement si
+> j'efface ? » — utilisateur.
+
+La simple ligne d'une colonne (« séparation ») est posée par un `0` sous x
+**ou** par une valeur écrite dans sa case de la ligne x, et retirée quand les
+deux disparaissent (détecté à la sortie de la case, comme l'ajustement de
+police). Exception : pas de séparation sous la **première et la dernière**
+valeur de x (`−∞`, `+∞` ou une borne) — la ligne doublerait le bord du tableau ;
+un `0` à un bout garde la sienne. La valeur interdite reste prioritaire.
+
+**Valeur écrite dans un intervalle de la ligne x** (retour d'usage : l'élève
+écrit dans la case vide *entre* deux valeurs, que le tableau tenait pour un
+intervalle) : à la sortie de la case, elle devient une **nouvelle valeur de x**
+— un intervalle est inséré de chaque côté, la case devient frontière, et dans
+les autres lignes le contenu de l'intervalle d'origine (signe, flèche) est
+recopié dans les deux nouveaux intervalles, la nouvelle frontière restant vide.
+La séparation suit par la règle ci-dessus.
+
+### Formules centrées dans le tableau (ajout du 2026-10-19)
+
+> « idealement dans le tableau (et uniquement ici) il faudrait que l'alignement
+> des formules mathcursor soit "centré" » — utilisateur.
+
+Une équation seule dans sa case (display) est alignée à **gauche** partout
+(règle d'insertion inchangée), **sauf** dans une case d'un tableau MathCursor :
+`OMathInserter.DecideOMathTyping` choisit alors `wdOMathJcCenter` (seule la
+valeur change, pas l'ordre des opérations d'insertion). Chaque réapplication
+du tableau recentre aussi les équations display déjà présentes (formules
+converties avant ce changement). Les blocs (chaînes / systèmes) gardent leur
+alignement à gauche.
+
+### Extremums placés d'après les flèches
+
+Dans une ligne de variation, une frontière est alignée **en haut** si elle est
+entre ↗ et ↘ (maximum), **en bas** entre ↘ et ↗ (minimum), au milieu sinon ;
+en bout de tableau, la seule flèche voisine décide (↗ en début : en bas).
+Aucun choix à faire pour l'élève : l'alignement suit les flèches à chaque
+réapplication. (Précision ajoutée à l'implémentation, 2026-10-19.)
 
 ### Police réduite si une valeur ne tient pas
 
@@ -119,6 +189,75 @@ Word piloté en COM, rendu vérifié sur l'export PDF.
    l'OMath (relu à 9). Une valeur trop longue à 9 pt reste sur deux lignes :
    le repli « la colonne s'élargit » est nécessaire.
 
+### Ligne x sans popup (2026-10-20)
+
+> « comme on a fait la separation naturelle quand on ajoute un x, la petite
+> popup valeur a gauche valeur a droite etc est un peu de trop » puis « valeur
+> interdite et supprimer la valeur aussi doivent sauter.. dans la ligne x pour
+> moi toute la popup est en trop. on le fait ailleur » — utilisateur.
+
+La ligne x n'a plus de popup. Les gestes passent par la saisie :
+
+- **ajouter** une valeur : la taper entre deux valeurs (intervalle de la ligne x) ;
+- **supprimer** une valeur (choix utilisateur « Effacer = supprimer ») : vider une
+  valeur **intérieure** puis quitter la case → la frontière et l'intervalle de
+  droite disparaissent, l'intervalle de gauche garde son contenu (signe,
+  flèche) ; les **bornes** (première / dernière valeur) sont seulement vidées.
+  Un Ctrl+Z annule ;
+- **valeur interdite** : depuis les frontières du dessous (popup `0 · ‖`).
+
+Conséquence : ajouter une valeur au-delà de la première ou de la dernière
+(borne au-delà de `0` dans `[0 ; 5]`) n'a plus de geste — rare, `−∞` / `+∞`
+couvrent la plupart des cas. Les actions `AddValueLeft/Right` et `DeleteValue`
+restent dans `StudyTableActions` (harnais) sans entrée dans l'interface.
+
+### Passe visuelle (2026-10-20)
+
+> « header et colonne de gauche avec une legere background ? + legere graisse ?
+> et la fleche du tableau de variation, y'a moyen de faire moins rough » —
+> utilisateur ; choix sur rendu d'essai (PDF) : « Bleu-gris + gras + bleu nuit »,
+> « Cambria Math 26 gris ».
+
+- **En-tête (ligne x) et étiquettes** : fond bleu-gris `EEF2F8` (trame de
+  cellule, posée aux réapplications) ; texte **gras bleu nuit** `1F3A5F` porté
+  par les **styles** (étiquettes + deux styles dédiés à la ligne x,
+  « MathCursor En-tête valeur / intervalle », relus comme frontière /
+  intervalle ; l'ancien style de ligne x reste reconnu et migre à la
+  réapplication). Ce qu'on tape hérite du style : aucune mise en forme directe
+  à réécrire en sortie de case (sinon une entrée d'annulation par saisie,
+  régression attrapée par le harnais). Les équations de l'en-tête passent en
+  gras mathématique.
+- **Flèches** : police **Cambria Math** (livrée avec Office) **26 pt gris
+  foncé** `404040` dans le style « MathCursor Flèche », réimposée à chaque
+  insertion (les tableaux existants en profitent). Écartés au rendu : police du
+  texte (pointes grossières), Segoe UI Symbol (trop petit), flèches doubles
+  `⇗` (chargées), Latin Modern / STIX (pas installées partout).
+
+### Durcissement (2026-10-20)
+
+Après revue des écueils (« ok faisons ca! » — utilisateur) :
+
+- **Performance** : à la sortie d'une case modifiée, seule sa **colonne** est
+  remise en forme (`ReapplyColumn` : police, élargissement, séparation,
+  alignements, équations centrées) ; le reste du tableau n'est retouché que si
+  la colonne s'élargit. À chaque clic, la case est lue par une **lecture légère**
+  (`ReadCell` : quelques styles) au lieu de tout le tableau. L'élargissement saute
+  directement d'après le débordement mesuré (3 lignes → ~3 fois plus large) au
+  lieu de pas fixes de 3 %. Mesures : ~150 ms par sortie de case dans Word
+  (journal), ~400 ms piloté hors processus.
+- **Ctrl+Z** : une action de structure (dont la valeur tapée entre deux valeurs)
+  s'annule en **un** Ctrl+Z, styles compris ; une sortie de case sans changement
+  de mise en forme ne crée **pas** d'entrée d'annulation vide (vérifiés par le
+  harnais). Limite connue : si la sortie de case ajuste la mise en forme (police,
+  séparation), le premier Ctrl+Z annule cet ajustement, le second la saisie.
+- **Case « 0 sur la ligne »** : un curseur posé dans un bout de ligne (clic
+  au-dessus ou en dessous du 0) est ramené juste après le 0.
+- **Non-régression** : `scripts/harness-study-table.ps1` exécute le
+  `MathCursor.dll` compilé dans Word (COM, réflexion sur les types internes) et
+  vérifie la structure après chaque action (32 vérifications, code de sortie 1
+  en cas d'échec). Il demande Word installé : hors du gate `run-tests.ps1`, à
+  lancer avant une livraison touchant aux tableaux.
+
 ## Tradeoff & alternatives écartées
 
 - **Menu au clic droit** (`ContextMenuTableCell`) : moins découvrable, deux
@@ -139,9 +278,17 @@ Word piloté en COM, rendu vérifié sur l'export PDF.
 
 ## Conséquences
 
-- **Code touché (prévu)** : `StudyTableTemplate` (rôles), `StudyTableInserter`
-  (styles de rôle), `ArrowCellController` → contrôleur de popup du tableau
-  (choix par rôle, actions de structure, priorité aux autres popups),
-  `ArrowPalettePopupWindow` (libellés d'actions en plus des symboles),
-  `ThisAddIn` (sortie de case → ajustement de police).
-- **Documents** : quelques styles « MathCursor … » dans la liste des styles.
+- **Code touché** : `StudyTableTemplate` (modèle pur : rôles, choix, largeurs,
+  plans de colonnes, extremums), `StudyTableFormatter` (styles, lecture de
+  structure, réapplication, valeur interdite, ajustement de police),
+  `StudyTableActions` (actions de structure), `StudyTableInserter` (passe par
+  les rôles), `ArrowCellController` → `StudyTableController`,
+  `ArrowPalettePopupWindow` → `TableChoicePopupWindow` (symboles ou libellés),
+  `ConversionController` / `EditModeController` (événement `PopupShown`),
+  `ThisAddIn`, `Strings` (libellés des actions).
+- **Tests** : `StudyTableTemplateTests` (gabarit, rôles, choix, largeurs,
+  plans de colonnes, extremums). Le code Word est vérifié par un harnais qui
+  exécute le `MathCursor.dll` compilé dans Word (insertion, ajout / suppression
+  de valeurs et de lignes, flèche, valeur interdite, ajustement de police,
+  export PDF relu).
+- **Documents** : sept styles « MathCursor … » dans la liste des styles.

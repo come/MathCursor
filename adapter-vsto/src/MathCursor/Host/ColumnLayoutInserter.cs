@@ -101,7 +101,11 @@ namespace MathCursor.Host
                 if (insertPos >= doc.Content.End)
                 {
                     currentPara.Range.InsertParagraphAfter();
-                    insertPos = currentPara.Range.End;
+                    // Début du ¶ vide ajouté (dernier ¶ du doc). Relire
+                    // currentPara.Range.End donnait la FIN du document →
+                    // « Valeur en dehors des limites » (bug préexistant,
+                    // trouvé par le harnais des tableaux 2026-10-20).
+                    insertPos = doc.Paragraphs.Last.Range.Start;
                 }
             }
 

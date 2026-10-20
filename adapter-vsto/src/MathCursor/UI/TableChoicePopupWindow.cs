@@ -25,16 +25,32 @@ using System.Windows.Media.Animation;
 
 namespace MathCursor.UI
 {
+    /// <summary>Un choix de la popup du tableau : symbole (↗, 0, ‖…) en grand
+    /// corps, ou action en toutes lettres (« + valeur à droite »).</summary>
+    public sealed class TableChoiceItem
+    {
+        public string Text { get; }
+        public bool IsSymbol { get; }
+
+        public TableChoiceItem(string text, bool isSymbol)
+        {
+            Text = text ?? "";
+            IsSymbol = isSymbol;
+        }
+    }
+
     /// <summary>
-    /// Palette de flèches d'un tableau de variation : choix EN LIGNE (↗ ↘ →)
-    /// sous le caret. Dérivée de <see cref="SuggestionPopupWindow"/> : même
-    /// look (fond blanc, opacité 0.5 repos / 0.9 navigation, surlignage bleu),
-    /// mêmes réglages Win32 (<c>WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW</c>, jamais
-    /// de vol de focus ; owner re-posé à chaque show), même nav-mode opt-in
-    /// (aucun surlignage avant la première flèche ↓). Sans pied de popup.
-    /// Cf. ADR 2026-10-19-UX-variation-arrow-palette.
+    /// Popup des tableaux de signe / variation : choix EN LIGNE sous le
+    /// caret, liste fournie à chaque affichage selon le rôle de la case.
+    /// Dérivée de <see cref="SuggestionPopupWindow"/> : même look (fond blanc,
+    /// opacité 0.5 repos / 0.9 navigation, surlignage bleu), mêmes réglages
+    /// Win32 (<c>WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW</c>, jamais de vol de
+    /// focus ; owner re-posé à chaque show), même nav-mode opt-in (aucun
+    /// surlignage avant la première flèche ↓). Sans pied de popup.
+    /// Cf. ADR 2026-10-19-UX-variation-arrow-palette,
+    /// 2026-10-19-Feat-study-table-cell-roles-contextual-popup.
     /// </summary>
-    public sealed class ArrowPalettePopupWindow : Window
+    public sealed class TableChoicePopupWindow : Window
     {
         private const double DisplayOpacity = 0.5;
         private const double NavOpacity = 0.9;
@@ -42,24 +58,22 @@ namespace MathCursor.UI
 
         private static readonly Brush HighlightBrush = new SolidColorBrush(Color.FromRgb(190, 215, 250));
 
-        private readonly IReadOnlyList<string> _choices;
+        private readonly StackPanel _row;
         private readonly List<Border> _cells = new List<Border>();
         private int _selectedIndex;
         private bool _navMode;
+        // Incrémenté à chaque affichage / masquage : la fin d'un fondu de
+        // masquage ne cache pas une popup ré-affichée entre-temps.
+        private int _visibilityToken;
 
-        /// <summary>Levé au clic sur une flèche (qui devient la sélection).
-        /// L'hôte écrit la flèche dans la case.</summary>
+        /// <summary>Levé au clic sur un choix (qui devient la sélection).</summary>
         public event Action CommitRequested;
 
         public bool IsNavMode => _navMode;
+        public int SelectedIndex => _selectedIndex;
 
-        public string SelectedChoice =>
-            _selectedIndex >= 0 && _selectedIndex < _choices.Count ? _choices[_selectedIndex] : null;
-
-        public ArrowPalettePopupWindow(IReadOnlyList<string> choices)
+        public TableChoicePopupWindow()
         {
-            _choices = choices ?? Array.Empty<string>();
-
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.NoResize;
             ShowInTaskbar = false;
@@ -69,22 +83,71 @@ namespace MathCursor.UI
             AllowsTransparency = true;
             Opacity = 0;
 
-            var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(4) };
-            for (int i = 0; i < _choices.Count; i++)
+            _row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(4) };
+            Content = new Border
             {
+                BorderBrush = new SolidColorBrush(Color.FromRgb(180, 180, 180)),
+                BorderThickness = new Thickness(1),
+                Background = Brushes.White,
+                Child = _row,
+            };
+
+            SourceInitialized += (_, _) =>
+            {
+                var helper = new WindowInteropHelper(this);
+                int exStyle = GetWindowLong(helper.Handle, GWL_EXSTYLE);
+                SetWindowLong(helper.Handle, GWL_EXSTYLE, exStyle | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
+            };
+        }
+
+        /// <summary>
+        /// Affiche les choix, bord gauche à <paramref name="anchorX"/>, haut à
+        /// <paramref name="anchorYBelow"/> (DIP). <paramref name="preselect"/> =
+        /// choix surligné à l'entrée en navigation (ex. flèche déjà posée).
+        /// </summary>
+        public void ShowAt(IReadOnlyList<TableChoiceItem> items, double anchorX, double anchorYBelow, int preselect)
+        {
+            _visibilityToken++;
+            BuildCells(items ?? Array.Empty<TableChoiceItem>());
+            _navMode = false;
+            _selectedIndex = preselect >= 0 && preselect < _cells.Count ? preselect : 0;
+            UpdateHighlight();
+
+            Left = anchorX;
+            Top = anchorYBelow;
+            ReparentToActiveWordWindow();
+            if (!IsVisible) base.Show();
+
+            UpdateLayout();
+            var wa = SystemParameters.WorkArea;
+            double w = ActualWidth;
+            if (anchorX + w > wa.Right - 4) Left = Math.Max(wa.Left + 4, wa.Right - 4 - w);
+
+            BeginAnimation(OpacityProperty,
+                new DoubleAnimation(DisplayOpacity, TimeSpan.FromMilliseconds(FadeMs)));
+        }
+
+        private void BuildCells(IReadOnlyList<TableChoiceItem> items)
+        {
+            _row.Children.Clear();
+            _cells.Clear();
+            for (int i = 0; i < items.Count; i++)
+            {
+                var item = items[i];
                 var cell = new Border
                 {
                     BorderBrush = new SolidColorBrush(Color.FromRgb(230, 230, 230)),
-                    BorderThickness = new Thickness(0, 0, i < _choices.Count - 1 ? 1 : 0, 0),
-                    Padding = new Thickness(12, 2, 12, 2),
+                    BorderThickness = new Thickness(0, 0, i < items.Count - 1 ? 1 : 0, 0),
+                    Padding = item.IsSymbol ? new Thickness(12, 2, 12, 2) : new Thickness(10, 6, 10, 6),
                     Background = Brushes.Transparent,
                     Cursor = System.Windows.Input.Cursors.Hand,
                     Child = new TextBlock
                     {
-                        Text = _choices[i],
-                        FontFamily = new FontFamily("Cambria Math"),
-                        FontSize = 22,
+                        Text = item.Text,
+                        FontFamily = item.IsSymbol ? new FontFamily("Cambria Math") : new FontFamily("Segoe UI"),
+                        FontSize = item.IsSymbol ? 22 : 13,
                         HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
                     },
                 };
                 int idx = i;
@@ -100,52 +163,8 @@ namespace MathCursor.UI
                     CommitRequested?.Invoke();
                 };
                 _cells.Add(cell);
-                row.Children.Add(cell);
+                _row.Children.Add(cell);
             }
-
-            Content = new Border
-            {
-                BorderBrush = new SolidColorBrush(Color.FromRgb(180, 180, 180)),
-                BorderThickness = new Thickness(1),
-                Background = Brushes.White,
-                Child = row,
-            };
-
-            SourceInitialized += (_, _) =>
-            {
-                var helper = new WindowInteropHelper(this);
-                int exStyle = GetWindowLong(helper.Handle, GWL_EXSTYLE);
-                SetWindowLong(helper.Handle, GWL_EXSTYLE, exStyle | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
-            };
-        }
-
-        /// <summary>
-        /// Affiche la palette, bord gauche à <paramref name="anchorX"/>, haut à
-        /// <paramref name="anchorYBelow"/> (DIP). <paramref name="current"/> =
-        /// flèche déjà dans la case : c'est elle qui sera surlignée à l'entrée
-        /// en navigation.
-        /// </summary>
-        public void ShowAt(double anchorX, double anchorYBelow, string current)
-        {
-            _navMode = false;
-            int idx = -1;
-            for (int i = 0; i < _choices.Count; i++)
-                if (_choices[i] == current) { idx = i; break; }
-            _selectedIndex = idx >= 0 ? idx : 0;
-            UpdateHighlight();
-
-            Left = anchorX;
-            Top = anchorYBelow;
-            ReparentToActiveWordWindow();
-            if (!IsVisible) base.Show();
-
-            UpdateLayout();
-            var wa = SystemParameters.WorkArea;
-            double w = ActualWidth;
-            if (anchorX + w > wa.Right - 4) Left = Math.Max(wa.Left + 4, wa.Right - 4 - w);
-
-            BeginAnimation(OpacityProperty,
-                new DoubleAnimation(DisplayOpacity, TimeSpan.FromMilliseconds(FadeMs)));
         }
 
         public void EnterNavMode()
@@ -166,12 +185,11 @@ namespace MathCursor.UI
                 new DoubleAnimation(DisplayOpacity, TimeSpan.FromMilliseconds(FadeMs / 2)));
         }
 
-        /// <summary>← / → en navigation : butée aux deux bouts (on reste sur
-        /// la première / la dernière flèche).</summary>
+        /// <summary>← / → en navigation : butée aux deux bouts.</summary>
         public void MoveSelection(int delta)
         {
-            if (_choices.Count == 0) return;
-            _selectedIndex = Math.Max(0, Math.Min(_choices.Count - 1, _selectedIndex + delta));
+            if (_cells.Count == 0) return;
+            _selectedIndex = Math.Max(0, Math.Min(_cells.Count - 1, _selectedIndex + delta));
             EnterNavMode();
             UpdateHighlight();
         }
@@ -180,10 +198,11 @@ namespace MathCursor.UI
         {
             if (!IsVisible) return;
             _navMode = false;
+            int token = ++_visibilityToken;
             var anim = new DoubleAnimation(0, TimeSpan.FromMilliseconds(FadeMs));
             anim.Completed += (_, __) =>
             {
-                if (Opacity <= 0.01)
+                if (token == _visibilityToken && Opacity <= 0.01)
                 {
                     Hide();
                     BeginAnimation(OpacityProperty, null);

@@ -79,18 +79,12 @@
           </menu>
           <!-- Tableau de signe / de variation : vrai tableau Word préformaté,
                flèches caractère. Cf. ADR 2026-10-16-Feat-sign-variation-table-insert. -->
-          <menu id="StudyTableMenu"
-                getLabel="OnGetStudyTableMenuLabel"
-                getScreentip="OnGetStudyTableMenuScreentip"
-                size="large"
-                imageMso="TableInsert">
-            <button id="InsertSignTableButton"
-                    getLabel="OnGetSignTableLabel"
-                    onAction="OnInsertStudyTableClicked" />
-            <button id="InsertVariationTableButton"
-                    getLabel="OnGetVariationTableLabel"
-                    onAction="OnInsertStudyTableClicked" />
-          </menu>
+          <button id="InsertStudyTableButton"
+                  getLabel="OnGetStudyTableMenuLabel"
+                  getScreentip="OnGetStudyTableMenuScreentip"
+                  size="large"
+                  imageMso="TableInsert"
+                  onAction="OnInsertStudyTableClicked" />
           <!-- Encadrés colorés typés (Théorème/Définition/Exemple/Propriété) :
                style de paragraphe Word (barre d'accent + fond + titre), aucune
                OMath. Cf. ADR 2026-06-20-Feat-encadres-callouts-boxed. -->

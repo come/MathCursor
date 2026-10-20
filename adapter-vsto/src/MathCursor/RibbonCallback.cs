@@ -109,8 +109,6 @@ namespace MathCursor
         public string OnGetColumns4Label(IRibbonControl control) => Strings.Columns4Label;
         public string OnGetStudyTableMenuLabel(IRibbonControl control) => Strings.StudyTableMenuLabel;
         public string OnGetStudyTableMenuScreentip(IRibbonControl control) => Strings.StudyTableMenuScreentip;
-        public string OnGetSignTableLabel(IRibbonControl control) => Strings.ConstructionSignTableLabel;
-        public string OnGetVariationTableLabel(IRibbonControl control) => Strings.ConstructionVariationTableLabel;
         public string OnGetSettingsButtonLabel(IRibbonControl control) => Strings.SettingsButtonLabel;
         public string OnGetSettingsButtonScreentip(IRibbonControl control) => Strings.SettingsButtonScreentip;
         public string OnGetAutoDetectToggleLabel(IRibbonControl control) => Strings.AutoDetectToggleLabel;
@@ -353,15 +351,14 @@ namespace MathCursor
             }
         }
 
-        /// <summary>Insère un tableau de signe ou de variation préformaté.
-        /// Le type est résolu depuis l'id du bouton du menu.</summary>
+        /// <summary>Insère un tableau de signe / variation préformaté : ligne x
+        /// + une ligne de signe « f(x) » (en équation) ; les lignes de signe ou
+        /// de variation s'ajoutent ensuite depuis les étiquettes.</summary>
         public void OnInsertStudyTableClicked(IRibbonControl control)
         {
             try
             {
-                var kind = control?.Id == "InsertVariationTableButton"
-                    ? Host.StudyTableKind.Variation
-                    : Host.StudyTableKind.Sign;
+                var kind = Host.StudyTableKind.Sign;
                 var app = Globals.ThisAddIn?.Application;
                 if (app == null) { LogDebug("study_table: app null"); return; }
                 Host.StudyTableInserter.Insert(app, kind);

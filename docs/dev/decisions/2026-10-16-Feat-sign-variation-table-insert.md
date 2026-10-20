@@ -64,6 +64,26 @@ cellules avec MathCursor comme partout ailleurs.
 - Insertion Word (`Host/StudyTableInserter.cs`) : applique le gabarit via
   `Tables.Add`, bordures, largeurs, hauteur de ligne, alignements.
 
+### Ajout du 2026-10-19 : un seul bouton, 0 par défaut
+
+> « j'aurai bien changé le ruban pour mettre un gros bouton tableau de
+> signe/variation (on fait les deux en fait !) et par defaut une valeur de x à 0
+> (la y'a rien) » — utilisateur.
+
+Le menu à deux entrées devient **un seul gros bouton « Tableau de signe /
+variation »** ; les lignes de signe ou de variation s'ajoutent ou se retirent
+ensuite depuis les étiquettes (ADR 2026-10-19-Feat-study-table-cell-roles-contextual-popup).
+La valeur de x du milieu vaut **`0`** par défaut et arrive sélectionnée (taper
+la remplace).
+
+Puis : « par defaut met une seule ligne (tableau de signe) avec un f(x) en mode
+equation deja » — le bouton insère finalement le gabarit **signe** : ligne x +
+**une seule ligne de signe**, dont l'étiquette `f(x)` est **une équation** (texte
+posé puis `OMaths.Add` sur la plage non vide + `BuildUp`, display centrée,
+police math du réglage ; hors pipeline de conversion, sans entrée de source —
+le mode édition est coupé sur les étiquettes). Les étiquettes du gabarit
+variation (`f′(x)`, `f(x)`) sont aussi des équations.
+
 ## Tradeoff & alternatives écartées
 
 - **Flèches dessinées (formes Word ancrées)** : flottent au-dessus du texte, se

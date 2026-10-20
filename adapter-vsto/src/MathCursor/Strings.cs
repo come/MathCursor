@@ -212,15 +212,41 @@ namespace MathCursor
 
         public static string StudyTableMenuLabel => Lang switch
         {
-            "fr" => "Tableau",
-            _    => "Table",
+            "fr" => "Tableau de signe / variation",
+            _    => "Sign / variation table",
         };
 
         public static string StudyTableMenuScreentip => Lang switch
         {
-            "fr" => "Insère un tableau de signe ou de variation prêt à remplir (flèches ↗ ↘ incluses).",
-            _    => "Insert a ready-to-fill sign or variation table (↗ ↘ arrows included).",
+            "fr" => "Insère un tableau de signe / variation prêt à remplir. Clique sur une case pour ajouter des lignes, des valeurs de x, des flèches ; tape entre deux valeurs de x pour en ajouter une.",
+            _    => "Insert a ready-to-fill sign / variation table. Click a cell to add rows, x values or arrows; type between two x values to add one.",
         };
+
+        /// <summary>Libellé d'un choix de la popup du tableau de signe /
+        /// variation (ADR 2026-10-19-Feat-study-table-cell-roles-contextual-popup).
+        /// <paramref name="forbidden"/> = la valeur est déjà interdite.</summary>
+        internal static string StudyTableActionLabel(Host.StudyTableAction action, bool forbidden)
+        {
+            bool fr = Lang == "fr";
+            switch (action)
+            {
+                case Host.StudyTableAction.ArrowUp: return Host.StudyTableTemplate.ArrowUp;
+                case Host.StudyTableAction.ArrowDown: return Host.StudyTableTemplate.ArrowDown;
+                case Host.StudyTableAction.ArrowRight: return Host.StudyTableTemplate.ArrowRight;
+                case Host.StudyTableAction.Zero: return "0";
+                case Host.StudyTableAction.ToggleForbidden:
+                    return forbidden
+                        ? (fr ? "Retirer ‖" : "Remove ‖")
+                        : (fr ? "Valeur interdite ‖" : "Forbidden value ‖");
+                case Host.StudyTableAction.AddValueLeft: return fr ? "+ valeur à gauche" : "+ value on the left";
+                case Host.StudyTableAction.AddValueRight: return fr ? "+ valeur à droite" : "+ value on the right";
+                case Host.StudyTableAction.DeleteValue: return fr ? "Supprimer la valeur" : "Delete value";
+                case Host.StudyTableAction.AddSignRow: return fr ? "+ ligne de signe" : "+ sign row";
+                case Host.StudyTableAction.AddVariationRow: return fr ? "+ ligne de variation" : "+ variation row";
+                case Host.StudyTableAction.DeleteRow: return fr ? "Supprimer la ligne" : "Delete row";
+                default: return action.ToString();
+            }
+        }
 
         public static string ConstructionSignTableLabel => Lang switch
         {

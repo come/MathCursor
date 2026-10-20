@@ -96,6 +96,11 @@ namespace MathCursor.Host
         public bool IsPopupVisible => _popup?.IsVisible == true;
         public bool IsNavMode => _popup?.IsNavMode == true;
 
+        /// <summary>Levé quand la popup de suggestion devient visible : la
+        /// popup des tableaux lui cède la place (ADR 2026-10-19-Feat-study-
+        /// table-cell-roles-contextual-popup).</summary>
+        public event Action PopupShown;
+
         /// <summary>Vrai pendant un commit : les SelectionChange induits par
         /// les SetRange internes ne doivent pas refermer/relancer quoi que ce soit.</summary>
         public bool IsCommitting => _committing;
@@ -928,6 +933,7 @@ namespace MathCursor.Host
                 // OnReportIssueClicked côté ruban) : la popup de suggestion
                 // visible fait partie du contexte du bug, le dialog lui ne
                 // doit JAMAIS être dans l'image. Sans cette pré-capture, le
+            _popup.IsVisibleChanged += (_, e) => { if ((bool)e.NewValue) PopupShown?.Invoke(); };
                 // fallback de FeedbackDialog capture au moment d'Envoyer,
                 // dialog ouvert en plein milieu de l'écran.
                 byte[] preScreenshot = null;

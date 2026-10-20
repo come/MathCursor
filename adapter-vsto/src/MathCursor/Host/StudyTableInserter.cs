@@ -22,19 +22,16 @@ namespace MathCursor.Host
     /// <summary>
     /// Insère au curseur un tableau de signe / de variation préformaté (vrai
     /// tableau Word, texte simple, flèches caractère ↗ ↘) à partir du gabarit
-    /// pur <see cref="StudyTableTemplate"/>. Même position d'insertion que les
+    /// pur <see cref="StudyTableTemplate"/>. Chaque case reçoit le style de
+    /// son rôle, puis <see cref="StudyTableFormatter.Reapply"/> pose bordures,
+    /// largeurs, hauteurs et alignements. Même position d'insertion que les
     /// colonnes (<see cref="ColumnLayoutInserter.ResolveInsertRange"/>) ; la
-    /// sélection n'est pas absorbée. Aucune OMath ni CC posée : l'élève
-    /// convertit le contenu des cellules avec MathCursor comme ailleurs.
-    /// Cf. ADR 2026-10-16-Feat-sign-variation-table-insert.
+    /// sélection n'est pas absorbée. Aucune OMath ni CC posée.
+    /// Cf. ADR 2026-10-16-Feat-sign-variation-table-insert,
+    /// 2026-10-19-Feat-study-table-cell-roles-contextual-popup.
     /// </summary>
     internal static class StudyTableInserter
     {
-        private const float LabelColumnPct = 16f;
-        private const float ValueColumnPct = 12f;
-        private const float IntervalColumnPct = 24f;
-        private const float TallRowHeightPt = 54f;
-
         public static void Insert(Word.Application app, StudyTableKind kind)
         {
             if (app == null) throw new ArgumentNullException(nameof(app));
@@ -50,152 +47,74 @@ namespace MathCursor.Host
 
             using (new UndoRecordScope(app, undoName))
             {
+                StudyTableFormatter.EnsureStyles(doc);
                 var insertRange = ColumnLayoutInserter.ResolveInsertRange(doc, sel);
                 var table = doc.Tables.Add(insertRange,
                     NumRows: template.Rows.Count, NumColumns: template.ColumnCount);
 
-                ConfigureTable(table);
-                FillCells(table, template, EnsureArrowStyle(doc));
-                ConfigureBorders(table, template);
-                ConfigureWidths(table, template);
-                if (template.TallRowIndex >= 0) ConfigureTallRow(table, template.TallRowIndex);
+                FillCells(table, template);
+                StudyTableFormatter.Reapply(table, "insertion " + kind);
 
-                // Curseur sur la valeur de x à remplir (colonne du milieu).
+                // Valeur de x du milieu (« 0 » par défaut) sélectionnée : il
+                // suffit de taper pour la remplacer.
                 try
                 {
                     var rng = table.Cell(1, 4).Range;
-                    rng.Collapse(Word.WdCollapseDirection.wdCollapseStart);
+                    rng.MoveEnd(Word.WdUnits.wdCharacter, -1);
                     rng.Select();
                 }
                 catch { /* placement curseur : non critique */ }
             }
         }
 
-        // ─── Helpers ──────────────────────────────────────────────────
-
-        private static void ConfigureTable(Word.Table table)
-        {
-            try
-            {
-                table.AllowAutoFit = false;
-                var pf = table.Range.ParagraphFormat;
-                pf.Alignment = Word.WdParagraphAlignment.wdAlignParagraphCenter;
-                pf.SpaceBefore = 2f;
-                pf.SpaceAfter = 2f;
-                pf.LineSpacingRule = Word.WdLineSpacing.wdLineSpaceSingle;
-                table.Range.Cells.VerticalAlignment = Word.WdCellVerticalAlignment.wdCellAlignVerticalCenter;
-            }
-            catch { /* mise en forme cosmétique : on n'échoue pas l'insertion */ }
-        }
-
         /// <summary>
-        /// Style de paragraphe des cases de flèche (centré, grand corps) :
-        /// marque la case pour la palette de flèches. Créé une fois par
-        /// document. Null si la création échoue (les flèches restent posées,
-        /// sans palette). Cf. ADR 2026-10-19-UX-variation-arrow-palette.
+        /// Étiquette du gabarit (« f(x) ») posée en équation : le texte est déjà
+        /// dans la case, <c>OMaths.Add</c> sur cette plage NON vide (règle
+        /// word-api-helpers §4 : jamais sur une plage vide) puis <c>BuildUp</c>,
+        /// display centrée, police math du réglage. Hors pipeline de conversion
+        /// (pas d'entrée de source : le mode édition est coupé sur les
+        /// étiquettes). Échec = le texte reste, sans équation.
         /// </summary>
-        private static Word.Style EnsureArrowStyle(Word.Document doc)
+        private static void PutEquation(Word.Document doc, Word.Cell cell)
         {
             try
             {
-                try { return doc.Styles[StudyTableTemplate.ArrowStyleName]; }
-                catch { /* absent : on le crée */ }
-
-                var style = doc.Styles.Add(StudyTableTemplate.ArrowStyleName,
-                    Word.WdStyleType.wdStyleTypeParagraph);
-                style.Font.Size = StudyTableTemplate.ArrowFontSizePt;
-                style.Font.Italic = 0;
-                style.ParagraphFormat.Alignment = Word.WdParagraphAlignment.wdAlignParagraphCenter;
-                style.ParagraphFormat.SpaceBefore = 0f;
-                style.ParagraphFormat.SpaceAfter = 0f;
-                style.ParagraphFormat.LineSpacingRule = Word.WdLineSpacing.wdLineSpaceSingle;
-                style.QuickStyle = false;
-                return style;
+                var text = cell.Range;
+                text.MoveEnd(Word.WdUnits.wdCharacter, -1);
+                if (text.Start >= text.End) return;
+                doc.OMaths.Add(text);
+                var om = cell.Range.OMaths[1];
+                om.BuildUp();
+                om = cell.Range.OMaths[1];
+                if (om.Type != Word.WdOMathType.wdOMathDisplay) om.Type = Word.WdOMathType.wdOMathDisplay;
+                om.Justification = Word.WdOMathJc.wdOMathJcCenter;
+                var mathFont = Settings.SettingsStore.Current?.MathFont;
+                if (!string.IsNullOrEmpty(mathFont)) MathFontApplier.ApplyToRange(om.Range, mathFont);
             }
-            catch { return null; }
+            catch (Exception ex) { StudyTableFormatter.Log("étiquette_équation_error: " + ex.Message); }
         }
 
-        private static void FillCells(Word.Table table, StudyTableTemplate template, Word.Style arrowStyle)
+        private static void FillCells(Word.Table table, StudyTableTemplate template)
         {
             for (int r = 0; r < template.Rows.Count; r++)
             {
+                var rowKind = template.RowKinds[r];
                 var row = template.Rows[r];
                 for (int c = 0; c < row.Count; c++)
                 {
-                    var spec = row[c];
                     var cell = table.Cell(r + 1, c + 1);
-                    if (spec.IsArrow && arrowStyle != null)
-                    {
-                        try { object st = arrowStyle; cell.Range.set_Style(ref st); }
-                        catch { /* sans style : flèche sans palette */ }
-                    }
+                    var role = StudyTableTemplate.RoleFor(rowKind, StudyTableTemplate.TemplateColumnKind(c));
+                    StudyTableFormatter.SetStyle(cell, StudyTableTemplate.StyleFor(role, rowKind));
+
+                    var spec = row[c];
                     if (spec.Text.Length > 0) cell.Range.Text = spec.Text;
-                    try
+                    if (spec.IsMath && spec.Text.Length > 0) PutEquation(table.Range.Document, cell);
+                    else if (spec.Italic)
                     {
-                        if (spec.Italic) cell.Range.Font.Italic = 1;
-                        if (spec.VAlign != CellVAlign.Center)
-                            cell.VerticalAlignment = spec.VAlign == CellVAlign.Top
-                                ? Word.WdCellVerticalAlignment.wdCellAlignVerticalTop
-                                : Word.WdCellVerticalAlignment.wdCellAlignVerticalBottom;
+                        try { cell.Range.Font.Italic = 1; } catch { }
                     }
-                    catch { /* idem */ }
                 }
             }
-        }
-
-        /// <summary>
-        /// Cadre extérieur + séparateurs horizontaux + un trait vertical après la
-        /// colonne d'étiquettes ; pas de trait entre les colonnes de valeurs.
-        /// </summary>
-        private static void ConfigureBorders(Word.Table table, StudyTableTemplate template)
-        {
-            try
-            {
-                Line(table.Borders[Word.WdBorderType.wdBorderTop]);
-                Line(table.Borders[Word.WdBorderType.wdBorderBottom]);
-                Line(table.Borders[Word.WdBorderType.wdBorderLeft]);
-                Line(table.Borders[Word.WdBorderType.wdBorderRight]);
-                Line(table.Borders[Word.WdBorderType.wdBorderHorizontal]);
-                table.Borders[Word.WdBorderType.wdBorderVertical].LineStyle = Word.WdLineStyle.wdLineStyleNone;
-                for (int r = 1; r <= template.Rows.Count; r++)
-                    Line(table.Cell(r, 1).Borders[Word.WdBorderType.wdBorderRight]);
-            }
-            catch { /* idem */ }
-        }
-
-        private static void Line(Word.Border border)
-        {
-            border.LineStyle = Word.WdLineStyle.wdLineStyleSingle;
-            border.LineWidth = Word.WdLineWidth.wdLineWidth075pt;
-        }
-
-        private static void ConfigureWidths(Word.Table table, StudyTableTemplate template)
-        {
-            try
-            {
-                table.PreferredWidthType = Word.WdPreferredWidthType.wdPreferredWidthPercent;
-                table.PreferredWidth = 100f;
-                foreach (Word.Cell cell in table.Range.Cells)
-                {
-                    int col = cell.ColumnIndex - 1;
-                    cell.PreferredWidthType = Word.WdPreferredWidthType.wdPreferredWidthPercent;
-                    cell.PreferredWidth = col == 0 ? LabelColumnPct
-                        : StudyTableTemplate.IsValueColumn(col) ? ValueColumnPct
-                        : IntervalColumnPct;
-                }
-            }
-            catch { /* idem */ }
-        }
-
-        private static void ConfigureTallRow(Word.Table table, int rowIndex)
-        {
-            try
-            {
-                var row = table.Rows[rowIndex + 1];
-                row.HeightRule = Word.WdRowHeightRule.wdRowHeightAtLeast;
-                row.Height = TallRowHeightPt;
-            }
-            catch { /* idem */ }
         }
     }
 }

@@ -65,6 +65,11 @@ namespace MathCursor.Host.EditMode
         public event Action InlineReverted;
 
         public bool IsPopupVisible => _popup?.IsVisible == true;
+
+        /// <summary>Levé quand la popup d'édition devient visible : la popup
+        /// des tableaux lui cède la place (ADR 2026-10-19-Feat-study-table-
+        /// cell-roles-contextual-popup).</summary>
+        public event Action PopupShown;
         public EquationHandle CurrentEditingHandle => _editHandle;
 
         public EditModeController(
@@ -140,6 +145,7 @@ namespace MathCursor.Host.EditMode
             if (_popup == null)
             {
                 _popup = new EditModePopupWindow();
+                _popup.IsVisibleChanged += (_, e) => { if ((bool)e.NewValue) PopupShown?.Invoke(); };
                 _popup.RevertRequested += OnRevertRequested;
                 _popup.BoxRequested += OnBoxRequested;
             }

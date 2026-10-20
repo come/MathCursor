@@ -303,7 +303,8 @@ namespace MathCursor.Host
         /// <summary>
         /// Display si l'OMath est seule dans son contexte structurel (¶ vide,
         /// cellule vide), Inline sinon ou si la source commence par un espace
-        /// (override user explicite). Toujours alignée à gauche.
+        /// (override user explicite). Alignée à gauche, sauf dans une case de
+        /// tableau de signe / variation MathCursor (centrée).
         /// </summary>
         private static (Word.WdOMathType type, Word.WdOMathJc justification)
             DecideOMathTyping(Word.OMath om, string source, Action<string> log)
@@ -331,7 +332,15 @@ namespace MathCursor.Host
                     .Trim();
 
                 if (string.IsNullOrEmpty(remaining))
-                    return (Word.WdOMathType.wdOMathDisplay, Word.WdOMathJc.wdOMathJcLeft);
+                {
+                    // Seule exception à « toujours à gauche » : une case de
+                    // tableau de signe / variation MathCursor → centrée (ADR
+                    // 2026-10-19-Feat-study-table-cell-roles-contextual-popup).
+                    var jc = StudyTableFormatter.IsInStudyTable(om.Range)
+                        ? Word.WdOMathJc.wdOMathJcCenter
+                        : Word.WdOMathJc.wdOMathJcLeft;
+                    return (Word.WdOMathType.wdOMathDisplay, jc);
+                }
                 return fallback;
             }
             catch (Exception ex)
