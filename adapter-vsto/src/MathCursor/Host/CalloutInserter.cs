@@ -115,7 +115,11 @@ namespace MathCursor.Host
 
             // 1) Titre = nouveau ¶ inséré AVANT le contenu. InsertBefore
             //    rattache le texte au début et décale le contenu d'autant.
-            string title = style.Label;
+            // Titre écrit en vraies majuscules (« THÉORÈME ») : les petites
+            // capitales de Word perdent les accents quand l'option « Majuscules
+            // accentuées en français » est décochée. Le rendu petites capitales
+            // est reproduit à la main dans StyleTitle.
+            string title = style.Label.ToUpper(System.Globalization.CultureInfo.GetCultureInfo("fr-FR"));
             var titleAnchor = doc.Range(contentStart, contentStart);
             titleAnchor.InsertBefore(title + "\r");
             int shift = title.Length + 1; // titre + marque de ¶
@@ -170,22 +174,37 @@ namespace MathCursor.Host
 
         // ─── Helpers ──────────────────────────────────────────────────
 
-        /// <summary>Titre en petites capitales grasses colorées, à la taille du
-        /// corps (jamais plus petit). <paramref name="bodySize"/> &lt; 0 = on
-        /// laisse hériter (corps de taille mixte).</summary>
+        /// <summary>Titre en « petites capitales » grasses colorées : texte déjà
+        /// en majuscules, initiale à la taille du corps et le reste réduit
+        /// (comme les petites capitales de Word, mais sans dépendre de l'option
+        /// « Majuscules accentuées en français »). <paramref name="bodySize"/>
+        /// &lt; 0 = taille lue sur le titre (corps de taille mixte).</summary>
         private static void StyleTitle(Word.Range title, CalloutStyle style, float bodySize)
         {
             try
             {
                 var f = title.Font;
                 f.Bold = 1;
-                f.SmallCaps = 1;
+                f.SmallCaps = 0;
                 f.Color = (Word.WdColor)style.AccentRgb;
-                if (bodySize > 0) f.Size = bodySize;
+                float size = bodySize;
+                if (size <= 0 || size >= 1000) size = f.Size;
+                if (size > 0 && size < 1000)
+                {
+                    f.Size = size;
+                    if (title.End - title.Start > 1)
+                    {
+                        var rest = title.Document.Range(title.Start + 1, title.End);
+                        rest.Font.Size = (float)Math.Round(size * SmallCapsRatio * 2) / 2f;
+                    }
+                }
                 title.ParagraphFormat.SpaceAfter = 2f;
             }
             catch { /* titre cosmétique */ }
         }
+
+        /// <summary>Taille des lettres « petites capitales » rapportée au corps.</summary>
+        private const float SmallCapsRatio = 0.8f;
 
         /// <summary>Barre d'accent gauche épaisse + fin cadre de la couleur
         /// d'accent + fond teinté + respiration (espacement, retrait).</summary>

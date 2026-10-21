@@ -19,6 +19,9 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-10-21
+- `[molle]` Fix — [Titres d'encadrés : accents conservés (« THÉORÈME »)](2026-10-21-Fix-callout-title-accents.md) — les petites capitales de Word perdaient les accents (« THEOREME ») quand l'option *Majuscules accentuées en français* est décochée. Le titre est désormais inséré en vraies majuscules (`ToUpper` fr-FR) et l'allure petites capitales est reproduite (initiale au corps, reste à 80 %). Écartés : forcer l'option Word de l'utilisateur, majuscules d'une seule taille, casse normale.
+
 ### 2026-10-20
 - `[molle]` UX — [Refonte visuelle du site, « prof / parent proof »](2026-10-20-UX-site-visual-redesign.md) — l'identité « cahier quadrillé / bords dessinés » fait projet de dev pour un prof ou un parent. Direction « net et rassurant » (logo et bleu conservés, fond blanc, cartes légères, vraies captures Word), accueil restructuré : bandeau de confiance, avant / après, ce que ça fait dans Word, trois parcours prof / élève / parent, bloc confiance. Maquette locale de l'accueil sur `site/refonte` d'abord, déclinaison ensuite. Écartés : cahier soigné, style scolaire coloré, tout d'un coup.
 - `[molle]` Meta — [Mise à jour du contenu du site après la 0.12.0](2026-10-20-Meta-site-content-refresh.md) — site figé fin juin : feuille de route fausse (chimie, dérivées partielles déjà livrées), nouveautés absentes de l'accueil, « 100 % local » faux depuis le compteur d'usage. Passe contenu + petites retouches dans la structure actuelle : tableaux de signe / variation en vedette (capture d'un vrai tableau), couverture enrichie, FAQ Échap, page profs, formulation exacte sur les données, exemples physique-chimie dans la démo. Écartés : refonte visuelle, annonce avant livraison.
