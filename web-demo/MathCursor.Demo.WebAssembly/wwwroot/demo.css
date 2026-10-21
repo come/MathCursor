@@ -294,3 +294,13 @@
   .ww--demo .ww-canvas { padding: 12px; }
   .ww-page--live { padding: 24px 16px 28px; min-height: 280px; }
 }
+.ww-doc:empty { display: none; }
+.ww-doc { margin: 0 0 10px; }
+.ww-eq { margin: 0 0 8px; }
+.ww-eq .katex-display { margin: .4em 0; }
+.popup.is-nav .cand-sel { box-shadow: none; }
+.cand.cand-nav { background: #e8eefb; box-shadow: inset 3px 0 0 var(--accent); }
+.cand { cursor: pointer; }
+.lead kbd, .ww-status kbd { font-family: var(--font-mono); font-size: .85em; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: #fff; }
+.ww-status { display: flex; justify-content: space-between; gap: 16px; background: #2b579a; color: #fff; font-size: 11.5px; padding: 4px 14px; }
+@media (max-width: 720px) { .ww-status span:first-child { display: none; } }

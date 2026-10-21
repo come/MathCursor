@@ -124,6 +124,13 @@ vérifiée sur les examens ou des outils tiers.
   > page prof ni pap. des liens "essayez en ligne" et la demo, tu pourrais
   > l'entourer de ton "template word" pour simuler un peu ? » — utilisateur,
   > 2026-10-21.
+- **Clavier de la démo comme dans Word** : ↓ entre dans la liste, ↓ / ↑
+  change de choix, Entrée pose la formule sur la page (rendu KaTeX, la saisie
+  se vide), Échap ferme la popup ; un clic sur un choix l'insère aussi. Barre
+  d'état Word avec le rappel des touches. Exemple d'intégrale corrigé
+  (`int 0 1 x2 x`, la variable s'écrit sans « d » ; `x2 dx` donnait « ddx »).
+  > « du coup on peut meme simuler les fleches et le entree pour valider
+  > non ? » — utilisateur, 2026-10-21.
 
 ## Tradeoff & alternatives écartées
 

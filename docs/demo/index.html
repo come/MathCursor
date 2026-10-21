@@ -35,11 +35,7 @@
     <section class="section">
       <div class="container">
         <h1 data-i18n="demo_h1">Démo en ligne</h1>
-        <p class="lead" data-i18n="demo_lead">
-          Tape une formule : le moteur propose, en dessous, les conversions reconnues — exactement
-          comme la popup dans Word. Le même moteur, compilé en WebAssembly et exécuté dans ton
-          navigateur. Rien n'est envoyé nulle part.
-        </p>
+        <p class="lead" data-i18n="demo_lead">Tape une formule : le moteur propose les conversions reconnues, comme la popup dans Word. <kbd>↓</kbd> pour entrer dans la liste et choisir, <kbd>Entrée</kbd> pour poser la formule sur la page, <kbd>Échap</kbd> pour fermer. Le même moteur, compilé en WebAssembly et exécuté dans ton navigateur : rien n'est envoyé nulle part.</p>
 
         <div class="demo">
           <div class="examples">
@@ -58,7 +54,7 @@
             <button data-ex-fr="@a + @b" title="Raccourci @ + lettre → lettre grecque">@a + @b</button>
             <button data-ex-fr="lim x 0 g(x)">lim x 0 g(x)</button>
             <button data-ex-fr="sum k 1 n k2">sum k 1 n k2</button>
-            <button data-ex-fr="int 0 1 x2 dx">int 0 1 x2 dx</button>
+            <button data-ex-fr="int 0 1 x2 x">int 0 1 x2 x</button>
             <button data-ex-fr="racine x+1" data-ex-en="sqrt x+1">racine x+1</button>
             <button data-ex-fr="(1 2 3; 4 5 6)">(1 2 3; 4 5 6)</button>
             <button data-ex-fr="(a b; c d)">(a b; c d)</button>
@@ -89,6 +85,7 @@
             </div>
             <div class="ww-canvas">
               <div class="ww-page ww-page--live">
+                <div id="doc" class="ww-doc" aria-live="polite"></div>
                 <input id="input" type="text" class="demo-field"
                        data-i18n-placeholder="demo_placeholder"
                        placeholder="Tape une formule, ex : f(x) = 1/x+1"
@@ -98,6 +95,7 @@
                 </div>
               </div>
             </div>
+            <div class="ww-status"><span data-i18n="demo_status_page">Page 1 sur 1</span><span data-i18n="demo_status_keys">↓ ↑ choisir · Entrée insérer · Échap fermer</span></div>
           </div>
         </div>
 
@@ -151,7 +149,9 @@
         nav_downloads: "Downloads",
 
         demo_h1: "Online demo",
-        demo_lead: "Type a formula: the engine proposes, below, the recognized conversions — exactly like the popup in Word. The same engine, compiled to WebAssembly and running in your browser. Nothing is sent anywhere.",
+        demo_lead: "Type a formula: the engine proposes the recognized conversions, like the popup in Word. <kbd>↓</kbd> to enter the list and choose, <kbd>Enter</kbd> to put the formula on the page, <kbd>Esc</kbd> to close. The same engine, compiled to WebAssembly and running in your browser: nothing is sent anywhere.",
+        demo_status_page: "Page 1 of 1",
+        demo_status_keys: "↓ ↑ choose · Enter insert · Esc close",
         demo_placeholder: "Type a formula, e.g. f(x) = 1/x+1",
         demo_culture: "Maths:",
         demo_physchem: "Physics-chemistry",

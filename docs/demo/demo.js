@@ -4,6 +4,7 @@
 (async () => {
   const input = document.getElementById('input');
   const popup = document.getElementById('popup');
+  const doc = document.getElementById('doc');
   const loading = document.getElementById('loading');
 
   // Démarre Blazor (runtime .NET WASM + MathCursor.Engine).
@@ -23,6 +24,11 @@
   let mathCulture = 'fr';
   let physchem = false;   // mode physique-chimie (ADR 2026-10-16-Feat-physics-chemistry-mode)
   let lastResult = null;
+  // Clavier comme dans Word : ↓ entre dans la liste (navigation), ↓/↑
+  // change de choix, Entrée insère le choix sur la page, Échap ferme.
+  let navMode = false;
+  let selIndex = 0;
+  let hidden = false;
 
   const t = (key, fallback) => {
     const r = window.I18N_RUNTIME;
@@ -38,12 +44,15 @@
   };
 
   const renderEmpty = () => {
+    navMode = false;
     popup.innerHTML = `<div class="popup-empty">${t('demo_empty', "Les conversions proposées s'afficheront ici…")}</div>`;
   };
 
   const renderResult = (result) => {
     lastResult = result;
     popup.innerHTML = '';
+    popup.hidden = hidden;
+    popup.classList.toggle('is-nav', navMode);
 
     if (!result) { renderEmpty(); return; }
 
@@ -66,7 +75,8 @@
 
     cands.forEach((c, i) => {
       const card = document.createElement('div');
-      card.className = 'cand' + (i === 0 ? ' cand-sel' : '');
+      card.className = 'cand' + (i === 0 ? ' cand-sel' : '') + (navMode && i === selIndex ? ' cand-nav' : '');
+      card.addEventListener('mousedown', (e) => { e.preventDefault(); commit(i); });
 
       const main = document.createElement('div');
       main.className = 'cand-main';
@@ -101,8 +111,55 @@
     }
   };
 
+  const candidates = () => (lastResult && lastResult.decision !== 'erreur' && lastResult.candidates) || [];
+
+  // Pose la formule choisie sur la page (comme l'équation Word insérée).
+  const commit = (i) => {
+    const c = candidates()[i];
+    if (!c) return;
+    const p = document.createElement('div');
+    p.className = 'ww-eq';
+    renderLatexInto(p, c.latex);
+    doc.appendChild(p);
+    input.value = '';
+    lastResult = null;
+    hidden = false;
+    popup.hidden = false;
+    renderEmpty();
+    input.focus();
+  };
+
+  input.addEventListener('keydown', (e) => {
+    const n = candidates().length;
+    if (e.key === 'ArrowDown') {
+      if (!n || hidden) return;
+      e.preventDefault();
+      if (!navMode) { navMode = true; selIndex = 0; }
+      else selIndex = Math.min(selIndex + 1, n - 1);
+      renderResult(lastResult);
+    } else if (e.key === 'ArrowUp') {
+      if (!navMode) return;
+      e.preventDefault();
+      if (selIndex > 0) selIndex -= 1; else navMode = false;
+      renderResult(lastResult);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (navMode && n) commit(selIndex);
+    } else if (e.key === 'Escape') {
+      if (!input.value) return;
+      e.preventDefault();
+      hidden = true;
+      navMode = false;
+      popup.hidden = true;
+    }
+  });
+
   const analyze = async () => {
     const value = input.value;
+    navMode = false;
+    selIndex = 0;
+    hidden = false;
+    popup.hidden = false;
     if (!value.trim()) { lastResult = null; renderEmpty(); return; }
     let result;
     try {
