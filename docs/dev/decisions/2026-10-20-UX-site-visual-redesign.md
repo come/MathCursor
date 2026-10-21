@@ -131,6 +131,10 @@ vérifiée sur les examens ou des outils tiers.
   (`int 0 1 x2 x`, la variable s'écrit sans « d » ; `x2 dx` donnait « ddx »).
   > « du coup on peut meme simuler les fleches et le entree pour valider
   > non ? » — utilisateur, 2026-10-21.
+- Exemples de la démo déplacés dans un **volet latéral** à droite de la page
+  (sous la page sur mobile) ; barre de titre générique « Document1 ».
+  > « cette zone la on la mettrait pas à droite de la "page word" » puis
+  > « ou juste Document1 c'est bien » — utilisateur, 2026-10-21.
 
 ## Tradeoff & alternatives écartées
 

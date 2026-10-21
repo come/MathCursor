@@ -281,8 +281,14 @@
 .katex { color: var(--ink) !important; font-size: 1.25em; }
 
 /* Démo habillée en fenêtre Word (gabarit .ww de site.css) */
-.ww--demo { max-width: 900px; margin: 18px auto 0; }
-.ww--demo .ww-canvas { grid-template-columns: 1fr; padding: 22px 28px 28px; }
+.ww--demo { max-width: none; margin: 18px 0 0; }
+.ww--demo .ww-canvas { grid-template-columns: minmax(0, 1fr) 300px; align-items: start; padding: 22px 0 28px 28px; gap: 24px; }
+.ww-pane { background: #fff; border-left: 1px solid #d5dae3; align-self: stretch; margin: -22px 0 -28px; padding: 14px 16px 18px; }
+.ww-pane-h { font-size: 15px; font-weight: 600; color: var(--ink); margin: 0 0 10px; }
+.ww-pane .examples { gap: 5px; }
+.ww-pane .examples .ex-label { width: 100%; margin: 0 0 2px; }
+.ww-pane .examples button { font-size: 12px; padding: 3px 9px; }
+.ww-pane .ex-note { margin: 12px 0 0; font-size: 12px; }
 .ww-page--live { aspect-ratio: auto; overflow: visible; padding: 48px 9% 56px; min-height: 360px; container-type: normal; }
 .ww-page--live .demo-field { width: 100%; box-sizing: border-box; border: 0; border-bottom: 1px dashed #d3d9e4; border-radius: 0; background: transparent; padding: 6px 2px; font-size: 18px; }
 .ww-page--live .demo-field:focus { border-bottom-color: var(--accent); }
@@ -290,8 +296,13 @@
 .ww-ribbon .math-culture { gap: 4px; align-items: center; min-height: 41px; }
 .ww-ribbon .math-culture button { font-size: 12px; padding: 5px 10px; }
 .ww-ribbon .math-culture button.physchem-toggle { margin-left: 0; }
+@media (max-width: 900px) {
+  .ww--demo .ww-canvas { grid-template-columns: 1fr; padding: 16px 16px 0; }
+  .ww-pane { margin: 0 -16px; border-left: 0; border-top: 1px solid #d5dae3; }
+}
 @media (max-width: 720px) {
-  .ww--demo .ww-canvas { padding: 12px; }
+  .ww--demo .ww-canvas { padding: 12px 12px 0; }
+  .ww-pane { margin: 0 -12px; }
   .ww-page--live { padding: 24px 16px 28px; min-height: 280px; }
 }
 .ww-doc:empty { display: none; }

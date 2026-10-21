@@ -38,45 +38,8 @@
         <p class="lead" data-i18n="demo_lead">Tape une formule : le moteur propose les conversions reconnues, comme la popup dans Word. <kbd>↓</kbd> pour entrer dans la liste et choisir, <kbd>Entrée</kbd> pour poser la formule sur la page, <kbd>Échap</kbd> pour fermer. Le même moteur, compilé en WebAssembly et exécuté dans ton navigateur : rien n'est envoyé nulle part.</p>
 
         <div class="demo">
-          <div class="examples">
-            <span class="ex-label" data-i18n="demo_ex_try">Essaie&nbsp;:</span>
-            <button data-ex-fr="f(x) = 1/x+1">f(x) = 1/x+1</button>
-            <button data-ex-fr="1/x +1">1/x +1</button>
-            <button data-ex-fr="x+1/x+2">x+1/x+2</button>
-            <button data-ex-fr="x +1/x + 2">x +1/x + 2</button>
-            <button data-ex-fr="g(x)=2x+2x2+3x3+x4">g(x)=2x+2x2+3x3+x4</button>
-            <button data-ex-fr="pir2">pir2</button>
-            <button data-ex-fr="2pir">2pir</button>
-            <button data-ex-fr="Delta">Delta</button>
-            <button data-ex-fr="rexp(itheta)">rexp(itheta)</button>
-            <button data-ex-fr="exp i@t" title="e^{iθ} en 7 frappes">exp i@t</button>
-            <button data-ex-fr="theta = pi/4">theta = pi/4</button>
-            <button data-ex-fr="@a + @b" title="Raccourci @ + lettre → lettre grecque">@a + @b</button>
-            <button data-ex-fr="lim x 0 g(x)">lim x 0 g(x)</button>
-            <button data-ex-fr="sum k 1 n k2">sum k 1 n k2</button>
-            <button data-ex-fr="int 0 1 x2 x">int 0 1 x2 x</button>
-            <button data-ex-fr="racine x+1" data-ex-en="sqrt x+1">racine x+1</button>
-            <button data-ex-fr="(1 2 3; 4 5 6)">(1 2 3; 4 5 6)</button>
-            <button data-ex-fr="(a b; c d)">(a b; c d)</button>
-            <button data-ex-fr="((sum k 1 n k2) (lim x 0 g(x)); (1/(sum k 1 n k)) n)" data-label="matrice ∑ &amp; lim" title="Matrice 2×2 : somme, limite, 1/somme">matrice ∑ &amp; lim</button>
-            <button data-ex-fr="(O, veci, vecj)">(O, veci, vecj)</button>
-            <button data-ex-fr="vec AB . vec BC">vec AB . vec BC</button>
-            <button data-ex-fr="abs z-conjz">abs z-conjz</button>
-            <button data-ex-fr="x dans R" data-ex-en="x in R">x dans R</button>
-            <button data-ex-fr="2,5*10-3" title="Notation scientifique : 2,5×10⁻³">2,5*10-3</button>
-            <button data-ex-fr="H2O" data-physchem="1" title="Active le mode Physique-chimie">H2O</button>
-            <button data-ex-fr="Fe2+" data-physchem="1" title="Active le mode Physique-chimie">Fe2+</button>
-            <button data-ex-fr="Ca(OH)2" data-physchem="1" title="Active le mode Physique-chimie">Ca(OH)2</button>
-            <button data-ex-fr="T2 - T1" data-physchem="1" title="Active le mode Physique-chimie">T2 - T1</button>
-            <button data-ex-fr="2H2 + O2 -> 2H2O" data-physchem="1" title="Active le mode Physique-chimie">2H2 + O2 -&gt; 2H2O</button>
-          </div>
-          <p class="ex-note" data-i18n="demo_ex_note">
-            ⓘ Les espaces comptent : compare <code>1/x+1</code> (collé) et <code>1/x +1</code> (espacé) —
-            l'espace dit où la fraction s'arrête.
-          </p>
-
           <div class="ww ww--demo">
-            <div class="ww-bar"><span class="ww-logo">W</span><span>Document1 · Word</span></div>
+            <div class="ww-bar"><span class="ww-logo">W</span><span>Document1</span></div>
             <div class="ww-tabs" aria-hidden="true"><span>Fichier</span><span>Accueil</span><span>Insertion</span><span class="ww-hide-s">Mise en page</span><span class="ww-hide-s">Références</span><span class="on">MathCursor</span></div>
             <div class="ww-ribbon">
               <div class="ww-grp ww-hide-s" aria-hidden="true"><div class="ww-btns"><span class="ww-b ww-b--big"><i>√x</i>Convertir</span><span class="ww-b"><i>▢</i>Encadrer</span></div><div class="ww-gl">Conversion</div></div>
@@ -94,6 +57,45 @@
                   <div class="popup-empty" data-i18n="demo_empty">Les conversions proposées s'afficheront ici…</div>
                 </div>
               </div>
+              <aside class="ww-pane">
+                <div class="ww-pane-h" data-i18n="demo_pane_h">Exemples</div>
+                <div class="examples">
+                  <span class="ex-label" data-i18n="demo_ex_try">Clique pour essayer&nbsp;:</span>
+                  <button data-ex-fr="f(x) = 1/x+1">f(x) = 1/x+1</button>
+                  <button data-ex-fr="1/x +1">1/x +1</button>
+                  <button data-ex-fr="x+1/x+2">x+1/x+2</button>
+                  <button data-ex-fr="x +1/x + 2">x +1/x + 2</button>
+                  <button data-ex-fr="g(x)=2x+2x2+3x3+x4">g(x)=2x+2x2+3x3+x4</button>
+                  <button data-ex-fr="pir2">pir2</button>
+                  <button data-ex-fr="2pir">2pir</button>
+                  <button data-ex-fr="Delta">Delta</button>
+                  <button data-ex-fr="rexp(itheta)">rexp(itheta)</button>
+                  <button data-ex-fr="exp i@t" title="e^{iθ} en 7 frappes">exp i@t</button>
+                  <button data-ex-fr="theta = pi/4">theta = pi/4</button>
+                  <button data-ex-fr="@a + @b" title="Raccourci @ + lettre → lettre grecque">@a + @b</button>
+                  <button data-ex-fr="lim x 0 g(x)">lim x 0 g(x)</button>
+                  <button data-ex-fr="sum k 1 n k2">sum k 1 n k2</button>
+                  <button data-ex-fr="int 0 1 x2 x">int 0 1 x2 x</button>
+                  <button data-ex-fr="racine x+1" data-ex-en="sqrt x+1">racine x+1</button>
+                  <button data-ex-fr="(1 2 3; 4 5 6)">(1 2 3; 4 5 6)</button>
+                  <button data-ex-fr="(a b; c d)">(a b; c d)</button>
+                  <button data-ex-fr="((sum k 1 n k2) (lim x 0 g(x)); (1/(sum k 1 n k)) n)" data-label="matrice ∑ &amp; lim" title="Matrice 2×2 : somme, limite, 1/somme">matrice ∑ &amp; lim</button>
+                  <button data-ex-fr="(O, veci, vecj)">(O, veci, vecj)</button>
+                  <button data-ex-fr="vec AB . vec BC">vec AB . vec BC</button>
+                  <button data-ex-fr="abs z-conjz">abs z-conjz</button>
+                  <button data-ex-fr="x dans R" data-ex-en="x in R">x dans R</button>
+                  <button data-ex-fr="2,5*10-3" title="Notation scientifique : 2,5×10⁻³">2,5*10-3</button>
+                  <button data-ex-fr="H2O" data-physchem="1" title="Active le mode Physique-chimie">H2O</button>
+                  <button data-ex-fr="Fe2+" data-physchem="1" title="Active le mode Physique-chimie">Fe2+</button>
+                  <button data-ex-fr="Ca(OH)2" data-physchem="1" title="Active le mode Physique-chimie">Ca(OH)2</button>
+                  <button data-ex-fr="T2 - T1" data-physchem="1" title="Active le mode Physique-chimie">T2 - T1</button>
+                  <button data-ex-fr="2H2 + O2 -> 2H2O" data-physchem="1" title="Active le mode Physique-chimie">2H2 + O2 -&gt; 2H2O</button>
+                </div>
+                <p class="ex-note" data-i18n="demo_ex_note">
+                  ⓘ Les espaces comptent : compare <code>1/x+1</code> (collé) et <code>1/x +1</code> (espacé) :
+                  l'espace dit où la fraction s'arrête.
+                </p>
+              </aside>
             </div>
             <div class="ww-status"><span data-i18n="demo_status_page">Page 1 sur 1</span><span data-i18n="demo_status_keys">↓ ↑ choisir · Entrée insérer · Échap fermer</span></div>
           </div>
@@ -156,8 +158,9 @@
         demo_culture: "Maths:",
         demo_physchem: "Physics-chemistry",
         demo_empty: "Proposed conversions will appear here…",
-        demo_ex_try: "Try:",
-        demo_ex_note: "ⓘ Spaces matter: compare <code>1/x+1</code> (glued) and <code>1/x +1</code> (spaced) — the space says where the fraction stops.",
+        demo_ex_try: "Click to try:",
+        demo_pane_h: "Examples",
+        demo_ex_note: "ⓘ Spaces matter: compare <code>1/x+1</code> (glued) and <code>1/x +1</code> (spaced): the space says where the fraction stops.",
         demo_hint: "ⓘ Simplified demo: here the whole line is treated as a formula. In Word, MathCursor also detects the zone to convert automatically, and a shortcut forces the popup.",
         demo_loading: "Loading engine…",
         demo_foot: "© 2026 MathCursor · <a href=\"/contact.html\">Contact</a>",
