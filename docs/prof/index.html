@@ -72,9 +72,6 @@
     <section class="section">
       <div class="container">
         <h2 data-i18n="tools_h">Vos outils de cours, directement dans Word</h2>
-        <figure class="card" style="margin: 20px 0 24px; padding: 12px;">
-          <img src="/assets/tableau-variation.png" alt="Tableau de variation de f(x) dans Word, rempli au clavier avec MathCursor" style="width: 100%; height: auto; display: block;" loading="lazy" />
-        </figure>
         <ul class="features">
           <li data-i18n="tools_1"><strong>Tableaux de signe et de variation.</strong> Un bouton dans le ruban, puis tout se remplit au clavier : vous tapez une valeur de <em>x</em> entre deux autres et la colonne s'ajoute, un clic sur une case pose un 0, une valeur interdite ou une flèche.</li>
           <li data-i18n="tools_2"><strong>Encadrés de cours.</strong> Théorème, Définition, Exemple, Propriété : un encadré coloré d'un clic, autour du texte et des formules.</li>
@@ -88,13 +85,45 @@
     <section class="section section--soft">
       <div class="container">
         <h2 data-i18n="show_h">À quoi ressemble un cours tapé dans Word</h2>
-        <p data-i18n="show_p">Un extrait de chapitre : encadrés Définition, Propriété, Exemple et Théorème posés d'un clic, équations Word natives à l'intérieur. Un document que vous imprimez, projetez ou partagez tel quel.</p>
-        <figure class="card" style="margin: 24px 0 0; padding: 20px;">
-          <picture>
-            <source media="(max-width: 640px)" srcset="/assets/cours-derivation-mobile.png" />
-            <img src="/assets/cours-derivation.png" alt="Extrait d'un cours de dérivation dans Word : encadrés Définition, Propriété, Exemple et Théorème avec des équations" style="width: 100%; height: auto; display: block;" loading="lazy" />
-          </picture>
-        </figure>
+        <p data-i18n="show_p">Un extrait de chapitre, tapé au fil de l'eau. À gauche ce que vous écrivez, à droite la page que vos élèves reçoivent : encadrés, équations Word natives, démonstration et tableau de variation.</p>
+
+        <div class="ww" aria-label="Fenêtre Word simulée">
+          <div class="ww-bar"><span class="ww-logo">W</span><span>Chapitre 3 · Dérivation.docx</span></div>
+          <div class="ww-tabs" aria-hidden="true"><span>Fichier</span><span>Accueil</span><span>Insertion</span><span class="ww-hide-s">Mise en page</span><span class="ww-hide-s">Références</span><span class="on">MathCursor</span></div>
+          <div class="ww-ribbon" aria-hidden="true">
+            <div class="ww-grp"><div class="ww-btns"><span class="ww-b ww-b--big"><i>√x</i>Convertir</span><span class="ww-b"><i>▢</i>Encadrer</span></div><div class="ww-gl">Conversion</div></div>
+            <div class="ww-grp ww-hide-s"><div class="ww-btns"><span class="ww-b"><i>H₂O</i>Physique-chimie</span></div><div class="ww-gl">Domaines</div></div>
+            <div class="ww-grp"><div class="ww-btns"><span class="ww-b ww-hide-s"><i>▥</i>Colonnes</span><span class="ww-b on"><i>⊞</i>Tableau</span><span class="ww-b on"><i>▤</i>Encadré</span></div><div class="ww-gl">Mise en page</div></div>
+            <div class="ww-grp ww-hide-s"><div class="ww-btns"><span class="ww-b"><i>⚙</i>Paramètres</span></div><div class="ww-gl">Outils</div></div>
+          </div>
+          <div class="ww-canvas">
+            <div class="ww-col">
+              <div class="ww-cap"><span class="ww-tag" data-i18n="show_before">Avant</span> <span data-i18n="show_before_p">ce que vous tapez</span></div>
+              <div class="ww-page"><div class="ww-typed" lang="fr">
+                <p class="ww-h">Chapitre 3 · Dérivation</p>
+                <span class="ww-chip">Encadré › Définition</span>
+                <p>Soit f une fonction définie sur un intervalle I et a ∈ I. On dit que f est dérivable en a si le taux d'accroissement <code class="ty">(f(a+h) - f(a))/h</code> admet une limite finie quand h tend vers 0. Cette limite est notée <code class="ty">f'(a)</code>.</p>
+                <span class="ww-chip">Encadré › Propriété</span>
+                <p>La fonction carré est dérivable sur ℝ et, pour tout réel x, <code class="ty">(x2)'=2x</code>.</p>
+                <p><strong>Démonstration.</strong> Soit a ∈ ℝ et <code class="ty">h!=0</code> :</p>
+                <p class="ww-c"><code class="ty">((a+h)2 - a2)/h = (2ah + h2)/h = 2a + h</code></p>
+                <p>qui tend vers 2a quand h tend vers 0. Donc la fonction carré est dérivable en a et <code class="ty">f'(a)=2a</code>. ∎</p>
+                <span class="ww-chip">Encadré › Exemple</span>
+                <p>Soit <code class="ty">f(x)=x2-4x+3</code> sur ℝ. Alors <code class="ty">f'(x)=2x-4</code>, qui s'annule en x = 2, et <code class="ty">f(2)=-1</code>.</p>
+                <p>On en déduit le tableau de variation de f :</p>
+                <p class="ww-c"><span class="ww-chip">Tableau</span> puis au clavier : <code class="ty">2</code> <code class="ty">-</code> <code class="ty">+</code> et un clic par flèche</p>
+                <span class="ww-chip">Encadré › Théorème</span>
+                <p>Si f est continue sur [a ; b] et si k est compris entre f(a) et f(b), alors l'équation <code class="ty">f(x)=k</code> admet au moins une solution dans [a ; b].</p>
+              </div></div>
+            </div>
+            <div class="ww-col">
+              <div class="ww-cap"><span class="ww-tag ww-tag--after" data-i18n="show_after">Après</span> <span data-i18n="show_after_p">ce que vos élèves lisent</span></div>
+              <a class="ww-page" href="/assets/cours-derivation.png" target="_blank" rel="noopener">
+                <img src="/assets/cours-derivation.png" alt="Page de cours de dérivation dans Word : encadrés Définition, Propriété, Exemple et Théorème, démonstration et tableau de variation, équations Word natives" loading="lazy" />
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -168,7 +197,11 @@
         case_3_p: "Your answer keys are native Word equations: editable, searchable (Ctrl+F), read by screen readers. No frozen images, no plugin required for your colleagues or students to reopen them.",
 
         show_h: "What a lesson typed in Word looks like",
-        show_p: "A chapter excerpt: Definition, Property, Example and Theorem boxes added in one click, with native Word equations inside. A document you print, project or share as is.",
+        show_p: "A chapter excerpt, typed as you go. On the left what you write, on the right the page your students get: boxes, native Word equations, a proof and a variation table.",
+        show_before: "Before",
+        show_before_p: "what you type",
+        show_after: "After",
+        show_after_p: "what your students read",
         tools_h: "Your teaching tools, right in Word",
         tools_1: "<strong>Sign and variation tables.</strong> One ribbon button, then everything is filled in from the keyboard: type an <em>x</em> value between two others and the column is added, one click on a cell puts a 0, a forbidden value or an arrow.",
         tools_2: "<strong>Lesson boxes.</strong> Theorem, Definition, Example, Property: a coloured box in one click, around text and formulas.",

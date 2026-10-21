@@ -65,9 +65,13 @@ vérifiée sur les examens ou des outils tiers.
 > « oui tu peux faire les autres pages maintenant stp je ne sais pas si j'aurai
 > mis profs et amenagement en header par contre :) » — utilisateur.
 
-- **En-tête commun** sans Profs ni Parents & PAP : Démo · Téléchargements ·
-  Installation · bouton Installer · FR/EN. Les pages Profs et Aménagement
-  restent accessibles par les trois parcours de l'accueil et le pied de page.
+- **En-tête commun réduit** : Démo · bouton Installer · FR/EN.
+  > « dans le header y'a trop de truc => Demo + Bouton "installer" ca suffit
+  > non ? toutes les pages sont linkées => guide d'install dans la section
+  > installer c'est ok » — utilisateur, 2026-10-21.
+
+  Profs, Aménagement, Téléchargements et Installation restent accessibles par
+  les parcours de l'accueil, la section Installation et le pied de page.
 - **Pied de page commun** (Démo, Profs, Parents & PAP, Téléchargements,
   Installation, Confidentialité, Contact), clés de traduction `ui_*` injectées
   dans chaque page.
@@ -81,6 +85,31 @@ vérifiée sur les examens ou des outils tiers.
 - **Confidentialité** : intertitres à taille de lecture (`.prose`).
 - **Démo** (`index.html`, `live.html`, source `web-demo`) migrée. Les pages
   `admin/` (privées) gardent leur style.
+
+### Page Profs : cours tapé dans Word, avant / après (2026-10-21)
+
+> « http://localhost:8765/prof/ => demo des encadrés pour qu'ils puissent
+> sentir la richesse visuelle d'un cours ce serait cool » puis « il faudrait
+> avoir la page bien présentée, avec une demonstration aussi + un tableau de
+> signe dedans, et eviter du coup le tableau de signe en pleine page juste au
+> dessus, pourrais tu avoir un rendu qui doit aussi plus "word", plus grande
+> marges police plus petite. eventuellement le bandeau simulé au dessus ? et la
+> page globale plus petite => ptetre pour que ca soit sympa, un Avant / Apres »
+> — utilisateur, 2026-10-21.
+
+- **Fenêtre Word simulée** en HTML/CSS (barre de titre, onglets, ruban
+  MathCursor avec Tableau et Encadré en évidence) contenant **deux pages A4
+  côte à côte** : « Avant, ce que vous tapez » (texte et notation clavier
+  surlignée, boutons du ruban utilisés) et « Après, ce que vos élèves lisent ».
+- La page « Après » est un **vrai rendu Word** produit avec le code de l'add-in
+  (A4, marges 66 pt, corps 10 pt) : encadrés Définition, Propriété, Exemple,
+  Théorème, une démonstration (dérivée de la fonction carré) et le tableau de
+  variation de x² − 4x + 3. Image unique `assets/cours-derivation.png`,
+  cliquable pour l'agrandir ; la variante mobile est retirée.
+- Les saisies de la page « Avant » ont été vérifiées sur le moteur (conversion
+  directe ou première proposition correcte).
+- Le grand tableau de variation pleine largeur de « Vos outils de cours » est
+  retiré : il figure maintenant dans le cours.
 
 ## Tradeoff & alternatives écartées
 
