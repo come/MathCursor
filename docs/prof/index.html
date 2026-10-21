@@ -19,8 +19,6 @@
       <a href="/" class="brand"><img src="/assets/logo.png" alt="MathCursor" /></a>
       <nav class="nav">
         <a href="/demo/" data-i18n="ui_nav_demo">Démo</a>
-        <a href="/releases.html" data-i18n="ui_nav_downloads">Téléchargements</a>
-        <a href="/install.html" data-i18n="ui_nav_install">Installation</a>
         <a href="/releases.html" class="nav-cta" data-i18n="ui_nav_cta">Installer</a>
         <div class="lang-toggle" role="group" aria-label="Language">
           <button type="button" data-lang="fr" class="active">FR</button>
@@ -83,6 +81,20 @@
           <li data-i18n="tools_3"><strong>Mise en page en colonnes et police des équations.</strong> Deux à quatre colonnes pour vos fiches, et la police des équations au choix : Cambria Math, Latin Modern (le rendu LaTeX) ou STIX.</li>
           <li data-i18n="tools_4"><strong>Pour vos collègues de physique-chimie.</strong> Un mode activable document par document : <code>H2O</code>, <code>Fe2+</code>, les équations de réaction (<code>2H2 + O2 -> 2H2O</code>) et les grandeurs <code>v0</code>, <code>T2 - T1</code> s'écrivent comme en cours.</li>
         </ul>
+      </div>
+    </section>
+
+    <!-- Extrait de cours -->
+    <section class="section section--soft">
+      <div class="container">
+        <h2 data-i18n="show_h">À quoi ressemble un cours tapé dans Word</h2>
+        <p data-i18n="show_p">Un extrait de chapitre : encadrés Définition, Propriété, Exemple et Théorème posés d'un clic, équations Word natives à l'intérieur. Un document que vous imprimez, projetez ou partagez tel quel.</p>
+        <figure class="card" style="margin: 24px 0 0; padding: 20px;">
+          <picture>
+            <source media="(max-width: 640px)" srcset="/assets/cours-derivation-mobile.png" />
+            <img src="/assets/cours-derivation.png" alt="Extrait d'un cours de dérivation dans Word : encadrés Définition, Propriété, Exemple et Théorème avec des équations" style="width: 100%; height: auto; display: block;" loading="lazy" />
+          </picture>
+        </figure>
       </div>
     </section>
 
@@ -155,6 +167,8 @@
         case_3_h: "Share a clean answer key",
         case_3_p: "Your answer keys are native Word equations: editable, searchable (Ctrl+F), read by screen readers. No frozen images, no plugin required for your colleagues or students to reopen them.",
 
+        show_h: "What a lesson typed in Word looks like",
+        show_p: "A chapter excerpt: Definition, Property, Example and Theorem boxes added in one click, with native Word equations inside. A document you print, project or share as is.",
         tools_h: "Your teaching tools, right in Word",
         tools_1: "<strong>Sign and variation tables.</strong> One ribbon button, then everything is filled in from the keyboard: type an <em>x</em> value between two others and the column is added, one click on a cell puts a 0, a forbidden value or an arrow.",
         tools_2: "<strong>Lesson boxes.</strong> Theorem, Definition, Example, Property: a coloured box in one click, around text and formulas.",
