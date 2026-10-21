@@ -110,6 +110,12 @@ vérifiée sur les examens ou des outils tiers.
   directe ou première proposition correcte).
 - Le grand tableau de variation pleine largeur de « Vos outils de cours » est
   retiré : il figure maintenant dans le cours.
+- **Accueil** : le bloc « Pour qui » (trois parcours) est remplacé par ce même
+  avant / après, précédé de trois avantages profs condensés, avec deux liens
+  (page des profs ; parents : aménagement, PAP et dys).
+  > « en fait j'aurai enlevé de la home le bloc pour qui et condensé les
+  > avantages prof + le avant apres à la place (sur la home » — utilisateur,
+  > 2026-10-21.
 
 ## Tradeoff & alternatives écartées
 

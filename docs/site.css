@@ -438,3 +438,10 @@ main > .section:not(.section--soft) + .section:not(.section--soft) { padding-top
   .ww-hide-s { display: none; }
   .ww-typed { font-size: max(9px, 2.1cqw); }
 }
+.ww-points { list-style: none; padding: 0; margin: 0 0 4px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 24px; color: var(--muted); }
+.ww-points li { position: relative; padding-left: 26px; }
+.ww-points li::before { content: "✓"; position: absolute; left: 0; top: 0; color: var(--accent-ink); font-weight: 800; }
+.ww-links { display: flex; flex-wrap: wrap; gap: 8px 28px; justify-content: center; margin: 22px 0 0; font-weight: 650; }
+.ww-links a { text-decoration: none; }
+.ww-links a::after { content: " →"; }
+@media (max-width: 820px) { .ww-points { grid-template-columns: 1fr; } }

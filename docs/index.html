@@ -168,45 +168,54 @@
       </div>
     </section>
 
-    <!-- Parcours -->
-    <section class="section" id="pour-qui">
+    <!-- Profs : un cours dans Word -->
+    <section class="section" id="cours">
       <div class="container">
         <div class="section-head">
-          <span class="eyebrow" data-i18n="paths_eyebrow">Pour qui</span>
-          <h2 data-i18n="paths_h">Que vous fassiez cours, que vous le suiviez ou que vous accompagniez</h2>
+          <span class="eyebrow" data-i18n="cours_eyebrow">Pour les profs</span>
+          <h2 data-i18n="cours_h">Un vrai cours Word, tapé au fil de l'eau</h2>
         </div>
-        <div class="paths">
-          <article class="path">
-            <div class="path-icon"><svg><use href="#i-prof"/></svg></div>
-            <h3 data-i18n="path_1_h">Je suis prof</h3>
-            <ul data-i18n="path_1_list">
-              <li>Contrôles, fiches et corrigés tapés au fil de l'eau</li>
-              <li>Tableaux de signe et encadrés de cours en un clic</li>
-              <li>Des documents Word propres, réutilisables d'une année sur l'autre</li>
-            </ul>
-            <a class="path-link" href="prof/" data-i18n="path_1_link">La page des profs</a>
-          </article>
-          <article class="path">
-            <div class="path-icon"><svg><use href="#i-student"/></svg></div>
-            <h3 data-i18n="path_2_h">Je suis élève</h3>
-            <ul data-i18n="path_2_list">
-              <li>Suivre le cours de maths au clavier, sans décrocher</li>
-              <li>La notation du brouillon suffit, rien à apprendre</li>
-              <li>Un rendu propre, que le prof lit sans rien installer</li>
-            </ul>
-            <a class="path-link" href="demo/" data-i18n="path_2_link">Essayer en ligne</a>
-          </article>
-          <article class="path">
-            <div class="path-icon"><svg><use href="#i-parent"/></svg></div>
-            <h3 data-i18n="path_3_h">J'accompagne un enfant (PAP, dys)</h3>
-            <ul data-i18n="path_3_list">
-              <li>Le même outil que toute la classe, pas un logiciel à part</li>
-              <li>Il met en forme, il ne calcule rien à la place de l'élève</li>
-              <li>Gratuit, installé en moins d'une minute</li>
-            </ul>
-            <a class="path-link" href="amenagement.html" data-i18n="path_3_link">Aménagement et PAP</a>
-          </article>
+        <ul class="ww-points">
+          <li data-i18n="cours_1">Contrôles, fiches et corrigés tapés au rythme du cours</li>
+          <li data-i18n="cours_2">Encadrés et tableaux de signe ou de variation en un clic</li>
+          <li data-i18n="cours_3">Des équations Word natives : vos collègues et vos élèves ouvrent le document sans rien installer</li>
+        </ul>
+        <div class="ww" aria-label="Fenêtre Word simulée">
+          <div class="ww-bar"><span class="ww-logo">W</span><span>Chapitre 3 · Dérivation.docx</span></div>
+          <div class="ww-tabs" aria-hidden="true"><span>Fichier</span><span>Accueil</span><span>Insertion</span><span class="ww-hide-s">Mise en page</span><span class="ww-hide-s">Références</span><span class="on">MathCursor</span></div>
+          <div class="ww-ribbon" aria-hidden="true">
+            <div class="ww-grp"><div class="ww-btns"><span class="ww-b ww-b--big"><i>√x</i>Convertir</span><span class="ww-b"><i>▢</i>Encadrer</span></div><div class="ww-gl">Conversion</div></div>
+            <div class="ww-grp ww-hide-s"><div class="ww-btns"><span class="ww-b"><i>H₂O</i>Physique-chimie</span></div><div class="ww-gl">Domaines</div></div>
+            <div class="ww-grp"><div class="ww-btns"><span class="ww-b ww-hide-s"><i>▥</i>Colonnes</span><span class="ww-b on"><i>⊞</i>Tableau</span><span class="ww-b on"><i>▤</i>Encadré</span></div><div class="ww-gl">Mise en page</div></div>
+            <div class="ww-grp ww-hide-s"><div class="ww-btns"><span class="ww-b"><i>⚙</i>Paramètres</span></div><div class="ww-gl">Outils</div></div>
+          </div>
+          <div class="ww-canvas">
+            <div class="ww-col">
+              <div class="ww-cap"><span class="ww-tag" data-i18n="show_before">Avant</span> <span data-i18n="show_before_p">ce que vous tapez</span></div>
+              <div class="ww-page"><div class="ww-typed" lang="fr">
+                <p>Chapitre 3 - Dérivation</p>
+                <p>Définition : soit f une fonction définie sur un intervalle I et a dans I. On dit que f est dérivable en a si le taux d'accroissement (f(a+h) - f(a))/h admet une limite finie quand h tend vers 0. Cette limite est notée f'(a).</p>
+                <p>Propriété : la fonction carré est dérivable sur R et, pour tout réel x, (x2)'=2x.</p>
+                <p>Démonstration : soit a dans R et h!=0 :</p>
+                <p>((a+h)2 - a2)/h = (2ah + h2)/h = 2a + h</p>
+                <p>qui tend vers 2a quand h tend vers 0. Donc la fonction carré est dérivable en a et f'(a)=2a.</p>
+                <p>Exemple : soit f(x)=x2-4x+3 sur R. Alors f'(x)=2x-4, qui s'annule en x = 2, et f(2)=-1.</p>
+                <p>On en déduit le tableau de variation de f :</p>
+                <p>x : -inf 2 +inf</p>
+                <p>f'(x) : - 0 +</p>
+                <p>f(x) : +inf descend -1 monte +inf</p>
+                <p>Théorème : si f est continue sur [a ; b] et si k est compris entre f(a) et f(b), alors l'équation f(x)=k admet au moins une solution dans [a ; b].</p>
+              </div></div>
+            </div>
+            <div class="ww-col">
+              <div class="ww-cap"><span class="ww-tag ww-tag--after" data-i18n="show_after">Après</span> <span data-i18n="show_after_p">ce que vos élèves lisent</span></div>
+              <a class="ww-page" href="/assets/cours-derivation.png" target="_blank" rel="noopener">
+                <img src="/assets/cours-derivation.png" alt="Page de cours de dérivation dans Word : encadrés Définition, Propriété, Exemple et Théorème, démonstration et tableau de variation, équations Word natives" loading="lazy" />
+              </a>
+            </div>
+          </div>
         </div>
+        <p class="ww-links"><a href="prof/" data-i18n="cours_link_prof">La page des profs</a><a href="amenagement.html" data-i18n="cours_link_pap">Parents : aménagement, PAP et dys</a></p>
       </div>
     </section>
 
@@ -396,19 +405,19 @@
         feat_4_h: "Lesson layout",
         feat_4_p: "Theorem, Definition, Example and Property boxes, column layout, equation font of your choice (Cambria Math, Latin Modern, STIX).",
 
-        paths_eyebrow: "Who it's for",
-        paths_h: "Whether you teach, follow the lesson or support a student",
-        path_1_h: "I'm a teacher",
-        path_1_list: "<li>Tests, handouts and answer keys typed as you go</li><li>Sign tables and lesson boxes in one click</li><li>Clean Word documents, reusable year after year</li>",
-        path_1_link: "The teachers' page",
-        path_2_h: "I'm a student",
-        path_2_list: "<li>Follow the math lesson on a keyboard, without falling behind</li><li>Scratch-paper notation is enough, nothing to learn</li><li>A clean result the teacher reads with nothing to install</li>",
-        path_2_link: "Try it online",
-        path_3_h: "I support a child (accommodation, dyslexia)",
-        path_3_list: "<li>The same tool as the whole class, not separate software</li><li>It formats, it never calculates in the student's place</li><li>Free, installed in under a minute</li>",
-        path_3_link: "Accommodations",
 
         trust_eyebrow: "Trust",
+        cours_eyebrow: "For teachers",
+        cours_h: "A real Word lesson, typed as you go",
+        cours_1: "Tests, handouts and answer keys typed at the pace of the lesson",
+        cours_2: "Lesson boxes and sign or variation tables in one click",
+        cours_3: "Native Word equations: colleagues and students open the document with nothing to install",
+        cours_link_prof: "The teachers' page",
+        cours_link_pap: "Parents: accommodations, PAP and dyslexia",
+        show_before: "Before",
+        show_before_p: "what you type",
+        show_after: "After",
+        show_after_p: "what your students read",
         trust_h: "Built for school, with no bad surprises",
         ti_1_h: "Free and open",
         ti_1_p: "MathCursor is free, and it's free software (GNU GPL v3 license).",
