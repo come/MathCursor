@@ -99,8 +99,8 @@ vérifiée sur les examens ou des outils tiers.
 
 - **Fenêtre Word simulée** en HTML/CSS (barre de titre, onglets, ruban
   MathCursor avec Tableau et Encadré en évidence) contenant **deux pages A4
-  côte à côte** : « Avant, ce que vous tapez » (texte et notation clavier
-  surlignée, boutons du ruban utilisés) et « Après, ce que vos élèves lisent ».
+  côte à côte** : « Avant, ce que vous tapez » (texte brut non formaté,
+  notation clavier telle quelle : « limite que du texte non formaté ») et « Après, ce que vos élèves lisent ».
 - La page « Après » est un **vrai rendu Word** produit avec le code de l'add-in
   (A4, marges 66 pt, corps 10 pt) : encadrés Définition, Propriété, Exemple,
   Théorème, une démonstration (dérivée de la fonction carré) et le tableau de
