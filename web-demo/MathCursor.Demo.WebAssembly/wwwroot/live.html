@@ -9,10 +9,10 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" />
-  <link rel="stylesheet" href="../style.css" />
+  <link rel="stylesheet" href="../site.css" />
   <link rel="stylesheet" href="demo.css" />
   <link rel="stylesheet" href="live.css" />
 </head>
@@ -20,11 +20,12 @@
 
   <header class="site-header">
     <div class="container">
-      <a href="../index.html" class="brand">MathCursor</a>
+      <a href="/" class="brand"><img src="/assets/logo.png" alt="MathCursor" /></a>
       <nav class="nav">
-        <a href="./" data-i18n="nav_demo">Démo</a>
-        <a href="live.html" class="active" data-i18n="nav_live">Mode réel</a>
-        <a href="../releases.html" data-i18n="nav_downloads">Téléchargements</a>
+        <a href="/demo/" class="active" data-i18n="ui_nav_demo">Démo</a>
+        <a href="/releases.html" data-i18n="ui_nav_downloads">Téléchargements</a>
+        <a href="/install.html" data-i18n="ui_nav_install">Installation</a>
+        <a href="/releases.html" class="nav-cta" data-i18n="ui_nav_cta">Installer</a>
         <div class="lang-toggle" role="group" aria-label="Language">
           <button type="button" data-lang="fr" class="active">FR</button>
           <button type="button" data-lang="en">EN</button>
@@ -80,7 +81,16 @@
 
   <footer class="site-footer">
     <div class="container">
-      <p data-i18n="live_foot">© 2026 MathCursor · <a href="/contact.html">Contact</a></p>
+      <div data-i18n="ui_foot_copy">MathCursor · gratuit et libre · vos documents restent chez vous</div>
+      <nav>
+        <a href="/demo/" data-i18n="ui_nav_demo">Démo</a>
+        <a href="/prof/" data-i18n="ui_ft_prof">Profs</a>
+        <a href="/amenagement.html" data-i18n="ui_ft_pap">Parents &amp; PAP</a>
+        <a href="/releases.html" data-i18n="ui_nav_downloads">Téléchargements</a>
+        <a href="/install.html" data-i18n="ui_nav_install">Installation</a>
+        <a href="/privacy.html" data-i18n="ui_ft_privacy">Confidentialité</a>
+        <a href="/contact.html" data-i18n="ui_ft_contact">Contact</a>
+      </nav>
     </div>
   </footer>
 
@@ -100,6 +110,15 @@
   <script>
     const I18N = {
       en: {
+        ui_nav_demo: "Demo",
+        ui_nav_downloads: "Downloads",
+        ui_nav_install: "Install",
+        ui_nav_cta: "Install",
+        ui_foot_copy: "MathCursor · free and open · your documents stay with you",
+        ui_ft_prof: "Teachers",
+        ui_ft_pap: "Parents & accommodations",
+        ui_ft_privacy: "Privacy",
+        ui_ft_contact: "Contact",
         nav_demo: "Demo",
         nav_live: "Real mode",
         nav_downloads: "Downloads",

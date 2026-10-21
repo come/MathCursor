@@ -60,6 +60,28 @@ de tiret cadratin, pas de « cerveau », jamais « aucune télémétrie » / « 
 local », vouvoiement (accueil, profs, aménagement), aucune affirmation non
 vérifiée sur les examens ou des outils tiers.
 
+### Déclinaison aux autres pages (2026-10-21)
+
+> « oui tu peux faire les autres pages maintenant stp je ne sais pas si j'aurai
+> mis profs et amenagement en header par contre :) » — utilisateur.
+
+- **En-tête commun** sans Profs ni Parents & PAP : Démo · Téléchargements ·
+  Installation · bouton Installer · FR/EN. Les pages Profs et Aménagement
+  restent accessibles par les trois parcours de l'accueil et le pied de page.
+- **Pied de page commun** (Démo, Profs, Parents & PAP, Téléchargements,
+  Installation, Confidentialité, Contact), clés de traduction `ui_*` injectées
+  dans chaque page.
+- **Couche de compatibilité dans `site.css`** : les classes existantes des pages
+  secondaires (`card`, `button`, `cta-row`, onglets d'installation, formulaire
+  de contact, notes « version archivée », listes `features`) sont habillées dans
+  la nouvelle charte ; alias des anciennes variables pour `demo.css` / `live.css`.
+  Contenus et traductions des pages inchangés.
+- **Aménagement** restructurée pour les parents : en-tête avec boutons, trois
+  cartes (En classe, En examen, Sur l'ordinateur de l'élève), bandeau Parents.
+- **Confidentialité** : intertitres à taille de lecture (`.prose`).
+- **Démo** (`index.html`, `live.html`, source `web-demo`) migrée. Les pages
+  `admin/` (privées) gardent leur style.
+
 ## Tradeoff & alternatives écartées
 
 - **Garder le côté cahier en plus soigné** : identité conservée mais le

@@ -282,3 +282,130 @@ kbd {
   .nav .nav-cta { padding: 8px 12px; font-size: .85rem; }
   .brand img { height: 32px; }
 }
+
+/* ===========================================================
+   Pages secondaires : habillage des classes existantes
+   (Profs, Aménagement, Téléchargements, Installation,
+   Confidentialité, Contact, PAP/dys, Démo).
+   =========================================================== */
+.hero > .hero-content { max-width: var(--max) !important; margin: 0 auto; padding: 0 var(--gutter); }
+.hero-tag {
+  display: inline-block; font-size: .78rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--accent-ink); margin-bottom: 14px;
+}
+.hero .hero-content .lead { max-width: 760px; }
+.highlighter { color: var(--accent-ink); }
+.lead { font-size: 1.12rem; color: var(--muted); margin: 18px 0 26px; max-width: 760px; }
+main > .section:first-child, main > section.section:first-of-type { padding-top: 56px; }
+.section > .container > h2 { margin-bottom: 18px; }
+.section > .container > h1 + .lead { margin-top: 14px; }
+.section > .container > p { max-width: 800px; }
+
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font: inherit; font-weight: 650; font-size: .98rem; text-decoration: none;
+  padding: 12px 20px; border-radius: 999px; border: 1px solid transparent; cursor: pointer;
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+.button:hover { transform: translateY(-1px); }
+.button--primary { background: var(--accent); color: #fff; box-shadow: 0 6px 18px rgba(77, 124, 255, .3); }
+.button--primary:hover { background: var(--accent-ink); color: #fff; }
+.button--secondary { background: #fff; color: var(--ink); border-color: var(--line); }
+.button--secondary:hover { border-color: var(--ink-2); color: var(--ink); }
+.button[disabled] { opacity: .55; cursor: default; transform: none; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+.card {
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 26px; box-shadow: var(--shadow);
+}
+.card--red { border-top: 3px solid var(--accent); }
+.card h3 { margin-bottom: 10px; }
+.card p, .card li { color: var(--muted); }
+.card ul { padding-left: 20px; margin: 8px 0 16px; }
+.card-quote { font-style: italic; color: var(--ink-2); }
+.badge {
+  display: inline-block; font-size: .8rem; font-weight: 600; color: var(--ink-2);
+  background: var(--bg-soft); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px;
+}
+.retired-note {
+  margin-top: 14px; font-size: .88rem; color: var(--muted);
+  background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 12px;
+}
+
+/* Liste de points forts (pages Profs / PAP) */
+ul.features { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; list-style: none; padding: 0; margin: 20px 0 0; }
+ul.features li { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; color: var(--muted); box-shadow: var(--shadow); }
+ul.features li strong { color: var(--ink); display: block; margin-bottom: 4px; }
+figure.card { margin: 20px 0 24px; padding: 12px; }
+
+/* Guides d'installation (onglets + étapes numérotées dans le titre) */
+.guide-panel .install-steps, .section .install-steps:not(.install .install-steps) { list-style: none; padding: 0; margin: 24px 0; display: grid; gap: 14px; }
+.guide-panel .install-steps li, .section .install-steps:not(.install .install-steps) li {
+  background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; box-shadow: var(--shadow);
+}
+.guide-panel .install-steps li::before, .section .install-steps:not(.install .install-steps) li::before { display: none; }
+.guide-panel .install-steps h3 { margin-bottom: 6px; }
+.guide-panel .install-steps p { color: var(--muted); margin: 0; }
+.install-note, .install-config { color: var(--muted); font-size: .95rem; margin-top: 14px; }
+.install-note a, .install-config a { font-weight: 600; }
+.guide-dl { margin: 20px 0 8px; }
+
+/* Formulaire de contact */
+.form { display: grid; gap: 18px; max-width: 640px; margin-top: 8px; }
+.field { display: grid; gap: 6px; }
+.field label { font-weight: 650; color: var(--ink); }
+.field-hint { font-weight: 400; color: var(--muted); font-size: .9rem; }
+.form input[type="email"], .form input[type="text"], .form textarea {
+  font: inherit; color: var(--text); background: #fff;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; width: 100%;
+}
+.form textarea { min-height: 170px; resize: vertical; }
+.form input:focus, .form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+.form-actions { display: flex; gap: 12px; align-items: center; }
+.form-msg { border-radius: var(--radius-sm); padding: 12px 14px; font-size: .95rem; }
+.form-msg--ok { background: var(--ok-bg); color: var(--ok); }
+.form-msg--err { background: #fdecec; color: #a32020; }
+.form-fallback { color: var(--muted); font-size: .92rem; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+/* Textes longs (Confidentialité, Aménagement) */
+/* Titres et listes posés directement dans la page (pas dans une carte de l'accueil) */
+.section > .container > h2 { margin-top: 8px; }
+.section > .container > h3 { margin-top: 26px; margin-bottom: 8px; }
+.section > .container > ul { color: var(--text); }
+.section > .container > ul li { margin-bottom: 6px; }
+
+@media (max-width: 640px) {
+  ul.features { grid-template-columns: 1fr; }
+  .lead { font-size: 1.02rem; }
+  .card { padding: 20px; }
+}
+
+/* Pages de texte long (Confidentialité) : intertitres à taille de lecture */
+.prose > .container { max-width: 860px; }
+.prose > .container > h2 { font-size: 1.35rem; margin-top: 40px; margin-bottom: 10px; }
+.prose > .container > h1 + .lead + h2 { margin-top: 28px; }
+
+/* Sections blanches qui s'enchaînent (pages Profs, PAP/dys) : moins de vide */
+main > .section:not(.section--soft) + .section:not(.section--soft) { padding-top: 8px; }
+
+/* Alias des variables de l'ancienne feuille (utilisées par demo.css) */
+:root {
+  --paper: #ffffff;
+  --paper-low: #f6f8fc;
+  --paper-mid: #eef1f7;
+  --paper-rim: #e2e7f0;
+  --paper-white: #ffffff;
+  --text-muted: #5a6578;
+  --font-head: var(--font);
+  --font-body: var(--font);
+  --font-mono: var(--mono);
+  --ink-tint: #eef3ff;
+  --ink-light: #b6c4ff;
+  --yellow: #eef3ff;
+  --red: #4d7cff;
+}
+.nav a.active { color: var(--accent-ink); }
+.cta-band a { color: #fff; }

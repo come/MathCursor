@@ -8,20 +8,21 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <link rel="icon" type="image/png" href="/favicon.png" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="/site.css" />
 </head>
 <body>
 
   <header class="site-header">
     <div class="container">
-      <a href="/" class="brand"><img src="/assets/logo.png" alt="MathCursor" style="height:54px;width:auto" /></a>
+      <a href="/" class="brand"><img src="/assets/logo.png" alt="MathCursor" /></a>
       <nav class="nav">
-        <a href="demo/" data-i18n="nav_demo">Démo</a>
-        <a href="releases.html" data-i18n="nav_downloads">Téléchargements</a>
-        <a href="install.html" data-i18n="nav_install">Installation</a>
+        <a href="/demo/" data-i18n="ui_nav_demo">Démo</a>
+        <a href="/releases.html" data-i18n="ui_nav_downloads">Téléchargements</a>
+        <a href="/install.html" data-i18n="ui_nav_install">Installation</a>
+        <a href="/releases.html" class="nav-cta" data-i18n="ui_nav_cta">Installer</a>
         <div class="lang-toggle" role="group" aria-label="Language">
           <button type="button" data-lang="fr" class="active">FR</button>
           <button type="button" data-lang="en">EN</button>
@@ -32,33 +33,50 @@
 
   <main>
 
-    <section class="section">
+    <section class="hero">
       <div class="container">
+        <span class="eyebrow" data-i18n="amg_eyebrow">Aménagement · PAP · dys</span>
         <h1 data-i18n="amg_h1">Aménagement &amp; PAP</h1>
         <p class="lead" data-i18n="amg_intro">MathCursor pour un élève avec un aménagement : même outil que la classe, pas un logiciel séparé. Réduit la friction d'écriture mathématique sans installer tout un univers logiciel à part.</p>
+        <div class="btn-row">
+          <a href="/demo/" class="btn btn--primary" data-i18n="amg_cta_demo">Essayer en ligne <small>sans installer</small></a>
+          <a href="/contact.html" class="btn btn--ghost" data-i18n="amg_cta_contact">Poser une question</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--soft">
+      <div class="container">
+        <div class="cards">
+          <article class="card card--red">
+            <h3 data-i18n="amg_classe_h">En classe</h3>
+            <p data-i18n="amg_classe_p">Même moteur, même popup que pour toute la classe. L'élève tape ses maths au clavier et suit le rythme du cours, sans batailler avec l'éditeur d'équations. Ce n'est pas un logiciel « à part » : c'est le même outil que ses camarades, et ça compte autant que l'aide elle-même.</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="amg_exam_h">En examen</h3>
+            <p data-i18n="amg_exam_p1">Le principe d'un aménagement d'examen : l'élève travaille de sa manière habituelle. Si MathCursor fait partie de ses outils de tous les jours en classe, il le retrouve le jour de l'épreuve, sans rien de nouveau à apprendre sous stress.</p>
+            <p data-i18n="amg_exam_p2">MathCursor ne compose rien à la place de l'élève : pas d'IA, pas d'autocomplétion, aucune suggestion de résultat. Il met en forme ce que l'élève tape, rien de plus. C'est une aide à l'écriture, pas une aide au contenu.</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="amg_data_h">Sur l'ordinateur de l'élève</h3>
+            <p data-i18n="amg_exam_p3">Les documents et la frappe restent sur l'ordinateur, et MathCursor fonctionne hors ligne, sans compte ni service en ligne. Une connexion ne sert qu'à signaler une nouvelle version et à envoyer un compteur anonyme (le nombre de formules converties, sans aucun contenu), désactivable dans les Paramètres : détails sur la <a href="/privacy.html">page Confidentialité</a>. De quoi rassurer l'établissement sur l'intégrité de l'épreuve.</p>
+          </article>
+        </div>
       </div>
     </section>
 
     <section class="section">
       <div class="container">
-        <h2 data-i18n="amg_classe_h">En classe</h2>
-        <p data-i18n="amg_classe_p">Même moteur, même popup que pour toute la classe. L'élève tape ses maths au clavier et suit le rythme du cours, sans batailler avec l'éditeur d'équations. Ce n'est pas un logiciel « à part » : c'est le même outil que ses camarades, et ça compte autant que l'aide elle-même.</p>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="container">
-        <h2 data-i18n="amg_exam_h">En examen</h2>
-        <p data-i18n="amg_exam_p1">Le principe d'un aménagement d'examen : l'élève travaille de sa manière habituelle. Si MathCursor fait partie de ses outils de tous les jours en classe, il le retrouve le jour de l'épreuve, sans rien de nouveau à apprendre sous stress.</p>
-        <p data-i18n="amg_exam_p2">MathCursor ne compose rien à la place de l'élève : pas d'IA, pas d'autocomplétion, aucune suggestion de résultat. Il met en forme ce que l'élève tape, rien de plus. C'est une aide à l'écriture, pas une aide au contenu.</p>
-        <p data-i18n="amg_exam_p3">Les documents et la frappe restent sur l'ordinateur, et MathCursor fonctionne hors ligne, sans compte ni service en ligne. Une connexion ne sert qu'à signaler une nouvelle version et à envoyer un compteur anonyme (le nombre de formules converties, sans aucun contenu), désactivable dans les Paramètres : détails sur la <a href="/privacy.html">page Confidentialité</a>. De quoi rassurer l'établissement sur l'intégrité de l'épreuve.</p>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="container">
-        <h2 data-i18n="amg_parents_h">Parents</h2>
-        <p data-i18n="amg_parents_p">Pour un enfant sous PAP, MathCursor réduit la friction d'écriture mathématique sans installer tout un univers logiciel séparé. Il est gratuit, fonctionne hors ligne, et s'installe en moins d'une minute. Une question ? <a href="/contact.html">Écrivez-moi</a>.</p>
+        <div class="cta-band">
+          <div>
+            <h2 data-i18n="amg_parents_h">Parents</h2>
+            <p data-i18n="amg_parents_p">Pour un enfant sous PAP, MathCursor réduit la friction d'écriture mathématique sans installer tout un univers logiciel séparé. Il est gratuit, fonctionne hors ligne, et s'installe en moins d'une minute. Une question ? <a href="/contact.html">Écrivez-moi</a>.</p>
+          </div>
+          <div class="btn-row">
+            <a href="/demo/" class="btn btn--primary" data-i18n="amg_band_demo">Essayer en ligne</a>
+            <a href="/releases.html" class="btn btn--ghost" data-i18n="amg_band_install">Installer pour Word</a>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -66,9 +84,15 @@
 
   <footer class="site-footer">
     <div class="container">
-      <div data-i18n="foot_copy">MathCursor · vos documents restent chez vous · sans compte</div>
+      <div data-i18n="ui_foot_copy">MathCursor · gratuit et libre · vos documents restent chez vous</div>
       <nav>
-        <a href="/contact.html">Contact</a>
+        <a href="/demo/" data-i18n="ui_nav_demo">Démo</a>
+        <a href="/prof/" data-i18n="ui_ft_prof">Profs</a>
+        <a href="/amenagement.html" data-i18n="ui_ft_pap">Parents &amp; PAP</a>
+        <a href="/releases.html" data-i18n="ui_nav_downloads">Téléchargements</a>
+        <a href="/install.html" data-i18n="ui_nav_install">Installation</a>
+        <a href="/privacy.html" data-i18n="ui_ft_privacy">Confidentialité</a>
+        <a href="/contact.html" data-i18n="ui_ft_contact">Contact</a>
       </nav>
     </div>
   </footer>
@@ -77,11 +101,26 @@
   <script>
     const I18N = {
       en: {
+        ui_nav_demo: "Demo",
+        ui_nav_downloads: "Downloads",
+        ui_nav_install: "Install",
+        ui_nav_cta: "Install",
+        ui_foot_copy: "MathCursor · free and open · your documents stay with you",
+        ui_ft_prof: "Teachers",
+        ui_ft_pap: "Parents & accommodations",
+        ui_ft_privacy: "Privacy",
+        ui_ft_contact: "Contact",
         nav_demo: "Demo",
         nav_install: "Install",
         nav_downloads: "Downloads",
 
         amg_h1: "Accommodation &amp; PAP",
+        amg_eyebrow: "Accommodation · dyslexia · dyspraxia",
+        amg_cta_demo: "Try it online <small>nothing to install</small>",
+        amg_cta_contact: "Ask a question",
+        amg_data_h: "On the student's computer",
+        amg_band_demo: "Try it online",
+        amg_band_install: "Install for Word",
         amg_intro: "MathCursor for a student with a formal accommodation: the same tool as the class, not a separate piece of software. It reduces the friction of math writing without installing a whole separate software universe.",
         amg_classe_h: "In class",
         amg_classe_p: "Same engine, same popup as the rest of the class. The student types their math on the keyboard and keeps pace with the lesson, without fighting the equation editor. It isn't a piece of software \"apart\": it's the same tool as their classmates, and that matters as much as the help itself.",
