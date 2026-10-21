@@ -66,7 +66,7 @@
     const head = document.createElement('div');
     head.className = 'popup-head';
     if (result.decision === 'auto') {
-      head.innerHTML = `<span class="badge badge-auto">✓ ${t('runtime_auto', 'inséré automatiquement')}</span>`;
+      head.innerHTML = `<span class="badge badge-auto">✓ ${t('runtime_auto', 'une seule lecture')}</span>`;
     } else {
       const word = cands.length > 1 ? t('runtime_popup_many', 'choix') : t('runtime_popup_one', 'choix');
       head.innerHTML = `<span class="badge badge-popup">${cands.length} ${word}</span>`;
