@@ -193,7 +193,7 @@
     if (result.hasNote) {
       const note = document.createElement('div');
       note.className = 'popup-note';
-      note.textContent = 'ⓘ ' + t('runtime_note', 'Expression dense — ajoute des espaces ou des parenthèses pour préciser.');
+      note.textContent = 'ⓘ ' + t('runtime_note', 'Expression dense : ajoutez des espaces ou des parenthèses pour préciser.');
       popup.appendChild(note);
     }
   }

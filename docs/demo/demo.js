@@ -12,7 +12,7 @@
     await Blazor.start();
   } catch (e) {
     const t = (window.I18N_RUNTIME && window.I18N_RUNTIME.runtime_load_failed)
-      || 'Échec du chargement du moteur. Recharge la page ?';
+      || 'Échec du chargement du moteur. Rechargez la page ?';
     loading.innerHTML = `<div class="loading-text">${t}</div>`;
     console.error(e);
     return;
@@ -106,7 +106,7 @@
     if (result.hasNote) {
       const note = document.createElement('div');
       note.className = 'popup-note';
-      note.textContent = 'ⓘ ' + t('runtime_note', 'Expression dense — ajoute des espaces ou des parenthèses pour préciser.');
+      note.textContent = 'ⓘ ' + t('runtime_note', 'Expression dense : ajoutez des espaces ou des parenthèses pour préciser.');
       popup.appendChild(note);
     }
   };
@@ -165,7 +165,7 @@
     try {
       result = await DotNet.invokeMethodAsync(ASSEMBLY, 'Analyze', value, mathCulture + (physchem ? '+physchem' : ''));
     } catch (e) {
-      popup.innerHTML = `<div class="popup-empty popup-err">${t('runtime_engine_error', 'Erreur moteur — voir console.')}</div>`;
+      popup.innerHTML = `<div class="popup-empty popup-err">${t('runtime_engine_error', 'Erreur moteur, voir la console.')}</div>`;
       console.error(e);
       return;
     }

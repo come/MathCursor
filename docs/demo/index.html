@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MathCursor · Démo</title>
-  <meta name="description" content="Tape une formule au clavier, vois les conversions proposées. Le vrai moteur MathCursor tourne dans ton navigateur." />
+  <meta name="description" content="Tapez une formule au clavier, voyez les conversions proposées. Le vrai moteur MathCursor tourne dans votre navigateur." />
   <base href="./" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -35,7 +35,7 @@
     <section class="section">
       <div class="container">
         <h1 data-i18n="demo_h1">Démo en ligne</h1>
-        <p class="lead" data-i18n="demo_lead">Tape une formule : le moteur propose les conversions reconnues, comme la popup dans Word. <kbd>↓</kbd> pour entrer dans la liste et choisir, <kbd>Entrée</kbd> pour poser la formule sur la page, <kbd>Échap</kbd> pour fermer. Le même moteur, compilé en WebAssembly et exécuté dans ton navigateur : rien n'est envoyé nulle part.</p>
+        <p class="lead" data-i18n="demo_lead">Tapez une formule : le moteur propose les conversions reconnues, comme la popup dans Word. <kbd>↓</kbd> pour entrer dans la liste et choisir, <kbd>Entrée</kbd> pour poser la formule sur la page, <kbd>Échap</kbd> pour fermer. Le même moteur, compilé en WebAssembly et exécuté dans votre navigateur : rien n'est envoyé nulle part.</p>
 
         <div class="demo">
           <div class="ww ww--demo">
@@ -51,7 +51,7 @@
                 <div id="doc" class="ww-doc" aria-live="polite"></div>
                 <input id="input" type="text" class="demo-field"
                        data-i18n-placeholder="demo_placeholder"
-                       placeholder="Tape une formule, ex : f(x) = 1/x+1"
+                       placeholder="Tapez une formule, ex : f(x) = 1/x+1"
                        autocomplete="off" autocapitalize="off" spellcheck="false" autofocus />
                 <div id="popup" class="popup">
                   <div class="popup-empty" data-i18n="demo_empty">Les conversions proposées s'afficheront ici…</div>
@@ -60,7 +60,7 @@
               <aside class="ww-pane">
                 <div class="ww-pane-h" data-i18n="demo_pane_h">Exemples</div>
                 <div class="examples">
-                  <span class="ex-label" data-i18n="demo_ex_try">Clique pour essayer&nbsp;:</span>
+                  <span class="ex-label" data-i18n="demo_ex_try">Cliquez pour essayer&nbsp;:</span>
                   <button data-ex-fr="f(x) = 1/x+1">f(x) = 1/x+1</button>
                   <button data-ex-fr="1/x +1">1/x +1</button>
                   <button data-ex-fr="x+1/x+2">x+1/x+2</button>
@@ -92,7 +92,7 @@
                   <button data-ex-fr="2H2 + O2 -> 2H2O" data-physchem="1" title="Active le mode Physique-chimie">2H2 + O2 -&gt; 2H2O</button>
                 </div>
                 <p class="ex-note" data-i18n="demo_ex_note">
-                  ⓘ Les espaces comptent : compare <code>1/x+1</code> (collé) et <code>1/x +1</code> (espacé) :
+                  ⓘ Les espaces comptent : comparez <code>1/x+1</code> (collé) et <code>1/x +1</code> (espacé) :
                   l'espace dit où la fraction s'arrête.
                 </p>
               </aside>
@@ -171,9 +171,9 @@
         runtime_popup_many: "choices",
         runtime_preselected: "auto-selected",
         runtime_alt: "alternative",
-        runtime_note: "Dense expression — add spaces or parentheses to disambiguate.",
+        runtime_note: "Dense expression: add spaces or parentheses to disambiguate.",
         runtime_error: "Not recognized as math.",
-        runtime_engine_error: "Engine error — see console.",
+        runtime_engine_error: "Engine error, see the console.",
         runtime_load_failed: "Engine failed to load. Reload the page?"
       },
       fr: {
@@ -182,10 +182,10 @@
         runtime_popup_many: "choix",
         runtime_preselected: "sélectionné d'office",
         runtime_alt: "alternative",
-        runtime_note: "Expression dense — ajoute des espaces ou des parenthèses pour préciser.",
+        runtime_note: "Expression dense : ajoutez des espaces ou des parenthèses pour préciser.",
         runtime_error: "Pas reconnu comme une formule.",
-        runtime_engine_error: "Erreur moteur — voir console.",
-        runtime_load_failed: "Échec du chargement du moteur. Recharge la page ?"
+        runtime_engine_error: "Erreur moteur, voir la console.",
+        runtime_load_failed: "Échec du chargement du moteur. Rechargez la page ?"
       }
     };
 
