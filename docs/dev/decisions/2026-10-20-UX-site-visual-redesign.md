@@ -116,6 +116,14 @@ vérifiée sur les examens ou des outils tiers.
   > « en fait j'aurai enlevé de la home le bloc pour qui et condensé les
   > avantages prof + le avant apres à la place (sur la home » — utilisateur,
   > 2026-10-21.
+- Ajustement : étiquettes réduites à « Avant » / « Après » ; les liens vers
+  les pages Profs et Aménagement sont remplacés par « Essayer en ligne ».
+  **Démo** habillée du même gabarit Word : la saisie et la popup sont posées
+  sur une page, les bascules FR / US et Physique-chimie passent dans le ruban.
+  > « mettre juste avant / apres pas "ce que vous tapez" etc. plus besoin de la
+  > page prof ni pap. des liens "essayez en ligne" et la demo, tu pourrais
+  > l'entourer de ton "template word" pour simuler un peu ? » — utilisateur,
+  > 2026-10-21.
 
 ## Tradeoff & alternatives écartées
 

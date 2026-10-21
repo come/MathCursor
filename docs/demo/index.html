@@ -79,21 +79,25 @@
             l'espace dit où la fraction s'arrête.
           </p>
 
-          <div class="demo-bar">
-            <input id="input" type="text" class="demo-field"
-                   data-i18n-placeholder="demo_placeholder"
-                   placeholder="Tape une formule, ex : f(x) = 1/x+1"
-                   autocomplete="off" autocapitalize="off" spellcheck="false" autofocus />
-            <div class="math-culture" role="group" aria-label="Math culture">
-              <span class="mc-label" data-i18n="demo_culture">Maths&nbsp;:</span>
-              <button type="button" data-mc="fr" class="active">FR</button>
-              <button type="button" data-mc="us">US</button>
-              <button type="button" class="physchem-toggle" aria-pressed="false" data-i18n="demo_physchem">Physique-chimie</button>
+          <div class="ww ww--demo">
+            <div class="ww-bar"><span class="ww-logo">W</span><span>Document1 · Word</span></div>
+            <div class="ww-tabs" aria-hidden="true"><span>Fichier</span><span>Accueil</span><span>Insertion</span><span class="ww-hide-s">Mise en page</span><span class="ww-hide-s">Références</span><span class="on">MathCursor</span></div>
+            <div class="ww-ribbon">
+              <div class="ww-grp ww-hide-s" aria-hidden="true"><div class="ww-btns"><span class="ww-b ww-b--big"><i>√x</i>Convertir</span><span class="ww-b"><i>▢</i>Encadrer</span></div><div class="ww-gl">Conversion</div></div>
+              <div class="ww-grp"><div class="ww-btns math-culture" role="group" aria-label="Math culture"><button type="button" data-mc="fr" class="active">FR</button><button type="button" data-mc="us">US</button></div><div class="ww-gl">Maths</div></div>
+              <div class="ww-grp"><div class="ww-btns math-culture"><button type="button" class="physchem-toggle" aria-pressed="false" data-i18n="demo_physchem">Physique-chimie</button></div><div class="ww-gl">Domaines</div></div>
             </div>
-          </div>
-
-          <div id="popup" class="popup">
-            <div class="popup-empty" data-i18n="demo_empty">Les conversions proposées s'afficheront ici…</div>
+            <div class="ww-canvas">
+              <div class="ww-page ww-page--live">
+                <input id="input" type="text" class="demo-field"
+                       data-i18n-placeholder="demo_placeholder"
+                       placeholder="Tape une formule, ex : f(x) = 1/x+1"
+                       autocomplete="off" autocapitalize="off" spellcheck="false" autofocus />
+                <div id="popup" class="popup">
+                  <div class="popup-empty" data-i18n="demo_empty">Les conversions proposées s'afficheront ici…</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
