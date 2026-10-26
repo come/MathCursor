@@ -21,7 +21,7 @@ Format et conventions : voir
 
 ### 2026-10-26
 - `[forte]` Fix — [Intervalles à borne gauche négative](2026-10-26-Fix-interval-negative-lower-bound.md) — `]-2;3[`, `[-2;3]`, `]-inf;-2[` renvoyaient « erreur » : le lexer traitait tout crochet comme fin d'opérande, donc le `-` suivant devenait une soustraction sans gauche. Un crochet retient s'il ouvre (`Opens`) ; seul un crochet fermant rend le `-` binaire. C# + Rust, 6 fixtures (605), 0 écart sur le corpus large.
-- `[molle]` UX — [Raccourcis clavier du ruban : Alt, M puis T](2026-10-26-UX-ribbon-keytips.md) — KeyTips explicites : onglet MathCursor `M`, bouton « Tableau de signe / variation » `T`. Sert les élèves au clavier (PAP) et les scripts qui tapent au clavier. Écartés : clic du ruban par UI Automation (fragile), raccourci global (hook en plus).
+- `[molle]` UX — [Raccourcis clavier du ruban : Alt, X puis T](2026-10-26-UX-ribbon-keytips.md) — KeyTips explicites : onglet MathCursor `X` (`M` déjà pris par « Mettre à niveau » dans Word FR), bouton « Tableau de signe / variation » `T`. Sert les élèves au clavier (PAP) et les scripts qui tapent au clavier. Écartés : clic du ruban par UI Automation (fragile), raccourci global (hook en plus).
 
 ### 2026-10-21
 - `[molle]` Fix — [Titres d'encadrés : accents conservés (« THÉORÈME »)](2026-10-21-Fix-callout-title-accents.md) — les petites capitales de Word perdaient les accents (« THEOREME ») quand l'option *Majuscules accentuées en français* est décochée. Le titre est désormais inséré en vraies majuscules (`ToUpper` fr-FR) et l'allure petites capitales est reproduite (initiale au corps, reste à 80 %). Écartés : forcer l'option Word de l'utilisateur, majuscules d'une seule taille, casse normale.

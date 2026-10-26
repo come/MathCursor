@@ -9,7 +9,7 @@
 <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="OnRibbonLoad">
   <ribbon>
     <tabs>
-      <tab id="MathCursorTab" getLabel="OnGetTabLabel" keytip="M">
+      <tab id="MathCursorTab" getLabel="OnGetTabLabel" keytip="X">
         <group id="MathCursorConversionGroup" getLabel="OnGetConversionGroupLabel">
           <button id="ConvertButton"
                   getLabel="OnGetConvertButtonLabel"

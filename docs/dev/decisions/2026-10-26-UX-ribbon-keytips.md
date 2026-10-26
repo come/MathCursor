@@ -1,4 +1,4 @@
-# UX — Raccourcis clavier du ruban : Alt, M (onglet) puis T (tableau)
+# UX — Raccourcis clavier du ruban : Alt, X (onglet) puis T (tableau)
 
 **Date :** 2026-10-26
 **Kind :** UX
@@ -27,8 +27,8 @@ ils ne sont ni documentés ni stables d'une version du ruban à l'autre. Deux be
 
 KeyTips explicites dans `Ribbon.xml` :
 
-- onglet MathCursor : **`M`** (Alt, M) ;
-- bouton « Tableau de signe / variation » : **`T`** (Alt, M, T).
+- onglet MathCursor : **`X`** (Alt, X) ;
+- bouton « Tableau de signe / variation » : **`T`** (Alt, X, T).
 
 Les autres contrôles gardent les KeyTips automatiques de Word.
 
@@ -42,8 +42,11 @@ Les autres contrôles gardent les KeyTips automatiques de Word.
 - **Insérer le tableau à la main avant le script** : on ne voit pas l'insertion à
   l'écran (repli temporaire seulement).
 
-Risque connu : si une autre extension ou un onglet Word utilise aussi `M`, Word
-désambiguïse (KeyTips à deux caractères). À vérifier à l'usage (Alt dans Word).
+**Correction du jour même** : `M` (validé d'abord, « ok pour Alt M + T ») est déjà pris
+dans Word FR par le bouton « Mettre à niveau votre plan » de la barre de titre ; Word
+ignore alors le KeyTip personnalisé (l'onglet restait `Y2`) et Alt, M ouvrait la page
+d'abonnement Microsoft 365. Lettres relevées dans Word FR : onglets F L S Ç P É G R N V
+Ù, barre de titre Y1 et M, réduire ZC. Retenu : **`X`**, libre.
 
 ## Conséquences
 
@@ -53,6 +56,6 @@ désambiguïse (KeyTips à deux caractères). À vérifier à l'usage (Alt dans 
 
 ## Validation post-fix
 
-Dans Word, après rebuild : Alt affiche `M` sur l'onglet MathCursor ; Alt, M ouvre
-l'onglet et affiche `T` sur « Tableau de signe / variation » ; Alt, M, T insère le
+Dans Word, après rebuild : Alt affiche `X` sur l'onglet MathCursor ; Alt, X ouvre
+l'onglet et affiche `T` sur « Tableau de signe / variation » ; Alt, X, T insère le
 tableau.
