@@ -126,6 +126,7 @@ pub struct Token {
     pub implicit: bool,
     pub rank: i32, // sep : 0 = "," , 2 = ";"
     pub unit_word: bool,
+    pub opens: bool,    // crochet [ ou ] en position d'ouverture (aucune valeur avant) : ]-2;3[
     pub sign_sup: bool, // sup issu d'un postSign (0⁺) : jamais un chapeau orphelin
     pub ranked: bool,   // syms ordonnés par préférence : les suivantes sont des lectures secondaires
     pub coh: Option<String>,
@@ -146,6 +147,7 @@ impl Default for Token {
             implicit: false,
             rank: 0,
             unit_word: false,
+            opens: false,
             sign_sup: false,
             ranked: false,
             coh: None,

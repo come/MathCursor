@@ -26,6 +26,12 @@ use crate::reg;
 
 const SPLIT_CAP: usize = 4; // <= 2^4 flux ; au-delà, on découpe tout (un seul flux)
 
+// Fin d'opérande : ce qui précède un infixe binaire. Un crochet ne l'est que s'il
+// FERME (]-2;3[ et [-2;3] : le crochet ouvre, le « - » est un signe).
+fn ends_operand(t: &Token) -> bool {
+    matches!(t.kind.as_str(), "atom" | "rparen" | "bar" | "postfix") || (t.kind == "bracket" && !t.opens)
+}
+
 fn is_alpha(c: char) -> bool {
     ('a'..='z').contains(&c) || ('A'..='Z').contains(&c)
 }
@@ -248,7 +254,7 @@ impl<'a> Lex<'a> {
                 let binary = self
                     .toks
                     .last()
-                    .map(|p| matches!(p.kind.as_str(), "atom" | "rparen" | "bracket" | "bar" | "postfix"))
+                    .map(ends_operand)
                     .unwrap_or(false);
                 if binary {
                     self.push(Token { kind: "infix".into(), sym: Some(k), spaced: sp, ..Default::default() });
@@ -365,7 +371,8 @@ impl<'a> Lex<'a> {
                 continue;
             }
             if c == '[' || c == ']' {
-                self.push(Token { kind: "bracket".into(), sym: Some(c.to_string()), ..Default::default() });
+                let opens = !self.toks.last().map(ends_operand).unwrap_or(false);
+                self.push(Token { kind: "bracket".into(), sym: Some(c.to_string()), opens, ..Default::default() });
                 brk += 1;
                 i += 1;
                 continue;
@@ -592,7 +599,7 @@ impl<'a> Lex<'a> {
                 let binary = self
                     .toks
                     .last()
-                    .map(|p| matches!(p.kind.as_str(), "atom" | "rparen" | "bracket" | "bar" | "postfix"))
+                    .map(ends_operand)
                     .unwrap_or(false);
                 let after = ch(src, (i + length) as i64);
                 let detached_r = is_space(after) || matches!(after, ')' | ']' | ',' | ';');

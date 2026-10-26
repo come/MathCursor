@@ -68,6 +68,9 @@ internal static class Lexer
         bool Spaced(int a, int b) => IsSpace(Ch(a)) || IsSpace(Ch(b));
         void Push(Token t) { t.SpaceBefore = sawSpace; toks.Add(t); sawSpace = false; }
         Token? Last() => toks.Count > 0 ? toks[toks.Count - 1] : null;
+        // Fin d'opérande : ce qui précède un infixe binaire. Un crochet ne l'est que s'il
+        // FERME (]-2;3[ et [-2;3] : le crochet ouvre, le « - » est un signe).
+        static bool EndsOperand(Token? t) => t != null && (t.Kind is "atom" or "rparen" or "bar" or "postfix" || (t.Kind == "bracket" && !t.Opens));
 
         bool StartsWithAt(string needle, int at)
         {
@@ -107,7 +110,7 @@ internal static class Lexer
             else if (v is { Shape: "infix" })
             {
                 var prev = Last();
-                bool binaryPos = prev != null && (prev.Kind is "atom" or "rparen" or "bracket" or "bar" or "postfix");
+                bool binaryPos = EndsOperand(prev);
                 if (binaryPos) Push(new Token { Kind = "infix", Sym = k, Spaced = sp });
                 else if (v.Unary != null) Push(new Token { Kind = "prefix", Sym = v.Unary, Spaced = sp });
                 // Relation-MOT (cut:true — approx, in, equiv, cong…) sans opérande
@@ -246,7 +249,7 @@ internal static class Lexer
 
             if (c == '(') { Push(new Token { Kind = "lparen" }); i++; continue; }
             if (c == ')') { Push(new Token { Kind = "rparen" }); i++; continue; }
-            if (c == '[' || c == ']') { Push(new Token { Kind = "bracket", Sym = c.ToString() }); brk++; i++; continue; }
+            if (c == '[' || c == ']') { Push(new Token { Kind = "bracket", Sym = c.ToString(), Opens = !EndsOperand(Last()) }); brk++; i++; continue; }
             if (c == '{') { Push(new Token { Kind = "lbrace" }); brc++; i++; continue; }
             if (c == '}') { Push(new Token { Kind = "rbrace" }); brc--; i++; continue; }
             if (c == '|') { bool norm = Ch(i + 1) == '|'; Push(new Token { Kind = "bar", Sym = norm ? "norm" : "abs" }); i += norm ? 2 : 1; continue; }
@@ -389,7 +392,7 @@ internal static class Lexer
                 if (v.Shape == "prefix") { Push(new Token { Kind = "prefix", Sym = op, Spaced = Spaced(i - 1, i + len) }); i += len; matched = true; break; }
 
                 var prev = Last();
-                bool binaryPos = prev != null && (prev.Kind is "atom" or "rparen" or "bracket" or "bar" or "postfix");
+                bool binaryPos = EndsOperand(prev);
                 char after = Ch(i + len);
                 bool detachedR = IsSpace(after) || ")],;".IndexOf(after) >= 0;
                 if (len == 1 && v.PostSign != null && binaryPos && !sawSpace && detachedR)

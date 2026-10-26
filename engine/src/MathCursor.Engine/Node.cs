@@ -96,6 +96,7 @@ internal sealed class Token
     public bool Num;                 // atome numérique
     public bool Sticky;              // infixe qui ne prend qu'un atome à droite
     public bool Hard;                // _ / ^ EXACT (ScriptMarkers) : base = un seul élément
+    public bool Opens;               // crochet [ ou ] en position d'ouverture (aucune valeur avant) : ]-2;3[
     public bool SignSup;             // sup issu d'un postSign (0⁺) : signe d'exposant, jamais un chapeau orphelin
     public bool Ranked;              // Syms ordonnés par préférence : les suivantes sont des lectures secondaires
     public bool Implicit;            // juxtaposition (rendu collé)
