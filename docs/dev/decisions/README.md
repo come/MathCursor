@@ -19,6 +19,9 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-10-26
+- `[molle]` UX — [Raccourcis clavier du ruban : Alt, M puis T](2026-10-26-UX-ribbon-keytips.md) — KeyTips explicites : onglet MathCursor `M`, bouton « Tableau de signe / variation » `T`. Sert les élèves au clavier (PAP) et les scripts qui tapent au clavier. Écartés : clic du ruban par UI Automation (fragile), raccourci global (hook en plus).
+
 ### 2026-10-21
 - `[molle]` Fix — [Titres d'encadrés : accents conservés (« THÉORÈME »)](2026-10-21-Fix-callout-title-accents.md) — les petites capitales de Word perdaient les accents (« THEOREME ») quand l'option *Majuscules accentuées en français* est décochée. Le titre est désormais inséré en vraies majuscules (`ToUpper` fr-FR) et l'allure petites capitales est reproduite (initiale au corps, reste à 80 %). Écartés : forcer l'option Word de l'utilisateur, majuscules d'une seule taille, casse normale.
 

@@ -9,7 +9,7 @@
 <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="OnRibbonLoad">
   <ribbon>
     <tabs>
-      <tab id="MathCursorTab" getLabel="OnGetTabLabel">
+      <tab id="MathCursorTab" getLabel="OnGetTabLabel" keytip="M">
         <group id="MathCursorConversionGroup" getLabel="OnGetConversionGroupLabel">
           <button id="ConvertButton"
                   getLabel="OnGetConvertButtonLabel"
@@ -80,6 +80,7 @@
           <!-- Tableau de signe / de variation : vrai tableau Word préformaté,
                flèches caractère. Cf. ADR 2026-10-16-Feat-sign-variation-table-insert. -->
           <button id="InsertStudyTableButton"
+                  keytip="T"
                   getLabel="OnGetStudyTableMenuLabel"
                   getScreentip="OnGetStudyTableMenuScreentip"
                   size="large"
