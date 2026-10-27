@@ -140,7 +140,17 @@ namespace MathCursor.Host
 
                 var zone = new ZoneSpan(paragraph.ParagraphAbsStart, spanStart, spanEnd, text, paragraph.OMathRegions);
                 _log($"convert: span=[{spanStart},{spanEnd}] → \"{Preview(zone.Text)}\"");
-                AnalyzeAndShow(zone);
+                if (AnalyzeAndShow(zone, silent: true)) return;
+                // Aucune lecture : mots de texte en tête retirés un à un
+                // (« distance entre x » → « entre x » → « x »). ADR
+                // 2026-10-27-Fix-ctrl-space-prose-fallback.
+                foreach (int s in SpanComputer.LeadingWordTrimStarts(text, spanStart, spanEnd))
+                {
+                    var shorter = new ZoneSpan(paragraph.ParagraphAbsStart, s, spanEnd, text, paragraph.OMathRegions);
+                    _log($"convert: repli span=[{s},{spanEnd}] → \"{Preview(shorter.Text)}\"");
+                    if (AnalyzeAndShow(shorter, silent: true)) return;
+                }
+                TryStatusBar(Strings.ConvertNothingRecognized);
             }
             catch (Exception ex) { _log("convert_trigger_error: " + ex.Message); }
         }

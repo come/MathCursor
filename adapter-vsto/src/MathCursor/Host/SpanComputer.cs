@@ -213,6 +213,36 @@ namespace MathCursor.Host
             }
         }
 
+        /// <summary>
+        /// Débuts de repli du Ctrl+Espace quand la span [start, end) n'a aucune
+        /// lecture : on retire un à un les MOTS DE TEXTE en tête (2 lettres ou
+        /// plus, suivis d'un blanc) — « distance entre x » → débuts de « entre x »
+        /// puis de « x ». S'arrête au premier jeton qui n'est pas un tel mot
+        /// (nombre, opérateur, parenthèse : on ne coupe pas une formule). Ordre
+        /// croissant, zone la plus longue d'abord. Cf. ADR
+        /// 2026-10-27-Fix-ctrl-space-prose-fallback.
+        /// </summary>
+        public static IReadOnlyList<int> LeadingWordTrimStarts(string text, int start, int end)
+        {
+            var starts = new List<int>();
+            if (text == null) return starts;
+            end = Math.Min(end, text.Length);
+            int p = start;
+            while (p < end)
+            {
+                int w = p, letters = 0;
+                while (w < end && IsWordChar(text[w])) { if (char.IsLetter(text[w])) letters++; w++; }
+                // mot de texte : 2 lettres ou plus (élision comprise : « d'abscisse »,
+                // « l'image »), puis un blanc. Pas « x », pas « f' » (dérivée), pas « f(x) ».
+                if (letters < 2 || w >= end || !char.IsWhiteSpace(text[w])) break;
+                while (w < end && char.IsWhiteSpace(text[w])) w++;
+                if (w >= end) break;
+                starts.Add(w);
+                p = w;
+            }
+            return starts;
+        }
+
         private static bool IsWordChar(char c) => char.IsLetter(c) || c == '\'' || c == '-';
     }
 }

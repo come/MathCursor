@@ -20,6 +20,7 @@ Format et conventions : voir
 ## Index chronologique (plus récent en haut)
 
 ### 2026-10-27
+- `[molle]` Fix — [Ctrl+Espace : repli quand des mots de texte précèdent la formule](2026-10-27-Fix-ctrl-space-prose-fallback.md) — « … la distance entre x » + Ctrl+Espace ne proposait rien : la zone lexicale embarquait « distance entre x », sans lecture, et le chemin manuel n'avait aucun repli. Désormais, si la zone n'a aucune lecture, on retire les mots de texte en tête un à un (« entre x » puis « x ») et on propose la première lecture trouvée. Une zone qui a déjà une lecture n'est jamais raccourcie ; on ne coupe jamais après un nombre ou dans des parenthèses. Écartés : allonger la liste des mots-outils (partagée avec le JS), repli sur tous les suffixes.
 - `[forte]` Fix — [Plus de trou gauche en tête de formule](2026-10-27-Fix-no-leading-left-hole.md) — « , V x in R/{3} » (virgule de la phrase avalée par le NER) était converti en « □, ∀x… » : le moteur comblait l'opérande gauche manquant des séparateurs et opérateurs (`, x`, `* x`, `/ x`, `: c'`). Aucune lecture désormais, comme la relation en tête ; l'auto-détection retombe sur la bonne zone. Remplace la sous-décision « /2 → □/2 gardé » (1a44dc5). Mesure avant/après sur 25 880 entrées dont 7 293 saisies réelles du log : 145 trous gauches retirés, 3 états de frappe transitoires, rien d'autre ; parité C#/Rust inchangée (5 écarts préexistants, à traiter à part).
 
 ### 2026-10-26

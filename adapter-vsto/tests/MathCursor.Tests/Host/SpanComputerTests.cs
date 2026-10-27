@@ -18,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using MathCursor.Host;
 using Xunit;
 
@@ -65,6 +66,44 @@ namespace MathCursor.Tests.Host
         {
             var got = Span(text, caret);
             Assert.True(got == expected, $"{name} : attendu \"{expected}\", obtenu \"{got}\"");
+        }
+
+        // Repli du Ctrl+Espace sans lecture : zones successives, mots de texte en
+        // tête retirés un à un (ADR 2026-10-27-Fix-ctrl-space-prose-fallback).
+        private static string Trims(string zone) =>
+            string.Join("|", SpanComputer.LeadingWordTrimStarts(zone, 0, zone.Length)
+                .Select(s => zone.Substring(s)));
+
+        [Theory]
+        [InlineData("distance entre x", "entre x|x")]
+        [InlineData("remplace a", "a")]
+        [InlineData("abscisse a", "a")]
+        [InlineData("point d'abscisse a", "d'abscisse a|a")]   // élision
+        [InlineData("de l'image f(2)", "l'image f(2)|f(2)")]
+        [InlineData("f' (2) = 1", "")]                       // « f' » : 1 lettre, dérivée, pas un mot
+        [InlineData("x' y", "")]
+        [InlineData("entre  x", "x")]                       // blancs multiples
+        [InlineData("vaut f(2) + 1", "f(2) + 1")]
+        [InlineData("x", "")]                               // déjà une lettre
+        [InlineData("x + 1", "")]                           // une lettre n'est pas un mot de texte
+        [InlineData("2 x + 1", "")]                         // tête = nombre : formule, jamais coupée
+        [InlineData("(x - 2) entre", "")]                   // tête = parenthèse
+        [InlineData("sin x", "x")]                          // seulement tenté si « sin x » n'a aucune lecture
+        [InlineData("f(x) = 2", "")]                        // « f(x) » n'est pas suivi d'un blanc
+        [InlineData("distance ", "")]                       // rien après le mot
+        public void LeadingWordTrimStarts(string zone, string expected)
+        {
+            Assert.Equal(expected, Trims(zone));
+        }
+
+        [Fact]
+        public void LeadingWordTrimStarts_RespecteLesBornesDeLaSpan()
+        {
+            const string text = "est la distance entre x et 2";
+            int start = text.IndexOf("distance", StringComparison.Ordinal);
+            int end = text.IndexOf(" et", StringComparison.Ordinal);
+            var starts = SpanComputer.LeadingWordTrimStarts(text, start, end);
+            Assert.Equal(new[] { "entre x", "x" }, starts.Select(s => text.Substring(s, end - s)));
         }
     }
 }
