@@ -323,6 +323,11 @@ impl<'a> Engine<'a> {
 
         // 3) segmentation aux signes espacés + repli si trop long
         let (segs, ops) = segment::split(toks);
+        // Opérateur espacé en TÊTE (« * x ») : premier segment vide = trou gauche, aucune
+        // lecture. ADR 2026-10-27-Fix-no-leading-left-hole.
+        if !ops.is_empty() && segs[0].is_empty() {
+            return (Vec::new(), None);
+        }
         if ops.len() >= segment::MAX_CHAIN {
             return self.fold_smart(toks);
         }

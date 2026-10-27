@@ -59,13 +59,34 @@ public sealed class LeadingRelationTests
         Assert.Equal("a=b", r.Ranked[0].Latex);
     }
 
-    [Fact]
-    public void Leading_non_relation_infix_keeps_left_hole()
+    // Trou GAUCHE en tête, infixes non-relation et séparateurs compris : aucune
+    // lecture non plus. On tape de gauche à droite, un opérande gauche manquant
+    // n'est jamais une frappe en cours mais une zone mal découpée (virgule de la
+    // phrase avalée → « □, ∀x… » converti). Remplace l'ancien « /2 → □/2 gardé »
+    // (commit 1a44dc5). ADR 2026-10-27-Fix-no-leading-left-hole.
+    [Theory]
+    [InlineData("/2")]
+    [InlineData("/ x")]
+    [InlineData("* x")]
+    [InlineData(", x")]
+    [InlineData(", V x in R/{3}")]
+    [InlineData(": c'")]
+    [InlineData("; x = 2")]
+    public void Leading_non_relation_infix_yields_no_reading(string input)
     {
-        // Les infixes NON-relation gardent l'aperçu de saisie : « /2 » tapé
-        // en édition → □/2 (comportement JS conservé).
-        var r = ForestEngine.Analyze("/2");
-        Assert.NotEqual("erreur", r.Decision);
-        Assert.Contains("\\square", r.Ranked[0].Latex);
+        var r = ForestEngine.Analyze(input);
+        Assert.Equal("erreur", r.Decision);
+        Assert.Empty(r.Ranked);
+    }
+
+    [Theory]
+    [InlineData("-x", "-x")]
+    [InlineData("+ 3", "+3")]
+    [InlineData("^a", "\\hat{a}")]
+    public void Leading_unary_sign_or_hat_unchanged(string input, string latex)
+    {
+        // « + », « - » et « ^ » ont une forme unaire (signe, chapeau) : pas un trou.
+        var r = ForestEngine.Analyze(input);
+        Assert.Equal(latex, r.Ranked[0].Latex);
     }
 }

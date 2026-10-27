@@ -326,6 +326,10 @@ public sealed class ForestEngine
 
         // 3) sinon : segmentation aux signes espacés + repli si trop long.
         var (segs, ops) = Segment.Split(toks);
+        // Opérateur espacé en TÊTE (« * x », « / x ») : premier segment vide = trou gauche,
+        // aucune lecture (même règle que la relation en tête ci-dessus et que le parseur).
+        // ADR 2026-10-27-Fix-no-leading-left-hole.
+        if (ops.Count >= 1 && segs[0].Count == 0) return new Asm(new List<Node>(), null);
         if (ops.Count >= Segment.MaxChain) return FoldSmart(toks);
         string? note3 = null;
         var lists3 = new List<List<Node>>();

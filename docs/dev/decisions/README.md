@@ -19,6 +19,9 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-10-27
+- `[forte]` Fix — [Plus de trou gauche en tête de formule](2026-10-27-Fix-no-leading-left-hole.md) — « , V x in R/{3} » (virgule de la phrase avalée par le NER) était converti en « □, ∀x… » : le moteur comblait l'opérande gauche manquant des séparateurs et opérateurs (`, x`, `* x`, `/ x`, `: c'`). Aucune lecture désormais, comme la relation en tête ; l'auto-détection retombe sur la bonne zone. Remplace la sous-décision « /2 → □/2 gardé » (1a44dc5). Mesure avant/après sur 25 880 entrées dont 7 293 saisies réelles du log : 145 trous gauches retirés, 3 états de frappe transitoires, rien d'autre ; parité C#/Rust inchangée (5 écarts préexistants, à traiter à part).
+
 ### 2026-10-26
 - `[forte]` Fix — [Intervalles à borne gauche négative](2026-10-26-Fix-interval-negative-lower-bound.md) — `]-2;3[`, `[-2;3]`, `]-inf;-2[` renvoyaient « erreur » : le lexer traitait tout crochet comme fin d'opérande, donc le `-` suivant devenait une soustraction sans gauche. Un crochet retient s'il ouvre (`Opens`) ; seul un crochet fermant rend le `-` binaire. C# + Rust, 6 fixtures (605), 0 écart sur le corpus large.
 - `[molle]` UX — [Raccourcis clavier du ruban : Alt, X puis T](2026-10-26-UX-ribbon-keytips.md) — KeyTips explicites : onglet MathCursor `X` (`M` déjà pris par « Mettre à niveau » dans Word FR), bouton « Tableau de signe / variation » `T`. Sert les élèves au clavier (PAP) et les scripts qui tapent au clavier. Écartés : clic du ruban par UI Automation (fragile), raccourci global (hook en plus).

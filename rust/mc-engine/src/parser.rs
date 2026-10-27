@@ -234,7 +234,10 @@ impl<'a> Forest<'a> {
             return v.clone();
         }
         if i == j {
-            let h = vec![hole()];
+            // Trou GAUCHE en tête (« , x », « * x ») : aucune lecture (zone mal découpée,
+            // jamais une frappe en cours). Membre entièrement vide et trous à droite :
+            // aperçus conservés. ADR 2026-10-27-Fix-no-leading-left-hole.
+            let h = if i == 0 && !self.toks.is_empty() { vec![] } else { vec![hole()] };
             self.memo.insert((i, j), h.clone());
             return h;
         }

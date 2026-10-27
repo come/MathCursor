@@ -195,7 +195,17 @@ internal sealed class Forest
     {
         string key = i + ":" + j;
         if (_memo.TryGetValue(key, out var cached)) return cached;
-        if (i == j) { var h = new List<Node> { Hole() }; _memo[key] = h; return h; }
+        if (i == j)
+        {
+            // Trou GAUCHE en tête (« , x », « * x », « : c' ») : aucune lecture. On tape
+            // de gauche à droite, un opérande gauche manquant n'est jamais une frappe en
+            // cours mais une zone mal découpée (virgule avalée…) ; la lecture « □, x »
+            // pouvait partir en conversion. Généralise la garde des relations en tête
+            // (ForestEngine.Assemble). Un membre entièrement vide (« a= » → a=□) et les
+            // trous à droite restent des aperçus. ADR 2026-10-27-Fix-no-leading-left-hole.
+            var h = i == 0 && _toks.Count > 0 ? new List<Node>() : new List<Node> { Hole() };
+            _memo[key] = h; return h;
+        }
 
         var outl = new List<Node>();
         var head = _toks[i];

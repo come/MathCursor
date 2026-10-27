@@ -239,11 +239,16 @@ def main():
     ap.add_argument('--modes', default='fr,us,fr+physchem,us+physchem')
     ap.add_argument('--expect-diff', action='store_true', help='écarts avec la référence attendus : lister sans échouer')
     ap.add_argument('--no-ref', action='store_true', help='parité C#/Rust seulement')
+    ap.add_argument('--extra', action='append', default=[], metavar='FICHIER',
+                    help='saisies supplémentaires, une par ligne (ex. relevées dans mathcursor.log) ; répétable')
     a = ap.parse_args()
     modes = a.modes.split(',')
     os.makedirs(WORK, exist_ok=True)
 
     inputs = corpus()
+    for f in a.extra:
+        extra = open(f, encoding='utf-8').read().splitlines()
+        inputs = sorted(set(inputs) | {l for l in extra if l.strip() and chr(9) not in l})
     inp = os.path.join(WORK, 'corpus.txt')
     open(inp, 'w', encoding='utf-8', newline='\n').write('\n'.join(inputs) + '\n')
     print(f'corpus : {len(inputs)} entrées, modes : {", ".join(modes)}')
