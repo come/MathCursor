@@ -76,3 +76,33 @@ zone de plusieurs mots (« abc + d ») est écarté au profit de la zone plus co
   de f au point d'abscisse a » (Ctrl+Espace aussitôt après la frappe) → x, a, f, a convertis ;
   « Déterminer la limite de la suite » → lim_{de→la} écarté (journal « lecture écartée
   (prose) »), retombe sur « suite » comme avant.
+
+## Complément 2026-10-28 : = < > ne bornent plus la zone
+
+> « soucis de conversion au debut » puis, sur le correctif proposé : « oui corrige » —
+> utilisateur, 2026-10-28
+
+Cas réel (probabilités totales) : « On sait que P(A) = 0,4 » + Ctrl+Espace ne convertissait que
+« 0,4 » (le « = » bornait la zone) ; idem « Donc P(B) = 0,42 ». Pour le Ctrl+Espace de Word,
+la borne structurelle ne compte plus `= < >` (`ComputeStructuralSpanStart(…, relationsBound:
+false)`) : seuls la ponctuation `. ; ?`, le saut de ligne, une formule convertie et une
+ouvrante bornent ; le moteur choisit. `ComputeSpanStart` (extension, auto-détection, JS) garde
+les relations : parité inchangée.
+
+Mesure (phrases réelles des scénarios, lignes de chaîne comprises) : **187 formules, 148 zones
+= formule tapée contre 13** avant ; écarts restants : 3 artefacts du script (lignes de chaîne
+collées), mots-clés du moteur pris dans la phrase en tête de zone (« avec u = 2x + 1 » →
+a·vec u = …, « On part de ax² + … = 0 » → ∂…, « il existe α ∈ … » → ∃α…), « Comme a = b, a − b
+= 0 » → zone « a = b, a − b = 0 ». 125 fins de phrase : 97 dernier mot seul, 19 rien, 9 plusieurs
+mots dont « pour x = π » → ∀x = π et « avec q = 2 ».
+Écarté : refuser une zone qui franchit une relation en commençant par un mot de 3 lettres ou
+plus — coupe aussi « Delta = … », « sum k … », « lim n … », « int 0 1 … » (148 → 132 justes) ;
+sans donnée sur les mots du langage naturel, « avec / pour / existe » ne se distinguent pas de
+« lim / sum ». Piste : marquer dans `cultures.json` les alias « mots de phrase ».
+Gate verte (Adapter : tests `ComputeStructuralSpanStart_Relations…`).
+
+Revue avant commit (2026-10-28) : au plus **12 débuts de zone**, les plus proches du curseur
+(`MaxZoneStarts` : un long paragraphe ne lance plus des dizaines d'analyses) ; séparateurs de
+mots en tableau statique, espace fine insécable (U+202F, posée par Word devant « ; : ! ? »)
+comprise ; test « ≤ ≥ ≠ Unicode jamais bornants ». Non traité (hors sujet, antérieur) : la
+fin de zone (`ComputeSpanEnd`) borne toujours sur `=` quand le curseur est avant un « = ».

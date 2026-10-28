@@ -107,6 +107,12 @@ namespace MathCursor.Host
 
         // Stopwords + délimiteurs de span → Host/SpanComputer.cs (logique pure).
 
+        // Ctrl+Espace (ADR 2026-10-27-UX-ctrl-space-engine-driven-start) : débuts de zone
+        // essayés au plus, et blancs qui séparent deux mots (dont les espaces insécables
+        // que Word met devant « ; : ! ? » en français).
+        private const int MaxZoneStarts = 12;
+        private static readonly char[] WordSeparators = { ' ', '\t', ' ', ' ' };
+
         // ── Entrée du flux ───────────────────────────────────────────────
 
         /// <summary>
@@ -136,21 +142,23 @@ namespace MathCursor.Host
                 // le moteur choisit — plus longue zone lisible d'abord, sans liste de
                 // mots-outils (« courbe de f » → « de f » → « f »). ADR
                 // 2026-10-27-UX-ctrl-space-engine-driven-start.
-                int spanStart = SpanComputer.ComputeStructuralSpanStart(text, caret, paragraph.OMathRegions);
+                // = < > ne bornent pas : « P(A) = 0,4 » entier (28/10)
+                int spanStart = SpanComputer.ComputeStructuralSpanStart(text, caret, paragraph.OMathRegions, relationsBound: false);
                 int spanEnd = SpanComputer.ComputeSpanEnd(text, caret, paragraph.OMathRegions);
                 while (spanEnd > spanStart && char.IsWhiteSpace(text[spanEnd - 1])) spanEnd--;
                 if (spanEnd <= spanStart) return;
 
-                var starts = SpanComputer.WordBoundaryStarts(text, spanStart, spanEnd);
-                for (int k = 0; k < starts.Count; k++)
+                // la zone doit contenir le caret ; au plus MaxZoneStarts débuts, les plus
+                // proches du caret (un long paragraphe ne lance pas des dizaines d'analyses)
+                var starts = SpanComputer.WordBoundaryStarts(text, spanStart, spanEnd)
+                    .Where((s, k) => k == 0 || s < caret).ToList();
+                foreach (int s in starts.Skip(Math.Max(0, starts.Count - MaxZoneStarts)))
                 {
-                    int s = starts[k];
-                    if (k > 0 && s >= caret) break;      // la zone doit contenir le caret
                     var zone = new ZoneSpan(paragraph.ParagraphAbsStart, s, spanEnd, text, paragraph.OMathRegions);
                     _log($"convert: span=[{s},{spanEnd}] → \"{Preview(zone.Text)}\"");
                     // Zone de plusieurs mots : écartée si la lecture a l'air de prose
                     // (« lim_{de→la} suite ») ; le dernier mot seul, jamais.
-                    bool multiWord = zone.Text.Trim().IndexOfAny(new[] { ' ', '\t', ' ' }) >= 0;
+                    bool multiWord = zone.Text.Trim().IndexOfAny(WordSeparators) >= 0;
                     if (AnalyzeAndShow(zone, silent: true, rejectProse: multiWord)) return;
                 }
                 TryStatusBar(Strings.ConvertNothingRecognized);

@@ -84,10 +84,12 @@ namespace MathCursor.Host
         /// non fermée englobant le caret, après le dernier délimiteur hors
         /// brackets/parens, fin du dernier OMath avant le caret). Le Ctrl+Espace de
         /// Word part de là et laisse le moteur choisir (ADR
-        /// 2026-10-27-UX-ctrl-space-engine-driven-start).
+        /// 2026-10-27-UX-ctrl-space-engine-driven-start). <paramref name="relationsBound"/>
+        /// = false : <c>= &lt; &gt;</c> ne bornent plus (« P(A) = 0,4 » entier, pas
+        /// « 0,4 ») — le moteur juge ; <c>ComputeSpanStart</c> les garde (parité JS).
         /// </summary>
         public static int ComputeStructuralSpanStart(string text, int caret,
-            IReadOnlyList<(int start, int end)> omathRegions)
+            IReadOnlyList<(int start, int end)> omathRegions, bool relationsBound = true)
         {
             int start = 0;
 
@@ -113,6 +115,7 @@ namespace MathCursor.Host
                     if (c == '(') { if (parenDepth > 0) parenDepth--; continue; }
 
                     if (!SpanDelimiters.Contains(c)) continue;
+                    if (!relationsBound && (c == '=' || c == '<' || c == '>')) continue;
                     if ((c == ';' || c == ',') && (bracketDepth > 0 || parenDepth > 0)) continue;
                     start = Math.Max(start, k + 1);
                     break;

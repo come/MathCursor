@@ -110,6 +110,28 @@ namespace MathCursor.Tests.Host
             Assert.Equal(expected, text.Substring(s));
         }
 
+        // Ctrl+Espace de Word : = < > ne bornent plus (« P(A) = 0,4 » entier, 28/10) ;
+        // la ponctuation, si.
+        [Theory]
+        [InlineData("On sait que P(A) = 0,4", "On sait que P(A) = 0,4")]
+        [InlineData("Donc P(B) = 0,42", "Donc P(B) = 0,42")]
+        [InlineData("y = 2x + 1", "y = 2x + 1")]
+        [InlineData("Soit f. On a f(x) = 2", " On a f(x) = 2")]
+        [InlineData("a < b ; c >= d", " c >= d")]
+        [InlineData("Soit y ≤ 2x + 1", "Soit y ≤ 2x + 1")]           // ≤ ≥ ≠ Unicode : jamais bornants
+        public void ComputeStructuralSpanStart_RelationsNonBornantes(string text, string expected)
+        {
+            int s = SpanComputer.ComputeStructuralSpanStart(text, text.Length, NoOMath, relationsBound: false);
+            Assert.Equal(expected, text.Substring(s));
+        }
+
+        [Fact]
+        public void ComputeStructuralSpanStart_RelationsBornantesParDefaut()
+        {
+            const string text = "y = 2x + 1";
+            Assert.Equal(" 2x + 1", text.Substring(SpanComputer.ComputeStructuralSpanStart(text, text.Length, NoOMath)));
+        }
+
         [Fact]
         public void ComputeSpanStart_GardeLesMotsOutils()
         {
