@@ -85,7 +85,9 @@ Relecture indépendante (aucun point bloquant ; C#/Rust équivalents, pureté re
   un groupe** (`P_bar(A)(B)`) : `x_1y` garde sa popup à égalité d'avant.
 - Fixtures : 626 → 629 (`u_phi(n)` popup, `P_A(B)^2` → P_{A}(B)^{2} en tête, `x_1y` popup).
 - Mesure refaite : 721 têtes corrigées, 74 lectures fausses retirées, 67 réordonnées ;
-  les 22 « autres » sont des saisies générées absurdes (doubles indices, `(x y)`) ; aucune
-  saisie réelle ne régresse ; parité C#/Rust : les 5 écarts préexistants.
+  les 22 « autres » sont des saisies générées (doubles indices `f_(n+1)_n(…)`, `(x y)`),
+  absentes des saisies réelles ; **leur lecture en tête change** (ex. (f_{n+1})_{n(−x)} →
+  f_{(n+1)_n(−x)}), entre deux lectures également discutables, non départagées par une
+  mesure ; aucune saisie réelle ne régresse ; parité C#/Rust : les 5 écarts préexistants.
 - Limite connue : double indice (`f_1_n(x)`, `f_(n+1)_n(x)`) — lectures toujours à
   départager en popup.
