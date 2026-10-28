@@ -29,6 +29,9 @@ const MODE_MIX: f64 = 3.0;
 const ORIENT: f64 = 0.5;
 const MAP_DEF: f64 = 2.5;
 const HOLE_COST: f64 = 3.0;
+// Indice qui avale l'application d'une lettre (P_{A(B)}) : au moins l'écart de popup
+// (POPUP_GAP = 2) → la lecture « nom indicé appliqué » passe en auto. Miroir C# SWALLOW.
+const SWALLOW: i32 = 2;
 
 fn loose_node(n: &Node) -> f64 {
     let d = match decl(n) {
@@ -78,18 +81,66 @@ fn inversions(n: &Node) -> i32 {
         return 0;
     }
     let mut inv = 0;
-    let has_decl = decl(n).is_some();
+    let d = decl(n);
+    let has_decl = d.is_some();
     let ln = loose_node(n);
-    for c in n.effective_parts() {
+    for (k, c) in n.effective_parts().iter().enumerate() {
         // Devant une unité, un script atomique (x² m, 10⁻³ ms) n'est pas une
-        // inversion : il se lit d'un bloc (cf. render::child).
-        let unit_script = decl(n).map(|d| d.unit_op).unwrap_or(false) && atomic_script(c);
-        if c.ntype != NType::Atom && has_decl && ln < loose_node(c) && !unit_script {
+        // inversion : il se lit d'un bloc (cf. render::child). Idem un nom INDICÉ
+        // appliqué à une parenthèse : P_A(B), f_n(x), u_n(1+r) (ADR
+        // 2026-10-28-Fix-indexed-name-application). Miroir C# Score.Inversions.
+        let unit_script = d.map(|d| d.unit_op).unwrap_or(false) && atomic_script(c);
+        let named_apply = d.map(|d| d.apply).unwrap_or(false) && k == 0 && indexed_name(c);
+        if c.ntype != NType::Atom && has_decl && ln < loose_node(c) && !unit_script && !named_apply {
             inv += 1;
+        }
+        // Indice qui avale une application (P_{A(B)}) : écarté au-delà de la popup.
+        if d.map(|d| d.sub).unwrap_or(false) && k == 1 && swallows_apply(c) {
+            inv += SWALLOW;
         }
         inv += inversions(c);
     }
     inv
+}
+
+/// Nom INDICÉ (P_A, f_n, P_Ā) : base atome, indice atome ou décoration tight d'atome —
+/// se lit d'un bloc devant une parenthèse. Miroir C# Score.IndexedName (ADR
+/// 2026-10-28-Fix-indexed-name-application).
+fn indexed_name(n: &Node) -> bool {
+    if !decl(n).map(|d| d.sub).unwrap_or(false) {
+        return false;
+    }
+    let p = n.effective_parts();
+    // base = lettre ou symbole (P, f, \Gamma), jamais un nombre (« 1_n » n'est pas un nom)
+    p.len() == 2
+        && p[0].ntype == NType::Atom
+        && p[0].sym.as_deref().and_then(|b| b.chars().next()).map_or(false, |c| !c.is_ascii_digit())
+        && (p[1].ntype == NType::Atom
+            || (decl(&p[1]).map(|d| d.tight).unwrap_or(false)
+                && p[1].effective_parts().iter().all(|x| atom_like(x))))
+}
+
+/// L'indice commence par l'application d'une LETTRE, éventuellement sous un script :
+/// A(B), n(x)², n(x)_k — la parenthèse du nom indicé a été avalée. Une fonction nommée
+/// (φ(n), sin(x)) reste ambiguë (u_{φ(n)} sous-suite) : pas de pénalité. Miroir C# SwallowsApply.
+fn swallows_apply(c: &Node) -> bool {
+    match decl(c) {
+        Some(d) if d.apply => c.effective_parts().first().map_or(false, |h| {
+            h.ntype == NType::Atom
+                && h.sym.as_deref().map_or(false, |s| s.len() == 1 && s.as_bytes()[0].is_ascii_alphabetic())
+        }),
+        Some(d) if d.sup || d.sub => c.effective_parts().first().map(|p| swallows_apply(p)).unwrap_or(false),
+        _ => false,
+    }
+}
+
+/// Atome, ou atome entre parenthèses tapées (« bar(A) » → paren(A)). Miroir C# AtomLike.
+fn atom_like(x: &Node) -> bool {
+    if x.ntype == NType::Atom {
+        return true;
+    }
+    let q = x.effective_parts();
+    x.ntype == NType::Paren && q.len() == 1 && q[0].ntype == NType::Atom
 }
 
 fn all_atom_parts(n: &Node) -> bool {
@@ -146,7 +197,18 @@ fn widen(n: &Node) -> f64 {
         c += widen(x);
     }
     if n.implicit {
-        for p in n.effective_parts() {
+        let parts = n.effective_parts();
+        let apply = decl(n).map(|d| d.apply).unwrap_or(false);
+        for (k, p) in parts.iter().enumerate() {
+            // nom indicé collé à sa parenthèse (P_A(B), P_bar(A)(B)) : un seul bloc,
+            // pas un élargissement — application, ou produit implicite devant un groupe
+            if k == 0
+                && indexed_name(p)
+                && parts.len() == 2
+                && (apply || parts[1].ntype == NType::Paren || parts[1].grouped)
+            {
+                continue;
+            }
             if p.ntype != NType::Atom && !p.grouped {
                 c += WIDEN;
                 break;

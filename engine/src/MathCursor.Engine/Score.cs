@@ -36,6 +36,9 @@ internal static class Score
     // physchem « f(x2) » et « cos(x2) ».
     private const double SECONDARY = 1.5;
     private const double SUM = 3; // pour cohérence avec looseness (non utilisé directement ici)
+    // indice qui avale l'application d'une lettre (P_{A(B)}) : au moins l'écart de popup
+    // (ForestEngine.PopupGap = 2) → la lecture « nom indicé appliqué » passe en auto.
+    private const int SWALLOW = 2;
 
     private static VocabEntry? Decl(Node n) => n.Sym != null && Vocabulary.Vocab.TryGetValue(n.Sym, out var v) ? v : null;
     private static List<Node> Parts(Node n) => n.EffectiveParts();
@@ -75,11 +78,19 @@ internal static class Score
         if (n.Type == "atom") return 0;
         int inv = 0;
         var d = Decl(n);
-        foreach (var c in Parts(n))
+        var parts = Parts(n);
+        for (int k = 0; k < parts.Count; k++)
         {
+            var c = parts[k];
             // Devant une unité, un script atomique (x² m, 10⁻³ ms) n'est pas une
-            // inversion : il se lit d'un bloc (cf. LatexRenderer.Child).
-            if (c.Type != "atom" && d != null && Loose(n) < Loose(c) && !(d.UnitOp && AtomicScript(c))) inv++;
+            // inversion : il se lit d'un bloc (cf. LatexRenderer.Child). Idem un nom
+            // INDICÉ appliqué à une parenthèse : P_A(B), f_n(x), u_n(1+r) (ADR
+            // 2026-10-28-Fix-indexed-name-application).
+            bool block = (d != null && d.UnitOp && AtomicScript(c))
+                || (d != null && d.Apply && k == 0 && IndexedName(c));
+            if (c.Type != "atom" && d != null && Loose(n) < Loose(c) && !block) inv++;
+            // Indice qui avale une application (P_{A(B)}) : écarté au-delà de la popup.
+            if (d != null && d.Sub && k == 1 && SwallowsApply(c)) inv += SWALLOW;
             inv += Inversions(c);
         }
         return inv;
@@ -95,6 +106,33 @@ internal static class Score
     // visuellement d'un seul bloc.
     internal static bool AtomicScript(Node n) =>
         Decl(n) is { Sup: true } or { Sub: true } or { Tight: true } && AllAtomParts(n);
+
+    // Nom INDICÉ (P_A, f_n, P_Ā) : indice dont la base est un atome et l'indice un
+    // atome ou une décoration tight d'atome — se lit d'un bloc devant une parenthèse
+    // (ADR 2026-10-28-Fix-indexed-name-application).
+    private static bool IndexedName(Node n)
+    {
+        if (Decl(n) is not { Sub: true }) return false;
+        var p = Parts(n);
+        // base = lettre ou symbole (P, f, \Gamma), jamais un nombre (« 1_n » n'est pas un nom)
+        return p.Count == 2 && p[0].Type == "atom" && p[0].Sym is { Length: > 0 } b && b[0] is not (>= '0' and <= '9')
+            && (p[1].Type == "atom" || (Decl(p[1]) is { Tight: true } && Parts(p[1]).TrueForAll(AtomLike)));
+    }
+
+    // l'indice commence par l'application d'une LETTRE, éventuellement sous un script :
+    // A(B), n(x)², n(x)_k — c'est la parenthèse du nom indicé qui a été avalée. Une
+    // fonction nommée (φ(n), sin(x)) reste ambiguë (u_{φ(n)} sous-suite) : pas de pénalité.
+    private static bool SwallowsApply(Node c)
+    {
+        if (Decl(c) is { Apply: true })
+            return Parts(c) is { Count: > 0 } a && a[0].Type == "atom"
+                && a[0].Sym is { Length: 1 } h && h[0] is >= 'A' and <= 'Z' or >= 'a' and <= 'z';
+        return Decl(c) is { Sup: true } or { Sub: true } && Parts(c) is { Count: > 0 } p && SwallowsApply(p[0]);
+    }
+
+    // atome, ou atome entre parenthèses tapées (« bar(A) » → paren(A))
+    private static bool AtomLike(Node x) =>
+        x.Type == "atom" || (x.Type == "paren" && Parts(x) is { Count: 1 } q && q[0].Type == "atom");
 
     // Les décorations TIGHT (bar/vec/hat : opérande d'un seul morceau) sont
     // visuellement atomiques — \bar{z} est une lettre décorée, pas une
@@ -139,7 +177,19 @@ internal static class Score
         if (n.Type == "atom") return 0;
         double c = 0;
         foreach (var x in Parts(n)) c += Widen(x);
-        if (n.Implicit) { foreach (var p in Parts(n)) if (p.Type != "atom" && !p.Grouped) { c += WIDEN; break; } }
+        if (n.Implicit)
+        {
+            var parts = Parts(n);
+            for (int k = 0; k < parts.Count; k++)
+            {
+                var p = parts[k];
+                // nom indicé collé à sa parenthèse (P_A(B), P_bar(A)(B)) : un seul bloc,
+                // pas un élargissement — application, ou produit implicite devant un groupe
+                if (k == 0 && IndexedName(p) && parts.Count == 2
+                    && (Decl(n) is { Apply: true } || parts[1].Type == "paren" || parts[1].Grouped)) continue;
+                if (p.Type != "atom" && !p.Grouped) { c += WIDEN; break; }
+            }
+        }
         return c;
     }
 
