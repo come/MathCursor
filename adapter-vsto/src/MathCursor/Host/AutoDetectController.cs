@@ -123,9 +123,13 @@ namespace MathCursor.Host
             return paused;
         }
 
-        /// <summary>Ctrl+Espace : lève la pause du document actif.</summary>
+        /// <summary>Ctrl+Espace : lève la pause du document actif, et annule le
+        /// passage auto en attente (frappe < debounce avant Ctrl+Espace) : sans
+        /// ça, le tick trouvait « courbe de f » sans zone et fermait la popup
+        /// manuelle en silence (ADR 2026-10-27-Fix-ctrl-space-prose-fallback).</summary>
         public void ResumeActiveDocument()
         {
+            _timer.Stop();
             if (_pause.Resume(ActiveDocumentKey()))
                 _log("auto: reprise (Ctrl+Espace) pour le document actif");
         }

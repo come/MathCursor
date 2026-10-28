@@ -68,42 +68,69 @@ namespace MathCursor.Tests.Host
             Assert.True(got == expected, $"{name} : attendu \"{expected}\", obtenu \"{got}\"");
         }
 
-        // Repli du Ctrl+Espace sans lecture : zones successives, mots de texte en
-        // tête retirés un à un (ADR 2026-10-27-Fix-ctrl-space-prose-fallback).
-        private static string Trims(string zone) =>
-            string.Join("|", SpanComputer.LeadingWordTrimStarts(zone, 0, zone.Length)
+        // Ctrl+Espace : débuts candidats, du plus long au plus court ; le contrôleur
+        // propose le premier que le moteur lit (ADR 2026-10-27-UX-ctrl-space-engine-driven-start).
+        private static string Starts(string zone) =>
+            string.Join("|", SpanComputer.WordBoundaryStarts(zone, 0, zone.Length)
                 .Select(s => zone.Substring(s)));
 
         [Theory]
-        [InlineData("distance entre x", "entre x|x")]
-        [InlineData("remplace a", "a")]
-        [InlineData("abscisse a", "a")]
-        [InlineData("point d'abscisse a", "d'abscisse a|a")]   // élision
-        [InlineData("de l'image f(2)", "l'image f(2)|f(2)")]
-        [InlineData("f' (2) = 1", "")]                       // « f' » : 1 lettre, dérivée, pas un mot
-        [InlineData("x' y", "")]
-        [InlineData("entre  x", "x")]                       // blancs multiples
-        [InlineData("vaut f(2) + 1", "f(2) + 1")]
-        [InlineData("x", "")]                               // déjà une lettre
-        [InlineData("x + 1", "")]                           // une lettre n'est pas un mot de texte
-        [InlineData("2 x + 1", "")]                         // tête = nombre : formule, jamais coupée
-        [InlineData("(x - 2) entre", "")]                   // tête = parenthèse
-        [InlineData("sin x", "x")]                          // seulement tenté si « sin x » n'a aucune lecture
-        [InlineData("f(x) = 2", "")]                        // « f(x) » n'est pas suivi d'un blanc
-        [InlineData("distance ", "")]                       // rien après le mot
-        public void LeadingWordTrimStarts(string zone, string expected)
+        [InlineData("courbe de f", "courbe de f|de f|f")]
+        [InlineData("point d'abscisse a", "point d'abscisse a|d'abscisse a|a")]
+        [InlineData("  entre  x", "entre  x|x")]                 // blancs en tête et multiples
+        [InlineData("x", "x")]
+        [InlineData("(n+1) + 1", "(n+1) + 1|+ 1|1")]
+        [InlineData("abs(x - 2) <= 3", "abs(x - 2) <= 3|<= 3|3")]  // jamais dans la parenthèse
+        [InlineData("[a ; b] x", "[a ; b] x|x")]
+        [InlineData("   ", "")]
+        public void WordBoundaryStarts(string zone, string expected)
         {
-            Assert.Equal(expected, Trims(zone));
+            Assert.Equal(expected, Starts(zone));
         }
 
         [Fact]
-        public void LeadingWordTrimStarts_RespecteLesBornesDeLaSpan()
+        public void WordBoundaryStarts_RespecteLesBornesDeLaSpan()
         {
             const string text = "est la distance entre x et 2";
             int start = text.IndexOf("distance", StringComparison.Ordinal);
             int end = text.IndexOf(" et", StringComparison.Ordinal);
-            var starts = SpanComputer.LeadingWordTrimStarts(text, start, end);
-            Assert.Equal(new[] { "entre x", "x" }, starts.Select(s => text.Substring(s, end - s)));
+            var starts = SpanComputer.WordBoundaryStarts(text, start, end);
+            Assert.Equal(new[] { "distance entre x", "entre x", "x" }, starts.Select(s => text.Substring(s, end - s)));
+        }
+
+        // Début structurel : délimiteurs, OMath, ouvrante ; JAMAIS de mot-outil.
+        [Theory]
+        [InlineData("Déterminer la tangente à la courbe de f", "Déterminer la tangente à la courbe de f")]
+        [InlineData("Soit f. On remplace a", " On remplace a")]
+        [InlineData("y = 2x + 1", " 2x + 1")]
+        [InlineData("la matrice (a b ; c d", "(a b ; c d")]
+        public void ComputeStructuralSpanStart_SansMotsOutils(string text, string expected)
+        {
+            int s = SpanComputer.ComputeStructuralSpanStart(text, text.Length, NoOMath);
+            Assert.Equal(expected, text.Substring(s));
+        }
+
+        [Fact]
+        public void ComputeSpanStart_GardeLesMotsOutils()
+        {
+            const string text = "courbe de f";
+            Assert.Equal("f", text.Substring(SpanComputer.ComputeSpanStart(text, text.Length, NoOMath)).Trim());
+        }
+
+        // Garde prose du Ctrl+Espace : un mot de la saisie ressort tel quel dans la lecture.
+        [Theory]
+        [InlineData(@"\lim_{de\to la} suite", "limite de la suite", true)]
+        [InlineData(@"\begin{pmatrix}100 & fois\end{pmatrix}", "(100 fois)", true)]
+        [InlineData(@"\partial de", "part de", false)]              // mots-clés : non détectés (limite connue)
+        [InlineData(@"\forall q\neq 1", "pour q ≠ 1", false)]
+        [InlineData(@"ax^{2}+bx+c", "ax2 + bx + c", false)]           // mots de 2 lettres : produits
+        [InlineData(@"4a^{2}x^{2}+4abx+b^{2}", "4a2x2 + 4abx + b2", false)] // « abx » touche un chiffre
+        [InlineData(@"\sin(x)+\cos(x)", "sin(x) + cos(x)", false)]  // commandes
+        [InlineData(@"n=2\,\mathrm{mol}", "n = 2 mol", false)]      // unité
+        [InlineData(@"abc+d", "abc + d", true)]                       // produit de 3 lettres : écarté (limite connue)
+        public void LatexLooksLikeProse(string latex, string source, bool expected)
+        {
+            Assert.Equal(expected, SpanComputer.LatexLooksLikeProse(latex, source));
         }
     }
 }

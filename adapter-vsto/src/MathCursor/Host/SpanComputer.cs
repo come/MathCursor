@@ -60,6 +60,35 @@ namespace MathCursor.Host
         public static int ComputeSpanStart(string text, int caret,
             IReadOnlyList<(int start, int end)> omathRegions)
         {
+            int start = ComputeStructuralSpanStart(text, caret, omathRegions);
+
+            // Après le dernier stopword (mot entier).
+            int i = caret - 1;
+            while (i >= start)
+            {
+                while (i >= start && char.IsWhiteSpace(text[i])) i--;
+                if (i < start) break;
+                int wordEnd = i + 1;
+                while (i >= start && IsWordChar(text[i])) i--;
+                int wordStart = i + 1;
+                if (wordEnd <= wordStart) { i--; continue; }
+                string w = text.Substring(wordStart, wordEnd - wordStart);
+                if (Stopwords.Contains(w)) { start = wordEnd; break; }
+            }
+
+            return start;
+        }
+
+        /// <summary>
+        /// Début STRUCTUREL de la span, sans mots-outils : max(début ¶, ouvrante
+        /// non fermée englobant le caret, après le dernier délimiteur hors
+        /// brackets/parens, fin du dernier OMath avant le caret). Le Ctrl+Espace de
+        /// Word part de là et laisse le moteur choisir (ADR
+        /// 2026-10-27-UX-ctrl-space-engine-driven-start).
+        /// </summary>
+        public static int ComputeStructuralSpanStart(string text, int caret,
+            IReadOnlyList<(int start, int end)> omathRegions)
+        {
             int start = 0;
 
             // Groupe ( … ou [ … NON FERMÉ englobant le caret (matrice / tuple /
@@ -94,20 +123,6 @@ namespace MathCursor.Host
             if (omathRegions != null)
                 foreach (var (s, e) in omathRegions)
                     if (e <= caret) start = Math.Max(start, e);
-
-            // Après le dernier stopword (mot entier).
-            int i = caret - 1;
-            while (i >= start)
-            {
-                while (i >= start && char.IsWhiteSpace(text[i])) i--;
-                if (i < start) break;
-                int wordEnd = i + 1;
-                while (i >= start && IsWordChar(text[i])) i--;
-                int wordStart = i + 1;
-                if (wordEnd <= wordStart) { i--; continue; }
-                string w = text.Substring(wordStart, wordEnd - wordStart);
-                if (Stopwords.Contains(w)) { start = wordEnd; break; }
-            }
 
             return start;
         }
@@ -214,33 +229,97 @@ namespace MathCursor.Host
         }
 
         /// <summary>
-        /// Débuts de repli du Ctrl+Espace quand la span [start, end) n'a aucune
-        /// lecture : on retire un à un les MOTS DE TEXTE en tête (2 lettres ou
-        /// plus, suivis d'un blanc) — « distance entre x » → débuts de « entre x »
-        /// puis de « x ». S'arrête au premier jeton qui n'est pas un tel mot
-        /// (nombre, opérateur, parenthèse : on ne coupe pas une formule). Ordre
-        /// croissant, zone la plus longue d'abord. Cf. ADR
-        /// 2026-10-27-Fix-ctrl-space-prose-fallback.
+        /// Débuts candidats du Ctrl+Espace dans [start, end) : le premier non-blanc
+        /// après <paramref name="start"/>, puis chaque début de jeton qui suit un
+        /// blanc HORS parenthèses/crochets (on ne commence jamais au milieu d'un
+        /// groupe « (x - 2) »). Ordre croissant = zone la plus longue d'abord ; le
+        /// contrôleur propose la première que le moteur lit. Aucune liste de mots,
+        /// aucune langue. Cf. ADR 2026-10-27-UX-ctrl-space-engine-driven-start.
         /// </summary>
-        public static IReadOnlyList<int> LeadingWordTrimStarts(string text, int start, int end)
+        public static IReadOnlyList<int> WordBoundaryStarts(string text, int start, int end)
         {
             var starts = new List<int>();
             if (text == null) return starts;
             end = Math.Min(end, text.Length);
             int p = start;
-            while (p < end)
+            while (p < end && char.IsWhiteSpace(text[p])) p++;
+            if (p >= end) return starts;
+            starts.Add(p);
+            int depth = 0;
+            for (int k = p; k < end; k++)
             {
-                int w = p, letters = 0;
-                while (w < end && IsWordChar(text[w])) { if (char.IsLetter(text[w])) letters++; w++; }
-                // mot de texte : 2 lettres ou plus (élision comprise : « d'abscisse »,
-                // « l'image »), puis un blanc. Pas « x », pas « f' » (dérivée), pas « f(x) ».
-                if (letters < 2 || w >= end || !char.IsWhiteSpace(text[w])) break;
-                while (w < end && char.IsWhiteSpace(text[w])) w++;
-                if (w >= end) break;
-                starts.Add(w);
-                p = w;
+                char c = text[k];
+                if (c == '(' || c == '[') depth++;
+                else if ((c == ')' || c == ']') && depth > 0) depth--;
+                else if (depth == 0 && char.IsWhiteSpace(c) && k + 1 < end && !char.IsWhiteSpace(text[k + 1]))
+                    starts.Add(k + 1);
             }
             return starts;
+        }
+
+        /// <summary>
+        /// Signature de prose : un MOT de la saisie (lettres seules, 3 ou plus) ressort
+        /// tel quel dans la lecture, en suite de lettres hors commandes (<c>\lim</c>,
+        /// <c>\forall</c>…) et hors texte droit/unités (<c>\mathrm{mol}</c>). « limite de
+        /// la suite » → « \lim_{de\to la} suite » : oui ; « 4abx » (chiffre), « ax2 + bx »
+        /// (mots de 2 lettres), « pour q ≠ 1 » → « \forall q\neq 1 » : non. Sert au
+        /// Ctrl+Espace pour écarter une zone de plusieurs mots qui avale de la phrase
+        /// (ADR 2026-10-27-UX-ctrl-space-engine-driven-start).
+        /// </summary>
+        public static bool LatexLooksLikeProse(string latex, string source)
+        {
+            if (string.IsNullOrEmpty(latex) || string.IsNullOrEmpty(source)) return false;
+            // mots de la saisie : suites de 3 lettres ou plus qui ne touchent pas un
+            // chiffre (« fois » dans « (100 fois) » oui ; « abx » dans « 4abx » non)
+            var words = new List<string>();
+            for (int p = 0; p < source.Length;)
+            {
+                if (!char.IsLetter(source[p])) { p++; continue; }
+                int q = p;
+                while (q < source.Length && char.IsLetter(source[q])) q++;
+                bool digitBefore = p > 0 && char.IsDigit(source[p - 1]);
+                bool digitAfter = q < source.Length && char.IsDigit(source[q]);
+                if (q - p >= 3 && !digitBefore && !digitAfter) words.Add(source.Substring(p, q - p));
+                p = q;
+            }
+            if (words.Count == 0) return false;
+            var sb = new System.Text.StringBuilder(latex.Length);
+            int i = 0;
+            while (i < latex.Length)
+            {
+                char c = latex[i];
+                if (c != '\\') { sb.Append(c); i++; continue; }
+                int j = i + 1;
+                while (j < latex.Length && char.IsLetter(latex[j])) j++;
+                string cmd = latex.Substring(i + 1, j - i - 1);
+                i = j > i + 1 ? j : i + 2;
+                sb.Append(' ');
+                // texte droit / unités : contenu ignoré
+                if ((cmd == "mathrm" || cmd == "text" || cmd == "operatorname" || cmd == "mathit")
+                    && i < latex.Length && latex[i] == '{')
+                {
+                    int depth = 0;
+                    for (; i < latex.Length; i++)
+                    {
+                        if (latex[i] == '{') depth++;
+                        else if (latex[i] == '}' && --depth == 0) { i++; break; }
+                    }
+                }
+            }
+            // suites de lettres de la lecture, comparées aux mots de la saisie
+            string flat = sb.ToString();
+            int k = 0;
+            while (k < flat.Length)
+            {
+                if (!char.IsLetter(flat[k])) { k++; continue; }
+                int e = k;
+                while (e < flat.Length && char.IsLetter(flat[e])) e++;
+                string run = flat.Substring(k, e - k);
+                foreach (var w in words)
+                    if (run.IndexOf(w, StringComparison.Ordinal) >= 0) return true;
+                k = e;
+            }
+            return false;
         }
 
         private static bool IsWordChar(char c) => char.IsLetter(c) || c == '\'' || c == '-';

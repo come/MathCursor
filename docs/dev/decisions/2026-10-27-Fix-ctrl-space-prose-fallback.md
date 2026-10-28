@@ -3,7 +3,8 @@
 **Date :** 2026-10-27
 **Kind :** Fix
 **Température :** molle
-**Statut :** acté
+**Statut :** acté (repli « mots en tête » remplacé le jour même ; le correctif de la course du debounce reste)
+**Superseded by (partiel) :** [2026-10-27-UX-ctrl-space-engine-driven-start](2026-10-27-UX-ctrl-space-engine-driven-start.md)
 **Lié à :** [2026-04-23-Feat-trigger-ctrl-space](2026-04-23-Feat-trigger-ctrl-space.md) ; [2026-04-29-Feat-iterative-zone-expansion-ctrl-space](2026-04-29-Feat-iterative-zone-expansion-ctrl-space.md) (extension vers la gauche, inchangée) ; parité SpanComputer C#↔JS (ADR 2026-06-23, non touchée)
 
 ## Citation acté
@@ -41,6 +42,13 @@ donne une lecture est proposée ; « rien de reconnu » seulement si toutes éch
   Ctrl+Espace marchait.
 - On ne retire que des **mots** en tête : « 2 x + 1 » (tête = nombre) ou « (x - 2) … » ne
   sont jamais coupés ; on ne découpe pas une formule en morceaux.
+
+**Complément (même jour)** : « Déterminer … la courbe de f » + Ctrl+Espace aussitôt
+après la frappe → popup « f » ouverte puis refermée 0,3 s plus tard, sans trace au journal.
+Le debounce de l'auto-détection (réarmé par la frappe du « f ») tombait **après** le
+Ctrl+Espace ; le NER ne trouvant aucune zone, `HideAuto` fermait la popup manuelle. Course
+préexistante, indépendante du repli. Correctif : Ctrl+Espace (`ResumeActiveDocument`)
+**arrête le minuteur** de l'auto-détection en attente — la demande explicite prime.
 
 ## Tradeoff & alternatives écartées
 

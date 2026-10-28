@@ -132,23 +132,26 @@ namespace MathCursor.Host
                 while (caret > 0 && (text[caret - 1] == '\r' || text[caret - 1] == '\n')) caret--;
                 if (caret < 0) return;
 
-                int spanStart = SpanComputer.ComputeSpanStart(text, caret, paragraph.OMathRegions);
+                // Début : borne STRUCTURELLE (ponctuation, formule, ouvrante), puis
+                // le moteur choisit — plus longue zone lisible d'abord, sans liste de
+                // mots-outils (« courbe de f » → « de f » → « f »). ADR
+                // 2026-10-27-UX-ctrl-space-engine-driven-start.
+                int spanStart = SpanComputer.ComputeStructuralSpanStart(text, caret, paragraph.OMathRegions);
                 int spanEnd = SpanComputer.ComputeSpanEnd(text, caret, paragraph.OMathRegions);
-                while (spanStart < spanEnd && char.IsWhiteSpace(text[spanStart])) spanStart++;
                 while (spanEnd > spanStart && char.IsWhiteSpace(text[spanEnd - 1])) spanEnd--;
                 if (spanEnd <= spanStart) return;
 
-                var zone = new ZoneSpan(paragraph.ParagraphAbsStart, spanStart, spanEnd, text, paragraph.OMathRegions);
-                _log($"convert: span=[{spanStart},{spanEnd}] → \"{Preview(zone.Text)}\"");
-                if (AnalyzeAndShow(zone, silent: true)) return;
-                // Aucune lecture : mots de texte en tête retirés un à un
-                // (« distance entre x » → « entre x » → « x »). ADR
-                // 2026-10-27-Fix-ctrl-space-prose-fallback.
-                foreach (int s in SpanComputer.LeadingWordTrimStarts(text, spanStart, spanEnd))
+                var starts = SpanComputer.WordBoundaryStarts(text, spanStart, spanEnd);
+                for (int k = 0; k < starts.Count; k++)
                 {
-                    var shorter = new ZoneSpan(paragraph.ParagraphAbsStart, s, spanEnd, text, paragraph.OMathRegions);
-                    _log($"convert: repli span=[{s},{spanEnd}] → \"{Preview(shorter.Text)}\"");
-                    if (AnalyzeAndShow(shorter, silent: true)) return;
+                    int s = starts[k];
+                    if (k > 0 && s >= caret) break;      // la zone doit contenir le caret
+                    var zone = new ZoneSpan(paragraph.ParagraphAbsStart, s, spanEnd, text, paragraph.OMathRegions);
+                    _log($"convert: span=[{s},{spanEnd}] → \"{Preview(zone.Text)}\"");
+                    // Zone de plusieurs mots : écartée si la lecture a l'air de prose
+                    // (« lim_{de→la} suite ») ; le dernier mot seul, jamais.
+                    bool multiWord = zone.Text.Trim().IndexOfAny(new[] { ' ', '\t', ' ' }) >= 0;
+                    if (AnalyzeAndShow(zone, silent: true, rejectProse: multiWord)) return;
                 }
                 TryStatusBar(Strings.ConvertNothingRecognized);
             }
@@ -229,7 +232,7 @@ namespace MathCursor.Host
 
         /// <summary>Moteur forest + affichage popup. Garde la zone si OK.
         /// <paramref name="silent"/> : échec sans StatusBar, popup masquée.</summary>
-        private bool AnalyzeAndShow(ZoneSpan zone, bool silent = false)
+        private bool AnalyzeAndShow(ZoneSpan zone, bool silent = false, bool rejectProse = false)
         {
             // Pré-détection BLOC (chaîne « = / ⟺ … » ou système « { … »,
             // hors moteur — ADR multiline-chain-eqarr) : le moteur ne voit
@@ -298,6 +301,12 @@ namespace MathCursor.Host
             }
 
             var candidates = result.Ranked.Select(c => c.Latex).ToList();
+            if (rejectProse && SpanComputer.LatexLooksLikeProse(candidates[0], engineInput))
+            {
+                _log($"convert: lecture écartée (prose) \"{candidates[0]}\"");
+                if (silent && IsPopupVisible) HidePopup();
+                return false;
+            }
             _log($"convert: {result.Decision}, {candidates.Count} candidat(s), top=\"{(displayPrefix + candidates[0])}\"");
 
             // Aperçu de MERGE (demande user 2026-06-10) : si la ligne du
