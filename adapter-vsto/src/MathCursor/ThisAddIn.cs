@@ -53,6 +53,9 @@ namespace MathCursor
         /// <summary>Accès pour le ribbon. Null si le démarrage a échoué.</summary>
         internal ConversionController Conversion => _conversion;
 
+        /// <summary>Dessins de courbes : bouton, sélection, double-clic (ADR 2026-10-31-UX-curve-floating-panel).</summary>
+        internal Host.Curves.CurveController Curves { get; private set; }
+
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
             try
@@ -74,6 +77,7 @@ namespace MathCursor
                 DisableAutoFormatFractions();
 
                 _conversion = new ConversionController(this.Application, BuildFeedbackReport);
+                Curves = new Host.Curves.CurveController(this.Application, () => _conversion?.Resolver, LogStartup);
 
                 _editMode = new EditModeController(
                     this.Application,
@@ -139,6 +143,9 @@ namespace MathCursor
                 // Event natif : pilote le mode édition + ferme la popup
                 // suggestion quand le caret bouge. Pas de polling.
                 this.Application.WindowSelectionChange += OnWindowSelectionChange;
+                // Double-clic sur un dessin de courbes : son panneau prend le focus, au
+                // lieu de l'onglet image de Word.
+                this.Application.WindowBeforeDoubleClick += OnWindowBeforeDoubleClick;
 
                 // Compteur d'usage : flush sur perte de focus de Word (ADR
                 // 2026-06-18-Feat-usage-counter-telemetry). Anti-spam interne :
@@ -190,6 +197,8 @@ namespace MathCursor
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
         {
             try { this.Application.WindowSelectionChange -= OnWindowSelectionChange; } catch { }
+            try { this.Application.WindowBeforeDoubleClick -= OnWindowBeforeDoubleClick; } catch { }
+            try { Curves?.ClosePanel(); } catch { }
             try { this.Application.WindowDeactivate -= OnWindowDeactivate; } catch { }
             try { this.Application.DocumentChange -= OnDocumentChange; } catch { }
             // Dernier flush du compteur d'usage, best-effort, borné dans le temps
@@ -275,6 +284,23 @@ namespace MathCursor
 
         // ── Événement natif : caret bouge ────────────────────────────────
 
+        // Focus donné APRÈS l'événement (BeginInvoke) : Word finit d'abord son
+        // traitement du double-clic.
+        private void OnWindowBeforeDoubleClick(Word.Selection sel, ref bool cancel)
+        {
+            try
+            {
+                if (Curves == null || Host.Curves.CurveInserter.SelectedCurve(this.Application) == null) return;
+                cancel = true;
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(new Action(() =>
+                {
+                    try { Curves.TryEditSelected(); }
+                    catch (Exception ex) { LogStartup("curve_dblclick_error: " + ex.Message); }
+                }));
+            }
+            catch (Exception ex) { LogStartup("curve_dblclick_error: " + ex.Message); }
+        }
+
         private void OnWindowSelectionChange(Word.Selection sel)
         {
             try
@@ -301,6 +327,9 @@ namespace MathCursor
                 _caretInMath = omForEdit != null;
 
                 try { _tableCells?.OnSelectionChanged(sel); } catch { }
+                // Dessin de courbes sélectionné → panneau de réglages à côté ; ailleurs → fermé
+                // (ADR 2026-10-31-UX-curve-floating-panel).
+                try { Curves?.OnSelectionChanged(); } catch { }
 
                 // QOL 2026-06-12 : un CLIC dans du texte (sélection réduite,
                 // hors OMath) relance la détection — la popup se (re)propose

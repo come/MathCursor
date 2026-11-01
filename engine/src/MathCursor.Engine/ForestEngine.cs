@@ -16,6 +16,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using MathCursor.Engine.Plot;
 
 namespace MathCursor.Engine;
 
@@ -60,6 +61,68 @@ public sealed class ForestEngine
     /// <summary>Analyse <paramref name="src"/> avec la culture donnée (défaut : <see cref="EngineCulture.Fr"/>).</summary>
     public static AnalyzeResult Analyze(string src, EngineCulture? culture = null)
         => new ForestEngine(culture ?? EngineCulture.Fr).Run(src);
+
+    /// <summary>Compile <paramref name="src"/> (saisie MathCursor : « rac x /x », « f(x) = x^2 »)
+    /// en fonction numérique d'une variable, sur la lecture préférée (celle que la popup met
+    /// en tête). Échec (avec raison) si l'expression n'est pas une fonction traçable.
+    /// ADR 2026-10-31-Feat-insert-curves.</summary>
+    public static bool TryCompileFunction(string src, out CompiledFunction? fn, out string? error, EngineCulture? culture = null)
+    {
+        var best = new ForestEngine(culture ?? EngineCulture.Fr).BestNode(src);
+        if (best == null) { fn = null; error = "aucune lecture"; return false; }
+        return Plot.FunctionCompiler.TryCompile(best, LatexRenderer.Render(best, culture ?? EngineCulture.Fr), out fn, out error);
+    }
+
+    /// <summary>Lectures TRAÇABLES de <paramref name="src"/>, dans l'ordre de la popup (coût
+    /// croissant, une par rendu, au plus 5, dans la fenêtre de la popup autour de la meilleure
+    /// lecture). Vide si aucune ne se trace : <see cref="TryCompileFunction"/> en donne la
+    /// raison. ADR 2026-10-31-UX-curve-floating-panel.</summary>
+    public static IReadOnlyList<CompiledFunction> FunctionReadings(string src, EngineCulture? culture = null)
+    {
+        var c = culture ?? EngineCulture.Fr;
+        var all = new ForestEngine(c).AllParses(src);
+        var result = new List<CompiledFunction>();
+        if (all.Count == 0) return result;
+        double best = all.Min(p => p.Cost);
+        var seen = new HashSet<string>();
+        foreach (var (n, cost) in all.OrderBy(p => p.Cost))
+        {
+            if (cost >= best + PopupGap || result.Count == MaxShow) break;
+            var latex = LatexRenderer.Render(n, c);
+            if (!seen.Add(latex)) continue;
+            if (Plot.FunctionCompiler.TryCompile(n, latex, out var fn, out _)) result.Add(fn!);
+        }
+        return result;
+    }
+
+    // Meilleur arbre (coût + pénalité de découpe minimal) : le candidat de tête de Run.
+    internal Node? BestNode(string src)
+    {
+        Node? best = null; double bc = double.PositiveInfinity;
+        foreach (var (p, c) in AllParses(src))
+            if (c < bc) { bc = c; best = p; }
+        return best;
+    }
+
+    // Tous les arbres avec leur coût de classement (coût + pénalité de découpe), comme Run.
+    private List<(Node Node, double Cost)> AllParses(string src)
+    {
+        _deepNote = false;
+        var streams = new List<(List<Node> Parses, int Splits)>();
+        int maxS = 0;
+        foreach (var (toks, splits) in Lexer.LexAll(src, _culture))
+        {
+            var r = Assemble(toks);
+            if (r.Parses.Count == 0) continue;
+            streams.Add((r.Parses, splits));
+            if (splits > maxS) maxS = splits;
+        }
+        var all = new List<(Node, double)>();
+        foreach (var (parses, splits) in streams)
+            foreach (var p in parses)
+                all.Add((p, Score.Cost(p) + SplitPenalty * (maxS - splits)));
+        return all;
+    }
 
     private static int Catalan(int n) => n >= 0 && n < Cat.Length ? Cat[n] : 429;
 

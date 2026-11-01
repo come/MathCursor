@@ -19,6 +19,10 @@ Format et conventions : voir
 
 ## Index chronologique (plus récent en haut)
 
+### 2026-10-31
+- `[molle]` UX — [Courbes : dessin inséré tout de suite, panneau qui suit l'image](2026-10-31-UX-curve-floating-panel.md) — Courbe insère le repère aussitôt ; clic sur le dessin → panneau flottant à côté (fonctions, repère, style), mise à jour en direct de l'image ; remplace la fenêtre modale et le double-clic.
+- `[molle]` Feat — [Insérer des courbes (bouton Courbe, image modifiable)](2026-10-31-Feat-insert-curves.md) — bouton Courbe → fenêtre (une ligne par fonction tapée comme dans MathCursor, + Ajouter, repère réglable, aperçu) → PNG inséré ; spec en `CustomXMLParts`, double-clic pour modifier ; style propre ou main levée (Paramètres). Évaluation et échantillonnage purs dans le moteur (`TryCompileFunction`), sans parité Rust en v1.
+
 ### 2026-10-28
 - `[forte]` Fix — [Nom indicé appliqué à une parenthèse : P_A(B), f_n(x), u_n(1+r)](2026-10-28-Fix-indexed-name-application.md) — `P_A(B)` donnait P_{A(B)} (jamais marché : l'application est plus serrée que l'indice). Un nom indicé (base atome, indice atome ou Ā) se lit d'un bloc devant sa parenthèse ; un indice qui avale une application, même sous un script, coûte 2 → la bonne lecture passe en auto. C# + Rust, 11 fixtures (629). Mesure sur 25 191 entrées : 721 têtes corrigées, 74 lectures fausses retirées, 67 réordonnées vers l'attendu (H_2O → H₂O, 1/f_1(x)), aucune saisie réelle en régression ; parité inchangée. Pénalité limitée à l'application d'une lettre (`u_phi(n)` reste une popup). Exposant non touché (x^2(x+1) reste en popup).
 

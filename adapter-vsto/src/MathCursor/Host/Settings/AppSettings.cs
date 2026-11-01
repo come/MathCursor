@@ -65,6 +65,10 @@ namespace MathCursor.Host.Settings
         /// Cf. ADR 2026-06-22-Feat-math-font-selector.</summary>
         public string MathFont { get; set; }
 
+        /// <summary>Style des nouveaux dessins de courbes : propre (défaut) ou main levée.
+        /// Un dessin modifié garde le sien. Cf. ADR 2026-10-31-Feat-insert-curves.</summary>
+        public Curves.CurveStyle CurveStyle { get; set; } = Curves.CurveStyle.Clean;
+
         /// <summary>Preset moteur de la culture de base.</summary>
         public EngineCulture BaseCulture =>
             Culture == CultureUs ? EngineCulture.Us : EngineCulture.Fr;

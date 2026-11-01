@@ -47,6 +47,7 @@ namespace MathCursor.UI
         private readonly ComboBox _matrixBox;
         private readonly CheckBox _autoDetectBox;
         private readonly CheckBox _tabValidateBox;
+        private readonly ComboBox _curveStyleBox;
         private readonly CheckBox _usageStatsBox;
         private readonly TextBlock _intervalSepHint;
         private readonly TextBlock _matrixHint;
@@ -59,7 +60,7 @@ namespace MathCursor.UI
 
             Title = Strings.SettingsWindowTitle;
             Width = 560;
-            Height = 680;
+            Height = 750;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             ResizeMode = ResizeMode.NoResize;
             ShowInTaskbar = false;
@@ -122,6 +123,20 @@ namespace MathCursor.UI
             _tabValidateBox.Unchecked += (_, __) => { if (!_loading) _draft.TabValidate = false; };
             root.Children.Add(_tabValidateBox);
 
+            // ── Courbes (ADR 2026-10-31-Feat-insert-curves) ─────────────────
+            root.Children.Add(SectionHeader(Strings.SettingsSectionCurves));
+            _curveStyleBox = new ComboBox { FontSize = 12, Width = 300, HorizontalAlignment = HorizontalAlignment.Left };
+            _curveStyleBox.Items.Add(Strings.SettingsCurveClean);
+            _curveStyleBox.Items.Add(Strings.SettingsCurveHand);
+            _curveStyleBox.SelectionChanged += (_, __) =>
+            {
+                if (!_loading) _draft.CurveStyle = _curveStyleBox.SelectedIndex == 1 ? Host.Curves.CurveStyle.Hand : Host.Curves.CurveStyle.Clean;
+            };
+            var curveRow = new StackPanel { Margin = new Thickness(0, 0, 0, 14) };
+            curveRow.Children.Add(new TextBlock { Text = Strings.SettingsCurveStyleLabel, FontSize = 12, Margin = new Thickness(0, 0, 0, 2) });
+            curveRow.Children.Add(_curveStyleBox);
+            root.Children.Add(curveRow);
+
             // ── Confidentialité (ADR 2026-06-18-Feat-usage-counter-telemetry) ─
             root.Children.Add(SectionHeader(Strings.SettingsSectionPrivacy));
             _usageStatsBox = new CheckBox
@@ -178,6 +193,7 @@ namespace MathCursor.UI
             _matrixBox.SelectedIndex = effective.MatrixEnv == "bmatrix" ? 1 : 0;
             _autoDetectBox.IsChecked = _draft.AutoDetect;
             _tabValidateBox.IsChecked = _draft.TabValidate;
+            _curveStyleBox.SelectedIndex = _draft.CurveStyle == Host.Curves.CurveStyle.Hand ? 1 : 0;
             _usageStatsBox.IsChecked = _draft.SendUsageStats;
             _loading = false;
             RefreshHintsAndPreview();

@@ -191,6 +191,15 @@
     <Compile Include="Host\StudyTableActions.cs" />
     <Compile Include="Host\StudyTableTemplate.cs" />
     <Compile Include="Host\CalloutInserter.cs" />
+    <Compile Include="Host\Curves\CurveSpec.cs" />
+    <Compile Include="Host\Curves\CurveRenderer.cs" />
+    <Compile Include="Host\Curves\CurveStore.cs" />
+    <Compile Include="Host\Curves\CurveInserter.cs" />
+    <Compile Include="Host\Curves\CurveController.cs" />
+    <Compile Include="UI\CurvePanel.cs" />
+    <EmbeddedResource Include="Resources\ribbon-curve-32.png">
+      <LogicalName>MathCursor.Icons.ribbon-curve-32.png</LogicalName>
+    </EmbeddedResource>
     <Compile Include="Host\MathFontCatalog.cs" />
     <Compile Include="Host\MathFontApplier.cs" />
     <Compile Include="Host\ConversionController.cs" />

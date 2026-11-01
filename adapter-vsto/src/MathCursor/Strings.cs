@@ -894,6 +894,40 @@ namespace MathCursor
             _    => "Inserts a coloured callout (Theorem, Definition, Example, Property) around the selection or current paragraph: accent bar, tinted background and title.",
         };
 
+        // ---------- Courbes (ADR 2026-10-31-Feat-insert-curves) ----------
+
+        public static string CurveButtonScreentip => Lang switch
+        {
+            "fr" => "Insère un repère sous le paragraphe, avec la fonction de l'équation f(x) = … sous le curseur. Clic sur un dessin : ses réglages s'ouvrent à côté (fonctions, repère, style). En bêta : un souci ? Bouton « Signaler un souci ».",
+            _    => "Inserts axes below the paragraph, with the function of the equation f(x) = … under the caret. Click a graph: its settings open next to it (functions, axes, style). In beta: something wrong? Use the Report an issue button.",
+        };
+
+        // Bouton du ruban : fonctionnalité en bêta (ADR 2026-10-31-UX-curve-floating-panel).
+        public static string CurveButtonLabel => Lang switch { "fr" => "Courbe (bêta)", _ => "Curve (beta)" };
+        public static string CurveWindowTitle => Lang switch { "fr" => "Courbes", _ => "Curves" };
+        public static string CurveFunctionsHeader => Lang switch { "fr" => "Tape comme dans Word : rac x, x^2 - 1, 1/x…", _ => "Type as in Word: sqrt x, x^2 - 1, 1/x…" };
+        public static string CurveTabFunctions => Lang switch { "fr" => "Fonctions", _ => "Functions" };
+        public static string CurveTabSettings => Lang switch { "fr" => "Réglages", _ => "Settings" };
+        public static string CurveAxesAuto => Lang switch { "fr" => "Automatique", _ => "Automatic" };
+        public static string CurveWheelHint => Lang switch { "fr" => "Molette sur le dessin sélectionné : zoom du repère.", _ => "Mouse wheel over the selected graph: zoom the axes." };
+        public static string CurveReadingsHint => Lang switch { "fr" => "↑ ↓ : autre lecture", _ => "↑ ↓: other reading" };
+        public static string CurveAddButton => Lang switch { "fr" => "+ Ajouter une courbe", _ => "+ Add a curve" };
+        public static string CurveRemoveTip => Lang switch { "fr" => "Retirer cette courbe", _ => "Remove this curve" };
+        public static string CurveAxesHeader => Lang switch { "fr" => "Repère (vide = automatique)", _ => "Axes (empty = automatic)" };
+        public static string CurveFrom => Lang switch { "fr" => "de", _ => "from" };
+        public static string CurveTo => Lang switch { "fr" => "à", _ => "to" };
+        public static string CurveGrid => Lang switch { "fr" => "Grille", _ => "Grid" };
+        public static string CurveStyleHeader => Lang switch { "fr" => "Style", _ => "Style" };
+        public static string CurveStyleClean => Lang switch { "fr" => "Propre", _ => "Clean" };
+        public static string CurveStyleHand => Lang switch { "fr" => "Main levée", _ => "Hand-drawn" };
+        public static string CurveCloseTip => Lang switch { "fr" => "Revenir au document (Échap)", _ => "Back to the document (Esc)" };
+        public static string CurveUndoInsert => Lang switch { "fr" => "Insérer des courbes", _ => "Insert curves" };
+        public static string CurveUndoEdit => Lang switch { "fr" => "Modifier les courbes", _ => "Edit curves" };
+        public static string CurveNotPlottable => Lang switch { "fr" => "Pas traçable : ", _ => "Cannot plot: " };
+        public static string CurveInsertFailed => Lang switch { "fr" => "Impossible d'insérer les courbes : ", _ => "Could not insert the curves: " };
+        public static string CurveDescribe => Lang switch { "fr" => "Courbes de ", _ => "Graph of " };
+        public static string CurveAnd => Lang switch { "fr" => " et ", _ => " and " };
+
         // ---------- Sélecteur de police math (ADR 2026-06-22) ----------
 
         public static string MathFontLabel => Lang switch
@@ -943,6 +977,13 @@ namespace MathCursor
             "fr" => "Proposer automatiquement pendant la frappe (le raccourci Ctrl+Espace reste toujours actif)",
             _    => "Suggest automatically while typing (the Ctrl+Space shortcut always stays active)",
         };
+
+        // ---------- Section « Courbes » (ADR 2026-10-31-Feat-insert-curves) ----------
+
+        public static string SettingsSectionCurves => Lang switch { "fr" => "Courbes", _ => "Curves" };
+        public static string SettingsCurveStyleLabel => Lang switch { "fr" => "Style des nouvelles courbes", _ => "Style of new curves" };
+        public static string SettingsCurveClean => Lang switch { "fr" => "Propre (repère gradué, style cours)", _ => "Clean (graduated axes, textbook style)" };
+        public static string SettingsCurveHand => Lang switch { "fr" => "Main levée (dessin au crayon)", _ => "Hand-drawn (pencil sketch)" };
 
         // ---------- Section « Confidentialité » (compteur d'usage) ----------
 

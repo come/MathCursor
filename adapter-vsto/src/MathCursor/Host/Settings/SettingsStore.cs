@@ -103,6 +103,8 @@ namespace MathCursor.Host.Settings
             // fontes n'ont ni guillemet ni backslash → littéral JSON direct.
             if (s.MathFont != null)
                 sb.Append(",\"math_font\":\"").Append(s.MathFont).Append('"');
+            if (s.CurveStyle == Curves.CurveStyle.Hand)
+                sb.Append(",\"curve_style\":\"hand\"");
             sb.Append('}');
             return sb.ToString();
         }
@@ -138,6 +140,9 @@ namespace MathCursor.Host.Settings
             // Clé absente → null = défaut Word (Cambria).
             var mathFont = ExtractString(json, "math_font");
             if (!string.IsNullOrEmpty(mathFont)) s.MathFont = mathFont;
+
+            // Clé absente → style propre (ADR 2026-10-31-Feat-insert-curves).
+            if (ExtractString(json, "curve_style") == "hand") s.CurveStyle = Curves.CurveStyle.Hand;
 
             return s;
         }

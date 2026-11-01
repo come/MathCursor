@@ -124,6 +124,23 @@ namespace MathCursor
         public string OnGetConvertButtonScreentip(IRibbonControl control) => Strings.ConvertButtonScreentip;
         public string OnGetBoxResultButtonLabel(IRibbonControl control) => Strings.BoxResultButtonLabel;
         public string OnGetBoxResultButtonScreentip(IRibbonControl control) => Strings.BoxResultButtonScreentip;
+        public string OnGetCurveButtonLabel(IRibbonControl control) => Strings.CurveButtonLabel;
+        public string OnGetCurveButtonScreentip(IRibbonControl control) => Strings.CurveButtonScreentip;
+
+        private static stdole.IPictureDisp _curveIcon;
+        public stdole.IPictureDisp OnGetCurveButtonImage(IRibbonControl control)
+        {
+            try
+            {
+                if (_curveIcon == null)
+                    using (var s = typeof(RibbonCallback).Assembly.GetManifestResourceStream("MathCursor.Icons.ribbon-curve-32.png"))
+                    using (var bmp = new System.Drawing.Bitmap(s))
+                        _curveIcon = PictureConverter.ToPictureDisp(bmp);
+                return _curveIcon;
+            }
+            catch (Exception ex) { LogDebug("curve_image_error: " + ex.Message); return null; }
+        }
+
         public string OnGetCalloutMenuLabel(IRibbonControl control) => Strings.CalloutMenuLabel;
         public string OnGetCalloutMenuScreentip(IRibbonControl control) => Strings.CalloutMenuScreentip;
         public string OnGetCalloutTheoremLabel(IRibbonControl control) => Host.CalloutInserter.Styles["theorem"].Label;
@@ -195,6 +212,18 @@ namespace MathCursor
                 MessageBox.Show(
                     Strings.CalloutInsertFailed + ex.Message,
                     "MathCursor", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        /// <summary>Courbes : ouvre le panneau du dessin sélectionné, sinon insère un repère
+        /// (avec la fonction sous le caret). ADR 2026-10-31-UX-curve-floating-panel.</summary>
+        public void OnInsertCurveClicked(IRibbonControl control)
+        {
+            try { Globals.ThisAddIn?.Curves?.OpenFromRibbon(); }
+            catch (Exception ex)
+            {
+                LogDebug("curve_clicked_error: " + ex.Message);
+                MessageBox.Show(Strings.CurveInsertFailed + ex.Message, "MathCursor", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 

@@ -94,6 +94,8 @@
     <Compile Include="..\..\src\MathCursor\Host\SourceMap\SourceMapXml.cs" Link="adapter-sources\Host\SourceMap\SourceMapXml.cs" />
     <Compile Include="..\..\src\MathCursor\Host\SourceMap\Sha1Helper.cs" Link="adapter-sources\Host\SourceMap\Sha1Helper.cs" />
     <Compile Include="..\..\src\MathCursor\Host\SourceMap\OmmlWalkerWhitelist.cs" Link="adapter-sources\Host\SourceMap\OmmlWalkerWhitelist.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Curves\CurveSpec.cs" Link="adapter-sources\Host\Curves\CurveSpec.cs" />
+    <Compile Include="..\..\src\MathCursor\Host\Curves\CurveRenderer.cs" Link="adapter-sources\Host\Curves\CurveRenderer.cs" />
   </ItemGroup>
 
 </Project>

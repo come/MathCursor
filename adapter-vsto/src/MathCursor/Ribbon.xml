@@ -86,6 +86,16 @@
                   size="large"
                   imageMso="TableInsert"
                   onAction="OnInsertStudyTableClicked" />
+          <!-- Courbes (bêta) : repère inséré tout de suite ; clic sur le dessin →
+               panneau de réglages à côté (fonctions tapées comme dans MathCursor,
+               repère, style). Cf. ADR 2026-10-31-UX-curve-floating-panel. -->
+          <button id="InsertCurveButton"
+                  keytip="C"
+                  getLabel="OnGetCurveButtonLabel"
+                  getScreentip="OnGetCurveButtonScreentip"
+                  size="large"
+                  getImage="OnGetCurveButtonImage"
+                  onAction="OnInsertCurveClicked" />
           <!-- Encadrés colorés typés (Théorème/Définition/Exemple/Propriété) :
                style de paragraphe Word (barre d'accent + fond + titre), aucune
                OMath. Cf. ADR 2026-06-20-Feat-encadres-callouts-boxed. -->

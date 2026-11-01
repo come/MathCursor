@@ -75,6 +75,11 @@ namespace MathCursor.Host
         /// </summary>
         public Action OnTextKeyTyped { get; set; }
 
+        /// <summary>Vrai pendant qu'un panneau MathCursor à saisie de texte a le focus
+        /// (panneau Courbes) : le hook laisse tout passer, sinon Entrée, Ctrl+Espace et
+        /// l'auto-détection agiraient sur le document. ADR 2026-10-31-UX-curve-floating-panel.</summary>
+        public static bool Suspended { get; set; }
+
         private IntPtr _hookHandle;
         private KeyboardHookProc _proc; // référence GC-stable
 
@@ -95,7 +100,7 @@ namespace MathCursor.Host
 
         private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            if (nCode == HC_ACTION)
+            if (nCode == HC_ACTION && !Suspended)
             {
                 int vkCode = wParam.ToInt32();
                 long lparam = lParam.ToInt64();
