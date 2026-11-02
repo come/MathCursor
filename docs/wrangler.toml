@@ -27,3 +27,16 @@ bucket_name = "mathcursor-reports"
 [[analytics_engine_datasets]]
 binding = "DOWNLOADS"
 dataset = "mathcursor_downloads"
+
+# Chat en direct du site (cf. ADR 2026-11-02-Feat-site-live-chat).
+# Base créée le 2026-11-02 sur le compte MathCursor ; NOTIFY = Worker
+# tools/mathcursor-notify (alerte e-mail), même compte. Sans ces liaisons,
+# /api/v1/chat répond 503 et le widget reste masqué.
+[[d1_databases]]
+binding = "CHAT_DB"
+database_name = "mathcursor-chat"
+database_id = "ccfb264a-fede-42f9-9ea6-2b2128f6522a"
+
+[[services]]
+binding = "NOTIFY"
+service = "mathcursor-notify"

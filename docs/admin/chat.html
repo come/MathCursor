@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MathCursor · Chat</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <!-- Chat en direct du site : conversations des visiteurs, réponse, présence.
+       Protégé par le Basic Auth de /admin/*. Cf. ADR 2026-11-02-Feat-site-live-chat. -->
+  <style>
+    :root {
+      --paper: #faf9f6; --paper-low: #f4f3f1; --paper-rim: #e3e2e0; --paper-white: #ffffff;
+      --ink: #00236f; --accent: #4d7cff; --red: #bb0027; --ok: #1f8a5b;
+      --text: #1a1c1a; --text-muted: #636571; --selected: #fff8d6; --yellow: #fde047;
+      --font-body: 'Inter', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--text); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+    .app { display: grid; grid-template-columns: 380px 1fr; grid-template-rows: 56px 1fr; grid-template-areas: "topbar topbar" "list detail"; height: 100vh; }
+    @media (max-width: 768px) { .app { grid-template-columns: 1fr; grid-template-rows: 56px 40vh 1fr; grid-template-areas: "topbar" "list" "detail"; } }
+    .topbar { grid-area: topbar; display: flex; align-items: center; gap: 16px; padding: 0 20px; background: var(--paper-white); border-bottom: 1px solid var(--paper-rim); }
+    .topbar h1 { color: var(--ink); margin: 0; font-size: 18px; }
+    .topbar .count { color: var(--text-muted); font-size: 13px; }
+    .topbar .actions { margin-left: auto; display: flex; gap: 10px; align-items: center; font-size: 13px; }
+    .topbar a.home { color: var(--text-muted); text-decoration: none; }
+    .topbar a.home:hover { color: var(--ink); }
+    .presence { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--paper-rim); border-radius: 999px; background: var(--paper-white); cursor: pointer; font: inherit; font-size: 13px; }
+    .presence i { width: 9px; height: 9px; border-radius: 50%; background: #a5adb8; }
+    .presence.on i { background: #34d27b; }
+    .presence.on { border-color: #b6e6cc; background: #eaf7f0; }
+    label.archived { display: inline-flex; gap: 6px; align-items: center; color: var(--text-muted); cursor: pointer; }
+    .master { grid-area: list; background: var(--paper-white); border-right: 1px solid var(--paper-rim); overflow-y: auto; }
+    .item { padding: 12px 16px; border-bottom: 1px solid var(--paper-rim); cursor: pointer; }
+    .item:hover { background: var(--paper-low); }
+    .item.selected { background: var(--selected); border-left: 3px solid var(--yellow); padding-left: 13px; }
+    .item .row1 { display: flex; gap: 8px; align-items: baseline; }
+    .item .who { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .item .when { color: var(--text-muted); font-size: 12px; flex: none; }
+    .item .last { color: var(--text-muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .item .tags { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+    .item.unread .who, .item.unread .last { color: var(--text); font-weight: 700; }
+    .badge { display: inline-block; min-width: 20px; padding: 0 6px; border-radius: 10px; background: var(--red); color: #fff; font-size: 11.5px; font-weight: 700; text-align: center; }
+    .empty { padding: 32px 20px; color: var(--text-muted); text-align: center; }
+    .detail { grid-area: detail; display: flex; flex-direction: column; min-height: 0; }
+    .dhead { padding: 14px 20px; border-bottom: 1px solid var(--paper-rim); background: var(--paper-white); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .dhead .meta { color: var(--text-muted); font-size: 13px; flex: 1; }
+    .dhead .meta b { color: var(--text); }
+    .dhead button { padding: 6px 12px; font-size: 13px; cursor: pointer; border: 1px solid var(--paper-rim); border-radius: 4px; background: var(--paper-white); font-family: inherit; }
+    .thread { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; background: var(--paper-low); }
+    .msg { max-width: 75%; display: flex; flex-direction: column; gap: 3px; }
+    .msg p { margin: 0; padding: 10px 13px; border-radius: 14px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }
+    .msg.visitor { align-self: flex-start; }
+    .msg.visitor p { background: var(--paper-white); border: 1px solid var(--paper-rim); border-bottom-left-radius: 4px; }
+    .msg.admin { align-self: flex-end; align-items: flex-end; }
+    .msg.admin p { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+    .msg.auto { align-self: flex-end; align-items: flex-end; }
+    .msg.auto p { background: #e8ecf5; color: var(--text-muted); font-style: italic; }
+    .msg.system { align-self: center; }
+    .msg.system p { background: none; color: var(--ok); font-size: 12.5px; font-weight: 600; padding: 2px; }
+    .msg .at { font-size: 11px; color: var(--text-muted); padding: 0 4px; }
+    .reply { display: flex; gap: 10px; padding: 12px 20px; border-top: 1px solid var(--paper-rim); background: var(--paper-white); }
+    .reply textarea { flex: 1; resize: vertical; min-height: 44px; max-height: 220px; padding: 10px 12px; font: inherit; font-size: 14px; border: 1px solid var(--paper-rim); border-radius: 8px; }
+    .reply textarea:focus { outline: none; border-color: var(--accent); }
+    .reply button { padding: 0 18px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+    .reply button:disabled { opacity: .5; cursor: default; }
+    .hint { color: var(--text-muted); font-size: 12px; padding: 0 20px 10px; background: var(--paper-white); }
+    .error { color: var(--red); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <h1>Chat</h1>
+      <span class="count" id="count"></span>
+      <div class="actions">
+        <span class="error" id="error"></span>
+        <label class="archived"><input type="checkbox" id="showArchived" /> Archivées</label>
+        <button type="button" class="presence" id="presence"><i></i><span>Disponible</span></button>
+        <a class="home" href="/admin/">← Admin</a>
+      </div>
+    </header>
+    <aside class="master" id="list"><div class="empty">Chargement…</div></aside>
+    <main class="detail" id="detail"><div class="empty">Choisissez une conversation.</div></main>
+  </div>
+
+  <script>
+    const API = '/admin/api/chat';
+    const SYNC_EVERY = 4000;
+    const listEl = document.getElementById('list');
+    const detailEl = document.getElementById('detail');
+    const errorEl = document.getElementById('error');
+    const countEl = document.getElementById('count');
+    const presenceBtn = document.getElementById('presence');
+    const showArchived = document.getElementById('showArchived');
+
+    let available = localStorage.getItem('mc-chat-available') !== '0';
+    let convs = [];
+    let current = decodeURIComponent(location.hash.slice(1)) || null;
+    let thread = null;      // messages de la conversation ouverte
+    let lastUnread = 0;
+    const baseTitle = document.title;
+
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmt = (t) => {
+      if (!t) return '';
+      const d = new Date(t);
+      const today = new Date().toDateString() === d.toDateString();
+      return today ? d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        : d.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    };
+    const who = (c) => c.contact || `Visiteur ${c.id.slice(0, 4)}`;
+
+    async function api(path, body) {
+      const res = await fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      return data;
+    }
+
+    function renderPresence() {
+      presenceBtn.classList.toggle('on', available);
+      presenceBtn.querySelector('span').textContent = available ? 'Disponible' : 'Absent';
+      presenceBtn.title = available
+        ? 'Les visiteurs vous voient en ligne. Cliquer pour passer absent (réponse automatique + e-mail).'
+        : 'Les visiteurs reçoivent la réponse automatique, vous recevez un e-mail. Cliquer pour passer disponible.';
+    }
+    presenceBtn.addEventListener('click', () => {
+      available = !available;
+      localStorage.setItem('mc-chat-available', available ? '1' : '0');
+      renderPresence();
+      sync();
+    });
+    showArchived.addEventListener('change', renderList);
+
+    function renderList() {
+      const shown = convs.filter((c) => showArchived.checked || !c.archived || c.id === current);
+      const unread = convs.reduce((n, c) => n + (c.unread || 0), 0);
+      countEl.textContent = `${shown.length} conversation${shown.length > 1 ? 's' : ''}${unread ? ` · ${unread} non lu${unread > 1 ? 's' : ''}` : ''}`;
+      document.title = unread ? `(${unread}) ${baseTitle}` : baseTitle;
+      if (!shown.length) { listEl.innerHTML = '<div class="empty">Aucune conversation pour l’instant.</div>'; return; }
+      listEl.innerHTML = shown.map((c) => `
+        <div class="item${c.id === current ? ' selected' : ''}${c.unread ? ' unread' : ''}" data-id="${esc(c.id)}">
+          <div class="row1"><span class="who">${esc(who(c))}</span>${c.unread ? `<span class="badge">${c.unread}</span>` : ''}<span class="when">${fmt(c.updated_at)}</span></div>
+          <div class="last">${c.last_sender === 'admin' ? 'Vous : ' : ''}${esc(c.last_text)}</div>
+          <div class="tags">${[c.page, c.lang?.toUpperCase(), c.country, c.archived ? 'archivée' : ''].filter(Boolean).map(esc).join(' · ')}</div>
+        </div>`).join('');
+      for (const el of listEl.querySelectorAll('.item')) el.addEventListener('click', () => select(el.dataset.id));
+    }
+
+    function renderDetail(keepDraft) {
+      const c = convs.find((x) => x.id === current);
+      if (!c || !thread) { detailEl.innerHTML = '<div class="empty">Choisissez une conversation.</div>'; return; }
+      const draft = keepDraft ? (detailEl.querySelector('textarea')?.value ?? '') : '';
+      const atBottom = (() => { const t = detailEl.querySelector('.thread'); return !t || t.scrollHeight - t.scrollTop - t.clientHeight < 40; })();
+      detailEl.innerHTML = `
+        <div class="dhead">
+          <div class="meta"><b>${esc(who(c))}</b> · ${esc([c.page, c.lang?.toUpperCase(), c.country].filter(Boolean).join(' · '))}
+            · ouverte le ${esc(new Date(c.created_at).toLocaleString('fr-FR'))}
+            ${c.contact ? '' : '<br/>Pas d’e-mail laissé : il ne verra votre réponse que s’il revient sur le site.'}</div>
+          ${c.contact ? `<button type="button" id="mailto" title="Ouvre votre messagerie avec toute la conversation, adressée au visiteur">Envoyer la conversation par e-mail</button>` : ''}
+          <button type="button" id="copy" title="Copie la conversation en texte, à coller dans un e-mail">Copier la conversation</button>
+          <button type="button" id="archive">${c.archived ? 'Désarchiver' : 'Archiver'}</button>
+        </div>
+        <div class="thread">${thread.map((m) => `
+          <div class="msg ${esc(m.sender)}"><p>${esc(m.text)}</p><span class="at">${m.sender === 'auto' ? 'Réponse automatique · ' : ''}${fmt(m.at)}</span></div>`).join('')}
+        </div>
+        <form class="reply"><textarea placeholder="Votre réponse… (Entrée pour envoyer, Maj+Entrée pour aller à la ligne)" maxlength="2000"></textarea><button type="submit">Envoyer</button></form>
+        <div class="hint">Le visiteur voit la réponse dans le chat du site, sous le nom « Côme ».</div>`;
+      const ta = detailEl.querySelector('textarea');
+      ta.value = draft;
+      const t = detailEl.querySelector('.thread');
+      if (atBottom) t.scrollTop = t.scrollHeight;
+      detailEl.querySelector('#archive').addEventListener('click', async () => {
+        await api('/archive', { conv: c.id, archived: !c.archived }).catch(showError);
+        sync();
+      });
+      // Conversation en texte (messages du visiteur et de l'auteur, sans réponse auto ni ligne système),
+      // dans la langue du visiteur.
+      const en = c.lang === 'en';
+      const transcript = () => thread
+        .filter((m) => m.sender === 'visitor' || m.sender === 'admin')
+        .map((m) => {
+          const at = new Date(m.at).toLocaleString(en ? 'en-GB' : 'fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+          return `[${at}] ${m.sender === 'admin' ? 'Côme' : (en ? 'You' : 'Vous')} :\n${m.text}`;
+        }).join('\n\n');
+      const mailBody = () => en
+        ? `Hello,\n\n\n\nBest regards,\nCôme, creator of MathCursor\nhttps://mathcursor.com\n\n---\nOur conversation on mathcursor.com:\n\n${transcript()}`
+        : `Bonjour,\n\n\n\nBonne journée,\nCôme, créateur de MathCursor\nhttps://mathcursor.com\n\n---\nNotre conversation sur mathcursor.com :\n\n${transcript()}`;
+      detailEl.querySelector('#mailto')?.addEventListener('click', () => {
+        const subject = en ? 'Your conversation on mathcursor.com' : 'Votre conversation sur mathcursor.com';
+        location.href = `mailto:${encodeURIComponent(c.contact)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(mailBody())}`;
+      });
+      detailEl.querySelector('#copy').addEventListener('click', async (e) => {
+        try {
+          await navigator.clipboard.writeText(mailBody());
+          e.target.textContent = 'Copiée ✓';
+          setTimeout(() => { e.target.textContent = 'Copier la conversation'; }, 2000);
+        } catch (err) { showError(err); }
+      });
+      const form = detailEl.querySelector('form');
+      ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const text = ta.value.trim();
+        if (!text) return;
+        const btn = form.querySelector('button');
+        btn.disabled = true;
+        try {
+          await api('/reply', { conv: c.id, text });
+          ta.value = '';
+          await sync();
+        } catch (err) { showError(err); }
+        btn.disabled = false;
+        detailEl.querySelector('textarea')?.focus();
+      });
+    }
+
+    function select(id) {
+      current = id;
+      history.replaceState(null, '', `#${encodeURIComponent(id)}`);
+      thread = null;
+      renderList();
+      sync().then(() => detailEl.querySelector('textarea')?.focus());
+    }
+
+    function showError(err) { errorEl.textContent = err?.message || String(err); }
+
+    let timer = 0;
+    let syncing = null;
+    async function sync() {
+      if (syncing) return syncing;
+      clearTimeout(timer);
+      syncing = (async () => {
+        try {
+          const data = await api('/sync', { available, conv: current, read: document.visibilityState === 'visible' });
+          errorEl.textContent = '';
+          convs = data.convs || [];
+          const unread = convs.reduce((n, c) => n + (c.unread || 0), 0);
+          if (unread > lastUnread && document.visibilityState !== 'visible') ping();
+          lastUnread = unread;
+          const changed = JSON.stringify(data.messages) !== JSON.stringify(thread);
+          thread = data.messages;
+          renderList();
+          if (changed) renderDetail(true);
+        } catch (err) { showError(err); }
+        syncing = null;
+        timer = setTimeout(sync, SYNC_EVERY);
+      })();
+      return syncing;
+    }
+
+    /** Petit son quand un message arrive alors que l'onglet est en arrière-plan. */
+    function ping() {
+      try {
+        const ctx = new AudioContext();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.frequency.value = 880;
+        g.gain.setValueAtTime(0.08, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        o.connect(g).connect(ctx.destination);
+        o.start();
+        o.stop(ctx.currentTime + 0.4);
+      } catch (e) { /* son indisponible */ }
+    }
+
+    // fermeture de l'onglet : absent tout de suite (sinon au bout de 75 s)
+    addEventListener('pagehide', () => navigator.sendBeacon(API + '/away', new Blob(['{}'], { type: 'application/json' })));
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') sync(); });
+    addEventListener('hashchange', () => { const id = decodeURIComponent(location.hash.slice(1)); if (id && id !== current) select(id); });
+
+    renderPresence();
+    sync();
+  </script>
+</body>
+</html>
