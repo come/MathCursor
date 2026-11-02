@@ -5,6 +5,9 @@ Thumbs.db
 # IDE config locale (.vibe = agents/skills custom IDE-side)
 .vibe/
 
+# Connecteur Chrome Playwright MCP (snapshots et journaux de session)
+.playwright-mcp/
+
 # Logs
 *.log
 
@@ -94,3 +97,4 @@ docs/dev/decisions/GladiatorSurvivor/
 # Secrets de signature de code (ne jamais committer).
 scripts/trusted-signing.json
 *.pfx
+
