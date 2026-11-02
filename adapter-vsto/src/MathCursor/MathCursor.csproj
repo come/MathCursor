@@ -281,6 +281,16 @@
   <PropertyGroup>
     <ManifestCertificateThumbprint>69AFB6D74358DDDC3DD457CF52298092C258E109</ManifestCertificateThumbprint>
   </PropertyGroup>
+  <!-- Signature Authenticode des DLL first-party (ADR 2026-11-02-Feat-code-signing-certum),
+       seulement via installer/build.ps1 -SignThumbprint. Avant GenerateManifests : le
+       manifeste VSTO porte l'empreinte des DLL, il doit voir les fichiers déjà signés. -->
+  <Target Name="MathCursorAuthenticode" AfterTargets="Compile" BeforeTargets="GenerateManifests" Condition="'$(MathCursorSignThumbprint)' != ''">
+    <ItemGroup>
+      <_McSign Include="@(IntermediateAssembly->'%(FullPath)')" />
+      <_McSign Include="@(ReferenceCopyLocalPaths->'%(FullPath)')" Condition="'%(ReferenceCopyLocalPaths.Extension)' == '.dll' And $([System.String]::Copy('%(ReferenceCopyLocalPaths.Filename)').StartsWith('MathCursor.'))" />
+    </ItemGroup>
+    <Exec Command="&quot;$(MathCursorSignTool)&quot; sign /sha1 $(MathCursorSignThumbprint) /fd sha256 /tr $(MathCursorTimestampUrl) /td sha256 /d MathCursor @(_McSign->'&quot;%(Identity)&quot;', ' ')" />
+  </Target>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(VSToolsPath)\OfficeTools\Microsoft.VisualStudio.Tools.Office.targets" Condition="'$(VSToolsPath)' != ''" />
   <ProjectExtensions>

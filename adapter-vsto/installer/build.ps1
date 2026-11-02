@@ -12,6 +12,14 @@
 #   - Visual Studio 2022 (MSBuild avec charge Office Dev)
 #   - Inno Setup 6 installé (pour la production de l'EXE final)
 #   - Les fichiers du modèle NER (copier depuis D:\Software\DocMath\models\)
+#
+# Signature (ADR 2026-11-02-Feat-code-signing-certum, docs/dev/SIGNING.md) :
+#   build.ps1 -SignThumbprint <empreinte>
+# avec une session SimplySign ouverte (certificat dans Cert:\CurrentUser\My).
+# Signe les DLL first-party avant les manifestes VSTO, les manifestes, puis
+# l'installeur et son désinstalleur. Sans le paramètre : build non signé, comme avant.
+
+param([string]$SignThumbprint = '')
 
 $ErrorActionPreference = 'Stop'
 $InstallerDir = $PSScriptRoot
@@ -29,6 +37,27 @@ Write-Host "== MathCursor installer builder ==" -ForegroundColor Cyan
 Write-Host "Repo      : $RepoRoot"
 Write-Host "Payload   : $PayloadDir"
 Write-Host "Output    : $OutputDir"
+
+$TimestampUrl = 'http://time.certum.pl'
+$SignTool = $null
+$SignCert = $null
+if ($SignThumbprint) {
+    $SignThumbprint = ($SignThumbprint -replace '[^0-9A-Fa-f]', '').ToUpperInvariant()
+    $SignCert = Get-Item "Cert:\CurrentUser\My\$SignThumbprint" -ErrorAction SilentlyContinue
+    if (-not $SignCert) {
+        Write-Error "Certificat $SignThumbprint absent de Cert:\CurrentUser\My (session SimplySign ouverte ?)"
+        exit 1
+    }
+    $SignTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+    if (-not $SignTool) {
+        Write-Error "signtool.exe introuvable (installer le Windows SDK)."
+        exit 1
+    }
+    Write-Host "Signature : $($SignCert.Subject)"
+} else {
+    Write-Host "Signature : aucune (-SignThumbprint absent)"
+}
 Write-Host ""
 
 # 1) Build Release via MSBuild
@@ -51,7 +80,20 @@ if (-not $msbuild) {
     Write-Warning "Puis relance ce script."
     exit 1
 }
-& $msbuild $VstoProj /p:Configuration=Release /nologo /v:minimal
+$SignProps = @()
+if ($SignThumbprint) {
+    # Manifestes VSTO signés par empreinte (plus par le .pfx auto-signé) ; les DLL
+    # first-party sont signées dans le csproj (cible MathCursorAuthenticode).
+    $SignProps = @(
+        "/p:ManifestCertificateThumbprint=$SignThumbprint",
+        '/p:ManifestKeyFile=',
+        "/p:ManifestTimestampUrl=$TimestampUrl",
+        "/p:MathCursorSignThumbprint=$SignThumbprint",
+        "/p:MathCursorSignTool=$SignTool",
+        "/p:MathCursorTimestampUrl=$TimestampUrl"
+    )
+}
+& $msbuild $VstoProj /p:Configuration=Release /nologo /v:minimal @SignProps
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Build échoué."
     exit 1
@@ -110,7 +152,12 @@ foreach ($f in $FilesToCopy) {
 # 2b) Certificat à importer au runtime (cf. [Run] dans MathCursor.iss)
 $CertSrc = Join-Path $RepoRoot 'docs\mathcursor.cer'
 $CertDst = Join-Path $PayloadDir 'mathcursor.cer'
-if (Test-Path $CertSrc) {
+if ($SignCert) {
+    # Partie publique du certificat qui a signé les manifestes : c'est elle que
+    # VSTO doit trouver dans TrustedPublisher.
+    [IO.File]::WriteAllBytes($CertDst, $SignCert.Export([Security.Cryptography.X509Certificates.X509ContentType]::Cert))
+    Write-Host "  certif exporté : $CertDst ($($SignCert.Subject))"
+} elseif (Test-Path $CertSrc) {
     Copy-Item $CertSrc -Destination $CertDst -Force
     Write-Host "  certif copié : $CertDst"
 } else {
@@ -278,7 +325,17 @@ if (-not $iscc) {
 
 if ($modelOk -and $iscc) {
     if (-not (Test-Path $OutputDir)) { New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null }
-    & $iscc $IssFile
+    $IsccArgs = @()
+    if ($SignThumbprint) {
+        # SignTool nommé « mcsign » pour la directive SignTool du .iss ; $q = guillemet,
+        # $f = fichier à signer (déjà entre guillemets) : syntaxe Inno, pas PowerShell.
+        $IsccArgs = @(
+            "/DSignThumb=$SignThumbprint",
+            ('/Smcsign=$q' + $SignTool + '$q sign /sha1 ' + $SignThumbprint +
+             ' /fd sha256 /tr ' + $TimestampUrl + ' /td sha256 /d MathCursor $f')
+        )
+    }
+    & $iscc @IsccArgs $IssFile
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
         Write-Host "OK — installer créé dans $OutputDir" -ForegroundColor Green

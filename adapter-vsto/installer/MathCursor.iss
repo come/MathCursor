@@ -35,6 +35,12 @@ SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\{#MyAppExeName}
 SetupLogging=yes
+#ifdef SignThumb
+; Signature Certum (build.ps1 -SignThumbprint → /DSignThumb + /Smcsign=…),
+; ADR 2026-11-02-Feat-code-signing-certum. Sans le define : installeur non signé.
+SignTool=mcsign
+SignedUninstaller=yes
+#endif
 
 [Languages]
 ; Fenêtre d'info post-install (InfoAfterFile) localisée PAR LANGUE — sinon
@@ -174,6 +180,12 @@ Filename: "{tmp}\vc_redist.x64.exe"; \
 ;   direct (on trust explicitement ce cert-là comme publisher légitime),
 ;   pas besoin de remonter une chaîne jusqu'à une CA racine.
 ; `runhidden` = pas de fenêtre noire qui flashe. `-user` = store courant, pas d'admin.
+#ifdef SignThumb
+; Installeur signé : l'ancien certificat auto-signé « MathCursor » n'a plus d'usage.
+Filename: "{sys}\certutil.exe"; \
+    Parameters: "-user -delstore TrustedPublisher ""MathCursor"""; \
+    Flags: runhidden
+#endif
 Filename: "{sys}\certutil.exe"; \
     Parameters: "-user -addstore TrustedPublisher ""{tmp}\mathcursor.cer"""; \
     Flags: runhidden; \
@@ -193,9 +205,16 @@ Filename: "{userdocs}\MathCursor\MathCursor-Tutorial.docx"; \
 
 [UninstallRun]
 ; Nettoyage du certificat à la désinstallation. Non-bloquant si le cert n'est plus là.
+; Signé : certificat Certum retrouvé par son empreinte (son nom n'est pas « MathCursor »).
+#ifdef SignThumb
+Filename: "{sys}\certutil.exe"; \
+    Parameters: "-user -delstore TrustedPublisher {#SignThumb}"; \
+    Flags: runhidden; RunOnceId: "DelCertTrustedPub"
+#else
 Filename: "{sys}\certutil.exe"; \
     Parameters: "-user -delstore TrustedPublisher ""MathCursor"""; \
     Flags: runhidden; RunOnceId: "DelCertTrustedPub"
+#endif
 
 [Registry]
 ; Enregistrement du VSTO Add-in pour Word (clé per-user, pas de UAC).

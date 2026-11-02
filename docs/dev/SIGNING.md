@@ -18,19 +18,37 @@ seuls les **exes embarqués** ont besoin de la signature Authenticode ci-dessous
 
 ## Quel certificat ?
 
-Projet **privé / individu** → certificat **commercial** (le tarif « open source »
-de Certum exige un dépôt public, donc exclu ici).
+Choix acté : **Certum Open Source Code Signing, version cloud (SimplySign)**, au
+nom de l'auteur (ADR [2026-11-02-Feat-code-signing-certum](decisions/2026-11-02-Feat-code-signing-certum.md)).
+Le dépôt GitHub est public et sous GPLv3, ce qui ouvre le tarif open source.
 
 | Option | Coût | Token ? | Notes |
 |---|---|---|---|
-| **Azure Trusted Signing** (recommandé) | ~10 $/mois | non (cloud) | individu OK, intégré `signtool`/tool `sign` |
-| OV classique (Sectigo/SSL.com via revendeur) | ~200 $/an | USB | — |
-| EV | ~300–500 $/an | USB | réputation SmartScreen **instantanée** |
+| **Certum Open Source, cloud** (retenu) | 49 €/an | non (SimplySign) | particulier, dépôt public ; session SimplySign ouverte pour signer |
+| SignPath Foundation | gratuit | non | build en CI obligatoire, publisher = la fondation, règle « rien sur le réseau sans demande » |
+| Azure Artifact Signing (ex Trusted Signing) | ~10 $/mois | non | particuliers **US/Canada seulement** ; en France, entreprise uniquement |
+| OV classique (Sectigo/SSL.com via revendeur) | ~200 €/an | USB ou cloud | — |
+| EV | ~300–500 €/an | USB ou cloud | plus de réputation SmartScreen instantanée depuis 2024 |
 
-**Horodatage = signature valable à vie** : on peut ne payer Azure que le **mois
-où l'on signe** une release (puis arrêter). Garder le compte (~10 $/mois continu)
-évite la re-validation d'identité + préserve la réputation SmartScreen entre
-releases ; le coup-par-coup la fait redémarrer.
+**Réputation SmartScreen** : sans signature, elle est attachée au fichier et
+repart de zéro à chaque version. Signé, elle s'attache à l'éditeur et se garde
+d'une version à l'autre, mais se construit avec les téléchargements (aucun
+certificat ne la donne dès le premier jour).
+
+**Horodatage = signature valable après expiration du certificat** : toujours
+signer avec `/tr http://time.certum.pl /td sha256`.
+
+## Signer l'add-in Word (installeur)
+
+Ouvrir une session SimplySign Desktop (code de l'appli mobile), relever
+l'empreinte du certificat dans `certmgr.msc` (Personnel), puis :
+
+```
+powershell -ExecutionPolicy Bypass -File adapter-vsto/installer/build.ps1 -SignThumbprint <empreinte>
+```
+
+Sans `-SignThumbprint`, le build reste non signé (certificat auto-signé pour les
+manifestes VSTO), comme avant.
 
 ## Comment signer (flux unifié VSCode + LibreOffice)
 
