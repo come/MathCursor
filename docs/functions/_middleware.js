@@ -21,6 +21,11 @@
  */
 export async function onRequest(context) {
   const url = new URL(context.request.url);
+  // Notes internes (docs/dev : ADR, briefs, notes de travail) : présentes dans le dossier
+  // publié mais jamais servies (02/11/2026). 404 plutôt que 403 : rien à signaler.
+  if (url.pathname === '/dev' || url.pathname.startsWith('/dev/')) {
+    return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+  }
   if (url.hostname.endsWith('.pages.dev') && !url.pathname.startsWith('/api/')) {
     url.hostname = 'mathcursor.com';
     return Response.redirect(url.toString(), 301);

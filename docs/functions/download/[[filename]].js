@@ -79,7 +79,10 @@ export async function onRequestGet(context) {
   const headers = new Headers();
   headers.set("Content-Type", "application/octet-stream");
   headers.set("Content-Disposition", `attachment; filename="${resolved}"`);
-  headers.set("Cache-Control", "public, max-age=3600");
+  // Alias « latest.* » : jamais en cache (sa cible change à chaque release ; une réponse
+  // mise en cache au moment d'un déploiement servait l'ancienne version 4 h, 02/11/2026).
+  // Fichiers versionnés : contenu immuable, cache normal.
+  headers.set("Cache-Control", urlFilename in ALIASES ? "no-store" : "public, max-age=3600");
   if (r2Object.httpEtag) headers.set("ETag", r2Object.httpEtag);
 
   if (rangeOpt && r2Object.range) {
