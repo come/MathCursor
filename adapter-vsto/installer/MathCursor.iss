@@ -136,9 +136,12 @@ Source: "payload\MathCursor-Tutoriel-en.docx"; DestDir: "{userdocs}\MathCursor";
 ;   ou applications peuvent s'en servir).
 Source: "fonts\latinmodern-math.otf";   DestDir: "{autofonts}"; FontInstall: "Latin Modern Math"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: "fonts\STIXTwoMath-Regular.otf"; DestDir: "{autofonts}"; FontInstall: "STIX Two Math";     Flags: onlyifdoesntexist uninsneveruninstall
+; Sans sérif, pour les élèves dyslexiques (ADR 2026-11-02-Feat-sans-serif-math-font).
+Source: "fonts\LeteSansMath.otf";        DestDir: "{autofonts}"; FontInstall: "Lete Sans Math";    Flags: onlyifdoesntexist uninsneveruninstall
 ; Licences des polices embarquées, déposées dans le dossier d'install (traçabilité).
 Source: "fonts\GUST-FONT-LICENSE.txt";   DestDir: "{app}\fonts-licenses"; Flags: ignoreversion
 Source: "fonts\STIX-OFL.txt";            DestDir: "{app}\fonts-licenses"; Flags: ignoreversion
+Source: "fonts\LeteSansMath-OFL.txt";    DestDir: "{app}\fonts-licenses"; Flags: ignoreversion
 
 ; Licence du logiciel (GNU GPL v3) + notices tierces + texte Apache 2.0 (base
 ; du modèle NER). MathCursor est distribué sous GPL v3 : la « source

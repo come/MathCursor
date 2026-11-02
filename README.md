@@ -132,6 +132,7 @@ DistilBERT base is in [`licenses/Apache-2.0.txt`](licenses/Apache-2.0.txt).
 |---|---|---|
 | Latin Modern Math | math font | GUST Font License (LPPL 1.3c) |
 | STIX Two Math | math font | SIL OFL 1.1 |
+| Lete Sans Math | sans-serif math font | SIL OFL 1.1 |
 | WpfMath / XamlMath.Shared | LaTeX popup rendering | MIT |
 | Microsoft.ML.OnnxRuntime | NER inference | MIT |
 | DistilBERT (NER base model) | base model | Apache 2.0 |

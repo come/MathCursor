@@ -65,7 +65,8 @@ namespace MathCursor.Host.Settings
         public bool PlaySounds { get; set; }
 
         /// <summary>Police math choisie pour les équations (fonte à table OpenType
-        /// MATH) : "Cambria Math" | "Latin Modern Math" | "STIX Two Math".
+        /// MATH) : "Cambria Math" | "Latin Modern Math" | "STIX Two Math" |
+        /// "Lete Sans Math" (sans sérif).
         /// null = défaut Word (Cambria). Appliquée aux équations insérées par
         /// MathCursor (préréglage) et posable sur tout le doc via le menu ruban.
         /// Cf. ADR 2026-06-22-Feat-math-font-selector.</summary>

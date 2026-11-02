@@ -560,9 +560,9 @@ namespace MathCursor
                 "  conditions de la GNU GPL v3 (voir le fichier LICENSE dans le dossier\n" +
                 "  d'installation) ou toute version ultérieure.\n" +
                 "  Code source : https://github.com/come/MathCursor\n" +
-                "  Polices math fournies : Latin Modern Math (GUST Font License) et\n" +
-                "  STIX Two Math (SIL Open Font License) — textes des licences dans le\n" +
-                "  sous-dossier fonts-licenses du dossier d'installation.\n\n" +
+                "  Polices math fournies : Latin Modern Math (GUST Font License),\n" +
+                "  STIX Two Math et Lete Sans Math (SIL Open Font License) — textes des\n" +
+                "  licences dans le sous-dossier fonts-licenses du dossier d'installation.\n\n" +
                 "MERCI AUX TESTEURS ET CONTRIBUTEURS\n" +
                 "  V. de Salaberry — Collège Le Sacré-Cœur, Vannes, France\n" +
                 "  E. Velay — Lycée Français de Varsovie, Pologne",
@@ -592,9 +592,9 @@ namespace MathCursor
                 "  the terms of the GNU GPL v3 (see the LICENSE file in the install\n" +
                 "  folder) or any later version.\n" +
                 "  Source code: https://github.com/come/MathCursor\n" +
-                "  Bundled math fonts: Latin Modern Math (GUST Font License) and STIX Two\n" +
-                "  Math (SIL Open Font License) — license texts in the fonts-licenses\n" +
-                "  subfolder of the install folder.\n\n" +
+                "  Bundled math fonts: Latin Modern Math (GUST Font License), STIX Two\n" +
+                "  Math and Lete Sans Math (SIL Open Font License) — license texts in the\n" +
+                "  fonts-licenses subfolder of the install folder.\n\n" +
                 "THANKS TO OUR TESTERS AND CONTRIBUTORS\n" +
                 "  V. de Salaberry — Collège Le Sacré-Cœur, Vannes, France\n" +
                 "  E. Velay — Lycée Français de Varsovie, Pologne",
@@ -938,8 +938,8 @@ namespace MathCursor
 
         public static string MathFontScreentip => Lang switch
         {
-            "fr" => "Choisit la police des équations (Cambria, Latin Modern, STIX). Applique la fonte à toutes les équations du document et la garde pour les prochaines. Latin Modern et STIX doivent être installées sur le poste.",
-            _    => "Picks the font for equations (Cambria, Latin Modern, STIX). Applies it to every equation in the document and keeps it for the next ones. Latin Modern and STIX must be installed on this PC.",
+            "fr" => "Choisit la police des équations (Cambria, Latin Modern, STIX, Lete Sans). Lete Sans Math est sans sérif, souvent plus lisible pour les élèves dyslexiques. Applique la fonte à toutes les équations du document et la garde pour les prochaines. Les polices autres que Cambria sont installées avec MathCursor.",
+            _    => "Picks the font for equations (Cambria, Latin Modern, STIX, Lete Sans). Lete Sans Math is sans-serif, often easier to read for dyslexic students. Applies it to every equation in the document and keeps it for the next ones. Fonts other than Cambria are installed with MathCursor.",
         };
 
         public static string MathFontDefaultSuffix => Lang switch

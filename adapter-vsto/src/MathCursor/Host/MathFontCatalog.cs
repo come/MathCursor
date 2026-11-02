@@ -31,12 +31,15 @@ namespace MathCursor.Host
         public const string Default = "Cambria Math";
 
         /// <summary>Fontes proposées, dans l'ordre du menu : Cambria (défaut)
-        /// puis les ajouts demandés — Latin Modern (look LaTeX) + STIX Two.</summary>
+        /// puis les ajouts demandés — Latin Modern (look LaTeX) + STIX Two, et
+        /// Lete Sans Math, seule SANS SÉRIF (lisibilité pour les élèves
+        /// dyslexiques, ADR 2026-11-02-Feat-sans-serif-math-font).</summary>
         public static readonly string[] Fonts =
         {
             "Cambria Math",
             "Latin Modern Math",
             "STIX Two Math",
+            "Lete Sans Math",
         };
 
         /// <summary>Vrai si <paramref name="font"/> est le défaut Word (ou vide).</summary>
@@ -58,7 +61,8 @@ namespace MathCursor.Host
         /// <summary>Page de téléchargement officielle (gratuite) d'une fonte à
         /// installer ; <c>null</c> pour le défaut Cambria (déjà fourni par Word)
         /// ou une fonte inconnue. Pages officielles (pas de lien direct .otf, qui
-        /// pourrirait) — GUST e-foundry pour Latin Modern, stixfonts.org pour STIX.</summary>
+        /// pourrirait) — GUST e-foundry pour Latin Modern, stixfonts.org pour STIX,
+        /// releases GitHub du projet pour Lete Sans Math.</summary>
         public static string DownloadUrl(string font)
         {
             if (string.IsNullOrEmpty(font)) return null;
@@ -66,6 +70,8 @@ namespace MathCursor.Host
                 return "https://www.gust.org.pl/projects/e-foundry/lm-math";
             if (string.Equals(font, "STIX Two Math", StringComparison.OrdinalIgnoreCase))
                 return "https://www.stixfonts.org/";
+            if (string.Equals(font, "Lete Sans Math", StringComparison.OrdinalIgnoreCase))
+                return "https://github.com/abccsss/LeteSansMath/releases";
             return null;
         }
     }

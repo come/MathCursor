@@ -18,6 +18,7 @@ l'installation dans `{app}\fonts-licenses`.
 |---|---|---|---|
 | **Latin Modern Math** | GUST e-foundry (Bogusław Jackowski, Janusz M. Nowacki, P. Strzelczyk) | GUST Font License (= LaTeX Project Public License 1.3c) | https://www.gust.org.pl/projects/e-foundry/lm-math |
 | **STIX Two Math** | The STIX Fonts Project Authors ; « STIX Fonts™ » est une marque de l'IEEE | SIL Open Font License 1.1 | https://www.stixfonts.org/ |
+| **Lete Sans Math** (v0.63) | Chenjing Bu ; Xiangdong Zeng ; d'après Lato, Łukasz Dziedzic (Reserved Font Name « Lato ») | SIL Open Font License 1.1 | https://github.com/abccsss/LeteSansMath |
 
 Conditions respectées :
 - les fontes sont embarquées **non modifiées** (aucun « Reserved Font Name » /

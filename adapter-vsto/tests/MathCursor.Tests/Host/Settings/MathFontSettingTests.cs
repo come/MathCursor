@@ -51,6 +51,7 @@ namespace MathCursor.Tests.Host.Settings
             Assert.Contains("Cambria Math", MathFontCatalog.Fonts);
             Assert.Contains("Latin Modern Math", MathFontCatalog.Fonts);
             Assert.Contains("STIX Two Math", MathFontCatalog.Fonts);
+            Assert.Contains("Lete Sans Math", MathFontCatalog.Fonts); // sans sérif (dyslexie)
         }
 
         [Fact]
@@ -68,6 +69,7 @@ namespace MathCursor.Tests.Host.Settings
         [InlineData("Cambria Math", 0)]
         [InlineData("Latin Modern Math", 1)]
         [InlineData("STIX Two Math", 2)]
+        [InlineData("Lete Sans Math", 3)]
         [InlineData("cambria math", 0)]   // insensible à la casse
         [InlineData("Inconnue", 0)]       // repli défaut
         [InlineData(null, 0)]
@@ -84,6 +86,7 @@ namespace MathCursor.Tests.Host.Settings
             Assert.Null(MathFontCatalog.DownloadUrl("Inconnue"));
             Assert.StartsWith("https://", MathFontCatalog.DownloadUrl("Latin Modern Math"));
             Assert.StartsWith("https://", MathFontCatalog.DownloadUrl("STIX Two Math"));
+            Assert.StartsWith("https://", MathFontCatalog.DownloadUrl("Lete Sans Math"));
         }
 
         // ── Persistance settings ────────────────────────────────────────
