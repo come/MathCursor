@@ -454,7 +454,8 @@ namespace MathCursor.Host.Curves
         // ── Divers ─────────────────────────────────────────────────────
 
         private EngineCulture Culture() =>
-            SettingsStore.Current.ToEngineCulture().WithPhysChem(DocumentMode.IsPhysChemActive(_app));
+            SettingsStore.Current.ToEngineCulture().WithPhysChem(DocumentMode.IsPhysChemActive(_app))
+                .WithUnits(DocumentMode.IsUnitsActive(_app));
 
         private static string Describe(IReadOnlyList<CurveRenderer.Item> items, Engine.Plot.PlotWindow w) =>
             items.Count == 0

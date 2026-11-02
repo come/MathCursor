@@ -50,10 +50,20 @@ public sealed class EngineCulture
     /// physics-chemistry-mode). Désactivé par défaut.</summary>
     public bool PhysChem { get; }
 
+    /// <summary>Reconnaissance des unités (5 cm, 6 h, 3 m/s) : activée par défaut.
+    /// Désactivée, un mot de <c>units.json</c> redevient un nom ou une variable
+    /// (« 6h » = 6·h dans un taux d'accroissement). Le mode physique-chimie la
+    /// force (cf. <see cref="UnitsActive"/>). ADR 2026-11-02-Feat-units-toggle.</summary>
+    public bool Units { get; }
+
+    /// <summary>Unités effectivement reconnues : réglage <see cref="Units"/>, ou
+    /// mode physique-chimie (qui en a besoin).</summary>
+    internal bool UnitsActive => Units || PhysChem;
+
     internal string Canon(string w) => Aliases.TryGetValue(w, out var c) ? c : w;
 
     internal EngineCulture(char[] decimalsIn, string decimalTex, string intervalSep, string matrixEnv,
-        IReadOnlyDictionary<string, string> aliases, bool physChem = false)
+        IReadOnlyDictionary<string, string> aliases, bool physChem = false, bool units = true)
     {
         DecimalsIn = decimalsIn;
         DecimalTex = decimalTex;
@@ -61,6 +71,7 @@ public sealed class EngineCulture
         MatrixEnv = matrixEnv;
         Aliases = aliases;
         PhysChem = physChem;
+        Units = units;
     }
 
     /// <summary>Clone du preset avec les réglages utilisateur non-null appliqués.
@@ -69,11 +80,15 @@ public sealed class EngineCulture
     public EngineCulture WithOverrides(string? intervalSep = null, string? matrixEnv = null)
         => intervalSep == null && matrixEnv == null
             ? this
-            : new EngineCulture(DecimalsIn, DecimalTex, intervalSep ?? IntervalSep, matrixEnv ?? MatrixEnv, Aliases, PhysChem);
+            : new EngineCulture(DecimalsIn, DecimalTex, intervalSep ?? IntervalSep, matrixEnv ?? MatrixEnv, Aliases, PhysChem, Units);
 
     /// <summary>Clone avec le mode physique-chimie activé ou non.</summary>
     public EngineCulture WithPhysChem(bool physChem)
-        => physChem == PhysChem ? this : new EngineCulture(DecimalsIn, DecimalTex, IntervalSep, MatrixEnv, Aliases, physChem);
+        => physChem == PhysChem ? this : new EngineCulture(DecimalsIn, DecimalTex, IntervalSep, MatrixEnv, Aliases, physChem, Units);
+
+    /// <summary>Clone avec la reconnaissance des unités activée ou non.</summary>
+    public EngineCulture WithUnits(bool units)
+        => units == Units ? this : new EngineCulture(DecimalsIn, DecimalTex, IntervalSep, MatrixEnv, Aliases, PhysChem, units);
 
     public static readonly EngineCulture Fr = FromData("fr", Vocabulary.AliasesFr);
     public static readonly EngineCulture Us = FromData("us", Vocabulary.AliasesUs);

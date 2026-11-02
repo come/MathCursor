@@ -50,7 +50,7 @@ namespace MathCursor.Tests.SourceMap
             {
                 // maths ET mode chimie (superset de candidats)
                 var cands = new List<string>();
-                foreach (var cu in new[] { EngineCulture.Fr, EngineCulture.Fr.WithPhysChem(true) })
+                foreach (var cu in new[] { EngineCulture.Fr, EngineCulture.Fr.WithPhysChem(true), EngineCulture.Fr.WithUnits(false) })
                 {
                     try { cands.AddRange(ForestEngine.Analyze(input, cu).Ranked.Select(r => r.Latex)); }
                     catch (Exception) { }   // entrées erreur : pas de candidat

@@ -25,7 +25,8 @@ fn main() {
             &reg().fr
         };
         let physchem = f.get("physchem").and_then(|v| v.as_bool()).unwrap_or(false);
-        let cu = &base.with_physchem(physchem);
+        let units = f.get("units").and_then(|v| v.as_bool()).unwrap_or(true);
+        let cu = &base.with_physchem(physchem).with_units(units);
         let exp_dec = f["decision"].as_str().unwrap();
         let exp_cands: Vec<String> = f["cands"]
             .as_array()

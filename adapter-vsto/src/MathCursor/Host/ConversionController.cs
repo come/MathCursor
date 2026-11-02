@@ -236,7 +236,8 @@ namespace MathCursor.Host
         /// <summary>Culture moteur : réglages utilisateur + mode physique-chimie du document
         /// actif (ADR 2026-10-16-Feat-physics-chemistry-mode).</summary>
         private MathCursor.Engine.EngineCulture CurrentCulture() =>
-            Settings.SettingsStore.Current.ToEngineCulture().WithPhysChem(DocumentMode.IsPhysChemActive(_app));
+            Settings.SettingsStore.Current.ToEngineCulture().WithPhysChem(DocumentMode.IsPhysChemActive(_app))
+                .WithUnits(DocumentMode.IsUnitsActive(_app));
 
         /// <summary>Moteur forest + affichage popup. Garde la zone si OK.
         /// <paramref name="silent"/> : échec sans StatusBar, popup masquée.</summary>

@@ -57,6 +57,16 @@
                         size="large"
                         imageMso="SymbolInsert"
                         onAction="OnPhysChemToggled" />
+          <!-- Unités (ADR 2026-11-02-Feat-units-toggle) : coché par défaut ; décoché,
+               « 6h » = 6·h. Grisé et coché en physique-chimie, qui force les unités. -->
+          <toggleButton id="UnitsToggle"
+                        getLabel="OnGetUnitsToggleLabel"
+                        getScreentip="OnGetUnitsToggleScreentip"
+                        getPressed="OnGetUnitsPressed"
+                        getEnabled="OnGetUnitsEnabled"
+                        size="large"
+                        imageMso="DateAndTimeInsert"
+                        onAction="OnUnitsToggled" />
         </group>
         <group id="MathCursorLayoutGroup" getLabel="OnGetLayoutGroupLabel">
           <menu id="ColumnsMenu"

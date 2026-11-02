@@ -99,7 +99,7 @@ namespace MathCursor.Tests.UI
             var candidates = new List<string>();
             var seen = new HashSet<string>(StringComparer.Ordinal);
             foreach (var input in inputs)
-                foreach (var culture in new[] { MathCursor.Engine.EngineCulture.Fr, MathCursor.Engine.EngineCulture.Us, MathCursor.Engine.EngineCulture.Fr.WithPhysChem(true) })
+                foreach (var culture in new[] { MathCursor.Engine.EngineCulture.Fr, MathCursor.Engine.EngineCulture.Us, MathCursor.Engine.EngineCulture.Fr.WithPhysChem(true), MathCursor.Engine.EngineCulture.Fr.WithUnits(false) })
                 {
                     MathCursor.Engine.AnalyzeResult r;
                     try { r = MathCursor.Engine.ForestEngine.Analyze(input, culture); }

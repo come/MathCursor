@@ -42,6 +42,8 @@ public sealed class FixtureTests
         [JsonPropertyName("in")] public string In { get; set; } = "";
         [JsonPropertyName("culture")] public string? Culture { get; set; }
         [JsonPropertyName("physchem")] public bool PhysChem { get; set; }
+        // unités désactivées (ADR 2026-11-02-Feat-units-toggle) ; absent = activées
+        [JsonPropertyName("units")] public bool Units { get; set; } = true;
         [JsonPropertyName("decision")] public string Decision { get; set; } = "";
         [JsonPropertyName("cands")] public List<string> Cands { get; set; } = new();
         [JsonPropertyName("note")] public bool Note { get; set; }
@@ -60,7 +62,7 @@ public sealed class FixtureTests
     public void AllFixturesMatch()
     {
         var fixtures = Load();
-        Assert.Equal(629, fixtures.Count);
+        Assert.Equal(632, fixtures.Count);
 
         var fails = new List<string>();
         int pass = 0;
@@ -70,7 +72,7 @@ public sealed class FixtureTests
             string decision; List<string> cands; bool note;
             try
             {
-                var r = ForestEngine.Analyze(f.In, (f.Culture == "us" ? EngineCulture.Us : EngineCulture.Fr).WithPhysChem(f.PhysChem));
+                var r = ForestEngine.Analyze(f.In, (f.Culture == "us" ? EngineCulture.Us : EngineCulture.Fr).WithPhysChem(f.PhysChem).WithUnits(f.Units));
                 decision = r.Decision;
                 cands = r.Ranked.Select(x => x.Latex).ToList();
                 note = r.HasNote;

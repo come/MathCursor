@@ -8,6 +8,15 @@ ADR + plan (`/mathcursor-plan`) au moment de l'implémentation.
 
 ## TODO
 
+- [x] **[moteur] « 6h » lu comme 6 heures en mode maths** — ✅ réglé 2026-11-02 par le bouton « Unités » (ADR 2026-11-02-Feat-units-toggle) (constaté le 02/11/2026, exercice
+  nombre dérivé) : `(9 + 6h + h2 - 9)/h` → `\frac{9+6\mathrm{h}+h^{2}-9}{h}`, même
+  `6 h`. `h` est dans `units.json` (temps) et l'emporte alors que `h` est une variable
+  ailleurs dans la même formule (`h2`, `/h`) et que le mode Physique-chimie est désactivé.
+  Cas élève réel : taux d'accroissement en 1re. Piste : en mode maths, ne pas lire une
+  lettre seule comme unité si la même lettre apparaît comme variable dans la formule
+  (ou pas d'unité d'une lettre hors mode physique-chimie). Plan + ADR, fixtures, parité
+  Rust. Contournement : `6*h` (6 × h).
+
 - [x] **[moteur] Unité après une puissance de 10** — ✅ fait 2026-10-14 (ADR
   `2026-10-14-Feat-scientific-notation-linear-minus`, extension 1) :
   `3*10^8 m/s` → `3\times 10^{8}\,\mathrm{m/s}`, `3*10-3 ms` →

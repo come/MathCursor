@@ -114,12 +114,17 @@ fn main() {
 }
 
 /// Culture du protocole : « fr », « us », suffixe « +physchem » pour le mode physique-chimie
-/// (ADR 2026-10-16-Feat-chemistry-mode). Inconnu → fr.
+/// (ADR 2026-10-16-Feat-chemistry-mode), « +nounits » pour désactiver les unités
+/// (ADR 2026-11-02-Feat-units-toggle), dans cet ordre si les deux. Inconnu → fr.
 fn culture_of(token: &str) -> mc_engine::Culture {
+    let (token, units) = match token.strip_suffix("+nounits") {
+        Some(b) => (b, false),
+        None => (token, true),
+    };
     let (base, physchem) = match token.strip_suffix("+physchem") {
         Some(b) => (b, true),
         None => (token, false),
     };
     let cu = if base == "us" { &reg().us } else { &reg().fr };
-    cu.with_physchem(physchem)
+    cu.with_physchem(physchem).with_units(units)
 }

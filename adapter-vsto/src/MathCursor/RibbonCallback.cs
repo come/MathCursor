@@ -120,6 +120,16 @@ namespace MathCursor
         public string OnGetPhysChemToggleLabel(IRibbonControl control) => Strings.PhysChemToggleLabel;
         public string OnGetPhysChemToggleScreentip(IRibbonControl control) => Strings.PhysChemToggleScreentip;
         public bool OnGetPhysChemPressed(IRibbonControl control) => Host.DocumentMode.IsPhysChemActive(Globals.ThisAddIn?.Application);
+
+        public string OnGetUnitsToggleLabel(IRibbonControl control) => Strings.UnitsToggleLabel;
+        public string OnGetUnitsToggleScreentip(IRibbonControl control) => Strings.UnitsToggleScreentip;
+        // physique-chimie force les unités : affiché coché et grisé
+        public bool OnGetUnitsPressed(IRibbonControl control)
+        {
+            var app = Globals.ThisAddIn?.Application;
+            return Host.DocumentMode.IsPhysChemActive(app) || Host.DocumentMode.IsUnitsActive(app);
+        }
+        public bool OnGetUnitsEnabled(IRibbonControl control) => !Host.DocumentMode.IsPhysChemActive(Globals.ThisAddIn?.Application);
         public string OnGetConvertButtonLabel(IRibbonControl control) => Strings.ConvertButtonLabel;
         public string OnGetConvertButtonScreentip(IRibbonControl control) => Strings.ConvertButtonScreentip;
         public string OnGetBoxResultButtonLabel(IRibbonControl control) => Strings.BoxResultButtonLabel;
@@ -451,14 +461,31 @@ namespace MathCursor
                 if (app == null || app.Documents.Count == 0) { InvalidatePhysChemToggle(); return; }
                 Host.DocumentMode.SetPhysChem(app.ActiveDocument, pressed);
                 LogDebug($"physchem_toggle → {pressed}");
+                // l'état du bouton Unités en dépend (forcé et grisé en physique-chimie)
+                try { _ribbon?.InvalidateControl("UnitsToggle"); } catch { }
             }
             catch (Exception ex) { LogDebug("physchem_toggle_error: " + ex.Message); InvalidatePhysChemToggle(); }
+        }
+
+        /// <summary>Toggle Unités = réglage du DOCUMENT ACTIF, mémorisé dans le .docx
+        /// (ADR 2026-11-02-Feat-units-toggle).</summary>
+        public void OnUnitsToggled(IRibbonControl control, bool pressed)
+        {
+            try
+            {
+                var app = Globals.ThisAddIn?.Application;
+                if (app == null || app.Documents.Count == 0) { InvalidatePhysChemToggle(); return; }
+                Host.DocumentMode.SetUnits(app.ActiveDocument, pressed);
+                LogDebug($"units_toggle → {pressed}");
+            }
+            catch (Exception ex) { LogDebug("units_toggle_error: " + ex.Message); InvalidatePhysChemToggle(); }
         }
 
         /// <summary>Resynchronise le toggle Physique-chimie (changement de document actif).</summary>
         internal void InvalidatePhysChemToggle()
         {
             try { _ribbon?.InvalidateControl("PhysChemToggle"); } catch { }
+            try { _ribbon?.InvalidateControl("UnitsToggle"); } catch { }
         }
 
         public void OnSettingsClicked(IRibbonControl control)

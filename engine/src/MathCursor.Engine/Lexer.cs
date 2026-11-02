@@ -124,7 +124,9 @@ internal static class Lexer
                 Push(new Token { Kind = "atom", Sym = w });
             else if (v is { Shape: { } shape })
                 Push(new Token { Kind = shape, Sym = k, Spaced = sp });
-            else if (v is { UnitWord: true })
+            // unités désactivées (ADR 2026-11-02-Feat-units-toggle) : le mot-unité
+            // retombe sur l'atome littéral (« h » = variable h)
+            else if (v is { UnitWord: true } && culture.UnitsActive)
                 Push(new Token { Kind = "atom", Sym = w, UnitWord = true });
             else
                 Push(new Token { Kind = "atom", Sym = w });
@@ -294,7 +296,7 @@ internal static class Lexer
 
             // unité COMPOSÉE juste après un nombre (5 m/s)
             var pv = Last();
-            if (pv is { Num: true })
+            if (pv is { Num: true } && culture.UnitsActive)
             {
                 string best = "";
                 foreach (var k in Units.Compound.Keys)
@@ -332,9 +334,13 @@ internal static class Lexer
                 // canonicaliser AUSSI ici : « existe » contient « xi » (ξ,
                 // Splittable) et ne survit au découpage que si l'alias le
                 // rend « connu » dans la culture courante.
-                bool known = Vocabulary.Vocab.ContainsKey(culture.Canon(s))
+                // un mot-unité seul ne compte pas comme « connu » quand les unités
+                // sont désactivées : « mol » se découpe alors comme un mot inconnu
+                bool InVocab(string key) => Vocabulary.Vocab.TryGetValue(key, out var e)
+                    && (culture.UnitsActive || !(e.UnitWord && e.Shape == null));
+                bool known = InVocab(culture.Canon(s))
                     || (Vocabulary.Vocab.TryGetValue(s.ToLowerInvariant(), out var lv) && lv.Shape == "atom")
-                    || (s.Length >= 2 && Vocabulary.Vocab.ContainsKey(culture.Canon(s.ToLowerInvariant())));
+                    || (s.Length >= 2 && InVocab(culture.Canon(s.ToLowerInvariant())));
                 if (!known)
                 {
                     var pieces = Decompose(s);

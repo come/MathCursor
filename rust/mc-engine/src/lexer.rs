@@ -277,7 +277,8 @@ impl<'a> Lex<'a> {
                 self.push(Token { kind: ve.shape.clone().unwrap(), sym: Some(k), spaced: sp, ..Default::default() });
                 return;
             }
-            if ve.unit_word {
+            // unités désactivées : le mot-unité retombe sur l'atome littéral
+            if ve.unit_word && self.cu.units_active() {
                 self.push(Token { kind: "atom".into(), sym: Some(w.to_string()), unit_word: true, ..Default::default() });
                 return;
             }
@@ -442,7 +443,7 @@ impl<'a> Lex<'a> {
 
             // unité COMPOSÉE juste après un nombre (5 m/s)
             let prev_num = self.toks.last().map(|t| t.num).unwrap_or(false);
-            if prev_num {
+            if prev_num && cu.units_active() {
                 let mut best = String::new();
                 for key in r.units_compound.keys() {
                     if key.chars().count() > best.chars().count() && starts_with_at(src, key, i) {
@@ -500,9 +501,13 @@ impl<'a> Lex<'a> {
                     }
                 }
                 let slow = s.to_ascii_lowercase();
-                let known = r.vocab.contains_key(&cu.canon(&s))
+                // un mot-unité seul ne compte pas comme « connu » quand les unités sont désactivées
+                let in_vocab = |key: &str| {
+                    r.vocab.get(key).map(|e| cu.units_active() || !(e.unit_word && e.shape.is_none())).unwrap_or(false)
+                };
+                let known = in_vocab(&cu.canon(&s))
                     || r.vocab.get(&slow).map(|e| e.shape.as_deref() == Some("atom")).unwrap_or(false)
-                    || (s.chars().count() >= 2 && r.vocab.contains_key(&cu.canon(&slow)));
+                    || (s.chars().count() >= 2 && in_vocab(&cu.canon(&slow)));
                 if !known {
                     let pieces = decompose(&s);
                     let any_split = pieces.len() >= 2 && pieces.iter().any(|p| r.splittable.contains(p));

@@ -37,8 +37,10 @@ public sealed class EngineDumpTests
         var inputs = File.ReadAllLines(inPath, Encoding.UTF8);
         foreach (var mode in modes)
         {
-            bool physChem = mode.EndsWith("+physchem", StringComparison.Ordinal);
-            var culture = (mode.StartsWith("us", StringComparison.Ordinal) ? EngineCulture.Us : EngineCulture.Fr).WithPhysChem(physChem);
+            bool units = !mode.EndsWith("+nounits", StringComparison.Ordinal);
+            string m = units ? mode : mode.Substring(0, mode.Length - "+nounits".Length);
+            bool physChem = m.EndsWith("+physchem", StringComparison.Ordinal);
+            var culture = (m.StartsWith("us", StringComparison.Ordinal) ? EngineCulture.Us : EngineCulture.Fr).WithPhysChem(physChem).WithUnits(units);
             var sb = new StringBuilder();
             foreach (var s in inputs)
             {

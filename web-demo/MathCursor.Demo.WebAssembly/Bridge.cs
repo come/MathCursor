@@ -59,11 +59,14 @@ public static class Bridge
         try
         {
             // suffixe « +physchem » = mode physique-chimie (ADR 2026-10-16-Feat-physics-chemistry-mode)
+            // suffixe « +nounits » = unités désactivées (ADR 2026-11-02-Feat-units-toggle), après +physchem
+            bool units = !(culture != null && culture.EndsWith("+nounits", System.StringComparison.OrdinalIgnoreCase));
+            if (!units) culture = culture!.Substring(0, culture.Length - "+nounits".Length);
             bool physChem = culture != null && culture.EndsWith("+physchem", System.StringComparison.OrdinalIgnoreCase);
             string baseCulture = physChem ? culture!.Substring(0, culture.Length - "+physchem".Length) : culture ?? "";
             var cult = (string.Equals(baseCulture, "us", System.StringComparison.OrdinalIgnoreCase)
                 ? EngineCulture.Us
-                : EngineCulture.Fr).WithPhysChem(physChem);
+                : EngineCulture.Fr).WithPhysChem(physChem).WithUnits(units);
 
             var r = ForestEngine.Analyze(input, cult);
             var cands = new DemoCand[r.Ranked.Count];

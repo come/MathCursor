@@ -333,6 +333,18 @@ namespace MathCursor
             _    => "On for this document: chemical formulas (H2O → H₂O, Fe2+ → Fe²⁺) and physics quantities (v0 → v₀, Ec → subscripted E) are offered in the popup. The setting is saved in the document.",
         };
 
+        public static string UnitsToggleLabel => Lang switch
+        {
+            "fr" => "Unités",
+            _    => "Units",
+        };
+
+        public static string UnitsToggleScreentip => Lang switch
+        {
+            "fr" => "Activé (par défaut) : les unités sont reconnues (5 cm, 2 h, 3 m/s). Désactivez-le quand une lettre comme h, m ou s est une variable : « 6h » donne alors 6h et non 6 heures. Toujours actif en physique-chimie. Le réglage est enregistré dans le document.",
+            _    => "On (default): units are recognized (5 cm, 2 h, 3 m/s). Turn it off when a letter such as h, m or s is a variable: \"6h\" then gives 6h, not 6 hours. Always on in physics-chemistry. The setting is saved in the document.",
+        };
+
         public static string TabValidateToggleLabel => Lang switch
         {
             "fr" => "Tab valide",

@@ -28,6 +28,11 @@ namespace MathCursor.Host
     {
         private const string PhysChemVariable = "MathCursor.PhysChem";
 
+        /// <summary>Unités désactivées pour ce document (ADR 2026-11-02-Feat-units-toggle).
+        /// On mémorise l'EXCEPTION : variable absente = unités activées (défaut coché),
+        /// donc aucun document existant ne change de comportement.</summary>
+        private const string UnitsOffVariable = "MathCursor.UnitsOff";
+
         public static bool IsPhysChem(Word.Document doc)
         {
             if (doc == null) return false;
@@ -50,6 +55,39 @@ namespace MathCursor.Host
                     return;
                 }
             if (physChem) doc.Variables.Add(PhysChemVariable, "1");
+        }
+
+        /// <summary>Reconnaissance des unités voulue pour ce document (vrai par défaut).</summary>
+        public static bool IsUnits(Word.Document doc)
+        {
+            if (doc == null) return true;
+            try
+            {
+                foreach (Word.Variable v in doc.Variables)
+                    if (v.Name == UnitsOffVariable) return v.Value != "1";
+            }
+            catch { }
+            return true;
+        }
+
+        public static void SetUnits(Word.Document doc, bool units)
+        {
+            if (doc == null) return;
+            foreach (Word.Variable v in doc.Variables)
+                if (v.Name == UnitsOffVariable)
+                {
+                    if (units) v.Delete(); else v.Value = "1";
+                    return;
+                }
+            if (!units) doc.Variables.Add(UnitsOffVariable, "1");
+        }
+
+        /// <summary>Réglage « Unités » du document actif (vrai sans document). Le moteur
+        /// les force de toute façon en mode physique-chimie (EngineCulture.UnitsActive).</summary>
+        public static bool IsUnitsActive(Word.Application app)
+        {
+            try { return app == null || app.Documents.Count == 0 || IsUnits(app.ActiveDocument); }
+            catch { return true; }
         }
 
         /// <summary>Mode physique-chimie du document actif (faux sans document).</summary>

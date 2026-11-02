@@ -30,12 +30,25 @@ pub struct Culture {
     pub aliases: HashMap<String, String>,
     /// Mode physique-chimie (ADR 2026-10-16-Feat-physics-chemistry-mode) : formules et grandeurs indicées.
     pub physchem: bool,
+    /// Reconnaissance des unités, activée par défaut ; désactivée, un mot-unité redevient
+    /// un nom (« 6h » = 6·h). Forcée par le mode physique-chimie (ADR 2026-11-02-Feat-units-toggle).
+    pub units: bool,
 }
 
 impl Culture {
     /// Clone avec le mode physique-chimie activé ou non.
     pub fn with_physchem(&self, physchem: bool) -> Culture {
         Culture { physchem, ..self.clone() }
+    }
+
+    /// Clone avec la reconnaissance des unités activée ou non.
+    pub fn with_units(&self, units: bool) -> Culture {
+        Culture { units, ..self.clone() }
+    }
+
+    /// Unités effectivement reconnues : réglage `units`, ou mode physique-chimie.
+    pub fn units_active(&self) -> bool {
+        self.units || self.physchem
     }
 
     pub fn canon(&self, w: &str) -> String {

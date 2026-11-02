@@ -256,6 +256,7 @@ fn build_registry() -> Registry {
             matrix_env: c["matrixEnv"].as_str().unwrap().to_string(),
             aliases: make_aliases(lang_key),
             physchem: false,
+            units: true,
         }
     };
     // mode physique-chimie (data/engine/physchem.json)

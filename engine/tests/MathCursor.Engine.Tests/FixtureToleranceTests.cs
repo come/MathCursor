@@ -36,11 +36,12 @@ public sealed class FixtureToleranceTests
         [JsonPropertyName("in")] public string In { get; set; } = "";
         [JsonPropertyName("culture")] public string? Culture { get; set; }
         [JsonPropertyName("physchem")] public bool PhysChem { get; set; }
+        [JsonPropertyName("units")] public bool Units { get; set; } = true;
         [JsonPropertyName("decision")] public string Decision { get; set; } = "";
         [JsonPropertyName("cands")] public List<string> Cands { get; set; } = new();
         [JsonPropertyName("note")] public bool Note { get; set; }
 
-        public EngineCulture Engine => (Culture == "us" ? EngineCulture.Us : EngineCulture.Fr).WithPhysChem(PhysChem);
+        public EngineCulture Engine => (Culture == "us" ? EngineCulture.Us : EngineCulture.Fr).WithPhysChem(PhysChem).WithUnits(Units);
     }
 
     private static List<Fixture> Load()
