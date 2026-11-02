@@ -51,14 +51,51 @@
             <p data-i18n="amg_classe_p">Même moteur, même popup que pour toute la classe. L'élève tape ses maths au clavier et suit le rythme du cours, sans batailler avec l'éditeur d'équations. Ce n'est pas un logiciel « à part » : c'est le même outil que ses camarades, et ça compte autant que l'aide elle-même.</p>
           </article>
           <article class="card">
-            <h3 data-i18n="amg_exam_h">En examen</h3>
+            <h3 data-i18n="amg_exam_h">En contrôle et en examen</h3>
             <p data-i18n="amg_exam_p1">Le principe d'un aménagement d'examen : l'élève travaille de sa manière habituelle. Si MathCursor fait partie de ses outils de tous les jours en classe, il le retrouve le jour de l'épreuve, sans rien de nouveau à apprendre sous stress.</p>
-            <p data-i18n="amg_exam_p2">MathCursor ne compose rien à la place de l'élève : pas d'IA, pas d'autocomplétion, aucune suggestion de résultat. Il met en forme ce que l'élève tape, rien de plus. C'est une aide à l'écriture, pas une aide au contenu.</p>
+            <p data-i18n="amg_exam_p2">Et ce n'est pas de la triche : MathCursor met en forme, il ne pense pas à la place de l'élève. <a href="#controles">Voici pourquoi</a>.</p>
           </article>
           <article class="card">
             <h3 data-i18n="amg_data_h">Sur l'ordinateur de l'élève</h3>
             <p data-i18n="amg_exam_p3">Les documents et la frappe restent sur l'ordinateur, et MathCursor fonctionne hors ligne, sans compte ni service en ligne. Une connexion ne sert qu'à signaler une nouvelle version et à envoyer un compteur anonyme (le nombre de formules converties, sans aucun contenu), désactivable dans les Paramètres : détails sur la <a href="/privacy.html">page Confidentialité</a>. De quoi rassurer l'établissement sur l'intégrité de l'épreuve.</p>
           </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="controles">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow" data-i18n="amg_ctl_eyebrow">Contrôles et examens</span>
+          <h2 data-i18n="amg_ctl_h">Pourquoi ce n'est pas de la triche</h2>
+          <p data-i18n="amg_ctl_lead">En contrôle, la vraie question n'est pas MathCursor, c'est l'ordinateur. Si l'élève a le droit de rédiger sur ordinateur, MathCursor ne lui donne aucun avantage de plus : il fait ce que fait déjà l'éditeur d'équations de Word, en plus rapide.</p>
+        </div>
+        <div class="cards">
+          <article class="card card--red">
+            <h3 data-i18n="amg_ctl_1_h">Il ne calcule rien</h3>
+            <p data-i18n="amg_ctl_1_p">MathCursor ne résout pas d'équation, ne simplifie pas, ne vérifie aucun résultat. Pas d'IA qui rédige, aucune réponse proposée. Il transforme ce que l'élève tape en formule propre, sans toucher au contenu : une erreur tapée reste une erreur.</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="amg_ctl_2_h">Le prof lit tout</h3>
+            <p data-i18n="amg_ctl_2_p">Le résultat est une équation Word standard, que le prof ouvre, imprime et corrige sans rien installer. Pour voir exactement ce que fait l'outil, la <a href="/demo/">démo en ligne</a> suffit : deux minutes et c'est clair.</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="amg_ctl_3_h">Hors ligne, sans compte</h3>
+            <p data-i18n="amg_ctl_3_p">Pendant l'épreuve, MathCursor n'a besoin ni d'Internet ni de compte, et ne va chercher aucune réponse en ligne. La seule donnée qui peut partir est un compteur anonyme du nombre de formules, désactivable dans les Paramètres.</p>
+          </article>
+        </div>
+        <h3 style="margin-top: 36px;" data-i18n="amg_ctl_who_h">Qui décide ?</h3>
+        <p data-i18n="amg_ctl_who_p1">En classe, c'est le prof. Pour un examen, c'est l'aménagement accordé à l'élève : l'usage d'un ordinateur se demande à l'avance, sur dossier (le PAP en fait partie), et doit être cohérent avec ce que l'élève utilise pendant l'année. Un PAP ne donne pas à lui seul droit à un aménagement d'examen.</p>
+        <p data-i18n="amg_ctl_who_p2">Notre conseil : présenter MathCursor au prof ou à l'établissement en début d'année, et l'utiliser au quotidien. Le jour de l'épreuve, c'est simplement l'outil habituel de l'élève.</p>
+      </div>
+    </section>
+
+    <section class="section section--soft">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow" data-i18n="amg_font_eyebrow">Lisibilité</span>
+          <h2 data-i18n="amg_font_h">Une police plus lisible pour les élèves dyslexiques</h2>
+          <p data-i18n="amg_font_p">Le menu « Police math » du ruban propose Lete Sans Math, une police sans sérif, c'est-à-dire sans les petits empattements au bout des lettres. Les recommandations de lisibilité pour la dyslexie conseillent souvent ce type de police. Elle s'applique à toutes les formules du document en un clic et s'installe avec MathCursor. Sur un ordinateur qui ne l'a pas, Word affiche simplement les formules dans sa police habituelle.</p>
         </div>
       </div>
     </section>
@@ -122,9 +159,24 @@
         amg_intro: "MathCursor for a student with a formal accommodation: the same tool as the class, not a separate piece of software. It reduces the friction of math writing without installing a whole separate software universe.",
         amg_classe_h: "In class",
         amg_classe_p: "Same engine, same popup as the rest of the class. The student types their math on the keyboard and keeps pace with the lesson, without fighting the equation editor. It isn't a piece of software \"apart\": it's the same tool as their classmates, and that matters as much as the help itself.",
-        amg_exam_h: "In exams",
+        amg_exam_h: "In tests and exams",
         amg_exam_p1: "The principle behind an exam accommodation: the student works in their usual way. If MathCursor is part of their everyday tools in class, they find it again on exam day, with nothing new to learn under stress.",
-        amg_exam_p2: "MathCursor composes nothing on the student's behalf: no AI, no autocomplete, no suggested answers. It formats what the student types, nothing more. It's a writing aid, not a content aid.",
+        amg_exam_p2: "And it isn't cheating: MathCursor formats, it doesn't think for the student. <a href=\"#controles\">Here's why</a>.",
+        amg_ctl_eyebrow: "Tests and exams",
+        amg_ctl_h: "Why it isn't cheating",
+        amg_ctl_lead: "In a test, the real question isn't MathCursor, it's the computer. If the student is allowed to write on a computer, MathCursor gives no extra advantage: it does what Word's equation editor already does, only faster.",
+        amg_ctl_1_h: "It computes nothing",
+        amg_ctl_1_p: "MathCursor doesn't solve equations, simplify, or check any result. No AI writing, no suggested answers. It turns what the student types into a clean formula without touching the content: a typed mistake stays a mistake.",
+        amg_ctl_2_h: "The teacher can read everything",
+        amg_ctl_2_p: "The result is a standard Word equation that the teacher opens, prints and marks with nothing to install. To see exactly what the tool does, the <a href=\"/demo/\">online demo</a> is enough: two minutes and it's clear.",
+        amg_ctl_3_h: "Offline, no account",
+        amg_ctl_3_p: "During the exam, MathCursor needs neither the Internet nor an account, and fetches no answers online. The only data that may leave is an anonymous count of formulas, which can be turned off in Settings.",
+        amg_ctl_who_h: "Who decides?",
+        amg_ctl_who_p1: "In class, the teacher. For an exam, the accommodation granted to the student: computer use is requested in advance, through a file (the PAP is part of it), and must match what the student uses during the year. A PAP alone does not grant an exam accommodation.",
+        amg_ctl_who_p2: "Our advice: introduce MathCursor to the teacher or the school at the start of the year, and use it every day. On exam day, it's simply the student's usual tool.",
+        amg_font_eyebrow: "Readability",
+        amg_font_h: "A more readable font for dyslexic students",
+        amg_font_p: "The \"Math font\" menu in the ribbon offers Lete Sans Math, a sans-serif font, meaning without the small strokes at the ends of letters. Readability guidelines for dyslexia often recommend this kind of font. It applies to every formula in the document in one click and is installed with MathCursor. On a computer that doesn't have it, Word simply shows the formulas in its usual font.",
         amg_exam_p3: "Documents and keystrokes stay on the computer, and MathCursor works offline, with no account and no online service. A connection is only used to flag a new version and to send an anonymous counter (the number of formulas converted, with no content), which can be turned off in Settings: details on the <a href=\"/privacy.html\">Privacy page</a>. Enough to reassure the school about the integrity of the exam.",
         amg_parents_h: "Parents",
         amg_parents_p: "For a child with a formal accommodation, MathCursor reduces the friction of math writing without installing a whole separate software universe. It's free, works offline, and installs in under a minute. A question? <a href=\"/contact.html\">Write to me</a>.",
