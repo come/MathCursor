@@ -58,6 +58,12 @@ namespace MathCursor.Host.Settings
         /// Cf. ADR 2026-06-18-Feat-usage-counter-telemetry.</summary>
         public bool SendUsageStats { get; set; } = true;
 
+        /// <summary>Joue un petit son de synthèse à l'ouverture de la popup et à
+        /// la validation d'une formule. Retour sonore optionnel,
+        /// OFF par défaut. Coupé → rien n'est synthétisé ni joué (coût nul).
+        /// Cf. ADR 2026-07-05-Feat-optional-popup-sounds.</summary>
+        public bool PlaySounds { get; set; }
+
         /// <summary>Police math choisie pour les équations (fonte à table OpenType
         /// MATH) : "Cambria Math" | "Latin Modern Math" | "STIX Two Math".
         /// null = défaut Word (Cambria). Appliquée aux équations insérées par

@@ -49,6 +49,7 @@ namespace MathCursor.UI
         private readonly CheckBox _tabValidateBox;
         private readonly ComboBox _curveStyleBox;
         private readonly CheckBox _usageStatsBox;
+        private readonly CheckBox _soundsBox;
         private readonly TextBlock _intervalSepHint;
         private readonly TextBlock _matrixHint;
         private readonly TextBlock _preview;
@@ -60,7 +61,7 @@ namespace MathCursor.UI
 
             Title = Strings.SettingsWindowTitle;
             Width = 560;
-            Height = 750;
+            Height = 830;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             ResizeMode = ResizeMode.NoResize;
             ShowInTaskbar = false;
@@ -157,6 +158,26 @@ namespace MathCursor.UI
                 Margin = new Thickness(24, 0, 0, 14),
             });
 
+            // ── Sons (retour sonore optionnel, ADR 2026-07-05-Feat-optional-popup-sounds) ─
+            root.Children.Add(SectionHeader(Strings.SettingsSectionSounds));
+            _soundsBox = new CheckBox
+            {
+                Content = Strings.SettingsSoundsLabel,
+                FontSize = 12,
+                Margin = new Thickness(0, 2, 0, 2),
+            };
+            _soundsBox.Checked += (_, __) => { if (!_loading) _draft.PlaySounds = true; };
+            _soundsBox.Unchecked += (_, __) => { if (!_loading) _draft.PlaySounds = false; };
+            root.Children.Add(_soundsBox);
+            root.Children.Add(new TextBlock
+            {
+                Text = Strings.SettingsSoundsHint,
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 110)),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(24, 0, 0, 14),
+            });
+
             // ── Aperçu ───────────────────────────────────────────────────
             root.Children.Add(SectionHeader(Strings.SettingsPreviewLabel));
             _preview = new TextBlock
@@ -195,6 +216,7 @@ namespace MathCursor.UI
             _tabValidateBox.IsChecked = _draft.TabValidate;
             _curveStyleBox.SelectedIndex = _draft.CurveStyle == Host.Curves.CurveStyle.Hand ? 1 : 0;
             _usageStatsBox.IsChecked = _draft.SendUsageStats;
+            _soundsBox.IsChecked = _draft.PlaySounds;
             _loading = false;
             RefreshHintsAndPreview();
         }

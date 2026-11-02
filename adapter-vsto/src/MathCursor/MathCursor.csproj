@@ -184,6 +184,9 @@
     <Compile Include="Strings.cs" />
     <Compile Include="RibbonCallback.cs" />
     <EmbeddedResource Include="Ribbon.xml" />
+    <EmbeddedResource Include="Host\Sound\validate.wav">
+      <LogicalName>MathCursor.Sounds.validate.wav</LogicalName>
+    </EmbeddedResource>
     <Compile Include="Host\ColumnLayoutInserter.cs" />
     <Compile Include="Host\StudyTableInserter.cs" />
     <Compile Include="Host\StudyTableController.cs" />
@@ -210,13 +213,13 @@
     <Compile Include="Host\Update\UpdateChecker.cs" />
     <Compile Include="Host\AutoDetectController.cs" />
     <Compile Include="Host\AutoDetectPause.cs" />
+    <Compile Include="Host\DocumentMode.cs" />
     <Compile Include="Host\EquationDeletionGuard.cs" />
     <Compile Include="Host\Blocks\RelationMarkers.cs" />
     <Compile Include="Host\Blocks\RelationLineDetector.cs" />
     <Compile Include="Host\Blocks\LatexTopLevelSplit.cs" />
     <Compile Include="Host\Blocks\ChainComposer.cs" />
     <Compile Include="Host\Blocks\ChainController.cs" />
-    <Compile Include="Host\DocumentMode.cs" />
     <Compile Include="Host\OMathInserter.cs" />
     <Compile Include="Host\OmmlToOMathBuilder.cs" />
     <Compile Include="Host\WordContextReader.cs" />
@@ -247,6 +250,7 @@
     <Compile Include="Host\Detection\ZoneSpan.cs" />
     <Compile Include="Host\Settings\AppSettings.cs" />
     <Compile Include="Host\Settings\SettingsStore.cs" />
+    <Compile Include="Host\Sound\SoundEffects.cs" />
     <Compile Include="Host\Feedback\FeedbackReport.cs" />
     <Compile Include="Host\Feedback\IFeedbackSender.cs" />
     <Compile Include="Host\Feedback\FeedbackJson.cs" />

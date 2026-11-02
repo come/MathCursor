@@ -490,11 +490,21 @@ namespace MathCursor.Host
         /// </summary>
         public bool CommitSelected()
         {
+            // Ré-entrée : Word pompe les messages pendant l'insertion (une fraction prend
+            // ~300 ms) ; une 2e Entrée arrivait alors ici, popup encore visible, et
+            // réinsérait la formule DANS la première (« Impossible d'éditer la plage »,
+            // caret coincé dans l'équation, 28/10). La touche est absorbée.
+            if (_committing) return true;
             var zone = _zone;
             var popup = _popup;
             if (zone == null || popup == null || !popup.IsVisible) return false;
             string latex = popup.SelectedLatex;
             if (string.IsNullOrEmpty(latex)) return false;
+
+            // Son de validation optionnel (OFF par défaut) : joué
+            // dès la validation, AVANT l'insertion Word (quelques centaines de ms),
+            // sinon il arrive en retard sur le geste. Cf. ADR 2026-07-05-Feat-optional-popup-sounds.
+            Sound.SoundEffects.PlayValidate();
 
             // Le LaTeX à committer = celui du RESTE (sans le préfixe marqueur
             // affiché), aligné par index de sélection.
@@ -948,6 +958,7 @@ namespace MathCursor.Host
         {
             if (_popup != null) return;
             _popup = new SuggestionPopupWindow();
+            _popup.IsVisibleChanged += (_, e) => { if ((bool)e.NewValue) PopupShown?.Invoke(); };
             _popup.CommitRequested += () => CommitSelected();
             _popup.ReportRequested += OpenFeedbackDialog;
         }
@@ -960,7 +971,6 @@ namespace MathCursor.Host
                 // OnReportIssueClicked côté ruban) : la popup de suggestion
                 // visible fait partie du contexte du bug, le dialog lui ne
                 // doit JAMAIS être dans l'image. Sans cette pré-capture, le
-            _popup.IsVisibleChanged += (_, e) => { if ((bool)e.NewValue) PopupShown?.Invoke(); };
                 // fallback de FeedbackDialog capture au moment d'Envoyer,
                 // dialog ouvert en plein milieu de l'écran.
                 byte[] preScreenshot = null;

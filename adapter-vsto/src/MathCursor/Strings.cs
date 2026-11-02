@@ -1005,6 +1005,26 @@ namespace MathCursor
             _    => "Just a count of how many formulas you convert. No content, no personal data, no identifier — only a number, to know the tool is used.",
         };
 
+        // ---------- Section « Sons » (retour sonore optionnel, OFF par défaut) ----------
+
+        public static string SettingsSectionSounds => Lang switch
+        {
+            "fr" => "Sons",
+            _    => "Sounds",
+        };
+
+        public static string SettingsSoundsLabel => Lang switch
+        {
+            "fr" => "Jouer un petit son à l'ouverture et à la validation de la popup",
+            _    => "Play a small sound when the popup opens and when a formula is inserted",
+        };
+
+        public static string SettingsSoundsHint => Lang switch
+        {
+            "fr" => "Retour sonore discret. Désactivé par défaut.",
+            _    => "Subtle audio feedback. Off by default.",
+        };
+
         // ---------- Bouton « Réouvrir le tutoriel » (groupe Aide) ----------
 
         public static string TutorialButtonLabel => Lang switch
